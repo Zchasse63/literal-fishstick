@@ -42,3 +42,15 @@ yarn-error.log*
 
 # Supabase
 supabase/.temp/
+
+# Design source (reference only, too large for git)
+docs/design/magicpath-admin-dashboard/
+docs/design/magicpath-employee-portal/
+
+# Glofox raw exports (reference only)
+docs/glofox-migration/*.xlsx
+docs/glofox-migration/*.csv
+
+# Temporary SQL bulk import files
+*.sql.tmp
+/tmp/
