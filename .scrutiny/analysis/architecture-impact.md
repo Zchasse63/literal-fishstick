@@ -1,6 +1,7 @@
-# Architecture Impact Analysis
+# Architecture Impact Analysis — Phase 4: Corporate & Operations
+
 **Agent:** architecture-impact
-**Plan:** Meridian Phase 3 — Analytics & Intelligence
+**Plan:** Meridian Phase 4
 **Complexity Class:** SIGNIFICANT
 **Date:** 2026-03-20
 
@@ -10,145 +11,177 @@
 
 **MODIFY**
 
-Phase 3 makes sound architectural choices (materialized snapshots, RLS-everywhere, incremental AI) but introduces two structural patterns that will create long-term maintenance friction: the dual cron infrastructure (Netlify + Inngest) and the widget data resolver (an ad-hoc query builder that will grow uncontrolled). The plan also does not address how the `daily_metrics` table stays consistent if the cron fails silently — a data gap risk with no recovery plan. These are fixable before Sprint 1 with minor additions to the design.
+Phase 4 is architecturally additive — it extends the existing patterns rather than replacing them. The core Supabase/Next.js/Inngest foundation handles the new load well. However, there are three architectural decisions that will compound into technical debt if not addressed now: (1) the `profiles.company_id` FK denormalization, (2) the dual Stripe webhook routing problem, and (3) the SaaS multi-tenancy model conflict. These are resolvable without major restructuring, but require explicit decisions before Sprint 1.
 
 ---
 
-## Architecture Assessment
+## Impact on Existing Architecture
 
-### 1. Materialized Snapshot Tables: Sound Design
+### Database Layer
 
-The decision to use pre-computed snapshot tables (`daily_metrics`, `cohort_snapshots`, `trainer_metric_snapshots`) instead of aggregating on every chart render is the correct architectural choice. It follows the same pattern as the existing revenue API, which already caches period aggregates. The daily cron populates rows once; reads are O(1) per row.
+**New tables: 13.** These are additive with no changes to existing tables except:
+1. `ALTER TABLE clock_entries` — adds geofence columns (see technical-feasibility for the table name conflict)
+2. `ALTER TABLE orders` — adds fulfillment_type, shipping_address, shipping_cost, tracking_number, shipped_at, delivered_at
+3. `ALTER TABLE profiles ADD COLUMN company_id UUID REFERENCES company_accounts(id)` — this is a denormalization concern (addressed below)
 
-**Validation:** The plan correctly identifies that this eliminates expensive GROUP BY queries on every page load. The `UNIQUE(studio_id, metric_date)` constraint prevents duplicate rows from cron re-runs.
+**RLS pattern consistency:** All new tables follow the existing `studio_id = current_setting('app.studio_id')::uuid` RLS pattern. This is correct and consistent. No RLS regressions expected.
 
-**Gap:** No recovery plan for missed cron runs. If the `cron/daily-metrics` job fails on March 5th, the `daily_metrics` table will have a gap for that date. Charts will show discontinuous lines or missing data points. The plan mentions a manual trigger API (`POST /api/analytics/snapshot`) but does not describe how gaps are detected or alerted. A silent cron failure will produce a misleading analytics page.
-
-**Fix:** Add a gap detection query to the `cron/daily-metrics` job: before inserting yesterday's metrics, check if any of the last 7 days is missing and backfill those gaps. Log warnings when gaps older than 48 hours are detected.
-
----
-
-### 2. Dual Cron Infrastructure: Architectural Smell
-
-The plan routes 6 scheduled jobs through Netlify Scheduled Functions and batch churn prediction through Inngest. This creates two separate background job systems:
-
-- Netlify Scheduled Functions: simple, but no retry logic, no execution history UI, execution timeouts (10 sec on free/pro, 26 sec on Business), no step-based execution for long jobs
-- Inngest: retry logic, step execution, execution history dashboard, event replay, already integrated
-
-Using both in the same codebase means: two monitoring surfaces, two debugging paths, two configuration formats, and two potential failure modes.
-
-**Recommendation:** Move all 6 cron jobs to Inngest. Inngest supports cron syntax natively (`{ cron: "0 2 * * *" }`). The daily metrics aggregation job, cohort refresh, and trainer metrics jobs are ideal candidates for Inngest's step-based execution pattern — they can be broken into `step.run()` chunks (validate, aggregate, insert) with automatic retry on any step failure.
-
-**Impact on plan:** No feature change. Minor implementation change — write Inngest functions instead of Netlify functions for the 6 cron jobs. Net result: one monitoring surface, retry logic on all cron jobs.
+**Index coverage:** The proposed indexes are appropriate. The composite indexes on (studio_id, status), (studio_id, start_time) correctly follow query patterns. No gaps identified.
 
 ---
 
-### 3. Widget Data Resolver: An Ad-Hoc Query Compiler
+### CONCERN: profiles.company_id Denormalization
 
-The plan's Sprint 4 includes: "Widget data resolver: given a widget config, fetch the right data and format for the right chart type."
-
-This is the most architecturally risky component in the phase. It is a mini query compiler that:
-- Takes a `dashboard_widgets` row as input
-- Looks at `data_source`, `metric_key`, `aggregation`, `time_range`, `group_by`, `filters`
-- Dynamically constructs a Supabase query
-- Returns data formatted for the specified chart type (different schemas for line charts vs. heatmaps vs. pie charts vs. tables)
-
-12 widget types × 10 data sources × 6 aggregation types = 720 combinations to handle. In practice, not all combinations are valid, but the resolver must handle invalid combinations gracefully (e.g., "gauge" widget type with "cohort_snapshots" data source makes no sense).
-
-If this is built as a large `switch` statement, it becomes unmaintainable quickly. If the schema is insufficiently constrained, users will create widget configurations that produce nonsensical charts.
-
-**Recommended design:** Define a strict capability matrix at the data model level — which aggregation types are valid for which data sources, which chart types are valid for which data shapes. Reject invalid combinations at widget creation time (API validation) rather than at render time. The resolver then handles only valid combinations, reducing its complexity significantly.
-
----
-
-### 4. `ai_insights` Table vs. `ai_cache` Table: Two AI Storage Systems
-
-The plan introduces `ai_insights` as a "curated, reviewable" table distinct from `ai_cache`. This is the right distinction. `ai_cache` is for transient memoization (avoid re-calling Claude for the same input). `ai_insights` is for persisted, lifecycle-managed insights that users can dismiss and act on.
-
-**Potential confusion:** The `cron/ai-insights` job generates insights and writes to `ai_insights`. The existing AI routes (`/api/ai/churn-prediction`, `/api/ai/revenue-anomaly`) write to `ai_cache`. Some Phase 3 features (revenue anomaly detection → auto-persist as AI insight) bridge both systems. This bridge must be explicit: when `revenue-anomaly` detects an anomaly, it should write to `ai_insights` (not `ai_cache`) using the same lifecycle and deduplication logic.
-
-The plan mentions this in section 6.2: "Revenue Anomaly — integrate with `ai_insights` table: when an anomaly is detected, persist it as an insight." Good. But this requires refactoring the existing `/api/ai/revenue-anomaly` route, which is not called out as a task in any sprint checklist. Add it to Sprint 3, task 6.
-
----
-
-### 5. `dashboard_widgets.data_source` Column: Multi-Tenant Safety
-
-The `dashboard_widgets` table stores `data_source` as a text field with a CHECK constraint listing valid source names. The widget data resolver will use this to dynamically fetch data from the named table.
-
-**Security concern:** If the resolver constructs queries using `data_source` directly in SQL without strict mapping (e.g., `SELECT * FROM ${data_source}`), it creates a SQL injection vector. Even though `data_source` values come from a CHECK constraint on insert, a future code change that relaxes the constraint or builds queries differently could introduce the vulnerability.
-
-**Fix:** The resolver must use a hardcoded mapping object — not dynamic table names:
-```typescript
-const DATA_SOURCE_MAP = {
-  'daily_metrics': () => supabase.from('daily_metrics'),
-  'cohort_snapshots': () => supabase.from('cohort_snapshots'),
-  // ...
-} as const;
+The plan proposes:
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES company_accounts(id);
 ```
 
-This pattern is safe regardless of what the `data_source` column contains.
+This assumes each profile belongs to at most one company. But:
+1. A member could be an employee of multiple companies that both use the same studio
+2. A member could change employers, invalidating the FK while the membership continues
+3. The `company_members` junction table already captures the company ↔ member relationship properly
+
+Adding `company_id` directly to `profiles` duplicates the relationship that `company_members` is designed to hold, creates an inconsistency risk (the two can diverge), and breaks the multi-company assumption.
+
+**Recommended fix:** Remove the `profiles.company_id` migration. Query company membership through the `company_members` join table. The company detail page should load members via `SELECT * FROM company_members WHERE company_id = $1`. This is one extra join, which is trivially fast with the existing indexes.
 
 ---
 
-### 6. Report Export Storage Architecture: Missing from Schema
+### API Layer
 
-The plan references Supabase Storage for report exports but the schema section only adds a `file_url TEXT` column to `report_exports`. It does not specify:
-- Bucket name and structure
-- RLS policies on the storage bucket (currently Supabase Storage has separate bucket-level policies from table RLS)
-- Signed URL TTL (the plan says "signed, time-limited" but no duration)
-- What happens when a signed URL expires but `report_exports.file_url` still holds the path
+**67 new routes in the App Router.** The existing 109 routes span 22 categories. Adding 67 more (a 61% increase) in well-separated route directories follows the established pattern cleanly. No naming conflicts identified with existing routes.
 
-The `expires_at` column in `report_exports` triggers a cleanup cron, but if a user clicks "Download" after expiry, they get a broken link. The UI must check `expires_at` before showing the download button and display "Expired — regenerate" instead.
-
-**Add to schema section:** A `storage_bucket` constant, RLS on the bucket, signed URL TTL definition (recommend: 1 hour for download links), and UI handling for expired exports.
-
----
-
-### 7. Migration Job Rollback SQL Storage: Will Hit Row Size Limits
-
-The `migration_jobs.rollback_sql TEXT` column stores DELETE statements for a full import batch. For a 1,000-row batch, this generates a `DELETE FROM profiles WHERE id IN (uuid1, uuid2, ..., uuid1000)` string that is approximately 40 KB. Postgres has a 1 GB row size limit, so this technically works, but:
-
-- Storing 40 KB of SQL per job in a TEXT column is inefficient
-- It cannot be indexed or queried efficiently if you need partial rollback
-- For the classes CSV (7 chunk files × potentially thousands of rows), rollback SQL could be hundreds of KB
-
-**Better approach:** Store only the job ID and use a consistent naming pattern for row tracking. After migration, if rollback is needed, construct the DELETE query on-the-fly using `WHERE migration_job_id = $1` — which requires adding a `migration_job_id` foreign key to every inserted row, or tracking IDs in a separate `migration_row_ids` table.
-
-**Recommendation:** Add `migration_job_id UUID REFERENCES migration_jobs(id)` to the tables that receive migrated data (profiles, bookings, transactions, etc.), or create a lightweight `migration_row_ids(job_id UUID, table_name TEXT, row_id UUID)` junction table. This is cleaner than storing raw SQL.
+**New route categories that don't conflict with existing ones:**
+- `/api/corporate/*` — new
+- `/api/events/*` — new
+- `/api/invoices/*` — new (existing `/api/revenue/` handles member invoices; this handles corporate invoices — they should remain separate)
+- `/api/payroll/*` — new (extending the existing `/api/clock/` functionality)
+- `/api/geofence/*` — new admin management routes (existing clock API already handles verification)
+- `/api/products/*` — new (merch; the DB exists, routes don't)
+- `/api/orders/*` — new
+- `/api/shipping/*` — new
+- `/api/onboarding/*` — new
+- `/api/subscription/*` — new
+- `/api/api-keys/*` — new
+- `/api/sms/*` — new
+- `/api/webhooks/easypost` — new; extends existing `/api/webhooks/` pattern
+- `/api/webhooks/twilio` — new
+- `/api/webhooks/stripe-saas` — new (see concern below)
 
 ---
 
-### 8. RLS on `dashboard_widgets`: Missing `studio_id` Enforcement
+### CONCERN: Dual Stripe Webhook Handlers
 
-The `dashboard_widgets` table has `studio_id UUID NOT NULL` but does not have a `REFERENCES studios(id)` foreign key. The plan notes RLS on `dashboard_widgets` but only shows it for `daily_metrics` as an example. The `dashboard_widgets` RLS policy must be: `studio_id IN (SELECT studio_id FROM profiles WHERE id = auth.uid())`. If this check is omitted or delegated only to `dashboards` (parent table), a user who has the `dashboard_id` UUID could potentially add widgets to dashboards from other studios.
+The existing `/api/webhooks/stripe/route.ts` handles member subscription events. The plan adds `/api/webhooks/stripe-saas/route.ts` for SaaS billing events. Both handlers will receive ALL events from the Stripe account if registered separately.
 
-**Fix:** Ensure `dashboard_widgets` has its own RLS `INSERT` and `UPDATE` policies that verify `studio_id`, not just `dashboard_id`.
+**Architecture options:**
+
+Option A (Recommended): Single webhook endpoint with routing logic
+```typescript
+// /api/webhooks/stripe/route.ts
+switch(event.type) {
+  case 'customer.subscription.updated':
+    if (event.data.object.metadata.subscription_type === 'saas') {
+      return handleSaasSubscriptionUpdate(event, supabase)
+    }
+    return handleMemberSubscriptionUpdate(event, supabase)
+}
+```
+Add `metadata.subscription_type: 'saas' | 'member'` at subscription creation time. Keeps one Stripe webhook endpoint. The existing handler already pattern-matches on metadata.
+
+Option B: Separate Stripe accounts
+Use a completely separate Stripe account for SaaS billing. Cleaner isolation, but doubles Stripe dashboard management overhead. Overkill for the current scale.
+
+Option C: Separate webhook endpoints with metadata guards (the plan's approach)
+Works if implemented correctly with metadata guards, but requires two Stripe webhook registrations and creates operational complexity.
+
+**Recommendation:** Option A. Minimal change to existing code, uses established Stripe metadata pattern already in the codebase.
 
 ---
 
-### 9. Inngest Batch Churn Prediction: No Rate Limiting Design
+### SaaS Multi-Tenancy Architecture Concern
 
-The plan mentions "Batch churn prediction: Inngest job — process all active members" in Sprint 3. For 1,103 active members, this means 1,103 calls to the churn prediction logic, each of which may call the Anthropic Claude API.
+The plan introduces `saas_subscriptions` and `onboarding_progress` tables tied to `studio_id`. This correctly extends the existing multi-tenant model. However, there's a bootstrapping problem:
 
-At 1,103 members × ~1,000 input tokens/member = ~1.1M tokens per batch run. At Claude Sonnet pricing ($3/MTok input), that is ~$3.30 per monthly batch run. Acceptable cost. But if rate limiting is not implemented, Inngest will attempt to call Claude 1,103 times concurrently, hitting Anthropic's rate limits (tokens-per-minute TPM limits) and causing errors.
+**Who creates the studio record before onboarding begins?**
 
-**Fix:** Use Inngest's `concurrency` configuration to throttle the batch: `concurrency: { limit: 10 }` limits concurrent Claude calls to 10 at any time. This is a one-line addition to the Inngest function definition.
+The existing RLS model requires a `studio_id` on every table. The onboarding flow needs to:
+1. Create the `studios` record first (requires a super-admin context, bypassing RLS)
+2. Create the `saas_subscriptions` record
+3. Set up initial `onboarding_progress`
+4. Create the first admin `profiles` record linked to the new studio
+5. Set `app.studio_id` in the JWT/session for the new admin
+
+Steps 1–3 must run in a service-role context (bypassing RLS), while steps 4–5 transition to the user-role context. This is a non-trivial transaction that the plan's `POST /api/onboarding/studio` must implement carefully. A partial failure here leaves orphaned records.
+
+**Recommended approach:** Use a Supabase service-role client for the studio provisioning API route. Wrap the multi-step creation in an explicit Postgres transaction. Return an error that rolls back fully if any step fails.
 
 ---
 
-## Architecture Verdict Summary
+### Inngest Function Architecture
 
-| Area | Assessment |
-|------|------------|
-| Snapshot tables design | Sound — correct pattern for analytics performance |
-| Cron gap recovery | Gap — add gap detection to daily cron |
-| Dual cron infrastructure | Smell — consolidate to Inngest |
-| Widget data resolver | Risk — needs capability matrix and safe table mapping |
-| ai_insights vs ai_cache bridge | Underspecified — add revenue anomaly bridge to Sprint 3 |
-| Dashboard widget multi-tenant safety | Risk — resolver must use hardcoded table map |
-| Report export storage | Missing from schema — add bucket + RLS + TTL design |
-| Migration rollback SQL storage | Anti-pattern — use junction table or foreign key instead |
-| dashboard_widgets RLS | Gap — needs own INSERT/UPDATE policy |
-| Batch churn Inngest concurrency | Missing — add concurrency limit to Anthropic calls |
+The 6 new Inngest functions are appropriate additions to the existing job infrastructure. Three observations:
 
-**Overall architectural assessment:** The foundation is sound. The materialized snapshot design, RLS everywhere, and incremental AI integration are the right approaches. The gaps are in operational details (gap recovery, rollback storage, export storage) and in the widget resolver (which needs a formal capability matrix). None of these are architectural blockers — they are design decisions that must be made explicitly before the relevant sprint.
+**`event/shipping-tracker`** polls EasyPost for tracking updates. Polling frequency matters — EasyPost also offers tracking webhooks (the plan correctly includes `/api/webhooks/easypost`). The Inngest polling function should only be a fallback for missed webhooks, not the primary update mechanism. Polling every N minutes for every in-transit shipment could get expensive at scale.
+
+**`event/corporate-credits-refresh`** — triggered on `subscription/period_start`. This presumes SaaS subscription period events. For The Sauna Guys' own corporate contracts, credit refresh is on the company's contract anniversary, not the SaaS billing cycle. The trigger event needs to be either a corporate-specific event type or a monthly cron.
+
+**`cron/invoice-overdue-check`** — flags invoices past due_date. This correctly runs daily at 8am. The update should be idempotent (don't re-flag already-flagged invoices) and should send one reminder email per invoice, not a reminder every day it's overdue.
+
+---
+
+### Navigation & Routing Impact
+
+New admin pages require navigation additions:
+
+**New top-level module:** `/corporate` — needs to be added to the admin sidebar navigation. The existing modules are: analytics, engagement/marketing, members, operations, revenue, schedule, settings. Corporate becomes the 8th top-level module.
+
+**Revenue module expansion:** Products and orders live under `/revenue/products` and `/revenue/orders`, extending the existing revenue section. This is the right placement — merch is revenue.
+
+**Settings expansion:** Geofence settings and SMS provider configuration extend the existing `/settings` page. This follows Phase 3's pattern of adding tabs to settings rather than standalone pages.
+
+**Onboarding wizard:** Lives at `/onboarding` outside the admin route group. This needs to be accessible before full admin setup, meaning it must have different auth middleware handling (allow access before `studio_id` is set in context).
+
+---
+
+### Bundle Size Impact
+
+New npm packages and their estimated bundle contributions:
+- `twilio` (~500KB unpacked) — server-only, no client bundle impact
+- `@easypost/api` (~200KB unpacked) — server-only, no client bundle impact
+- `next-swagger-doc` (~100KB) + `swagger-ui-react` (~4MB unpacked) — swagger-ui is large and client-rendered. Should be lazy-loaded and route-split at `/docs/api` to prevent it from entering the main bundle
+- `react-grid-layout` (~120KB) — client bundle, used only in dashboard builder
+
+**Concern:** `swagger-ui-react` at ~4MB is significant. It must be dynamically imported: `const SwaggerUI = dynamic(() => import('swagger-ui-react'), { ssr: false })`. Failure to do this will inflate every page's bundle.
+
+**Better approach for swagger-ui:** Use [Scalar](https://github.com/scalar/scalar) (React component, ~200KB, much better UX) instead of swagger-ui-react. Or use the Redoc component. swagger-ui-react is functional but shows its age.
+
+---
+
+### Type System Impact
+
+Phase 4 requires new type definitions in `packages/types/src/`. Based on the plan:
+
+New files needed:
+- `packages/types/src/corporate.ts` — CompanyAccount, CompanyMember, CorporateInvoice
+- `packages/types/src/events.ts` — Event, EventGuest
+- `packages/types/src/payroll.ts` — PayrollPeriod, PayrollLineItem
+- `packages/types/src/shipping.ts` — ShippingLabel (extends existing merch.ts)
+- `packages/types/src/saas.ts` — SaasSubscription, OnboardingProgress, ApiKey
+
+The existing `employees.ts` and `merch.ts` types need updates (see technical-feasibility). The `packages/types/src/index.ts` barrel export must be updated to export from these new files.
+
+---
+
+## Architecture Health After Phase 4
+
+If the identified concerns are addressed, Phase 4 leaves the architecture in good health:
+- RLS isolation maintained across all 22+ tables
+- API routes remain organized by domain
+- Inngest handles all async jobs
+- Stripe handles all payments
+- SMS is provider-agnostic
+- Shipping is behind an abstraction (EasyPost SDK, swappable)
+
+The main architectural risk introduced by Phase 4 is the complexity of the SaaS billing layer sitting alongside studio payment processing in the same Stripe account. This is manageable with the metadata routing approach but adds ongoing operational awareness requirements.

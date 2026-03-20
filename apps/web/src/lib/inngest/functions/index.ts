@@ -13,6 +13,12 @@ import { cronAIInsights } from './cron-ai-insights';
 import { cronReportScheduler } from './cron-report-scheduler';
 import { cronExportCleanup } from './cron-export-cleanup';
 
+// Phase 4: Corporate & Operations
+import { cronPayrollReminder } from './cron-payroll-reminder';
+import { cronInvoiceOverdue } from './cron-invoice-overdue';
+import { cronContractExpiry } from './cron-contract-expiry';
+import { cronCorporateCredits } from './cron-corporate-credits';
+
 export const functions = [
   executeFlow,
   evaluateTriggers,
@@ -22,4 +28,9 @@ export const functions = [
   cronAIInsights,
   cronReportScheduler,
   cronExportCleanup,
+  // Phase 4
+  cronPayrollReminder,
+  cronInvoiceOverdue,
+  cronContractExpiry,
+  cronCorporateCredits,
 ];

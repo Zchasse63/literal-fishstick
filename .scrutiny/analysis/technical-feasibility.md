@@ -1,6 +1,7 @@
-# Technical Feasibility Analysis
+# Technical Feasibility Analysis — Phase 4: Corporate & Operations
+
 **Agent:** technical-feasibility
-**Plan:** Meridian Phase 3 — Analytics & Intelligence
+**Plan:** Meridian Phase 4
 **Complexity Class:** SIGNIFICANT
 **Date:** 2026-03-20
 
@@ -10,146 +11,94 @@
 
 **MODIFY**
 
-The plan is technically grounded and largely implementable, but contains a critical RPC performance bug, a library compatibility trap, an unaddressed Stripe immutability constraint, and a dual-infrastructure smell. These are concrete issues, not speculative risk. Fix them before or during Sprint 1 — none require rescoping the phase, but two of them (RPC bug, Stripe price flow) will cause implementation failures if left to encounter in sprint.
+The plan is technically executable by a competent solo developer, but contains five concrete implementation problems that will cause build failures, schema conflicts, or production incidents if not corrected before development begins. None are individual blockers, but collectively they represent 2–3 weeks of unplanned rework if discovered mid-sprint. The schema must be audited against the live Supabase database before the migration is finalized.
+
+---
+
+## Confidence Level
+
+High — based on direct inspection of existing route handlers, type definitions, and the proposed migration SQL.
 
 ---
 
 ## Findings
 
-### Finding 1: Heatmap and leaderboard RPC functions use correlated subqueries inside aggregates — will be slow (CRITICAL)
+### CRITICAL: Geofencing Is Already Implemented — Migration Will Fail
 
-The `get_attendance_heatmap` function does this:
+Direct inspection of `/api/clock/route.ts` shows the geofence_locations table already exists and is actively queried. The existing clock API performs Haversine distance calculation, queries `geofence_locations` (latitude, longitude, radius_meters, is_active), sets `geofence_verified_in`/`geofence_verified_out` on clock entries, and stores lat/lng coordinates on clock records. The `ClockEntry` type in `packages/types/src/employees.ts` already has `geofence_verified_in`, `geofence_verified_out`, `latitude_in`, `longitude_in` fields confirming the types were written expecting this to exist.
 
+The Phase 4 migration runs `CREATE TABLE geofence_locations` without `IF NOT EXISTS`. This will throw "relation already exists" and abort the transaction. The plan must remove this CREATE TABLE entirely, or wrap it in a `DO $$ BEGIN IF NOT EXISTS... END $$` block.
+
+Additionally, the plan's Sprint 3 framing ("Geofence API + settings UI") implies building geofencing from scratch. The actual remaining work is: (a) a settings UI to configure geofence zones, and (b) verifying the existing clock API is wired correctly. Sprint 3 is likely 1 week shorter than estimated.
+
+### CRITICAL: Table Name Discrepancy — clock_entries vs time_entries
+
+The Phase 4 migration targets `clock_entries`:
 ```sql
-SUM((SELECT COUNT(*) FROM bookings b WHERE b.class_id = c.id AND b.status = 'checked_in'))
+ALTER TABLE clock_entries ADD COLUMN IF NOT EXISTS geofence_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE clock_entries ADD COLUMN IF NOT EXISTS geofence_location_id UUID REFERENCES geofence_locations(id);
 ```
 
-And `get_trainer_leaderboard` does the same pattern three times. This is a correlated subquery inside an aggregate function. Postgres executes a separate subquery for every row in the outer scan. For 500 classes in a 90-day window, that is 500+ separate index seeks per API call — before grouping. This will be visibly slow (1–5 seconds on real data) and will get worse as data grows.
+The existing `/api/clock/route.ts` reads/writes to a table called `time_entries` with columns `clock_in`, `clock_out`, `clock_in_lat`, `clock_in_lng`, `clock_out_lat`, `clock_out_lng`, `hours_worked`. The `ClockEntry` type in the types package uses the name `ClockEntry` but its fields (`geofence_verified_in`, not `geofence_verified`) suggest it was written against a third schema version.
 
-**Fix:** Rewrite both RPCs using a CTE or lateral join to pre-aggregate bookings once:
+The payroll calculation engine in Sprint 3 joins clock data to compute hours. If it queries `clock_entries` but the data lives in `time_entries`, it will return zero rows and produce incorrect payroll. This must be resolved before Sprint 3 begins.
 
-```sql
-WITH booking_counts AS (
-  SELECT class_id, COUNT(*) AS checked_in_count
-  FROM bookings
-  WHERE studio_id = p_studio_id
-    AND status = 'checked_in'
-  GROUP BY class_id
-)
-SELECT ... FROM classes c
-LEFT JOIN booking_counts bc ON bc.class_id = c.id
-WHERE ...
-```
+**Required action:** Run `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('clock_entries', 'time_entries')` against the live Supabase instance and canonicalize the name throughout the plan and types.
 
-This is a one-pass scan instead of N scans. The fix is straightforward — the SQL must be corrected before Sprint 1 ships, not after profiling.
+### HIGH: EmployeeDocument Type/Status Mismatch
 
----
+`packages/types/src/employees.ts` defines DocumentStatus as `'current' | 'expiring_soon' | 'expired' | 'missing'` but the Phase 4 schema defines status CHECK as `('pending', 'approved', 'rejected', 'expired')`. The type also lacks `'w9'` and `'direct_deposit'` document_type values that appear in the new schema.
 
-### Finding 2: `@react-pdf/renderer` cannot run server-side in Next.js App Router without explicit workarounds (HIGH)
+When Phase 4 document API routes read rows from the new `employee_documents` table and the frontend maps them to the existing TypeScript type, two of the four possible status values ('pending', 'approved', 'rejected') are not in the type definition. UI components handling document status will need to handle unknown values or will display incorrect states. TypeScript compilation will not catch this if responses are typed as generic Supabase query results.
 
-The plan says "server-side PDF report generation" using `@react-pdf/renderer`. This library uses `canvas` during module initialization. In Next.js 14+ App Router, it will throw `ReferenceError: canvas is not defined` or similar errors when imported at the module level in a Server Component or Edge Function.
+**Required action:** Update `packages/types/src/employees.ts` before Sprint 3 begins. Add the new status enum values and the missing document types.
 
-**What actually works:** Import it dynamically inside a Node.js runtime API route:
+### MEDIUM: Dual Stripe Webhook Handlers — Event Routing Risk
 
-```typescript
-// app/api/reports/[id]/export/route.ts
-export const runtime = 'nodejs'; // Required — not 'edge'
+The plan introduces `/api/webhooks/stripe-saas` alongside the existing `/api/webhooks/stripe`. If both use the same Stripe account (implied by env var naming — only separate price IDs, no separate account), Stripe fires all account events to all registered webhook endpoints. A `customer.subscription.updated` event from a SaaS billing action will hit both handlers.
 
-export async function POST(req: Request) {
-  const { pdf, Document, Page, Text } = await import('@react-pdf/renderer');
-  // ... rest of PDF generation
-}
-```
+The existing handler guards on `subscription.metadata?.meridian_member_id`. SaaS subscriptions won't have this field, so events will be silently skipped — acceptable. However, the reverse (SaaS handler receiving member subscription events) needs the same guard. If the SaaS webhook handler routes on `event.type` without also checking `metadata.subscription_type`, it could incorrectly interpret a member subscription renewal as a SaaS plan change.
 
-This works but must be validated on Netlify's function runtime before Sprint 2 builds the full PDF layer. Netlify Node.js functions have a 50 MB compressed size limit. `@react-pdf/renderer` + its font dependencies can approach this limit depending on what fonts are embedded.
+**Required action:** Add `metadata.subscription_type: 'saas'` to all SaaS Stripe subscriptions at creation time. Guard the SaaS webhook handler to only process events where `metadata.subscription_type === 'saas'`.
 
-**Alternative to evaluate:** `pdfmake` is lighter and Node-native without canvas dependency. If PDF output does not need custom React component trees (just tables and headers), `pdfmake` avoids the compatibility minefield entirely.
+### MEDIUM: next-swagger-doc Incompatibility with Next.js 16 App Router
 
-**Action:** Spike this in Week 1 before Sprint 2 commits to the approach.
+`next-swagger-doc` uses JSDoc annotations on Pages Router API routes (`/pages/api/*`) and `getStaticProps` to generate the spec. This project is pure App Router. Using `next-swagger-doc` would require creating at least one Pages Router API route, introducing a hybrid routing setup into an otherwise clean App Router codebase.
 
----
+**Recommended fix:** Write a static `openapi.yaml` manually or generate it programmatically once, serve it from `GET /api/docs/spec`, and render it with `swagger-ui-react` at `/docs/api`. This is simpler, avoids the Pages Router contamination, and produces a spec that is checkable into version control and diffable.
 
-### Finding 3: Stripe Price objects are immutable — "Apply Changes" cannot update an existing price amount (HIGH)
+### MEDIUM: react-grid-layout / @hello-pangea/dnd vs Existing @dnd-kit
 
-The plan states: "Apply Changes button — confirms, then updates the actual membership plan prices via Stripe. Sets `applied_at`."
+The project already has `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` installed. Adding `react-grid-layout` introduces a second drag-and-drop system. The plan's own risk register flags react-grid-layout React 19 compatibility as "medium likelihood." @dnd-kit already supports React 19. @dnd-kit/sortable with CSS grid can implement a dashboard builder without a new dependency.
 
-Stripe `Price` objects are immutable. `stripe.prices.update()` accepts only metadata, nickname, and lookup_key — not the `unit_amount`. Attempting to update the amount will return a Stripe API error.
+**Recommended fix:** Use @dnd-kit for the custom dashboard builder. Remove `react-grid-layout` from the planned dependencies.
 
-The correct Stripe pattern for a price change:
-1. `stripe.prices.create()` with the new amount and same currency/product
-2. `stripe.products.update(productId, { default_price: newPriceId })` — new subscribers use this price
-3. Existing subscribers continue on old price until their subscription is explicitly migrated: `stripe.subscriptions.update(subId, { items: [{ id: itemId, price: newPriceId }], proration_behavior: 'none' })`
+### LOW: Payroll Calculation Should Route Through Inngest
 
-The plan has no design for step 3. This is the critical question: when an admin clicks "Apply Changes," do existing 87 unlimited members automatically get the new price at their next billing cycle, or only new members? This is a real-money decision that must be explicitly designed before Sprint 4.
+`POST /api/payroll/periods/[id]/calculate` needs to aggregate all clock entries for the period, join class data for trainer bonuses, join promo conversions for commissions, and write payroll line items. Netlify serverless functions default to a 10-second timeout. For a studio with 10+ employees over a 2-week period, this could process hundreds of rows with multiple joins and may approach the limit under load.
 
-**Required design decision:** Add a migration modal to the pricing simulator "Apply" flow with: (a) count of affected existing subscribers, (b) toggle for "apply to existing subscribers at next renewal" vs "new subscribers only," (c) confirmation with irreversibility warning.
+**Recommended fix:** The endpoint should enqueue an Inngest job and return a job ID. The frontend polls for completion. This pattern is already established in the codebase.
+
+### LOW: EasyPost SDK Node.js Version
+
+`@easypost/api` v7 requires Node.js 18+. Netlify's default is 18.x but this should be confirmed in `netlify.toml` before Sprint 4.
 
 ---
 
-### Finding 4: `react-grid-layout` and React 19 compatibility is uncertain (MODERATE)
+## What Is Technically Sound
 
-The codebase runs React 19.2.4. `react-grid-layout` at its latest stable version (1.4.x at time of writing) uses `ReactDOM.findDOMNode()` internally, which is deprecated and removed in React 19 strict mode. This will produce errors or silent failures in development mode and may produce failures in production.
-
-**Mitigation:** The codebase already has `@dnd-kit/core ^6.3.1`, `@dnd-kit/sortable ^10.0.0`, and `@dnd-kit/utilities ^3.2.2` installed. These are React 19-native. A grid layout system can be built using `@dnd-kit` with CSS Grid positioning — more work than dropping in `react-grid-layout`, but no new dependency and no compatibility risk.
-
-**Recommendation:** Check `react-grid-layout` releases before Sprint 4 for a React 19-compatible version. If one doesn't exist, build the grid system with `@dnd-kit` — the library is already installed and the team has used it (it's in `package.json`).
+The overall architecture is solid. The incremental approach (schema first, then API routes, then UI) is correct. The SMS factory pattern is a well-designed abstraction — TwilioProvider will be a 50-line drop-in. The corporate invoice JSONB line_items approach is pragmatic and appropriate for Supabase. API key SHA-256 hashing with prefix display is the correct security pattern. Inngest cron jobs for payroll reminder, invoice overdue, and contract expiry are well-scoped.
 
 ---
 
-### Finding 5: Six cron jobs via Netlify Scheduled Functions creates a fragile dual-infrastructure setup (MODERATE)
+## Pre-Development Checklist
 
-The plan uses Netlify Scheduled Functions for 6 daily/weekly cron jobs and Inngest for batch churn prediction (Sprint 3). Inngest is already integrated (`inngest ^4.0.2`) and offers native cron scheduling via `{ cron: "0 2 * * *" }` triggers.
-
-Netlify Scheduled Functions have a 10-second execution timeout on Starter/Pro plans (26 seconds on Business). The `cron/daily-metrics` job must aggregate the previous day's bookings, transactions, and member state across potentially thousands of rows. As data grows, this will exceed 10 seconds.
-
-Inngest functions have no timeout problem (they run as background tasks with step-based execution), provide retries, provide a dashboard for monitoring execution history, and are already integrated.
-
-**Recommendation:** Use Inngest `cron` triggers for all 6 scheduled jobs. Remove Netlify Scheduled Functions from the plan. This eliminates the dual-infrastructure smell and the timeout risk.
-
----
-
-### Finding 6: Daily metrics backfill has undefined correctness requirements (MODERATE)
-
-Sprint 1 includes "Backfill script: generate `daily_metrics` rows for all historical data." The seed data includes 1,103 members, 1,393 bookings, and 2,015 transactions, but:
-
-- The date range of the seed data is not stated in the plan
-- `daily_metrics.churned_members` requires knowing which members transitioned from active to inactive on each day — this requires member status history, not just a point-in-time snapshot
-- `daily_metrics.active_members` on any given historical date requires reconstructing active membership state from transaction and membership records, which is non-trivial if the seed data doesn't include cancellation events
-
-If the backfill produces incorrect numbers, every chart on the analytics overview page will display bad data from day one. The plan should include a validation step: after backfill, spot-check 5 specific dates by running raw queries against source tables and comparing totals to the generated `daily_metrics` rows.
-
----
-
-### Finding 7: No mention of Supabase Storage configuration for report exports (LOW)
-
-The plan references storing CSV and PDF exports in Supabase Storage with signed download URLs. This requires:
-- A storage bucket to be created (e.g., `report-exports`)
-- Bucket RLS policies configured (authenticated users from the correct studio only)
-- Signed URL generation in the API route (time-limited, e.g., 1-hour TTL)
-
-None of this is mentioned in the database schema section or the API route section. It's likely assumed but should be called out explicitly in the Sprint 2 checklist to avoid it being an integration surprise.
-
----
-
-### Finding 8: `get_trainer_leaderboard` joins through `staff` table, not `profiles` directly — join path must match actual schema (LOW)
-
-The RPC joins `classes.trainer_id -> staff.id -> profiles.id`. The plan's existing staff API (`/api/staff/route.ts`) and trainer summary AI (`trainer-summary.ts`) also reference this join path, so it is likely correct. But the trainer leaderboard RPC uses `b.member_id != t.trainer_id` to exclude the trainer's own check-in — this comparison uses `t.trainer_id` (from the `staff` table) against `b.member_id` (from the `bookings` table). If `bookings.member_id` references `profiles.id` and `staff.trainer_id` is a UUID that maps to `profiles.id`, the comparison is valid. If there is any mismatch in the join chain, the trainer self-exclusion logic will silently include or exclude wrong rows.
-
-**Action:** Verify the exact column names during Sprint 1 schema migration before shipping the RPC.
-
----
-
-## Technical Verdict Summary
-
-| Area | Status |
-|------|--------|
-| DB schema design | Sound — well-indexed, RLS pattern matches existing tables |
-| RPC heatmap + leaderboard | BUG — correlated subqueries must be rewritten before Sprint 1 ships |
-| PDF generation | RISK — validate on Netlify in Week 1 before Sprint 2 commits |
-| Stripe pricing apply | DESIGN GAP — immutable prices not addressed; design before Sprint 4 |
-| react-grid-layout + React 19 | VERIFY — check compatibility; @dnd-kit is the fallback |
-| Cron infrastructure | SMELL — consolidate all 6 crons to Inngest |
-| Backfill script | UNDERSTATED — needs validation step and churn definition |
-| Supabase Storage for exports | MISSING from schema section — add to Sprint 2 checklist |
-
-**Overall:** Implementable. No architectural blockers. The RPC bug and Stripe flow gap are the two items that will cause Sprint failures if not addressed proactively.
+- [ ] Run schema audit: verify exact table names for clock/geofence tables in live Supabase
+- [ ] Add IF NOT EXISTS to all CREATE TABLE statements in migration
+- [ ] Remove CREATE TABLE geofence_locations (already exists)
+- [ ] Update packages/types/src/employees.ts with Phase 4 schema values
+- [ ] Add subscription_type metadata guard to both Stripe webhook handlers
+- [ ] Replace next-swagger-doc with static OpenAPI YAML approach
+- [ ] Replace react-grid-layout with @dnd-kit for dashboard builder
+- [ ] Route payroll calculation through Inngest
+- [ ] Confirm Node.js version in netlify.toml

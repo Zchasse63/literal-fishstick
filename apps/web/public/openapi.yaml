@@ -1,0 +1,896 @@
+openapi: 3.1.0
+info:
+  title: Meridian API
+  version: 1.0.0
+  description: |
+    Meridian is a fitness studio operating system. This API powers the admin
+    dashboard, employee portal, and member-facing surfaces.
+
+    **Authentication:** All endpoints require a valid Supabase Auth session
+    passed via the `Authorization: Bearer <access_token>` header or cookie-based
+    session. Some endpoints are restricted to admin/manager roles.
+
+    **Multi-tenancy:** Every resource is scoped to a `studio_id`. Row-Level
+    Security (RLS) in Postgres enforces tenant isolation automatically.
+  contact:
+    name: Meridian Support
+    email: support@meridian.dev
+  license:
+    name: Proprietary
+
+servers:
+  - url: /api
+    description: Local / deployed Next.js API routes
+
+tags:
+  - name: Authentication
+    description: Session management via Supabase Auth
+  - name: Members
+    description: Member directory, profiles, and management
+  - name: Classes
+    description: Class definitions and schedule
+  - name: Bookings
+    description: Class bookings, check-ins, and cancellations
+  - name: Campaigns
+    description: Email and SMS marketing campaigns
+  - name: Corporate
+    description: Company accounts and corporate billing
+  - name: Events
+    description: Private events and group bookings
+  - name: Products
+    description: Merchandise and inventory
+  - name: Orders
+    description: Member orders and fulfillment
+  - name: Analytics
+    description: Metrics, reports, and dashboards
+
+paths:
+  # ─── Authentication ───────────────────────────────────────────
+  /auth/profile:
+    get:
+      tags: [Authentication]
+      summary: Get current user profile
+      description: Returns the authenticated user's profile including roles.
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ─── Members ──────────────────────────────────────────────────
+  /members:
+    get:
+      tags: [Members]
+      summary: List members
+      description: Paginated list of studio members with optional filters.
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 25 }
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Search by name or email
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, cancelled, frozen]
+      responses:
+        '200':
+          description: Paginated member list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Member'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Members]
+      summary: Create a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberCreate'
+      responses:
+        '201':
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /members/{id}:
+    get:
+      tags: [Members]
+      summary: Get member by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Member details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── Classes & Schedule ───────────────────────────────────────
+  /classes:
+    get:
+      tags: [Classes]
+      summary: List classes
+      parameters:
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+          description: Filter by date (YYYY-MM-DD)
+        - name: trainer_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Class list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Class'
+    post:
+      tags: [Classes]
+      summary: Create a class
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassCreate'
+      responses:
+        '201':
+          description: Class created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Class'
+
+  /classes/{id}:
+    get:
+      tags: [Classes]
+      summary: Get class by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Class details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Class'
+
+  # ─── Bookings ─────────────────────────────────────────────────
+  /bookings:
+    get:
+      tags: [Bookings]
+      summary: List bookings
+      parameters:
+        - name: class_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: member_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Booking list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+    post:
+      tags: [Bookings]
+      summary: Create a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [class_id, member_id]
+              properties:
+                class_id:
+                  type: string
+                  format: uuid
+                member_id:
+                  type: string
+                  format: uuid
+                is_walk_in:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '409':
+          description: Class is full or member already booked
+
+  /bookings/{id}/cancel:
+    post:
+      tags: [Bookings]
+      summary: Cancel a booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Booking cancelled
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── Campaigns ────────────────────────────────────────────────
+  /campaigns:
+    get:
+      tags: [Campaigns]
+      summary: List campaigns
+      responses:
+        '200':
+          description: Campaign list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Campaign'
+    post:
+      tags: [Campaigns]
+      summary: Create a campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreate'
+      responses:
+        '201':
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+
+  /campaigns/{id}:
+    get:
+      tags: [Campaigns]
+      summary: Get campaign by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Campaign details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+
+  # ─── Corporate ────────────────────────────────────────────────
+  /corporate:
+    get:
+      tags: [Corporate]
+      summary: List company accounts
+      responses:
+        '200':
+          description: Company account list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CompanyAccount'
+    post:
+      tags: [Corporate]
+      summary: Create a company account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyAccountCreate'
+      responses:
+        '201':
+          description: Company account created
+
+  /corporate/{id}:
+    get:
+      tags: [Corporate]
+      summary: Get company account by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Company account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyAccount'
+
+  # ─── Events ───────────────────────────────────────────────────
+  /events:
+    get:
+      tags: [Events]
+      summary: List events
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, completed, cancelled]
+      responses:
+        '200':
+          description: Event list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+    post:
+      tags: [Events]
+      summary: Create an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreate'
+      responses:
+        '201':
+          description: Event created
+
+  /events/{id}:
+    get:
+      tags: [Events]
+      summary: Get event by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+
+  # ─── Products ─────────────────────────────────────────────────
+  /products:
+    get:
+      tags: [Products]
+      summary: List products
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+    post:
+      tags: [Products]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Product created
+
+  # ─── Orders ───────────────────────────────────────────────────
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, shipped, delivered, cancelled]
+        - name: member_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+    post:
+      tags: [Orders]
+      summary: Create an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Order created
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  # ─── Analytics ────────────────────────────────────────────────
+  /analytics/summary:
+    get:
+      tags: [Analytics]
+      summary: Get analytics summary
+      description: High-level KPIs for the studio dashboard.
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, quarter, year]
+            default: month
+      responses:
+        '200':
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsSummary'
+
+  /analytics/daily-metrics:
+    get:
+      tags: [Analytics]
+      summary: Get daily metrics
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: end_date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Daily metrics array
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DailyMetric'
+
+  /analytics/revenue-breakdown:
+    get:
+      tags: [Analytics]
+      summary: Revenue breakdown by category
+      parameters:
+        - name: start_date
+          in: query
+          schema: { type: string, format: date }
+        - name: end_date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Revenue breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  membership: { type: number }
+                  credit_pack: { type: number }
+                  drop_in: { type: number }
+                  merch: { type: number }
+                  gift_card: { type: number }
+                  event: { type: number }
+                  total: { type: number }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Supabase Auth access token
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+
+  schemas:
+    Profile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        full_name: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        studio_id: { type: string, format: uuid }
+
+    Member:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        full_name: { type: string }
+        phone: { type: string }
+        membership_status:
+          type: string
+          enum: [active, inactive, cancelled, frozen]
+        membership_type: { type: string }
+        credits_remaining: { type: integer }
+        total_visits: { type: integer }
+        created_at: { type: string, format: date-time }
+        studio_id: { type: string, format: uuid }
+
+    MemberCreate:
+      type: object
+      required: [email, full_name]
+      properties:
+        email: { type: string, format: email }
+        full_name: { type: string }
+        phone: { type: string }
+        membership_type: { type: string }
+
+    Class:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        date: { type: string, format: date }
+        start_time: { type: string }
+        end_time: { type: string }
+        capacity: { type: integer }
+        booked_count: { type: integer }
+        checked_in_count: { type: integer }
+        status:
+          type: string
+          enum: [scheduled, in_progress, completed, cancelled]
+        trainer_id: { type: string, format: uuid }
+        trainer_name: { type: string }
+        is_guided: { type: boolean }
+        studio_id: { type: string, format: uuid }
+
+    ClassCreate:
+      type: object
+      required: [name, date, start_time, end_time, capacity]
+      properties:
+        name: { type: string }
+        date: { type: string, format: date }
+        start_time: { type: string }
+        end_time: { type: string }
+        capacity: { type: integer }
+        trainer_id: { type: string, format: uuid }
+        is_guided: { type: boolean, default: false }
+
+    Booking:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        class_id: { type: string, format: uuid }
+        member_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [confirmed, checked_in, cancelled, late_cancelled, no_show]
+        is_walk_in: { type: boolean }
+        checked_in_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        studio_id: { type: string, format: uuid }
+
+    Campaign:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        subject: { type: string }
+        channel:
+          type: string
+          enum: [email, sms]
+        status:
+          type: string
+          enum: [draft, scheduled, sending, completed, paused]
+        sent_count: { type: integer }
+        recipient_count: { type: integer }
+        open_rate: { type: number }
+        click_rate: { type: number }
+        sent_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        studio_id: { type: string, format: uuid }
+
+    CampaignCreate:
+      type: object
+      required: [name, subject, channel]
+      properties:
+        name: { type: string }
+        subject: { type: string }
+        body: { type: string }
+        channel:
+          type: string
+          enum: [email, sms]
+        segment_id: { type: string, format: uuid }
+
+    CompanyAccount:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        company_name: { type: string }
+        billing_email: { type: string, format: email }
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+        contract_start: { type: string, format: date }
+        contract_end: { type: string, format: date }
+        monthly_credit_allocation: { type: integer }
+        credits_remaining: { type: integer }
+        credit_rollover_cap: { type: integer, nullable: true }
+        employee_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        studio_id: { type: string, format: uuid }
+
+    CompanyAccountCreate:
+      type: object
+      required: [company_name, billing_email, contract_start, contract_end, monthly_credit_allocation]
+      properties:
+        company_name: { type: string }
+        billing_email: { type: string, format: email }
+        contact_name: { type: string }
+        contact_phone: { type: string }
+        contract_start: { type: string, format: date }
+        contract_end: { type: string, format: date }
+        monthly_credit_allocation: { type: integer }
+        credit_rollover_cap: { type: integer, nullable: true }
+
+    Event:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type:
+          type: string
+          enum: [private_session, group_party, corporate_event, special_event]
+        status:
+          type: string
+          enum: [pending, confirmed, completed, cancelled]
+        date: { type: string, format: date }
+        start_time: { type: string }
+        end_time: { type: string }
+        guest_count: { type: integer }
+        total_price: { type: number }
+        notes: { type: string }
+        created_at: { type: string, format: date-time }
+        studio_id: { type: string, format: uuid }
+
+    EventCreate:
+      type: object
+      required: [name, type, date, start_time, end_time]
+      properties:
+        name: { type: string }
+        type:
+          type: string
+          enum: [private_session, group_party, corporate_event, special_event]
+        date: { type: string, format: date }
+        start_time: { type: string }
+        end_time: { type: string }
+        guest_count: { type: integer }
+        total_price: { type: number }
+        notes: { type: string }
+        company_id: { type: string, format: uuid }
+        member_id: { type: string, format: uuid }
+
+    Product:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        category: { type: string }
+        sku: { type: string }
+        stock_quantity: { type: integer }
+        is_active: { type: boolean }
+        image_url: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        studio_id: { type: string, format: uuid }
+
+    ProductCreate:
+      type: object
+      required: [name, price, category, sku]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        category: { type: string }
+        sku: { type: string }
+        stock_quantity: { type: integer, default: 0 }
+        image_url: { type: string }
+
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        member_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+        total: { type: number }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: { type: string, format: uuid }
+              quantity: { type: integer }
+              unit_price: { type: number }
+        fulfillment_type:
+          type: string
+          enum: [in_studio_pickup, shipping]
+        tracking_number: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        studio_id: { type: string, format: uuid }
+
+    OrderCreate:
+      type: object
+      required: [member_id, items]
+      properties:
+        member_id: { type: string, format: uuid }
+        items:
+          type: array
+          items:
+            type: object
+            required: [product_id, quantity]
+            properties:
+              product_id: { type: string, format: uuid }
+              quantity: { type: integer }
+        fulfillment_type:
+          type: string
+          enum: [in_studio_pickup, shipping]
+          default: in_studio_pickup
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        total_revenue: { type: number }
+        mrr: { type: number }
+        active_members: { type: integer }
+        new_members: { type: integer }
+        churn_rate: { type: number }
+        avg_class_utilization: { type: number }
+        total_bookings: { type: integer }
+        total_check_ins: { type: integer }
+        arpm: { type: number, description: Average Revenue Per Member }
+
+    DailyMetric:
+      type: object
+      properties:
+        metric_date: { type: string, format: date }
+        total_bookings: { type: integer }
+        total_check_ins: { type: integer }
+        total_revenue: { type: number }
+        new_members: { type: integer }
+        active_members: { type: integer }
+        avg_class_utilization: { type: number }
+        classes_held: { type: integer }
+
+security:
+  - bearerAuth: []

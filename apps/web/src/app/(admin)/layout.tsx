@@ -31,9 +31,19 @@ const breadcrumbs: Record<string, string> = {
   '/analytics/trainers': 'Analytics > Trainer Performance',
   '/analytics/pricing': 'Analytics > Pricing Simulator',
   '/analytics/migration': 'Analytics > Data Migration',
+  '/corporate': 'Corporate > Accounts',
+  '/corporate/new': 'Corporate > New Account',
+  '/corporate/events': 'Corporate > Events',
   '/segments': 'Members > Segments',
   '/engagement': 'Members > Engagement',
   '/settings': 'Settings > Studio Configuration',
+  '/settings/sms': 'Settings > SMS Configuration',
+  '/settings/geofence': 'Settings > Geofence',
+  '/revenue/products': 'Revenue > Products',
+  '/revenue/orders': 'Revenue > Orders',
+  '/operations/payroll': 'Operations > Payroll',
+  '/operations/documents': 'Operations > Documents',
+  '/docs/api': 'Documentation > API',
 }
 
 export default function AdminLayout({
@@ -43,7 +53,15 @@ export default function AdminLayout({
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const pathname = usePathname()
-  const breadcrumb = breadcrumbs[pathname] ?? 'Meridian'
+  const getBreadcrumb = (path: string): string => {
+    if (breadcrumbs[path]) return breadcrumbs[path]
+    // Dynamic routes
+    if (/^\/revenue\/products\/[^/]+$/.test(path)) return 'Revenue > Products > Product Details'
+    if (/^\/corporate\/events\/[^/]+$/.test(path)) return 'Corporate > Events > Event Details'
+    if (/^\/corporate\/[^/]+$/.test(path) && path !== '/corporate/new' && path !== '/corporate/events') return 'Corporate > Accounts > Company Details'
+    return 'Meridian'
+  }
+  const breadcrumb = getBreadcrumb(pathname)
 
   return (
     <div className="min-h-screen bg-[var(--background)]">

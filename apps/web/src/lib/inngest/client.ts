@@ -99,6 +99,28 @@ export type MeridianEvents = {
   'report/generate-async': {
     data: { report_id: string; studio_id: string; requested_by: string };
   };
+
+  // Phase 4: Corporate & Operations cron events
+  'cron/payroll-reminder': {
+    data: Record<string, never>;
+  };
+  'cron/invoice-overdue-check': {
+    data: Record<string, never>;
+  };
+  'cron/contract-expiry-check': {
+    data: Record<string, never>;
+  };
+  'cron/corporate-credits-refresh': {
+    data: Record<string, never>;
+  };
+
+  // Phase 4: Shipping & Invoicing events
+  'shipping/label_created': {
+    data: { order_id: string; tracking_number: string; studio_id: string };
+  };
+  'invoice/sent': {
+    data: { invoice_id: string; company_id: string; studio_id: string };
+  };
 };
 
 // ---------------------------------------------------------------------------

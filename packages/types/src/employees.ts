@@ -5,6 +5,7 @@ export type EmployeeStatus = 'active' | 'inactive' | 'terminated' | 'on_leave'
 export type ClockStatus = 'clocked_in' | 'clocked_out' | 'on_break'
 export type TimesheetStatus = 'pending' | 'approved' | 'disputed'
 export type DocumentStatus = 'current' | 'expiring_soon' | 'expired' | 'missing'
+export type DocumentUploadStatus = 'pending' | 'approved' | 'rejected' | 'expired'
 
 export interface Employee {
   id: string
@@ -77,7 +78,7 @@ export interface EmployeeDocument {
   id: string
   employee_id: string
   studio_id: string
-  document_type: 'w4' | 'i9' | 'w2' | '1099' | 'contract' | 'certification' | 'other'
+  document_type: 'w4' | 'w9' | 'i9' | 'w2' | '1099' | 'contract' | 'certification' | 'direct_deposit' | 'other'
   name: string
   file_url: string
   status: DocumentStatus

@@ -1,126 +1,176 @@
 # SCRUTINY SUMMARY
-## Meridian Phase 3 — Analytics & Intelligence
+## Meridian Phase 4 — Corporate & Operations
 **Date:** 2026-03-20
-**Agents Run:** 7 (Deep mode)
-**Plan Source:** `/Users/zach/Desktop/literal-fishstick/docs/phase-3-plan.md`
+**Verdict:** MODIFY
+**Confidence:** High
 
 ---
 
-## Verdict: MODIFY
+## The One-Paragraph Summary
 
-Build Phase 3. Build it differently. The core features are high-value and genuinely differentiated — no competitor at the boutique fitness market tier has trainer economics tracking, AI-driven actionable insights, and a pricing simulator. The plan's foundations are architecturally sound. The problems are concrete and fixable: a critical SQL bug in two RPC functions, a library compatibility trap for PDF generation, an unaddressed Stripe constraint, and a timeline that is 30–40% optimistic. Cut one overscoped feature (custom dashboard builder), fix the bugs before sprinting, and this is a strong phase.
-
----
-
-## The 3 Most Important Things to Do Before Writing Code
-
-**1. Fix the RPC correlated subquery bug.**
-Both `get_attendance_heatmap` and `get_trainer_leaderboard` use correlated subqueries inside aggregate functions (`SUM((SELECT COUNT(*) FROM bookings...))`). This executes a separate database query for every class row — potentially 500+ queries per API call. Rewrite both using CTEs before Sprint 1 ships. This is not a performance tuning suggestion; it is a correctness issue that will make the analytics overview page visibly slow on real data.
-
-**2. Spike PDF generation on Netlify in Week 1 (timebox: 2 days).**
-`@react-pdf/renderer` has known issues with Next.js App Router server-side rendering and canvas globals. Before committing 3 weeks of report engine work to this library, validate it runs inside a Netlify Node.js function with `export const runtime = 'nodejs'`. If it fails, switch to `pdfmake`. Ship CSV export first regardless — CSV delivers 80% of report value.
-
-**3. Design the Stripe price update flow before Sprint 4.**
-Stripe `Price` objects are immutable — you cannot change a price's `unit_amount`. The plan's "Apply Changes" button will receive a Stripe API error if implemented naively. The correct flow is: create a new Price, update the Product's default_price, offer a migration modal for existing subscribers. Store `previous_price_id` in `pricing_simulations` to enable reverting. Design this explicitly before Sprint 4 starts.
+Phase 4 is the right plan working on the right problems, but it's 20 weeks of work planned as 14, and it bundles two distinct product goals that belong in separate phases. The core operations work — corporate accounts, event management, employee payroll, merch shipping, and SMS — has clear ROI, solves active pain for The Sauna Guys, and builds genuine competitive moats that no fitness SaaS competitor currently offers. The SaaS onboarding wizard and Stripe Billing integration serve a customer who doesn't exist yet and should be deferred until a real pilot customer is ready to onboard. Additionally, five concrete pre-development problems must be fixed before Sprint 1: a schema table name conflict, a migration that will fail because geofencing already exists, a type mismatch on EmployeeDocument, a Stripe webhook routing risk, and five unresolved edge case policies. Fix these first, split SaaS onboarding into Phase 4B, and the remaining plan is solid.
 
 ---
 
-## What to Cut / Defer
+## Verdict by Feature
 
-| Item | Action | Why |
-|------|--------|-----|
-| Custom dashboard builder (react-grid-layout, 12 widget types) | Defer to Phase 4 | 2–3 weeks for a feature used infrequently; pre-built dashboards deliver 90% of value; competes poorly with free BI tools |
-| Seasonal Predictor AI function | Defer to Phase 4 | Requires 12+ months of live data that doesn't exist yet |
-| Cross-Sell Detection AI function | Defer to Phase 4 | Thin output at 1,103 members and 2 primary product types |
-| Dashboard Export as PDF | Cut | Render an arbitrary chart grid server-side is extremely complex for a low-frequency feature; use browser print instead |
-
-Cutting/deferring these items saves **3–4 developer weeks** while retaining all high-value Phase 3 deliverables.
-
----
-
-## Timeline Reality Check
-
-| | Plan | Realistic |
-|-|------|-----------|
-| Total weeks | 9–10 | 13 (with cuts above) |
-| Sprint 2 (Reports Engine) | 1.5 weeks | 3 weeks |
-| Sprint 4 (Dashboards + Pricing) | 1.5 weeks | 1 week (pricing only, dashboards cut) |
-| Opportunity cost of overrun | — | 3–4 week delay to Phase 4 SaaS onboarding |
+| Feature | Verdict | Why |
+|---|---|---|
+| Corporate Accounts + Invoicing | GO | Active pain, no competitor does this well, direct revenue impact |
+| Event Management | GO | Closes B2B loop, conversion tracking is unique differentiator |
+| Employee Payroll + Documents | GO | Closes Phase 1 mock data gap, genuine compliance and time savings |
+| Geofence Clock Enhancement | GO | Already ~70% implemented; finish the settings UI |
+| Merch + Shipping | GO | Low risk, fills operational gap |
+| SMS/Twilio | GO | 2–3 day drop-in, fulfills existing stub in Phase 2 |
+| API Keys + OpenAPI Docs | GO | Low complexity, right move for SaaS positioning |
+| SaaS Onboarding Wizard | DEFER | No real customer yet; will be rebuilt based on pilot feedback |
+| Stripe Billing for SaaS | DEFER | Depends on onboarding; premature without a paying customer |
+| Custom Dashboard Builder | DEFER | Low marginal value over Phase 3 dashboards; not urgent |
 
 ---
 
-## Bugs and Gaps to Fix Before Each Sprint
+## Critical Problems to Fix Before Sprint 1
 
-### Before Sprint 1
-- Rewrite heatmap and leaderboard RPC functions (correlated subqueries → CTEs)
-- Verify trainer self-exclusion column: `t.trainer_id` should be `t.profile_id` — confirm against actual `staff` schema
-- Consolidate all 6 cron jobs to Inngest (remove Netlify Scheduled Functions)
-- Pin "active member" definition for cohort retention calculations
-- Design cron gap recovery: `cron/daily-metrics` must detect and backfill missing days
+### 1. Schema Audit Required — Two Table Name Conflicts
 
-### Before Sprint 2
-- Spike `@react-pdf/renderer` on Netlify (timebox 2 days) — validate or switch to `pdfmake`
-- Add Supabase Storage bucket to schema: bucket config, RLS policy, signed URL TTL (1 hour)
-- Design async export path for reports >500 rows (Inngest job + status polling)
-- Add `data_freshness` field to analytics API responses
+The Phase 4 migration targets `clock_entries` but the existing `/api/clock/route.ts` reads/writes to `time_entries`. These appear to be different names for the same table. The migration also proposes `CREATE TABLE geofence_locations` but the clock API already queries this table (it was built in Phase 1).
 
-### Before Sprint 4
-- Design Stripe price update flow (new price → update product default → subscriber migration modal → revert path)
-- Verify `react-grid-layout` React 19 compatibility (if custom builder re-evaluated)
+**Action:** Run these two queries against live Supabase before any migration work:
+```sql
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+AND table_name IN ('clock_entries', 'time_entries', 'geofence_locations');
 
-### Across All Sprints
-- Add empty/first-run states to every chart component (EC-1)
-- Add concurrent migration prevention — HTTP 409 if active job exists (EC-4)
-- Replace `rollback_sql TEXT` with `migration_row_ids` junction table (architecture smell)
-- Add `concurrency: { limit: 10 }` to Inngest batch churn prediction
-- Add own RLS INSERT/UPDATE policies to `dashboard_widgets` table
-- Revenue anomaly bridge: write detections to `ai_insights`, not just `ai_cache`
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'geofence_locations';
+```
 
----
+Then correct the migration SQL to: (a) use the canonical clock table name, (b) remove CREATE TABLE geofence_locations, (c) add IF NOT EXISTS to all remaining CREATE TABLE statements.
 
-## What the Plan Gets Right
+If these conflicts reach Sprint 3, payroll calculation will return empty data and the phase will need a mid-flight schema remediation.
 
-- **Materialized snapshot tables** — the correct architecture for analytics. Pre-computed daily rows mean chart rendering is fast regardless of data volume.
-- **AI insight deduplication via fingerprint** — prevents noise accumulation in the insights hub.
-- **Graceful degradation for Phase 2 tables** — 2 of 13 report templates that need `campaigns`/`leads` show "Requires Marketing module" rather than breaking.
-- **RLS on all 10 new tables** — correct multi-tenant security posture.
-- **AI rules-based fallback** — all AI functions work without Anthropic API key.
-- **Rollback design for migration** — per-job rollback is the right approach (storage mechanism needs adjustment, but the concept is correct).
-- **Build order** — DB schema first, then API routes, then UI pages is the correct sequence.
-- **Trainer bonus threshold excludes trainer self check-in** — the business logic is correct.
+### 2. Type Mismatch on EmployeeDocument
 
----
+`packages/types/src/employees.ts` defines `DocumentStatus` as `'current' | 'expiring_soon' | 'expired' | 'missing'`. The Phase 4 database schema defines it as `'pending' | 'approved' | 'rejected' | 'expired'`. The type also lacks `'w9'` and `'direct_deposit'` document_type values.
 
-## Competitive Position
+**Action:** Update `packages/types/src/employees.ts` before Sprint 3. Sprint 3 document API routes will produce TypeScript type errors or silent runtime mismatches if this isn't fixed first.
 
-Phase 3 moves Meridian past every boutique fitness platform on analytics:
-- **Trainer economics** (promo code attribution, check-in-based bonus, compensation calculation) — no competitor has this as first-class
-- **AI insights with urgency + recommended action + deep links** — Mindbody shows charts; Meridian tells you what to do
-- **Pricing simulator** — unique in the market
-- **Migration tooling** — removes the switching cost barrier from Glofox
+### 3. Remove profiles.company_id Denormalization
 
-The custom dashboard builder is the one Phase 3 feature where competitors (particularly BI tools like Metabase) are more capable. This reinforces the case for deferring it.
+The plan proposes `ALTER TABLE profiles ADD COLUMN company_id UUID REFERENCES company_accounts(id)`. This breaks for members who belong to multiple companies. The `company_members` junction table already models the relationship correctly.
+
+**Action:** Remove the `profiles.company_id` migration entirely. Query company membership through `company_members`. This is one extra join with negligible performance impact.
+
+### 4. Stripe Webhook Routing Risk
+
+The plan adds `/api/webhooks/stripe-saas` alongside the existing `/api/webhooks/stripe`. If using the same Stripe account, both endpoints receive all events. A SaaS billing event hitting the member subscription handler (or vice versa) can produce incorrect state updates.
+
+**Action:** Route within the existing webhook handler using `metadata.subscription_type: 'saas' | 'member'` set at subscription creation time. Do not create a second webhook endpoint.
+
+### 5. Five Edge Case Policies Are Unresolved
+
+The following must be decided and documented in `edge-case-policies.md` before Sprint 1:
+
+- **EC-19: Corporate credit expiry** — do unused credits roll over or expire at month end? (Recommended: cap rollover at 2x monthly allocation)
+- **EC-20: Event/class conflict handling** — when an event overlaps with a scheduled class, who resolves it? (Recommended: surface warning at confirmation, admin acknowledges, manual class cancellation)
+- **EC-21: Payroll dispute workflow** — can an approved payroll period be reopened? (Recommended: yes, with admin override and audit log)
+- **EC-22: Duplicate event inquiry detection** — soft warning or hard block? (Recommended: soft warning with acknowledgement required)
+- **EC-23: Multi-company member billing** — if a member is in two company accounts, which billing applies? (Recommended: most recently added wins; surface conflict to admin)
 
 ---
 
-## Key Assumptions to Validate
+## Scope Recommendation: Split Into Phase 4A and 4B
 
-1. Glofox seed data spans enough date range to produce meaningful historical `daily_metrics` rows (date range not stated in plan)
-2. `staff` table has a `profile_id` column linking to `profiles.id` (RPC column name must be verified)
-3. Phase 2 `campaigns` and `leads` tables are complete (2 report templates depend on them)
-4. `@react-pdf/renderer` is compatible with Netlify function runtime (validate in Week 1 spike)
-5. AI pricing projections will be displayed as ranges with uncertainty caveats, not point estimates
+### Phase 4A (Build Now, 12–14 weeks)
+
+Corporate accounts, events, invoicing, employee payroll + documents, geofence settings UI, merch + shipping, SMS/Twilio, API keys, OpenAPI documentation, polish.
+
+This delivers every feature that The Sauna Guys will use in the next 6 months.
+
+### Phase 4B (Build When First External Customer Exists, 6–8 weeks)
+
+SaaS onboarding wizard, Stripe Billing for SaaS subscriptions, Glofox import tooling, custom dashboard builder.
+
+**Why defer?** The SaaS onboarding wizard's primary design input should come from watching the first real customer onboard. Building it from assumptions produces a wizard that gets rebuilt. Wait for the pilot. The savings: 4–6 weeks of developer time redirected to higher-ROI Phase 4A work.
 
 ---
 
-## Full Report Locations
+## Realistic Timeline
 
-- Technical Feasibility: `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/technical-feasibility.md`
-- Scope & Complexity: `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/scope-complexity.md`
-- User Value: `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/user-value.md`
-- Cost-Benefit: `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/cost-benefit.md`
-- Architecture Impact: `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/architecture-impact.md`
-- Edge Cases: `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/edge-cases.md`
-- Competitive Context: `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/competitive-context.md`
-- Full Verdict: `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/verdict.md`
-- Scope Decomposition: `/Users/zach/Desktop/literal-fishstick/.scrutiny/planning/scope-decomposition.md`
+| Sprint | Content | Realistic Duration |
+|---|---|---|
+| 1 | Corporate foundation + schema | 2.5 weeks |
+| 2 | Events + invoicing | 3 weeks |
+| 3 | Employee payroll + documents + geofence | 3 weeks |
+| 4 | Merch + shipping | 3 weeks |
+| 5 | SMS + API keys + OpenAPI | 2 weeks |
+| 6 | Polish + integration | 1.5 weeks |
+| **4A Total** | | **15 weeks** |
+
+The plan's 12–14 week estimate is ~20% optimistic for Phase 4A alone after accounting for schema audit, type fixes, edge case resolution, and real EasyPost integration complexity.
+
+---
+
+## Technical Highlights to Address Per Sprint
+
+**Sprint 1 prep:**
+- Run schema audit before any migration work
+- Add IF NOT EXISTS to all migration CREATE TABLE statements
+- Update employees.ts types
+
+**Sprint 2:**
+- Implement event/class conflict warning at confirmation step
+- Lazy-load swagger-ui-react with dynamic import (bundle impact otherwise significant)
+
+**Sprint 3:**
+- Route payroll calculation through Inngest (not a synchronous API handler) — Netlify 10s timeout risk
+- Use @dnd-kit for dashboard builder instead of react-grid-layout
+
+**Sprint 4:**
+- Start with USPS-only EasyPost, add UPS/FedEx incrementally
+- Label voiding on order cancellation must call EasyPost void API within carrier window
+
+**Sprint 5:**
+- Replace next-swagger-doc with static openapi.yaml approach (next-swagger-doc is Pages Router only)
+- Write openapi.yaml manually or generate once — it's checkable into version control
+
+---
+
+## Competitive Moats Being Built
+
+Phase 4A creates three genuine competitive advantages that no fitness SaaS competitor currently offers:
+
+1. **Corporate wellness CRM native to the studio platform** — not a spreadsheet workaround, not a Mindbody marketplace intermediary. Studio-owned relationship with company-level invoicing and credit allocation.
+
+2. **Trainer performance bonus calculation wired to payroll** — no competitor connects class check-in thresholds to payroll as a first-class automated feature.
+
+3. **Event conversion tracking** — did event guests become members? This closes the lead generation → member acquisition loop that makes events profitable beyond their immediate revenue.
+
+---
+
+## What Would Change the Verdict to Full GO
+
+1. Complete the schema audit and confirm no conflicts
+2. Document the 5 edge case policies in edge-case-policies.md
+3. Confirm SaaS onboarding is formally moved to Phase 4B
+4. Confirm product variants are out of scope for Phase 4A
+
+If those four items are completed before Sprint 1 starts, the plan can proceed without further changes.
+
+---
+
+## Full Reports
+
+All detailed analysis is in `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/`:
+- `technical-feasibility.md` — schema conflicts, dependency issues, implementation risks
+- `scope-complexity.md` — sprint-by-sprint reality check, timeline reestimate
+- `user-value.md` — feature-by-feature value assessment, value delivery order
+- `cost-benefit.md` — ROI by feature, third-party service costs, budget recommendation
+- `architecture-impact.md` — DB denormalization concern, webhook routing, type system impact
+- `edge-cases.md` — 15 edge cases, 5 requiring decisions before Sprint 1
+- `competitive-context.md` — competitor gap analysis, market timing, moat assessment
+
+Supporting documents:
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/verdict.md`
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/planning/assumptions.md`
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/planning/scope-decomposition.md`

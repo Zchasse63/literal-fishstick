@@ -1,6 +1,7 @@
-# User Value Analysis
+# User Value Analysis — Phase 4: Corporate & Operations
+
 **Agent:** user-value
-**Plan:** Meridian Phase 3 — Analytics & Intelligence
+**Plan:** Meridian Phase 4
 **Complexity Class:** SIGNIFICANT
 **Date:** 2026-03-20
 
@@ -10,141 +11,119 @@
 
 **MODIFY**
 
-Phase 3 delivers genuine high-value features — live analytics, report exports, and trainer dashboards will be used daily. But the feature set is unequally valuable: three items (live analytics overview, reports engine, trainer dashboards) are high-frequency, high-value admin tools, while two items (custom dashboard builder, pricing simulator) are lower-frequency and serve a narrower use case. The plan should reorder priority to ship the high-frequency items first and treat the builder and simulator as secondary.
+The core of Phase 4 — corporate accounts, event management, employee payroll, and merch shipping — delivers high value to The Sauna Guys and solves real operational pain they cannot address with Glofox today. The SaaS onboarding and custom dashboard builder, however, solve a speculative future customer problem rather than the primary user's immediate needs. These should be deferred. The plan should be prioritized in value-delivery order, not feature-bundling order.
 
 ---
 
-## User Segments Affected
+## User Populations
 
-**Primary users:** Studio owner/admin (The Sauna Guys: ~1–2 people)
-**Secondary users:** Trainers (3–5 people who check their own dashboards)
-**Future users:** Other studio operators who adopt Meridian as SaaS
+**Primary user: Studio owner/admin (The Sauna Guys)**
+The Sauna Guys operates in Tampa with a growing corporate wellness clientele (from the business model docs). They currently have no structured way to manage company accounts, track invoices, or handle event logistics within Glofox.
 
----
+**Secondary user: Studio employees/trainers**
+Currently limited to the Phase 1/2/3 employee portal features. The payroll and document management features directly serve them.
 
-## Value Assessment by Feature
-
-### Live Analytics Overview — HIGH VALUE
-
-The current analytics page is entirely mock data. Studio owners have no way to see real attendance trends, member movement, or revenue breakdown in the dashboard. Replacing mock data with live charts is the highest day-1 value delivery in Phase 3.
-
-**Daily usage:** Yes — the Command Center is the morning routine; Analytics Overview is the second page visited.
-**Decision impact:** Fill rate trends reveal which time slots to add or remove. Member movement charts surface churn before it becomes a revenue problem.
-**Current workaround:** None — owners currently have no aggregate view of their own data.
+**Tertiary user: Future SaaS customers (other fitness studios)**
+The SaaS onboarding and multi-tenant features serve this audience. This user does not exist yet.
 
 ---
 
-### Reports Engine (CSV + PDF Export) — HIGH VALUE
+## Value Assessment by Feature Area
 
-Studio owners are currently unable to generate financial reports, payroll reports, or attendance summaries from Meridian. They are presumably either using Glofox's export tools (which will be deprecated at cutover) or maintaining manual spreadsheets.
+### Corporate Accounts & Invoicing — HIGH VALUE
 
-The 13 pre-built templates cover the highest-frequency reporting needs:
-- **Trainer Payroll Report** — needed at the end of every month, every month. Currently requires manual calculation.
-- **Attendance Report** — used weekly to review fill rates and plan schedule changes.
-- **Transaction Log** — needed for accounting and tax purposes.
-- **Failed Payments Report** — used weekly for dunning follow-up.
+The Sauna Guys explicitly has corporate wellness clients. Without Phase 4, managing these accounts requires:
+- Tracking company contacts in a separate spreadsheet or CRM
+- Manually invoicing (Word/Google Docs → PDF → email)
+- No visibility into contract value, credit usage, or member linkage
+- No event history tied to the company
 
-**Frequency:** Payroll report runs monthly. Attendance and transaction reports run weekly. Failed payments run weekly.
-**Pain level without this:** High. Manual payroll calculation for trainers (bonus threshold + promo commission + base pay) is error-prone and time-consuming.
+Phase 4 provides a structured pipeline view, automated invoicing, and credit allocation. The value is immediate and addresses a known operational gap. The B2B invoice PDF, net-30/60 payment terms, and Stripe payment link are all features a boutique studio with corporate clients genuinely needs.
 
-The scheduled email delivery feature is particularly valuable for the Trainer Payroll Report — a monthly automated email to each trainer with their performance summary reduces admin overhead.
+**User pain solved:** "We don't have a way to track who owes us what from our corporate clients."
 
----
+### Event Management — HIGH VALUE
 
-### Trainer Performance Dashboards — HIGH VALUE
+Birthday parties, corporate wellness sessions, and private events are revenue streams that fitness studios routinely manage through email chains and spreadsheets. The inquiry → quoted → confirmed → invoiced flow maps exactly to how event sales actually work. The guest list with RSVP tracking and conversion attribution (did the guest become a member?) is a genuinely differentiated feature — no competitor does this with native conversion tracking.
 
-The Sauna Guys has trainers (Whitney Cooper is named in the CLAUDE.md). Trainer performance tracking — bonus hit rate, avg attendance, promo conversions — directly affects compensation decisions. The AI narrative on the trainer deep-dive page ("4–6 sentence performance narrative") replaces a manual monthly review conversation with data.
+The event calendar integration with the existing schedule (so events block regular class slots) is critical for operations. This is called out in the edge cases section.
 
-**Decision impact:** Whether to give a trainer more prime-time slots, whether a bonus threshold has been met, whether a promo code is driving conversions — these are real operational decisions made monthly.
-**Frequency:** Monthly for formal review; weekly for quick leaderboard checks.
+**User pain solved:** "We're juggling event logistics in email and missing follow-up on leads."
 
----
+### Employee Payroll + Documents — HIGH VALUE for Staff, HIGH VALUE for Owner
 
-### AI Insights Hub — MODERATE-HIGH VALUE (with caveats)
+The payroll calculation engine (clock entries + class bonuses + promo commissions → gross pay export) closes the loop on Phase 1's payroll tab, which shows mock data. The trainer bonus threshold feature (already defined in the business model: check-ins > threshold = bonus) is business logic that currently requires manual calculation by the owner. Automating this removes error risk and owner time.
 
-The AI insights hub surfaces patterns from across the business in one place. The insight types are relevant: scheduling gaps, pricing suggestions, retention signals, revenue anomalies.
+Employee document management (W4/W9 collection, W2/1099 storage) addresses a compliance need that every studio has but no fitness SaaS platform handles well. Trainers resent chasing down paper forms. This feature saves time for both the admin and the employee.
 
-**Value ceiling:** The hub is only as useful as the insights are accurate and actionable. With 1,103 members and a relatively small class schedule, the AI may generate generic insights ("Class at 7pm has higher fill rate than 5pm") that are already obvious to the owner. The value scales with data volume and business complexity.
+**User pain solved:** "Payroll takes me 2 hours every two weeks to calculate manually" and "We still have paper W4s in a drawer."
 
-**Risk of noise:** The plan generates 3–8 insights per daily cron run. If the deduplication fingerprint logic is imperfect, the hub can become noisy. The "dismiss" and "mark as done" actions are the right escape valves.
+### Geofence Clock-In Enforcement — MEDIUM-HIGH VALUE
 
-**Most valuable insight types:** Retention (churn prediction surfaced proactively), Revenue anomaly (unexpected drop in MRR), and Scheduling (optimal time slots). These three justify the feature. Pricing and Seasonal insights are less reliable at small data volumes.
+Clock in/out geofencing prevents employees from punching in from home or while stuck in traffic. For a small studio where every labor dollar matters, this is a meaningful control. The plan's graceful fallback (allow clock-in without geofence verification, flag as unverified) is the right approach — it prevents the system from blocking an employee who has a GPS glitch, while still giving the admin visibility.
 
----
+The UI enhancement (showing distance from studio, verification badge) adds transparency that employees will appreciate rather than resent, if framed correctly.
 
-### Pricing Simulator — MODERATE VALUE (narrow use case)
+**User pain solved:** "I can't tell if people are actually at the studio when they clock in."
 
-The pricing simulator is used when the studio considers a price change. For a studio with 3–4 membership tiers, this happens perhaps once or twice a year. The AI projections (churn risk estimate, revenue impact) are genuinely useful for that decision — replacing gut-feel with a data-anchored estimate.
+### Merch & Shipping — MEDIUM VALUE
 
-**Frequency:** Very low — 1–2 times per year at most.
-**Decision impact:** High when used — pricing decisions have compounding revenue effects.
-**Risk:** If the AI projections are materially wrong (overconfident churn estimates, unrealistic revenue projections), the feature could lead to worse decisions than intuition alone. The plan should be explicit that projections are estimates with uncertainty ranges, not predictions.
+In-studio pickup exists from Phase 1. Shipping expands the merch channel to online orders from members who aren't coming in. For a boutique sauna studio in Tampa, the shipping volume is likely modest (merch is secondary revenue). However, the administrative overhead of managing orders without a UI is real — staff currently have no way to see pending orders, mark them as fulfilled, or generate shipping labels.
 
-This is a low-volume, high-stakes feature. Its value is real but does not justify the same sprint priority as the report engine.
+The EasyPost integration is technically solid and appropriately scoped (rate shopping, label generation, tracking). For a small operation, USPS-only would actually cover 90% of use cases, and the plan appropriately suggests starting there.
 
----
+**User pain solved:** "We sell merch but don't have a way to manage who's ordered what."
 
-### Custom Dashboard Builder — LOWER VALUE (for current users)
+### SMS via Twilio — MEDIUM VALUE
 
-The drag-and-drop dashboard builder with 12 widget types is the most technically complex feature and the lowest daily-use feature for a small studio. The three pre-built dashboards (Executive Overview, Daily Operations, Growth & Retention) cover the needs of a 1–2 admin team.
+SMS is already factored into Phase 2 campaign builder and automation flows (they just no-op through the stub). Enabling Twilio fulfills existing functionality that members are expecting. Class reminders, booking confirmations, and waitlist notifications via SMS have high open rates compared to email. This is a straightforward value add.
 
-Custom dashboards become valuable at scale — when a business has multiple department heads who need different metric views, or when a SaaS customer wants to configure Meridian for their specific KPIs. For The Sauna Guys today, this is overkill.
+**User pain solved:** "We can't send texts to members even though the campaign builder has an SMS option."
 
-**Frequency:** Low — initial setup plus occasional reconfiguration.
-**Who benefits:** Primarily future SaaS customers with different analytics needs than The Sauna Guys.
-**Value for current user:** The three pre-built dashboards provide 90% of the value at 10% of the build cost.
+### SaaS Onboarding Wizard — LOW-TO-MEDIUM VALUE (Right Now)
 
----
+The Sauna Guys does not need a SaaS onboarding wizard. This feature serves a future customer who doesn't exist yet. Building it now means:
+- 4–6 weeks of developer time solving a problem that has no current user
+- Scope assumptions about what "other studios" need may be wrong
+- The import step (Glofox migration) is underspecified
 
-### Glofox Migration Tooling — HIGH VALUE (but narrow window)
+Value is real — but premature for this phase. The right time to build SaaS onboarding is when the first pilot customer (a second studio) is ready to onboard. That customer's feedback should shape the wizard flow.
 
-The migration tooling is a one-time-use feature: import data from Glofox once, then it is never used again (except for rollback). But during that one use, it is extremely high value — a failed migration means lost customer history, incorrect billing, and a broken cutover.
+**Honest assessment:** Building SaaS onboarding based on assumptions about what a hypothetical second studio needs is a classic premature SaaS optimization. Wait until you have a real customer to tell you what the wizard should actually do.
 
-The admin UI with validation, progress tracking, and rollback is the right approach. The wave-based migration with renewal date tracking is essential for the double-billing guard.
+### Custom Dashboard Builder — LOW VALUE (Right Now)
 
-**Note:** Migration tooling being in Phase 3 (weeks 9–10) means the actual Wave 1 execution cannot happen until the end of Phase 3. If the studio wants to cut over before Phase 4 work begins, the migration tooling needs to be ready by end of Sprint 5. This is correctly positioned in the plan.
+The custom dashboard builder was deferred from Phase 3, suggesting it wasn't urgent then either. Building a drag-and-drop widget dashboard requires: widget type definitions, data source bindings, layout persistence per user, and a non-trivial UI. The existing analytics dashboards from Phase 3 already provide fixed but comprehensive views. The marginal value of customization over a well-designed fixed layout is low for a studio with one primary admin user.
 
----
+**Honest assessment:** This is a feature that sounds valuable in a product spec but rarely moves the needle in day-to-day usage for a studio of this size. Defer to Phase 5 or later.
 
-## User Needs Not Addressed by Phase 3
+### API Documentation — HIGH VALUE for SaaS, LOW Value for The Sauna Guys
 
-### No trainer-facing views
-The trainer performance dashboards are built in the admin interface. Trainers currently have no self-service view of their own performance, upcoming classes, or bonus status. The plan mentions "trainer profiles" as a Phase 5 feature. But a simple trainer-facing summary view (not a full trainer portal) would be high-value for the trainer relationship and could be built as a lightweight addition to Phase 3.
-
-### No export scheduling for trainers
-The Trainer Payroll Report is designed to be exported by admins. The plan mentions "schedule_recipients" on `saved_reports`, which could include a trainer's email address. But there is no workflow for automatically sending each trainer their own monthly payroll summary. This would reduce a monthly admin task to a cron job. Worth noting as a gap.
-
-### No alerting on critical metrics
-The AI insights hub surfaces insights daily. But if MRR drops 20% day-over-day, or if a class has zero bookings 24 hours before it starts, the studio owner should be notified immediately — not at the next scheduled insight generation run. The plan has no urgent alerting mechanism. Email or push notification on threshold breaches is absent.
+The Sauna Guys will never use the public API directly. The API documentation value is entirely about SaaS attractiveness to developer-friendly customers. It's the right move for a SaaS product, but its urgency depends on when real customers arrive.
 
 ---
 
-## Value Delivery Ordering Recommendation
+## Value Delivery Order
 
-The current sprint order (DB → Reports → AI Hub → Dashboards → Migration) is roughly correct but could be optimized:
+If scope must be cut, this is the order to deliver:
 
-**Higher priority:**
-1. Live analytics overview (Sprint 1) — correct
-2. Reports engine, but prioritize CSV export + Trainer Payroll + Transaction Log first — PDF and scheduler can follow
-3. Trainer performance dashboards — before AI insights hub
-
-**Lower priority (defer or descope):**
-4. Custom dashboard builder — ship 3 pre-built dashboards only; custom builder is Phase 4
-5. Pricing simulator — ship after trainer dashboards, not before
-6. Seasonal Predictor and Cross-Sell Detection AI functions — defer until 12 months of live data exists
+| Priority | Feature | Why |
+|---|---|---|
+| 1 | Employee payroll + documents | Closes the loop on Phase 1, ongoing operational pain |
+| 2 | Corporate accounts | Active revenue stream, current manual pain |
+| 3 | Event management | Active revenue stream, current manual pain |
+| 4 | SMS/Twilio | Fulfills existing stub, improves member communication |
+| 5 | Merch admin UI + shipping | Removes operational friction |
+| 6 | API keys + OpenAPI docs | Prerequisite for SaaS positioning |
+| 7 | SaaS onboarding | Defer until first real customer |
+| 8 | Custom dashboard builder | Defer indefinitely |
 
 ---
 
-## User Value Verdict Summary
+## Risks to User Value
 
-| Feature | Value to Current Users | Priority |
-|---------|----------------------|----------|
-| Live analytics overview | Very High | Must Ship |
-| Reports engine (CSV + payroll + attendance) | Very High | Must Ship |
-| Trainer performance dashboards | High | Must Ship |
-| Glofox migration tooling | High (one-time) | Must Ship |
-| AI insights hub | Moderate-High | Ship |
-| Pricing simulator | Moderate (low frequency) | Ship — descope confidence display |
-| Custom dashboard builder | Low (for current users) | Defer to Phase 4 |
-| Seasonal predictor AI | Low (insufficient data) | Defer |
-| Cross-sell detection AI | Low (thin at this scale) | Defer |
+**Payroll calculation accuracy risk:** If the payroll engine has bugs (e.g., wrong overtime threshold, missed bonus class), the studio owner will lose trust in the feature and revert to manual calculation. The calculation logic must be surfaced transparently (show the breakdown: X hours regular, Y hours OT, Z bonus-eligible classes) so the admin can spot-check the numbers. Black-box total is not acceptable for payroll.
+
+**Invoice PDF quality risk:** The corporate invoice PDF is a customer-facing document. If it looks unprofessional (wrong formatting, truncated addresses, missing logo), it reflects badly on The Sauna Guys. PDF generation requires design attention, not just data correctness.
+
+**Event conflict risk:** If an event is booked in a slot that already has a regular class (or vice versa), and the system doesn't prevent it, the studio will double-book their facility. This is the highest operational risk in the plan (detailed in edge-cases report).

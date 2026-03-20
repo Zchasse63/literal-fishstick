@@ -89,9 +89,14 @@ export function createSMSProvider(): SMSProvider {
   switch (provider) {
     case 'stub':
       return new StubProvider();
+    case 'twilio': {
+      // Dynamic import to avoid loading Twilio SDK when not needed
+      const { TwilioProvider } = require('./providers/twilio') as {
+        TwilioProvider: new () => SMSProvider;
+      };
+      return new TwilioProvider();
+    }
     // Future providers:
-    // case 'twilio':
-    //   return new TwilioProvider();
     // case 'messagebird':
     //   return new MessageBirdProvider();
     default:

@@ -1,6 +1,7 @@
-# Competitive Context Analysis
+# Competitive Context Analysis — Phase 4: Corporate & Operations
+
 **Agent:** competitive-context
-**Plan:** Meridian Phase 3 — Analytics & Intelligence
+**Plan:** Meridian Phase 4
 **Complexity Class:** SIGNIFICANT
 **Date:** 2026-03-20
 
@@ -8,143 +9,113 @@
 
 ## Agent Verdict
 
-**GO**
+**GO** (for core features) / **DEFER** (for SaaS platform features)
 
-Phase 3 builds a genuinely differentiated analytics layer in an area where incumbent platforms are demonstrably weak. The combination of trainer economics tracking, AI-driven insights, and migration tooling is not replicated by any competitor at this market tier. The custom dashboard builder is the one area where competitors have more mature offerings — which reinforces the case for deferring it rather than trying to out-build BI tools in Phase 3.
-
----
-
-## Competitive Landscape
-
-### Glofox (Primary Competitor Being Replaced)
-
-**Analytics capabilities:**
-- Basic reporting: class attendance, membership stats, revenue summaries
-- Reports are largely static — no custom configurations, no CSV export on lower tiers
-- No AI features
-- No trainer performance tracking beyond class attendance counts
-- No pricing simulation tools
-- Data export is a pain point documented in the CLAUDE.md and referenced in `dashboard-research.md`
-
-**Migration relevance:** The fact that Phase 3 includes Glofox migration tooling is itself a competitive action — it removes the switching cost barrier that keeps studios locked in Glofox.
-
-**Gap Meridian fills:** Everything in Phase 3 is a gap that Glofox does not fill. This is not exaggeration — Glofox's analytics are a documented pain point across the 15+ platforms surveyed in `dashboard-research.md`.
+The corporate accounts, event management, and employee payroll features address genuine gaps in the fitness SaaS market that no competitor handles well. Phase 4 builds a meaningful competitive moat in these areas. The SaaS positioning and platform features are sound long-term strategy but should wait for market validation.
 
 ---
 
-### Mindbody (Largest Player)
+## Competitive Landscape Assessment
 
-**Analytics capabilities:**
-- Mindbody has more mature reporting than Glofox
-- "Insights" dashboard shows revenue, retention, and booking trends
-- PDF and CSV export available on higher tiers
-- No AI narrative or AI-driven anomaly detection
-- Trainer performance reporting exists but is basic (classes led, revenue attributed)
-- Custom dashboards: not available in standard plans; requires "Business Intelligence" add-on (separate purchase)
-- No pricing simulator
+### How Competitors Handle Corporate Accounts
 
-**Relevance to Phase 3:** Mindbody's analytics are the closest competitor benchmark. Meridian's AI layer (churn prediction surfaced as insights, revenue anomaly detection, trainer narratives) will exceed Mindbody's capability if executed well.
+**Glofox:** No native corporate account management. Corporate wellness clients must be managed as individual members with custom pricing plans. No company-level invoicing. No credit allocation. Studio owners manage this manually in spreadsheets or external CRMs.
 
-**Key differentiator to emphasize:** Mindbody's "Insights" are static charts. Meridian's AI insights are narrative, prioritized by urgency, and include recommended actions with deep links. This is a qualitatively different user experience, not just a feature gap.
+**Mindbody:** Has "corporate partnership" features but primarily as a wellness platform marketplace, not as studio-owned B2B account management. The studio does not own the corporate relationship — Mindbody intermediates it.
 
----
+**Pike13:** No corporate account concept. Individual member management only.
 
-### Pike13
+**TeamUp:** Has some corporate/group booking features but focused on team sports, not wellness.
 
-**Analytics capabilities:**
-- Staff reporting and client retention reports
-- Basic CSV export
-- No AI features
-- Trainer compensation tracking exists but requires manual formula setup
-- No custom dashboards
+**Acuity Scheduling:** No corporate accounts. Individual booking only.
 
-**Relevance:** Pike13 targets smaller boutique studios — same market as The Sauna Guys. Meridian will exceed Pike13 on every analytics dimension in Phase 3.
+**Zenoti:** Has corporate account features in the enterprise tier, but the implementation is limited to bulk memberships, not full B2B invoice management with credit allocation and event booking flows.
+
+**Assessment:** Phase 4's corporate module is genuinely differentiated. A studio owner managing 3+ corporate wellness accounts would find this feature alone to justify switching from Glofox or Mindbody. The combination of company pipeline view + credit allocation + B2B invoicing + event management under one roof is not available in any competitor's current offering.
 
 ---
 
-### Wodify / Zen Planner (Niche Competitors)
+### How Competitors Handle Event Management
 
-Both have basic attendance and revenue reporting, no AI, no custom dashboards, no pricing simulation. Not materially relevant to Phase 3 competitive positioning.
+**Glofox:** No event management. Events must be created as classes with custom pricing. No inquiry/quote/deposit flow. No guest list management. No RSVP tracking. Birthday parties and corporate events are managed entirely outside the platform.
 
----
+**Mindbody:** Has an "Events" feature but it's essentially a class with a different icon. No inquiry flow, no quote generation, no deposit management. Events are treated as bookable sessions, not as B2B negotiations.
 
-### BI / Analytics Tools (Tableau, Looker, Metabase)
+**HoneyBook / Dubsado (non-fitness vertical):** These are general-purpose event CRMs that do have inquiry → quote → contract → invoice flows. Studios sometimes use these alongside their booking platform, creating data fragmentation.
 
-If a studio wanted serious custom dashboards, they could connect Supabase directly to Metabase (open-source BI, free self-hosted) and build any dashboard they want. This makes Meridian's custom dashboard builder a "nice to have" compared against a free and more capable alternative — another argument for deferring the custom builder.
-
-However, connecting Metabase to Supabase requires technical setup that the average studio operator will not do. Meridian's built-in dashboards (even just the 3 pre-built ones) win on accessibility.
+**Assessment:** Phase 4's event management — specifically the multi-stage flow with quote generation, deposit tracking, and Stripe payment — addresses a real gap. The conversion tracking (did event guests become members?) is a feature that no fitness SaaS competitor offers. This directly supports the growth loop that boutique studios care about: events are lead generation vehicles.
 
 ---
 
-## Phase 3 Competitive Differentiators
+### How Competitors Handle Employee Payroll
 
-### Differentiator 1: Trainer Economics as First-Class Analytics
+**Glofox:** No payroll features. Staff management is limited to scheduling and attendance. Payroll is done entirely in external tools (Gusto, ADP, QuickBooks).
 
-No competing platform at the boutique fitness market tier has trainer economics tracking with:
-- Promo code attribution (conversions traceable to individual trainers)
-- Check-in-based bonus threshold calculations (not just bookings)
-- Per-trainer revenue attribution
-- AI narrative performance summaries
-- Compensation calculation (base + bonus + promo commission) in one report
+**Mindbody:** Has payroll reporting but no calculation engine. Can export timesheets but the calculation logic is the studio owner's problem.
 
-This is a genuine competitive moat. Studio owners who care about their trainer relationships — and all of them do — will see this as a reason to adopt Meridian over any incumbent.
+**Vagaro:** Has commission and payroll tracking, but limited to service-based businesses. Trainer bonus thresholds are not supported.
 
-### Differentiator 2: AI Insights That Are Actionable, Not Decorative
+**Assessment:** The Meridian payroll module's trainer bonus threshold calculation (check-ins over threshold = bonus) is unique in the market. No competitor connects class performance directly to payroll as a first-class feature. This is a real competitive differentiator for studios with trainer compensation models tied to performance.
 
-Mindbody has "Insights" that are charts. Meridian's AI insights have:
-- Urgency levels (Info / Suggestion / Attention / Urgent)
-- Recommended action with deep link to the relevant page
-- Dismiss and "mark as done" lifecycle
-- Daily automated generation with deduplication
-
-The difference is: Mindbody shows you a chart and makes you figure out what to do. Meridian tells you what the chart means and gives you a button to act on it. For a 1–2 person admin team running a studio, this is the difference between analytics being a dashboard you look at versus a system that actively manages the business.
-
-### Differentiator 3: Pricing Simulator With AI Projections
-
-No boutique fitness platform offers a pricing scenario simulator. Studio owners currently make pricing decisions based on intuition or informal surveys. A tool that says "if you raise Unlimited from $149 to $169, we project +$2,400/month revenue at +3.2% churn risk" — even if the projections are rough estimates — is a decision support tool that no competitor provides.
-
-**Caveat:** The value of this differentiator depends on the accuracy and credibility of the AI projections. If the AI consistently overestimates revenue impact or underestimates churn risk, it will damage trust. The UI must communicate uncertainty ranges, not point estimates.
-
-### Differentiator 4: Migration Tooling as a Switching Cost Eliminator
-
-No competitor offers migration tooling that imports Glofox data and maintains wellness history, booking history, and credit balances. The migration tooling in Phase 3 is a direct competitive action against Glofox's lock-in strategy.
+The document management (W4/W9/W2 storage) is not differentiated — competitors don't do this either, so it's a gap-fill rather than a competitive advantage. But it's a compliance need that increases switching cost once adopted.
 
 ---
 
-## Competitive Risks
+### How Competitors Handle Merch & Shipping
 
-### Risk 1: Custom Dashboard Builder Competes With Established BI Tools
+**Glofox:** No native merch or order management. Studios use Shopify or WooCommerce separately.
 
-The custom dashboard builder (react-grid-layout, 12 widget types) is the one Phase 3 feature that competes directly with mature BI tools (Metabase, Looker Studio). These tools have years of polish, larger widget libraries, and better rendering. Meridian will not match their quality with 2 weeks of development.
+**Mindbody:** Has a retail module but it's basic. No native shipping integration.
 
-**Implication:** If Meridian's custom dashboard builder is visibly inferior to Metabase (which is free), sophisticated studio operators will connect Supabase to Metabase instead. This undermines the investment in the builder.
-
-**Recommendation:** Do not build the custom dashboard builder in Phase 3. Instead, provide excellent pre-built dashboards (Executive Overview, Daily Operations, Growth & Retention) and add a "Connect to BI Tool" guide (Metabase + Supabase connection instructions) for power users. Build the custom builder in Phase 4 with proper design resources.
-
-### Risk 2: AI Insight Quality Is the Moat — Also the Risk
-
-The competitive differentiation from Mindbody and others rests on AI insights being genuinely useful. If insights are generic ("Your busiest day is Saturday"), obvious ("Members who book more than 3 times/month have lower churn"), or wrong ("Revenue anomaly detected" when it was just a holiday), the feature becomes noise.
-
-**Mitigation:** The plan's deduplication logic and urgency levels are good foundations. The insight prompts sent to Claude must be carefully engineered to produce specific, evidence-based, studio-size-aware insights — not boilerplate MBA advice.
-
-### Risk 3: Pricing Simulator Overconfidence
-
-If the pricing simulator AI projects "+$2,400/month revenue" with high confidence and the actual result is flat or negative, the feature damages trust in all AI features. Studios run by non-analysts may take the AI projection at face value.
-
-**Mitigation:** Display projections as ranges with explicit uncertainty caveats ("estimated $1,800–$3,000/month, based on historical retention elasticity of ±15%"). Never show a single-point estimate for a projection. The UI should use language like "estimated impact" and "model confidence: moderate."
+**Assessment:** The EasyPost integration for shipping is parity work for fitness SaaS (none do it well) but doesn't create a meaningful competitive moat. The value is convenience for studios that already sell some merch. For a studio like The Sauna Guys with modest merch volume, the Shopify alternative is also viable. This feature has "nice to have" competitive positioning, not "must have."
 
 ---
 
-## Competitive Positioning Summary
+### SaaS Platform Positioning Assessment
 
-| Phase 3 Feature | Glofox | Mindbody | Pike13 | Meridian (Phase 3) |
-|----------------|--------|----------|--------|---------------------|
-| Live analytics overview | Basic | Good | Basic | Better |
-| CSV/PDF report export | Limited | Good (high tiers) | Basic | Better |
-| AI insights | None | None | None | Best in class |
-| Trainer economics tracking | Basic | Moderate | Basic | Best in class |
-| Custom dashboard builder | None | Add-on | None | Comparable (if built) |
-| Pricing simulator | None | None | None | Best in class |
-| Migration tooling | None | None | None | Unique |
+**Current competitors in the boutique fitness SaaS space:**
 
-**Overall competitive verdict:** Phase 3 moves Meridian from "a platform with a nice UI" to "an AI-powered operating system." The trainer economics and AI insights features in particular are difficult for incumbents to replicate quickly — they require deep integration with operational data that Glofox and Mindbody do not have at this granularity.
+The market has two tiers:
+- **Large players:** Mindbody, Glofox, Vagaro, Zenoti — serve mid-to-large studios, expensive, complex, slow to change
+- **Boutique players:** Pike13, TeamUp, WellnessLiving — mid-market, better UX but feature gaps
+
+**Meridian's positioning opportunity:** There is a real gap at the high-end boutique level — studios that are too sophisticated for simple scheduling tools (Acuity, Calendly) but want a product with better UX and more transparent pricing than Mindbody/Glofox. Meridian's AI features, trainer economy, and modern stack are authentic differentiators.
+
+**However:** The SaaS market entry timeline matters. Building the onboarding wizard now, before having a second customer to give feedback, risks building the wrong onboarding experience. The precedent in B2B SaaS is clear: the first 3–5 customers should be onboarded manually (white-glove), and the automation should be built from observing that process. A wizard built in advance will be rebuilt once real customers reveal their actual needs.
+
+---
+
+### Competitive Risk Assessment
+
+**Risk: Glofox/Mindbody builds corporate accounts before Phase 4 ships**
+- Likelihood: Low. These platforms move slowly and have shown no indication of B2B invoice management.
+- Impact: Medium. The Sauna Guys would lose a competitive reason to switch or stay.
+
+**Risk: HoneyBook/Dubsado expands into fitness booking**
+- Likelihood: Very low. They've stayed in the event/creative business vertical.
+
+**Risk: New entrant builds a Meridian-equivalent faster**
+- Likelihood: Low-Medium. The modern stack (Next.js, Supabase, Claude AI) is replicable, but the depth of existing functionality (Phases 1–3) took substantial investment to build.
+
+**Risk: Studio market consolidation shrinks the addressable market**
+- Likelihood: Medium. Boutique fitness studios have high failure rates. The target customer (established, multi-trainer, corporate clients) is a smaller universe than "all fitness studios."
+
+---
+
+## Market Timing Assessment
+
+**Corporate wellness is growing.** Post-pandemic corporate wellness spending has increased significantly, and the trend toward mental/physical wellness benefits (saunas, cold plunge, breathwork) is new and accelerating. Studios that can demonstrate ROI to corporate HR departments (utilization tracking, employee wellness outcomes) will win larger contracts. Phase 4's conversion tracking and corporate dashboard directly serve this pitch.
+
+**The window is open but not urgent.** Glofox and Mindbody are not moving fast on this. Meridian has 12–18 months before any competitor likely closes this gap with a purpose-built corporate module.
+
+---
+
+## What Phase 4 Unlocks Competitively
+
+After Phase 4, Meridian's pitch to a new studio includes:
+- "Manage your corporate wellness clients with company accounts, invoicing, and credit tracking"
+- "Handle event inquiries, quotes, and deposits without leaving the platform"
+- "Calculate payroll automatically including trainer performance bonuses"
+- "Send SMS campaigns to your members" (finally fulfilled)
+
+These are concrete, marketable differentiators. The trainer bonus threshold + payroll calculation in particular is something no competitor can claim, and it directly addresses the trainer retention problem that boutique studios consistently cite as their #1 operational challenge.

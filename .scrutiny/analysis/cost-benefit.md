@@ -1,6 +1,7 @@
-# Cost-Benefit Analysis
+# Cost-Benefit Analysis — Phase 4: Corporate & Operations
+
 **Agent:** cost-benefit
-**Plan:** Meridian Phase 3 — Analytics & Intelligence
+**Plan:** Meridian Phase 4
 **Complexity Class:** SIGNIFICANT
 **Date:** 2026-03-20
 
@@ -10,136 +11,120 @@
 
 **MODIFY**
 
-Phase 3 delivers positive ROI on its core features (live analytics, reports, trainer dashboards, migration tooling). The cost concern is not whether to build Phase 3, but whether to build all of it at the claimed pace. The custom dashboard builder and two underscoped AI functions carry high build cost relative to their near-term value. The plan should trim these to reduce the total cost by ~20% while retaining 95% of the delivered value.
+The core Phase 4 features (corporate accounts, events, employee payroll, merch shipping) have a clear and justifiable cost-benefit ratio. The SaaS onboarding and custom dashboard builder have negative ROI in the near term — they consume significant developer time to serve a customer base that does not yet exist. Splitting Phase 4 into 4A (operations-focused) and 4B (SaaS platform) would preserve the high-ROI work and defer the speculative work.
 
 ---
 
-## Cost Estimate
+## Development Cost Estimate
 
-### Developer Time
+Based on the scope-complexity analysis (realistic timeline):
 
-Plan claims 9–10 weeks (single developer). Based on scope analysis:
+| Component | Plan Estimate | Realistic Estimate | Risk Multiplier |
+|---|---|---|---|
+| Corporate Accounts + Invoicing | 2 weeks | 2.5 weeks | Low |
+| Events Management | 2 weeks | 3 weeks | Low-Medium |
+| Employee Enhancements | 3 weeks | 3 weeks | Medium |
+| Merch + Shipping | 2 weeks | 3 weeks | Medium |
+| SMS/Twilio | Bundled in Sprint 5 | 0.5 weeks | Very Low |
+| SaaS Onboarding | Bundled in Sprint 5 | 4–5 weeks | High |
+| API Keys + Docs | Sprint 6 | 1.5 weeks | Low |
+| Custom Dashboard Builder | Sprint 6 | 3–4 weeks | Medium |
+| Polish + Integration | Sprint 6 | 1.5 weeks | Low |
+| **Total** | **12–14 weeks** | **22–23 weeks** | — |
 
-| Feature | Plan (weeks) | Realistic (weeks) |
-|---------|-------------|-------------------|
-| Sprint 1: DB + metric pipeline | 2 | 2 |
-| Sprint 2: Reports engine | 1.5 | 3 |
-| Sprint 3: AI hub + trainer dashboards | 1.5 | 2.5 |
-| Sprint 4: Custom dashboards + pricing sim | 1.5 | 3 |
-| Sprint 5: Migration + polish | 1 | 2 |
-| **Total** | **9–10** | **12.5–13** |
+At a blended developer rate of $100–150/hour (40h/week), the realistic Phase 4 total is:
+- **Plan cost:** $48,000–$84,000
+- **Realistic cost:** $88,000–$138,000
 
-At a solo developer rate of ~$100–150/hr (internal or contractor), this is:
-- **Plan estimate:** $36,000–$60,000 (9–10 weeks at 40 hrs/week)
-- **Realistic estimate:** $50,000–$78,000 (12.5–13 weeks)
-
-The delta is $14,000–$18,000 of unplanned cost if the timeline slips to the realistic estimate.
-
-### Infrastructure Cost (Ongoing)
-
-**Anthropic API (new AI functions):**
-- 6 new AI functions, 1 daily insight generation cron, batch churn prediction
-- `generateInsights()` runs daily on 6 AM cron: roughly 2,000–4,000 input tokens + 1,000 output tokens per run
-- At Claude Sonnet pricing (~$3/MTok input, $15/MTok output): ~$0.05–$0.10/day = ~$1.50–$3/month
-- Batch churn prediction (1,103 members, monthly): ~500 tokens/member = ~$1.65–$3.30/month
-- Total new AI cost: ~$5–10/month at current data volume
-
-**Supabase Storage (report exports):**
-- 30-day retention on exports
-- Assuming 50 exports/month × 500 KB avg = 25 MB/month active storage
-- Cost: negligible (<$0.10/month)
-
-**Inngest/Netlify functions:**
-- 6 cron jobs daily + weekly. At Inngest free tier (50K function runs/month): free
-- If on paid tier: ~$12/month
-
-**Total new monthly infrastructure cost:** ~$15–25/month — negligible.
+The gap is primarily SaaS onboarding ($40–60k of effort serving no current customer) and the dashboard builder ($12–24k for a feature with low marginal value).
 
 ---
 
-## Benefit Analysis
+## New Operating Cost: Third-Party Services
 
-### Benefit 1: Trainer Payroll Automation — $500–1,000/month saved
+### Twilio (SMS)
 
-Currently, trainer compensation (base pay + bonus threshold check + promo commission) requires manual calculation. For a studio with 3–5 trainers running 15–20 classes/week, this is a 2–4 hour monthly task. The Trainer Payroll Report automates this to a one-click export.
+- Outbound SMS: ~$0.0075 per message in the US
+- For a studio sending reminders to 200 members per class, 3 times/week: ~600 SMS/week = $4.50/week = $18/month
+- Campaign sends (burst to full member list of, say, 500 members): $3.75 per campaign
+- At scale with multi-tenancy: each studio contributes $20–50/month in SMS costs
+- **Assessment:** Low cost, high value. SMS open rates (~98%) vs email (~25%) make this efficient marketing spend.
 
-At $50–75/hour of owner time: $100–300/month saved per payroll run × 2 owners = $200–600/month.
+### EasyPost (Shipping)
 
-Additionally, the bonus threshold tracking eliminates disputes about whether a class qualified (it is now auditable from the dashboard). This has soft value in trainer retention.
+- Label creation: $0 for the label itself — you pay the carrier rate
+- EasyPost's margin on USPS rates vs commercial rates is minimal for low-volume studios
+- For a boutique studio shipping maybe 10–20 orders/month: carrier costs $40–120/month, EasyPost overhead negligible
+- **Assessment:** Pass-through cost. Studios charge shipping to customers, so this is revenue-neutral or positive.
 
-### Benefit 2: CSV Data Export for Accounting — reduces 3rd-party bookkeeping cost
+### SaaS Stripe Billing
 
-Transaction Log, Revenue Report, and Failed Payments exports are needed monthly for bookkeeping. If the studio currently exports from Glofox and reformats manually, this is a 2–4 hour task per month. The automated reports eliminate this.
+- Stripe billing: 0.5–0.8% of subscription revenue (standard billing tier)
+- For a starter plan at $149/month with 50 studios: $7,450/month revenue, $37–60/month Stripe fees
+- **Assessment:** Acceptable at scale. Irrelevant until there are paying SaaS customers.
 
-Savings: $100–200/month in owner/bookkeeper time.
+### Supabase Storage (Employee Documents)
 
-### Benefit 3: Churn Detection Leads to 1–2 Retained Members/Month (conservative)
-
-The AI insights hub surfaces retention signals. If it identifies 5 at-risk members per month and the studio acts on 2 (outreach, offer), retaining 1 at $129/month unlimited = $129/month × 12 months = $1,548/year in retained revenue per recovered member.
-
-Conservative assumption: Phase 3 AI retention tools contribute to retaining 1 additional member per month vs. no action. Annual value: ~$1,500.
-
-### Benefit 4: Glofox Migration Risk Reduction — avoids double-billing incidents
-
-Without the double-billing guard (Glofox renewal date tracking in the migration UI), a cutover error could result in charging members twice — once on Glofox, once on Meridian. One double-billing incident with a member who went to their credit card company costs: refund + chargeback fee ($15–25) + reputational damage.
-
-The migration tooling reduces this risk substantially. Value: hard to quantify, but a single prevented chargeback cascade = $500–2,000 in direct costs.
-
-### Benefit 5: SaaS Differentiation — analytics as a moat
-
-For Meridian's future as a SaaS product, Phase 3's analytics module is a competitive differentiator. Competing platforms (Glofox, Mindbody, Pike13) either lack built-in analytics or require a premium add-on. Meridian with a full analytics engine — live dashboards, AI insights, CSV/PDF reports, trainer dashboards — justifies a higher SaaS price point.
-
-If Meridian charges $300/month to 10 studio SaaS customers (vs. $200/month without analytics), the analytics module contributes $100/month × 10 = $1,000/month incremental SaaS revenue. This scales linearly.
+- Free tier: 1 GB. Pro: 100 GB at $25/month
+- W4/W9/I9 documents are small PDFs (50–200 KB each). A studio with 20 employees and 5 documents each = ~100 files = ~10–20 MB
+- **Assessment:** Trivially small storage cost. Well within free tier for a single studio.
 
 ---
 
-## ROI Calculation (12-Month Horizon)
+## Revenue Impact: Corporate & Events
 
-| Benefit | 12-Month Value | Confidence |
-|---------|---------------|------------|
-| Trainer payroll automation | $2,400–$7,200 | High |
-| Accounting export time savings | $1,200–$2,400 | High |
-| AI-assisted churn retention | $1,500–$3,000 | Medium |
-| Double-billing risk avoidance | $500–$2,000 | Medium |
-| SaaS differentiation premium (future) | $0–$12,000 | Low-Medium |
-| **Total** | **$5,600–$26,600** | |
+This is the most direct ROI in Phase 4.
 
-**Build cost (realistic):** $50,000–$78,000 (solo developer, 13 weeks)
+**Corporate wellness contracts:** A single company with 20 employees on a $200/month membership allocation is $4,000/month recurring corporate revenue. If The Sauna Guys closes even 2–3 such contracts, Phase 4 pays for itself quickly. Without Phase 4, these contracts are managed via spreadsheet and at risk of churn due to poor tracking.
 
-**12-month ROI:** Negative on internal use alone. Breaks even only when SaaS customers are added. This is acceptable — Phase 3 is infrastructure investment, not an immediate revenue feature. The strategic case is sound; the financial case depends on SaaS adoption timeline.
+**Event management:** A birthday party or corporate event at The Sauna Guys (private venue rental + instructor) likely prices at $500–1,500 depending on group size. If Phase 4 enables them to handle 2 additional events/month that were previously turned away due to operational friction, that is $1,000–3,000/month additional revenue. The invoice PDF and deposit workflow makes it professional and defensible to charge premium rates.
+
+**Estimated annual revenue uplift attributable to Phase 4 for The Sauna Guys:** $60,000–$120,000 (conservative, based on 3 corporate contracts + 2 events/month). This easily justifies the development cost.
 
 ---
 
-## Cost-Benefit by Feature
+## Cost of Not Building Phase 4
 
-| Feature | Build Cost (est.) | 12-Mo Value | Verdict |
-|---------|------------------|-------------|---------|
-| Live analytics overview | Low (2 days) | High (daily use) | Build |
-| Reports engine — CSV + 13 templates | High (3 weeks) | Very High | Build |
-| Trainer payroll + performance reports | Medium (within reports) | High | Build |
-| Trainer performance dashboards | Medium (1 week) | High | Build |
-| AI insights hub | Medium (1.5 weeks) | Medium-High | Build |
-| Glofox migration tooling | Medium (1.5 weeks) | High (one-time) | Build |
-| Pricing simulator | Medium (1 week) | Medium (1–2x/year use) | Build (descoped: no confidence intervals adds risk) |
-| Custom dashboard builder | High (2–3 weeks) | Low (current scale) | Defer to Phase 4 |
-| Seasonal Predictor AI function | Medium (3 days) | Low (insufficient data) | Defer |
-| Cross-Sell Detection AI function | Medium (2 days) | Low (thin at scale) | Defer |
-| Dashboard Export as PDF | High (complex) | Very Low | Cut |
+**Status quo cost (The Sauna Guys):**
+- Corporate accounts managed in spreadsheets → risk of lost deals, no visibility
+- Events managed via email → opportunity cost of deals not closed, invoicing delays
+- Payroll calculated manually → 2+ hours/biweekly period, error risk, employee friction
+- Merch orders tracked manually → staff time, fulfillment errors
+- No tax document system → compliance risk, paper forms in drawers
 
-**Cutting/deferring** the custom dashboard builder, seasonal predictor, cross-sell function, and dashboard PDF export saves approximately 3–4 developer weeks ($12,000–$18,000 at contractor rates) while retaining all high-value features.
+**Opportunity cost of delay:** Each month without corporate account management is a month where The Sauna Guys cannot scale their B2B revenue confidently. Corporate wellness is a growing market segment and early operational infrastructure creates a competitive moat.
 
 ---
 
-## Cost Risk
+## ROI by Feature
 
-**Largest cost risk:** Reports engine (Sprint 2). The query builder abstraction and PDF generation are the two most uncertain estimates. If either runs over by a week, the entire schedule shifts. Given the `@react-pdf/renderer` compatibility question with Netlify, Sprint 2 is the most likely source of cost overrun.
-
-**Mitigation:** Timebox the PDF spike to 2 days in Week 1. If it proves problematic, switch to `pdfmake` or defer PDF export to Sprint 5. Ship CSV first — CSV delivers 80% of report value and is lower-risk.
+| Feature | Dev Cost | Annual Value | Payback Period |
+|---|---|---|---|
+| Corporate Accounts + Events | ~$40,000 | $60,000–120,000 | 4–8 months |
+| Employee Payroll | ~$20,000 | $5,000 (owner time saved) + compliance risk reduction | 4 years (time savings alone) |
+| Merch Shipping | ~$15,000 | $5,000–15,000 incremental merch revenue | 1–3 years |
+| SMS/Twilio | ~$2,500 | Hard to isolate; contributes to retention and conversion | 1–2 years |
+| SaaS Onboarding | ~$40,000–60,000 | $0 until first SaaS customer acquired | Unknown |
+| Custom Dashboard Builder | ~$15,000–24,000 | Marginal — existing dashboards are comprehensive | Very long |
 
 ---
 
-## Opportunity Cost
+## Budget Recommendation
 
-Phase 4 (Corporate & Operations) is next. Phase 4 includes corporate portal, event management, employee portal enhancements, and SaaS onboarding. If Phase 3 runs 3–4 weeks over, Phase 4 starts late, which delays SaaS onboarding, which delays the SaaS revenue that makes the financial case for Phase 3 close.
+**Build Phase 4A** (corporate, events, employee, merch, SMS, API keys/docs) with a budget of $60,000–80,000 and timeline of 14–16 weeks.
 
-Trimming Phase 3 scope (cut dashboard builder, defer 2 AI functions) accelerates the path to Phase 4 and SaaS revenue by 3–4 weeks. This is a meaningful opportunity cost consideration.
+**Defer Phase 4B** (SaaS onboarding, Stripe Billing for SaaS, custom dashboard builder) until:
+1. The first non-Sauna Guys studio has signed up for a pilot, OR
+2. The owner explicitly decides to invest in SaaS positioning
+
+This approach delivers the features with clear ROI now, and avoids spending $50,000+ building an onboarding wizard for a customer who doesn't exist yet.
+
+---
+
+## Financial Risk Flags
+
+**Twilio pricing volatility:** Twilio has raised prices multiple times. The SMS factory pattern correctly keeps the provider swappable. Don't hard-code Twilio pricing assumptions into the cost model.
+
+**EasyPost rate changes:** EasyPost's commercial rates are generally below retail, but USPS rates change annually. The shipping cost passed to customers should be calculated at label generation time, not estimated in advance.
+
+**SaaS pricing strategy:** The plan shows starter/growth/enterprise tiers but no pricing is defined. This is a business decision that must be made before Sprint 5. Building the billing infrastructure without knowing what to charge is technically possible but creates rework risk if the pricing model changes (per-location vs per-member vs flat rate).

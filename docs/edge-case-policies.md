@@ -176,6 +176,41 @@ This document defines the exact behavior for every edge case identified during s
 - `guest_visits` — guest ID, host member ID, class ID, check-in timestamp
 - `member_referral_conversions` — guest ID → new member ID, referring member ID, conversion date
 
+### Edge Case 19: Corporate Credit Expiry/Rollover
+**Pattern:** Capped rollover with configurable limit
+- Unused monthly credits roll over with a cap of **2× monthly allocation** (configurable per company via `credit_rollover_cap`)
+- Credits beyond the cap expire at month end
+- Example: Company has 20 credits/month, cap = 40. Month 1: uses 10, rolls over 10. Month 2: allocated 20 + 10 rolled = 30. Uses 5, would roll 25 but cap is 40 so all 25 roll. Month 3: allocated 20 + 25 = 45, but cap is 40 → 5 expire.
+- `credit_rollover_cap = NULL` means no cap (unlimited rollover)
+- Credits refresh handled by Inngest cron on 1st of month
+
+### Edge Case 20: Event/Class Time Conflict
+- When confirming an event that overlaps with a scheduled class, show a **warning** with conflicting class details
+- Admin must explicitly acknowledge the conflict to proceed
+- System does NOT auto-cancel the class — admin decides: cancel class, move event, or allow overlap
+- Legitimate overlap scenarios exist (e.g., event uses outdoor space while class uses sauna)
+- Conflict check runs on event confirmation, not on initial inquiry creation
+
+### Edge Case 21: Payroll Period Dispute/Reopen
+- An approved payroll period **can be reopened** by owner/manager with a required reason
+- Status changes to `reopened`; `reopened_by`, `reopened_at`, `reopen_reason` logged
+- Period must be re-approved after edits
+- Full audit trail preserved — previous approval record not overwritten
+- An `exported` or `paid` period can also be reopened, but shows a stronger warning: "This period has already been exported/paid. Changes may cause discrepancies with your payroll provider."
+
+### Edge Case 22: Duplicate Event Inquiry
+- When creating an event for the same company on the same date, show a **soft warning**: "This company already has an event on [date]. Continue anyway?"
+- Admin acknowledges to proceed — not a hard block
+- Legitimate scenarios: morning wellness session + evening party for same company
+- Warning checks: same `company_id` + overlapping `start_time`/`end_time` date
+
+### Edge Case 23: Multi-Company Member
+- A member can belong to multiple corporate accounts via `company_members` junction table
+- At booking time, if member has credits from multiple companies, they **select which company's credits to use**
+- If no explicit selection, default to **most recently added** company
+- Each company's credits are tracked independently on the `company_accounts` row
+- Corporate admin for Company A cannot see that the member also belongs to Company B
+
 ---
 
 ---
