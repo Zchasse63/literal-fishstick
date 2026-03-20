@@ -71,6 +71,34 @@ export type MeridianEvents = {
   'campaign/send_scheduled': {
     data: { campaign_id: string; studio_id: string };
   };
+
+  // Analytics & Intelligence cron events (Phase 3)
+  'cron/daily-metrics': {
+    data: Record<string, never>;
+  };
+  'cron/cohort-refresh': {
+    data: Record<string, never>;
+  };
+  'cron/trainer-metrics': {
+    data: Record<string, never>;
+  };
+  'cron/ai-insights': {
+    data: Record<string, never>;
+  };
+  'cron/report-scheduler': {
+    data: Record<string, never>;
+  };
+  'cron/export-cleanup': {
+    data: Record<string, never>;
+  };
+
+  // Analytics async jobs
+  'analytics/batch-churn': {
+    data: { studio_id: string; member_ids?: string[] };
+  };
+  'report/generate-async': {
+    data: { report_id: string; studio_id: string; requested_by: string };
+  };
 };
 
 // ---------------------------------------------------------------------------

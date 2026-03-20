@@ -1,0 +1,153 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase/server";
+
+/**
+ * GET /api/analytics/summary
+ * KPI summary cards: MRR, ARPM, active members, monthly churn rate,
+ * avg fill rate, revenue MTD. Includes trend vs previous period.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerClient();
+
+    // Suppress unused variable warning — nextUrl is available if needed later
+    void request;
+
+    // ─── Auth ──────────────────────────────────────────────────
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("studio_id")
+      .eq("id", user.id)
+      .single();
+
+    const studioId =
+      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+
+    // ─── Get latest daily_metrics row ─────────────────────────
+    const { data: latestMetric } = await supabase
+      .from("daily_metrics")
+      .select("*")
+      .eq("studio_id", studioId)
+      .order("metric_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // ─── Get previous month's last metric for trend comparison ─
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastOfPrevMonth = new Date(firstOfMonth.getTime() - 86400000);
+
+    const { data: prevMetric } = await supabase
+      .from("daily_metrics")
+      .select("*")
+      .eq("studio_id", studioId)
+      .lte("metric_date", lastOfPrevMonth.toISOString().split("T")[0])
+      .order("metric_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // ─── Revenue MTD from daily_metrics ───────────────────────
+    const { data: mtdRows } = await supabase
+      .from("daily_metrics")
+      .select("revenue_total")
+      .eq("studio_id", studioId)
+      .gte("metric_date", firstOfMonth.toISOString().split("T")[0])
+      .lte("metric_date", now.toISOString().split("T")[0]);
+
+    const revenueMtd = (mtdRows ?? []).reduce(
+      (sum, r) => sum + (r.revenue_total ?? 0),
+      0
+    );
+
+    // ─── Previous month total revenue for trend ───────────────
+    const { data: prevMtdRows } = await supabase
+      .from("daily_metrics")
+      .select("revenue_total")
+      .eq("studio_id", studioId)
+      .gte("metric_date", firstOfPrevMonth.toISOString().split("T")[0])
+      .lte("metric_date", lastOfPrevMonth.toISOString().split("T")[0]);
+
+    const prevRevenueMtd = (prevMtdRows ?? []).reduce(
+      (sum, r) => sum + (r.revenue_total ?? 0),
+      0
+    );
+
+    // ─── Live query: active members count ─────────────────────
+    const { count: activeMembersCount } = await supabase
+      .from("memberships")
+      .select("id", { count: "exact", head: true })
+      .eq("studio_id", studioId)
+      .eq("status", "active");
+
+    const activeMembers = activeMembersCount ?? 0;
+
+    // ─── Compute KPIs ─────────────────────────────────────────
+    const mrr = latestMetric?.mrr ?? 0;
+    const prevMrr = prevMetric?.mrr ?? 0;
+    const arpm = activeMembers > 0 ? Math.round((mrr / activeMembers) * 100) / 100 : 0;
+    const prevActiveMembers = prevMetric?.active_members ?? 0;
+    const prevArpm =
+      prevActiveMembers > 0
+        ? Math.round((prevMrr / prevActiveMembers) * 100) / 100
+        : 0;
+    const churnRate = latestMetric?.churn_rate ?? 0;
+    const prevChurnRate = prevMetric?.churn_rate ?? 0;
+    const avgFillRate = latestMetric?.avg_fill_rate ?? 0;
+    const prevAvgFillRate = prevMetric?.avg_fill_rate ?? 0;
+
+    // Helper for trend calculation
+    const trend = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 10000) / 100;
+    };
+
+    return NextResponse.json({
+      data: {
+        mrr: {
+          value: Math.round(mrr * 100) / 100,
+          trend: trend(mrr, prevMrr),
+        },
+        arpm: {
+          value: arpm,
+          trend: trend(arpm, prevArpm),
+        },
+        active_members: {
+          value: activeMembers,
+          trend: trend(activeMembers, prevActiveMembers),
+        },
+        monthly_churn_rate: {
+          value: Math.round(churnRate * 10000) / 100,
+          trend: trend(churnRate, prevChurnRate),
+        },
+        avg_fill_rate: {
+          value: Math.round(avgFillRate * 10000) / 100,
+          trend: trend(avgFillRate, prevAvgFillRate),
+        },
+        revenue_mtd: {
+          value: Math.round(revenueMtd * 100) / 100,
+          trend: trend(revenueMtd, prevRevenueMtd),
+        },
+        as_of: latestMetric?.metric_date ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("GET /api/analytics/summary error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

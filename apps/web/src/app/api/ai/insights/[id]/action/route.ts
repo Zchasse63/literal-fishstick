@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase/server";
+
+const ALLOWED_ROLES = ["owner", "manager", "trainer"];
+
+/**
+ * PUT /api/ai/insights/[id]/action
+ *
+ * Mark an insight as actioned. Sets status='actioned', actioned_at=now.
+ */
+export async function PUT(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createServerClient();
+    const { id } = await params;
+
+    // ─── Auth ──────────────────────────────────────────────────
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("studio_id, roles")
+      .eq("id", user.id)
+      .single();
+
+    const studioId =
+      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+    const roles: string[] = profile?.roles ?? [];
+    if (!roles.some((r: string) => ALLOWED_ROLES.includes(r))) {
+      return NextResponse.json(
+        { error: "Insufficient permissions." },
+        { status: 403 }
+      );
+    }
+
+    // ─── Update Insight ──────────────────────────────────────
+    const { data: insight, error: updateError } = await supabase
+      .from("ai_insights")
+      .update({
+        status: "actioned",
+        actioned_at: new Date().toISOString(),
+        actioned_by: user.id,
+      })
+      .eq("id", id)
+      .eq("studio_id", studioId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("PUT /api/ai/insights/[id]/action error:", updateError);
+      return NextResponse.json(
+        { error: updateError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!insight) {
+      return NextResponse.json(
+        { error: "Insight not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ data: insight });
+  } catch (err) {
+    console.error("PUT /api/ai/insights/[id]/action error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
