@@ -37,7 +37,7 @@ export async function generateBriefing(
     });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 500,
       system: `You are Meridian AI, the intelligent assistant for a fitness studio management platform. You provide concise, actionable daily briefings for studio owners. Be direct, data-driven, and highlight what needs attention. Use a confident but warm tone. Never use more than 3-4 bullet points. Format with bullet points using "•" characters.`,
       messages: [
@@ -83,7 +83,7 @@ export async function generateRecommendations(
     };
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 800,
       system: `${systemPrompts[context.type]} Return each recommendation as a separate line starting with a number and period (e.g. "1. "). Be specific and data-driven.`,
       messages: [
@@ -251,7 +251,7 @@ export async function generateCampaignCopy(
       .join("\n");
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1500,
       system:
         "You are Meridian AI, writing email campaign copy for a fitness/wellness studio (sauna & cold plunge). Write compelling, on-brand copy. Include merge tags where appropriate (Handlebars syntax like {{first_name}}). Return JSON with fields: subject_line, preview_text, body_html, body_text, suggested_merge_tags. Return ONLY the JSON object, no markdown fences or extra text.",
@@ -431,7 +431,7 @@ export async function generateHealthScore(
     });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 600,
       system:
         "You are Meridian AI. Calculate a health score (0-100) for a fitness studio member based on their engagement data. Score meaning: 80-100 healthy, 60-79 watch, 40-59 at_risk, 0-39 critical. Provide a brief narrative explanation and recommended action. Return JSON only with keys: score (number), risk_level (string), narrative (string), top_factors (array of 3 strings), recommended_action (string). No markdown fences.",
@@ -830,7 +830,7 @@ export async function translateToSQL(
     );
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: prompt,
       messages: [

@@ -171,7 +171,7 @@ export async function generateReplyDraft(
       : "";
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 800,
       system: `You are drafting a reply on behalf of ${input.owner_name} at ${input.studio_name}. Match their voice: warm, professional, knowledgeable about fitness/wellness/sauna. The reply should feel personal, not automated. For complaints, acknowledge the concern and offer to discuss further. For questions about scheduling/pricing, provide helpful answers. Always end with an invitation to book or visit. Return JSON only with these exact keys: draft_reply (string, plain text), tone_analysis (one of: positive, neutral, negative, question, complaint), suggested_subject (string), requires_human_review (boolean — true for complaints, cancellation requests, or if you are unsure), confidence (number 0-100). No markdown fences.`,
       messages: [
