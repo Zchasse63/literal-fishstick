@@ -301,8 +301,8 @@ Any profile can be flagged "Exclude from analytics." This removes their data fro
 
 ## 6. Member-Facing Surfaces
 
-### 6.1 Web Booking Portal (Phase 1)
-Minimum viable member-facing surface. Must launch with or before admin dashboard.
+### 6.1 Web Booking Portal (Phase 5 — Post-Dashboard)
+Member-facing booking surface. Requires separate design system and planning documentation.
 
 **Features:**
 - View class schedule
@@ -317,7 +317,7 @@ Minimum viable member-facing surface. Must launch with or before admin dashboard
 - Wellness journey (visit history, streaks)
 - "Invite a Guest" — generate QR code or share link, guest signs up + signs waiver via link
 
-### 6.2 iOS Member App (Phase 2 — React Native)
+### 6.2 iOS Member App (Phase 5 — Post-Dashboard, React Native)
 Full-featured mobile experience. Everything in 6.1 plus:
 
 - Push notifications (booking confirmations, waitlist promotions, credit expiry)
@@ -327,7 +327,16 @@ Full-featured mobile experience. Everything in 6.1 plus:
 - Apple Pay / Google Pay checkout
 - Offline-capable schedule viewing
 
-### 6.3 Landing Page / Marketing Website
+### 6.3 iOS Employee App (Phase 5 — Post-Dashboard, React Native)
+Employee-facing mobile app for trainers and front desk staff:
+
+- Walk-In Kiosk mode (check-in scanning, walk-in booking)
+- Clock in/out with geofencing
+- View assigned classes and rosters
+- Trainer performance dashboard (mobile)
+- Push notifications for schedule changes
+
+### 6.4 Landing Page / Marketing Website (Phase 5 — Post-Dashboard)
 Public-facing marketing site.
 
 - Studio information, class descriptions, trainer bios
@@ -428,51 +437,67 @@ Semantic search across member notes, campaign content, and support history. Enab
 
 ## 11. Implementation Phases
 
-### Phase 1: Core Platform
-**Goal:** Replace Glofox for internal use.
+> **Principle:** Complete the entire admin dashboard and employee web portal before starting any member-facing, iOS, or customer-facing surfaces. Those require separate design systems, planning, and documentation.
 
-**Deliverables:**
-- Admin Dashboard: Command Center, Schedule, Members, Revenue, Operations (Settings + Employee Clock-in)
-- Waitlist system
-- Supabase backend with multi-tenant schema
+### Phase 1: Core Platform ✅ COMPLETE
+**Goal:** Replace Glofox for internal use — backend + admin dashboard foundation.
+
+**Deliverables (done):**
+- Admin Dashboard: Command Center, Schedule, Members, Revenue, Settings
+- Employee Portal: Clock in/out, classes, pay, performance, promo codes, profile
+- Supabase backend with multi-tenant schema (RLS, all core tables)
 - Stripe integration (memberships, drop-ins, credit packs, merch, gift cards)
 - Resend email integration (campaign sends with open/click/reply tracking via inbound webhooks)
 - AI Briefing Card (rules-based + LLM)
 - QR code check-in system
 - Smart segments + member tagging system
+- 10 AI features (Campaign Copy, Health Score, NL Search, Booking Patterns, Churn Prediction, Auto-Reply, Revenue Anomaly, Waitlist Messaging, Trainer Summaries, Intake Enrichment)
+
+### Phase 2: Marketing & Engagement (Admin Dashboard)
+**Goal:** Full marketing toolkit within the admin dashboard.
+
+**Deliverables:**
+- Marketing module UI (campaign builder, template editor, audience targeting)
+- Automation flows (trigger-based email sequences)
+- Lead pipeline (capture → nurture → convert)
+- SMS integration (provider selected and integrated)
+- Content hub (social media post scheduling, content calendar)
+
+### Phase 3: Analytics & Intelligence (Admin Dashboard)
+**Goal:** Advanced analytics and AI-powered insights within the admin dashboard.
+
+**Deliverables:**
+- Custom analytics dashboards (drag-and-drop widgets)
+- AI insights module UI (surface existing AI features: churn, booking patterns, revenue anomalies)
+- Advanced reporting (exportable CSV/PDF, scheduled email reports)
+- Trainer performance dashboards (surface existing trainer summary AI)
+- Pricing simulator
 - Data migration from Glofox (Waves 1–3)
 
-### Phase 2: Engagement
-**Goal:** Full member experience and marketing tools.
+### Phase 4: Corporate & Operations (Admin Dashboard)
+**Goal:** Complete all remaining admin dashboard modules.
 
 **Deliverables:**
-- iOS Member App (React Native) — includes Walk-In Kiosk mode as employee-facing feature
-- Web Booking Portal (member-facing booking page)
-- Marketing module (campaigns, automations, lead pipeline)
-- Community/social board
-- Full employee portal (payroll, taxes, geofencing)
-- SMS integration (provider selected and integrated)
-- Push notifications
-
-### Phase 3: Intelligence
-**Goal:** Advanced analytics and AI.
-
-**Deliverables:**
-- Custom analytics dashboards
-- AI insights module (churn prediction, pricing simulator, scheduling optimization)
-- Advanced reporting (exportable, scheduled)
-- Trainer performance dashboards
-
-### Phase 4: Growth
-**Goal:** Expand capability and prepare for SaaS.
-
-**Deliverables:**
-- Corporate portal (company accounts, bulk memberships)
-- Event management module
-- Group/party bookings
+- Corporate portal (company accounts, bulk memberships, corporate billing)
+- Event management module (private events, parties, group bookings)
+- Full employee portal enhancements (payroll integration, tax documents, geofencing verification)
 - Merch shipping (activate DB infrastructure, add carrier APIs)
+- Waitlist management UI improvements
 - SaaS onboarding flow for new studios
 - API documentation portal
+- Admin dashboard polish, bug fixes, and performance optimization
+
+### Phase 5: Member-Facing & Mobile (Post-Dashboard)
+**Goal:** Build all customer-facing and mobile surfaces. Requires separate design system, UX planning, and documentation.
+
+**Deliverables:**
+- Web Booking Portal (member-facing booking page, account management, self-service upgrades)
+- iOS Member App (React Native — booking, payments, community board, push notifications, Apple/Google Pay)
+- iOS Employee App (React Native — walk-in kiosk, clock in/out with geofencing, trainer mobile dashboard)
+- Landing Page / Marketing Website (Astro — SEO-optimized, booking CTAs, trainer profiles)
+- Community/social board (members-only)
+- Push notification infrastructure
+- Offline-capable schedule viewing
 
 ---
 

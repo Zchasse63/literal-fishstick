@@ -4,7 +4,7 @@
 
 Meridian is a custom-built management platform for fitness and wellness studios, starting with sauna/recovery businesses. It replaces Glofox (and similar platforms) with an AI-powered operating system that handles booking, members, revenue, marketing, corporate accounts, events, and analytics.
 
-**Current phase:** UI prototyping and architecture planning. Testing MagicPath and Stitch UI for initial design generation. No code yet.
+**Current phase:** Phase 1 complete. Phase 2 (Marketing & Engagement) up next. All admin dashboard and employee web portal work must be finished before any member-facing or iOS work begins.
 
 **Business context:** Initially built for internal use by The Sauna Guys (Tampa-based sauna/recovery studio). Designed from day one to be sellable as a SaaS product to other studios once stress-tested.
 
@@ -159,10 +159,13 @@ The dashboard IS the entire backend of the business. The iOS app and website are
 
 ## Implementation Phases
 
-- **Phase 1 (Core):** Command Center, Schedule & Booking, Members, Revenue, Settings, Waitlists, Employee Portal (clock in/out), Smart Segments, Resend Email (with tracking), Data Migration
-- **Phase 2 (Engagement):** Marketing, Leads, Automations, iOS Member App (React Native + Walk-In Kiosk), Web Booking Portal, Community Board
-- **Phase 3 (Intelligence):** Analytics dashboards, AI insights (LLM-powered), churn prediction, pricing simulator
-- **Phase 4 (Growth):** Corporate portal, Events, Group bookings, Shipping for merch
+> **Principle:** Complete the entire admin dashboard and employee web portal (Phases 1–4) before starting any member-facing, iOS, or customer-facing surfaces. Phase 5 requires separate design systems, UX planning, and documentation.
+
+- **Phase 1 (Core Platform) ✅ COMPLETE:** Command Center, Schedule & Booking, Members, Revenue, Settings, Waitlists, Employee Portal (clock in/out), Smart Segments, Resend Email (with tracking), QR Check-in, 10 AI Features (Claude Sonnet 4.6)
+- **Phase 2 (Marketing & Engagement):** Marketing module UI, campaign builder, automation flows, lead pipeline, SMS integration, content hub
+- **Phase 3 (Analytics & Intelligence):** Custom analytics dashboards, AI insights module UI, advanced reporting, trainer performance dashboards, pricing simulator, Glofox data migration
+- **Phase 4 (Corporate & Operations):** Corporate portal, event management, employee portal enhancements (payroll, taxes, geofencing), merch shipping, SaaS onboarding, API docs, admin polish
+- **Phase 5 (Member-Facing & Mobile — Post-Dashboard):** Web Booking Portal, iOS Member App (React Native), iOS Employee App (React Native + Walk-In Kiosk), Landing Page (Astro), Community Board, Push Notifications
 
 ## Edge Case Policies
 
