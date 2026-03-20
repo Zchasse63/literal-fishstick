@@ -30,6 +30,9 @@ const MERGE_TAG_DEFAULTS: Record<string, string> = {
   membership_name: 'your membership',
   total_visits: '0',
   campaign_name: '',
+  studio_name: 'The Sauna Guys',
+  studio_address: '123 Main Street, Tampa, FL 33602', // CAN-SPAM required physical address
+  unsubscribe_url: 'https://thesaunaguys.com/unsubscribe',
 }
 
 // ─── Template Resolution ────────────────────────────────────
@@ -153,20 +156,20 @@ export function wrapEmailLayout(bodyHtml: string, preheaderText?: string): strin
             <td style="background-color: ${COLORS.gold}; height: 3px; font-size: 0; line-height: 0;">&nbsp;</td>
           </tr>
 
-          <!-- Footer -->
+          <!-- Footer (CAN-SPAM compliant: physical address + unsubscribe) -->
           <tr>
             <td style="background-color: ${COLORS.darkTeal}; padding: 24px 32px; border-radius: 0 0 8px 8px;">
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="color: #A0AEB3; font-size: 13px; line-height: 1.5;">
                     <p style="margin: 0 0 8px 0;">
-                      The Sauna Guys &middot; Tampa, FL
+                      {{studio_name}} &middot; {{studio_address}}
                     </p>
                     <p style="margin: 0 0 8px 0;">
-                      You're receiving this because you're a member or subscriber of The Sauna Guys.
+                      You're receiving this because you're a member or subscriber of {{studio_name}}.
                     </p>
                     <p style="margin: 0;">
-                      <a href="https://thesaunaguys.com/unsubscribe" style="color: ${COLORS.teal}; text-decoration: underline;">Unsubscribe</a>
+                      <a href="{{unsubscribe_url}}" style="color: ${COLORS.teal}; text-decoration: underline;">Unsubscribe</a>
                       &nbsp;&middot;&nbsp;
                       <a href="https://thesaunaguys.com/preferences" style="color: ${COLORS.teal}; text-decoration: underline;">Email Preferences</a>
                       &nbsp;&middot;&nbsp;

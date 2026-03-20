@@ -8,8 +8,15 @@ const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 /**
  * POST /api/campaigns/send-test
  *
- * Send a single test email (does NOT log to email_send_log).
- * Body: { testEmail, subject, bodyTemplate, sampleMemberId?, campaignName }
+ * Send a single test email (does NOT log to email_send_log or campaign_recipients).
+ * Supports both direct content and campaign-based sends.
+ *
+ * Body: {
+ *   testEmail, subject?, bodyTemplate?,
+ *   campaignId?,  // If provided, loads content from the campaign record
+ *   variant?,     // 'A' | 'B' for A/B test campaigns
+ *   sampleMemberId?, campaignName?
+ * }
  */
 export async function POST(request: NextRequest) {
   const supabase = await createServerClient()
@@ -22,19 +29,82 @@ export async function POST(request: NextRequest) {
 
   // ─── Parse Body ────────────────────────────────────────────
   const body = await request.json()
-  const { testEmail, subject, bodyTemplate, sampleMemberId, campaignName } = body as {
+  const {
+    testEmail,
+    subject: directSubject,
+    bodyTemplate: directBodyTemplate,
+    campaignId,
+    variant,
+    sampleMemberId,
+    campaignName: directCampaignName,
+  } = body as {
     testEmail: string
-    subject: string
-    bodyTemplate: string
+    subject?: string
+    bodyTemplate?: string
+    campaignId?: string
+    variant?: 'A' | 'B'
     sampleMemberId?: string
     campaignName?: string
   }
 
-  if (!testEmail || !subject || !bodyTemplate) {
+  if (!testEmail) {
     return NextResponse.json(
-      { error: 'testEmail, subject, and bodyTemplate are required' },
+      { error: 'testEmail is required' },
       { status: 400 }
     )
+  }
+
+  // ─── Resolve Content Source ──────────────────────────────────
+  let subject: string
+  let bodyTemplate: string
+  let campaignName: string
+
+  if (campaignId) {
+    // Load content from campaign record
+    const { data: campaign, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', campaignId)
+      .eq('studio_id', STUDIO_ID)
+      .single()
+
+    if (campaignError || !campaign) {
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+    }
+
+    campaignName = campaign.name ?? 'Test Campaign'
+
+    if (campaign.ab_test_enabled && variant) {
+      // Send specific A/B variant
+      if (variant === 'A') {
+        subject = campaign.variant_a_subject ?? campaign.subject ?? ''
+        bodyTemplate = campaign.variant_a_body ?? campaign.body_template ?? ''
+      } else {
+        subject = campaign.variant_b_subject ?? campaign.subject ?? ''
+        bodyTemplate = campaign.variant_b_body ?? campaign.body_template ?? ''
+      }
+    } else {
+      subject = campaign.subject ?? ''
+      bodyTemplate = campaign.body_template ?? ''
+    }
+
+    if (!subject || !bodyTemplate) {
+      return NextResponse.json(
+        { error: 'Campaign has no subject or body content to send' },
+        { status: 400 }
+      )
+    }
+  } else {
+    // Use directly provided content
+    if (!directSubject || !directBodyTemplate) {
+      return NextResponse.json(
+        { error: 'Either campaignId or both subject and bodyTemplate are required' },
+        { status: 400 }
+      )
+    }
+    subject = directSubject
+    bodyTemplate = directBodyTemplate
+    campaignName = directCampaignName ?? 'Test Campaign'
   }
 
   // ─── Build Merge Data ──────────────────────────────────────
@@ -44,7 +114,7 @@ export async function POST(request: NextRequest) {
     credits_remaining: 5,
     membership_name: 'Unlimited',
     total_visits: 42,
-    campaign_name: campaignName ?? 'Test Campaign',
+    campaign_name: campaignName,
   }
 
   // If a sample member is provided, use their real data
@@ -94,8 +164,9 @@ export async function POST(request: NextRequest) {
   // ─── Resolve & Send ───────────────────────────────────────
   const resolvedBody = resolveTemplate(bodyTemplate, mergeData)
   const bodyHtml = textToHtml(resolvedBody)
-  const html = wrapEmailLayout(bodyHtml, `[TEST] ${campaignName ?? 'Test Campaign'}`)
-  const resolvedSubject = `[TEST] ${resolveTemplate(subject, mergeData)}`
+  const variantLabel = variant ? ` [Variant ${variant}]` : ''
+  const html = wrapEmailLayout(bodyHtml, `[TEST]${variantLabel} ${campaignName}`)
+  const resolvedSubject = `[TEST]${variantLabel} ${resolveTemplate(subject, mergeData)}`
 
   const result = await sendTransactionalEmail(testEmail, resolvedSubject, html)
 
@@ -110,5 +181,6 @@ export async function POST(request: NextRequest) {
     success: true,
     resendId: result.id,
     dryRun: result.dryRun,
+    variant: variant ?? null,
   })
 }

@@ -1,0 +1,446 @@
+'use client'
+
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import Link from 'next/link'
+import {
+  Megaphone,
+  Mail,
+  Smartphone,
+  Bell,
+  Plus,
+  Sparkles,
+  Search,
+  MoreHorizontal,
+  Copy,
+  Trash2,
+  Pencil,
+  ChevronDown,
+  Calendar,
+  ArrowUpDown,
+  Filter,
+  Inbox,
+} from 'lucide-react'
+
+// ─── Animation ──────────────────────────────────────────────
+const fadeInUp = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
+}
+
+// ─── Types ──────────────────────────────────────────────────
+type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
+type Channel = 'email' | 'sms' | 'push'
+type StatusFilter = 'All' | 'Draft' | 'Scheduled' | 'Sending' | 'Sent' | 'Cancelled'
+
+interface Campaign {
+  id: string
+  name: string
+  status: CampaignStatus
+  channels: Channel[]
+  recipients: number
+  openRate: number | null
+  clickRate: number | null
+  revenue: number | null
+  sentDate: string | null
+  scheduledDate: string | null
+}
+
+// ─── Mock Data ──────────────────────────────────────────────
+const CAMPAIGNS: Campaign[] = [
+  {
+    id: '1',
+    name: 'Win-Back: 14-Day Inactive',
+    status: 'sent',
+    channels: ['email', 'sms'],
+    recipients: 47,
+    openRate: 52.3,
+    clickRate: 12.4,
+    revenue: 1240,
+    sentDate: 'Mar 14, 2026',
+    scheduledDate: null,
+  },
+  {
+    id: '2',
+    name: 'Guided Upsell — Whitney',
+    status: 'sent',
+    channels: ['email'],
+    recipients: 134,
+    openRate: 44.1,
+    clickRate: 9.1,
+    revenue: 890,
+    sentDate: 'Mar 12, 2026',
+    scheduledDate: null,
+  },
+  {
+    id: '3',
+    name: 'New Member Welcome Series',
+    status: 'sending',
+    channels: ['email'],
+    recipients: 63,
+    openRate: 71.2,
+    clickRate: 18.2,
+    revenue: 2340,
+    sentDate: null,
+    scheduledDate: null,
+  },
+  {
+    id: '4',
+    name: 'Failed Payment Recovery',
+    status: 'sent',
+    channels: ['email', 'sms'],
+    recipients: 12,
+    openRate: 67.0,
+    clickRate: 14.8,
+    revenue: 560,
+    sentDate: 'Mar 10, 2026',
+    scheduledDate: null,
+  },
+  {
+    id: '5',
+    name: 'June Promo: Bring a Friend',
+    status: 'scheduled',
+    channels: ['email', 'push'],
+    recipients: 289,
+    openRate: null,
+    clickRate: null,
+    revenue: null,
+    sentDate: null,
+    scheduledDate: 'Jun 1, 2026 at 9:00 AM',
+  },
+  {
+    id: '6',
+    name: 'Summer Solstice Event Blast',
+    status: 'scheduled',
+    channels: ['email'],
+    recipients: 310,
+    openRate: null,
+    clickRate: null,
+    revenue: null,
+    sentDate: null,
+    scheduledDate: 'Jun 15, 2026 at 10:00 AM',
+  },
+  {
+    id: '7',
+    name: 'Holiday Promo Dec Prep',
+    status: 'draft',
+    channels: ['email', 'sms', 'push'],
+    recipients: 0,
+    openRate: null,
+    clickRate: null,
+    revenue: null,
+    sentDate: null,
+    scheduledDate: null,
+  },
+  {
+    id: '8',
+    name: 'Black Friday — 20% Off',
+    status: 'cancelled',
+    channels: ['email'],
+    recipients: 412,
+    openRate: null,
+    clickRate: null,
+    revenue: null,
+    sentDate: null,
+    scheduledDate: null,
+  },
+]
+
+// ─── Helpers ────────────────────────────────────────────────
+const statusConfig: Record<CampaignStatus, { label: string; className: string }> = {
+  draft: { label: 'Draft', className: 'border border-gray-300 text-gray-500 bg-white' },
+  scheduled: { label: 'Scheduled', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  sending: { label: 'Sending', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  sent: { label: 'Sent', className: 'bg-gray-100 text-gray-600' },
+  cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-600 border border-red-200' },
+}
+
+const channelIcon: Record<Channel, typeof Mail> = {
+  email: Mail,
+  sms: Smartphone,
+  push: Bell,
+}
+
+const FILTERS: StatusFilter[] = ['All', 'Draft', 'Scheduled', 'Sending', 'Sent', 'Cancelled']
+
+// ─── Components ─────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: CampaignStatus }) {
+  const config = statusConfig[status]
+  return (
+    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', config.className)}>
+      {status === 'sending' && <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse mr-1.5" />}
+      {config.label}
+    </span>
+  )
+}
+
+function ChannelIcons({ channels }: { channels: Channel[] }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {channels.map((ch) => {
+        const Icon = channelIcon[ch]
+        return (
+          <div key={ch} className="h-6 w-6 rounded-lg bg-gray-100 flex items-center justify-center" title={ch}>
+            <Icon className="h-3.5 w-3.5 text-gray-500" />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ActionDropdown({ campaignId }: { campaignId: string }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="relative">
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(!open)
+        }}
+        className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+      >
+        <MoreHorizontal className="h-4 w-4 text-gray-400" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-10 z-20 w-44 bg-white rounded-xl border border-gray-200 shadow-lg py-1.5"
+            >
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setOpen(false)
+                }}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                Edit
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setOpen(false)
+                }}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Copy className="h-3.5 w-3.5 text-gray-400" />
+                Duplicate
+              </button>
+              <div className="h-px bg-gray-100 my-1" />
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setOpen(false)
+                }}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                Delete
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Page ───────────────────────────────────────────────────
+export default function CampaignsPage() {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredCampaigns = CAMPAIGNS.filter((c) => {
+    const matchesStatus = statusFilter === 'All' || c.status === statusFilter.toLowerCase()
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesStatus && matchesSearch
+  })
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+      className="min-h-screen bg-[#FAFAFA]"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Campaigns</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Create, manage, and track email and SMS campaigns</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-sm font-semibold hover:border-indigo-200 hover:text-indigo-600 transition-colors shadow-sm">
+            <Sparkles className="h-4 w-4" />
+            AI Generate
+          </button>
+          <Link
+            href="/marketing/campaigns/new"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            New Campaign
+          </Link>
+        </div>
+      </div>
+
+      {/* ─── Filters Row ─────────────────────────────────── */}
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
+        {/* Status pills */}
+        <div className="flex items-center gap-2">
+          {FILTERS.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setStatusFilter(filter)}
+              className={cn(
+                'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all',
+                statusFilter === filter
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800'
+              )}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="flex-1 min-w-[200px] max-w-sm relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search campaigns..."
+            className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all"
+          />
+        </div>
+      </div>
+
+      {/* ─── Campaign Table ──────────────────────────────── */}
+      <motion.div
+        {...fadeInUp}
+        className="bg-white rounded-2xl border border-gray-200 shadow-sm"
+      >
+        {filteredCampaigns.length > 0 ? (
+          <>
+            {/* Table header */}
+            <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
+              <div className="flex-1 min-w-0">Campaign</div>
+              <div className="w-[80px]">Status</div>
+              <div className="w-[84px]">Channels</div>
+              <div className="w-20 text-right">Recipients</div>
+              <div className="w-16 text-right">Open %</div>
+              <div className="w-16 text-right">Click %</div>
+              <div className="w-20 text-right">Revenue</div>
+              <div className="w-10" />
+            </div>
+
+            {/* Rows */}
+            <div className="divide-y divide-gray-50">
+              {filteredCampaigns.map((campaign, i) => (
+                <motion.div
+                  key={campaign.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.03 }}
+                >
+                  <Link
+                    href={`/marketing/campaigns/${campaign.id}`}
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 transition-colors group"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                        {campaign.name}
+                      </p>
+                      {campaign.sentDate && (
+                        <p className="text-xs text-gray-400 mt-0.5">Sent {campaign.sentDate}</p>
+                      )}
+                      {campaign.scheduledDate && (
+                        <p className="text-xs text-amber-500 mt-0.5">Scheduled for {campaign.scheduledDate}</p>
+                      )}
+                    </div>
+                    <div className="w-[80px]">
+                      <StatusBadge status={campaign.status} />
+                    </div>
+                    <div className="w-[84px]">
+                      <ChannelIcons channels={campaign.channels} />
+                    </div>
+                    <div className="w-20 text-right">
+                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                        {campaign.recipients > 0 ? campaign.recipients.toLocaleString() : '--'}
+                      </p>
+                    </div>
+                    <div className="w-16 text-right">
+                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                        {campaign.openRate !== null ? `${campaign.openRate}%` : '--'}
+                      </p>
+                    </div>
+                    <div className="w-16 text-right">
+                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                        {campaign.clickRate !== null ? `${campaign.clickRate}%` : '--'}
+                      </p>
+                    </div>
+                    <div className="w-20 text-right">
+                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                        {campaign.revenue !== null ? `$${campaign.revenue.toLocaleString()}` : '--'}
+                      </p>
+                    </div>
+                    <div className="w-10 flex justify-end">
+                      <ActionDropdown campaignId={campaign.id} />
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </>
+        ) : (
+          /* Empty state */
+          <div className="py-16 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Inbox className="h-8 w-8 text-gray-300" />
+            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-1">No campaigns found</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              {searchQuery
+                ? `No results for "${searchQuery}"`
+                : 'Get started by creating your first campaign'}
+            </p>
+            <Link
+              href="/marketing/campaigns/new"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Campaign
+            </Link>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Table footer with count */}
+      {filteredCampaigns.length > 0 && (
+        <div className="flex items-center justify-between mt-3 px-1">
+          <p className="text-xs text-gray-400">
+            Showing <span className="font-semibold text-gray-600">{filteredCampaigns.length}</span> of{' '}
+            <span className="font-semibold text-gray-600">{CAMPAIGNS.length}</span> campaigns
+          </p>
+        </div>
+      )}
+    </motion.div>
+  )
+}

@@ -15,6 +15,7 @@ interface ResendWebhookPayload {
     headers?: { name: string; value: string }[]
     tags?: { name: string; value: string }[]
     click?: { link: string }
+    bounce?: { type: 'hard' | 'soft' }
   }
 }
 
@@ -46,9 +47,15 @@ export async function POST(request: NextRequest) {
   const supabase = await createServerClient()
   const resendId = payload.data.email_id
 
+  // Extract campaign_id and member_id from tags (set during campaign/automation sends)
+  const tags = payload.data.tags ?? []
+  const campaignId = tags.find((t) => t.name === 'campaign_id')?.value
+  const memberId = tags.find((t) => t.name === 'member_id')?.value
+
   try {
     switch (payload.type) {
       case 'email.delivered': {
+        // Update email_send_log
         await supabase
           .from('email_send_log')
           .update({
@@ -56,6 +63,23 @@ export async function POST(request: NextRequest) {
             delivered_at: payload.created_at,
           })
           .eq('resend_id', resendId)
+
+        // Update campaign_recipients if this is a campaign email
+        if (campaignId && memberId) {
+          await supabase
+            .from('campaign_recipients')
+            .update({
+              status: 'delivered',
+              delivered_at: payload.created_at,
+            })
+            .eq('resend_message_id', resendId)
+
+          // Increment delivered_count on campaigns
+          await supabase.rpc('increment_campaign_metric', {
+            p_campaign_id: campaignId,
+            p_metric: 'delivered_count',
+          })
+        }
         break
       }
 
@@ -67,6 +91,30 @@ export async function POST(request: NextRequest) {
             opened_at: payload.created_at,
           })
           .eq('resend_id', resendId)
+
+        if (campaignId && memberId) {
+          // Only update if not already opened (first open)
+          const { data: existing } = await supabase
+            .from('campaign_recipients')
+            .select('opened_at')
+            .eq('resend_message_id', resendId)
+            .single()
+
+          if (existing && !existing.opened_at) {
+            await supabase
+              .from('campaign_recipients')
+              .update({
+                status: 'opened',
+                opened_at: payload.created_at,
+              })
+              .eq('resend_message_id', resendId)
+
+            await supabase.rpc('increment_campaign_metric', {
+              p_campaign_id: campaignId,
+              p_metric: 'open_count',
+            })
+          }
+        }
         break
       }
 
@@ -80,14 +128,74 @@ export async function POST(request: NextRequest) {
             clicked_url: clickedUrl,
           })
           .eq('resend_id', resendId)
+
+        if (campaignId && memberId) {
+          const { data: existing } = await supabase
+            .from('campaign_recipients')
+            .select('clicked_at, click_urls')
+            .eq('resend_message_id', resendId)
+            .single()
+
+          const isFirstClick = existing && !existing.clicked_at
+          const updatedUrls = [
+            ...((existing?.click_urls as string[]) ?? []),
+            ...(clickedUrl ? [clickedUrl] : []),
+          ]
+
+          await supabase
+            .from('campaign_recipients')
+            .update({
+              status: 'clicked',
+              clicked_at: existing?.clicked_at ?? payload.created_at,
+              click_urls: updatedUrls,
+            })
+            .eq('resend_message_id', resendId)
+
+          if (isFirstClick) {
+            await supabase.rpc('increment_campaign_metric', {
+              p_campaign_id: campaignId,
+              p_metric: 'click_count',
+            })
+          }
+        }
         break
       }
 
       case 'email.bounced': {
+        const bounceType = payload.data.bounce?.type ?? 'soft'
+
         await supabase
           .from('email_send_log')
           .update({ status: 'bounced' })
           .eq('resend_id', resendId)
+
+        if (campaignId && memberId) {
+          await supabase
+            .from('campaign_recipients')
+            .update({ status: 'bounced' })
+            .eq('resend_message_id', resendId)
+
+          await supabase.rpc('increment_campaign_metric', {
+            p_campaign_id: campaignId,
+            p_metric: 'bounce_count',
+          })
+
+          // Hard bounce: suppress future sends by updating email_preferences
+          if (bounceType === 'hard' && memberId) {
+            await supabase
+              .from('email_preferences')
+              .upsert(
+                {
+                  member_id: memberId,
+                  studio_id: tags.find((t) => t.name === 'studio_id')?.value ?? '11111111-1111-1111-1111-111111111111',
+                  hard_bounced: true,
+                  hard_bounced_at: payload.created_at,
+                  marketing_email: false,
+                },
+                { onConflict: 'member_id,studio_id' }
+              )
+          }
+        }
         break
       }
 
@@ -96,6 +204,29 @@ export async function POST(request: NextRequest) {
           .from('email_send_log')
           .update({ status: 'complained' })
           .eq('resend_id', resendId)
+
+        // Auto-unsubscribe on complaint
+        if (memberId) {
+          await supabase
+            .from('email_preferences')
+            .upsert(
+              {
+                member_id: memberId,
+                studio_id: tags.find((t) => t.name === 'studio_id')?.value ?? '11111111-1111-1111-1111-111111111111',
+                marketing_email: false,
+                unsubscribed_at: payload.created_at,
+                unsubscribe_reason: 'spam_complaint',
+              },
+              { onConflict: 'member_id,studio_id' }
+            )
+        }
+
+        if (campaignId) {
+          await supabase.rpc('increment_campaign_metric', {
+            p_campaign_id: campaignId,
+            p_metric: 'unsubscribe_count',
+          })
+        }
         break
       }
 
@@ -104,12 +235,9 @@ export async function POST(request: NextRequest) {
         const headers = payload.data.headers ?? []
         const inReplyTo = headers.find((h) => h.name.toLowerCase() === 'in-reply-to')?.value
         const references = headers.find((h) => h.name.toLowerCase() === 'references')?.value
-
-        // Try In-Reply-To first, then first reference
         const replyToMessageId = inReplyTo ?? references?.split(/\s+/)?.[0]
 
         if (replyToMessageId) {
-          // Find the original send log by message_id
           const { data: originalLog } = await supabase
             .from('email_send_log')
             .select('id, campaign_id, member_id')
@@ -117,13 +245,11 @@ export async function POST(request: NextRequest) {
             .maybeSingle()
 
           if (originalLog) {
-            // Update the send log with replied_at
             await supabase
               .from('email_send_log')
               .update({ replied_at: payload.created_at })
               .eq('id', originalLog.id)
 
-            // If this was a campaign email, update campaign_members status
             if (originalLog.campaign_id) {
               await supabase
                 .from('campaign_members')

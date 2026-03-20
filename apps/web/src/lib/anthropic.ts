@@ -203,7 +203,7 @@ export interface CampaignCopyRequest {
     | "promotion"
     | "general";
   audience_description: string;
-  tone?: "friendly" | "urgent" | "professional" | "casual";
+  tone?: "friendly" | "urgent" | "professional" | "casual" | "celebratory";
   key_points?: string[];
   merge_tags?: string[]; // available merge tags like {{first_name}}, {{credits_remaining}}
   max_length?: number;
@@ -254,7 +254,7 @@ export async function generateCampaignCopy(
       model: "claude-sonnet-4-6",
       max_tokens: 1500,
       system:
-        "You are Meridian AI, writing email campaign copy for a fitness/wellness studio (sauna & cold plunge). Write compelling, on-brand copy. Include merge tags where appropriate (Handlebars syntax like {{first_name}}). Return JSON with fields: subject_line, preview_text, body_html, body_text, suggested_merge_tags. Return ONLY the JSON object, no markdown fences or extra text.",
+        "You are Meridian AI, writing email campaign copy for a fitness/wellness studio (sauna & cold plunge). Write compelling, on-brand copy. Never generate deceptive, misleading, or clickbait subject lines. All suggestions must be honest and CAN-SPAM compliant. Include merge tags where appropriate (Handlebars syntax like {{first_name}}). Return JSON with fields: subject_line, preview_text, body_html, body_text, suggested_merge_tags. Return ONLY the JSON object, no markdown fences or extra text.",
       messages: [
         {
           role: "user",
@@ -943,4 +943,759 @@ export async function translateToSQL(
         'AI search is temporarily unavailable. Try: "members who haven\'t visited in 30 days", "revenue today", "upcoming classes", or "top members".',
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Subject Line Suggestions
+// ---------------------------------------------------------------------------
+
+export interface SubjectLineContext {
+  campaign_type: string;
+  audience_description: string;
+  tone: string;
+  key_points: string[];
+}
+
+export interface SubjectLineSuggestion {
+  subject_line: string;
+  estimated_open_rate_improvement: string;
+  rationale: string;
+}
+
+/**
+ * Generate AI-powered subject line suggestions for email campaigns.
+ * Falls back to rules-based suggestions if ANTHROPIC_API_KEY is not set.
+ */
+export async function suggestSubjectLines(
+  context: SubjectLineContext
+): Promise<SubjectLineSuggestion[]> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return generateRulesBasedSubjectLines(context);
+  }
+
+  try {
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 800,
+      system:
+        "You are Meridian AI, an email marketing assistant for a fitness/wellness studio (sauna & cold plunge). Generate exactly 5 email subject line suggestions. Never generate deceptive, misleading, or clickbait subject lines. All suggestions must be honest and CAN-SPAM compliant. Return a JSON array of 5 objects, each with: subject_line (string), estimated_open_rate_improvement (string like '+12%'), rationale (string). Return ONLY the JSON array, no markdown fences or extra text.",
+      messages: [
+        {
+          role: "user",
+          content: `Generate 5 subject lines for this campaign:\nCampaign type: ${context.campaign_type}\nAudience: ${context.audience_description}\nTone: ${context.tone}\nKey points: ${context.key_points.join(", ")}`,
+        },
+      ],
+    });
+
+    const text =
+      message.content[0].type === "text" ? message.content[0].text : "";
+    const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as SubjectLineSuggestion[];
+
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error("Invalid response shape");
+    }
+
+    return parsed.slice(0, 5);
+  } catch (error) {
+    console.error(
+      "Anthropic API error for subject lines, falling back to rules-based:",
+      error
+    );
+    return generateRulesBasedSubjectLines(context);
+  }
+}
+
+function generateRulesBasedSubjectLines(
+  context: SubjectLineContext
+): SubjectLineSuggestion[] {
+  const templates: Record<string, SubjectLineSuggestion[]> = {
+    winback: [
+      { subject_line: "We miss you, {{first_name}} — your spot is waiting", estimated_open_rate_improvement: "+8%", rationale: "Personalization with name and emotional appeal" },
+      { subject_line: "It's been a while — ready to sweat again?", estimated_open_rate_improvement: "+5%", rationale: "Casual re-engagement with question format" },
+      { subject_line: "Come back and feel the difference this week", estimated_open_rate_improvement: "+4%", rationale: "Action-oriented with time urgency" },
+      { subject_line: "Your wellness routine is calling, {{first_name}}", estimated_open_rate_improvement: "+6%", rationale: "Personalized with identity-based framing" },
+      { subject_line: "The sauna is warm — we saved your spot", estimated_open_rate_improvement: "+7%", rationale: "Warm imagery with exclusivity feel" },
+    ],
+    upsell: [
+      { subject_line: "Ready for unlimited, {{first_name}}?", estimated_open_rate_improvement: "+10%", rationale: "Direct value proposition with personalization" },
+      { subject_line: "Upgrade your plan — more sessions, more results", estimated_open_rate_improvement: "+6%", rationale: "Benefit-focused upgrade prompt" },
+      { subject_line: "You're outgrowing your current plan (that's a good thing)", estimated_open_rate_improvement: "+9%", rationale: "Positive framing of usage growth" },
+      { subject_line: "Unlock unlimited access to every session", estimated_open_rate_improvement: "+7%", rationale: "Clear value statement with action verb" },
+      { subject_line: "{{first_name}}, your next level is waiting", estimated_open_rate_improvement: "+5%", rationale: "Aspirational language with personalization" },
+    ],
+    retention: [
+      { subject_line: "Keep your streak alive, {{first_name}}", estimated_open_rate_improvement: "+11%", rationale: "Streak psychology with personalization" },
+      { subject_line: "You've been crushing it — don't stop now", estimated_open_rate_improvement: "+8%", rationale: "Positive reinforcement with momentum" },
+      { subject_line: "Your next session is just a tap away", estimated_open_rate_improvement: "+5%", rationale: "Low-friction action-oriented" },
+      { subject_line: "{{first_name}}, book your next sweat session", estimated_open_rate_improvement: "+6%", rationale: "Personalized direct call-to-action" },
+      { subject_line: "Great things happen when you show up consistently", estimated_open_rate_improvement: "+4%", rationale: "Motivational consistency message" },
+    ],
+    promotion: [
+      { subject_line: "Special offer: limited spots available this week", estimated_open_rate_improvement: "+12%", rationale: "Scarcity without being deceptive" },
+      { subject_line: "{{first_name}}, an exclusive offer just for you", estimated_open_rate_improvement: "+9%", rationale: "Personalized exclusivity" },
+      { subject_line: "This week only — save on your favorite sessions", estimated_open_rate_improvement: "+7%", rationale: "Time-bound with value clarity" },
+      { subject_line: "Your studio has a treat for you, {{first_name}}", estimated_open_rate_improvement: "+6%", rationale: "Warm, gift-like framing" },
+      { subject_line: "Don't miss this — new member pricing for upgrades", estimated_open_rate_improvement: "+8%", rationale: "Clear offer with urgency" },
+    ],
+  };
+
+  const defaultLines: SubjectLineSuggestion[] = [
+    { subject_line: "What's new at the studio this week, {{first_name}}", estimated_open_rate_improvement: "+5%", rationale: "Personalized curiosity-driven subject" },
+    { subject_line: "Your weekly wellness update is here", estimated_open_rate_improvement: "+3%", rationale: "Consistent newsletter-style format" },
+    { subject_line: "New sessions, events, and more — check it out", estimated_open_rate_improvement: "+4%", rationale: "Multi-value teaser" },
+    { subject_line: "{{first_name}}, here's what's happening this week", estimated_open_rate_improvement: "+6%", rationale: "Personalized with timely relevance" },
+    { subject_line: "Fresh schedule just dropped — book your spot", estimated_open_rate_improvement: "+7%", rationale: "Action-oriented with freshness" },
+  ];
+
+  return templates[context.campaign_type] ?? defaultLines;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Lead Scoring
+// ---------------------------------------------------------------------------
+
+export interface LeadScoreInput {
+  lead_id: string;
+  first_name: string;
+  email: string;
+  phone: string | null;
+  source: string;
+  days_since_created: number;
+  activity_count_7d: number;
+  activity_count_30d: number;
+  emails_opened: number;
+  emails_clicked: number;
+  trial_booked: boolean;
+  source_detail: string | null;
+}
+
+export interface LeadScoreResult {
+  score: number; // 0-100
+  factors: string[];
+  recommended_action: string;
+  priority: "hot" | "warm" | "cold";
+}
+
+/**
+ * Score a lead using AI analysis of their engagement data.
+ * Falls back to rules-based scoring if ANTHROPIC_API_KEY is not set.
+ */
+export async function scoreLead(
+  leadData: LeadScoreInput
+): Promise<LeadScoreResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return generateRulesBasedLeadScore(leadData);
+  }
+
+  try {
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 600,
+      system:
+        "You are Meridian AI. Score a lead (0-100) for a fitness/wellness studio based on their engagement data. Score meaning: 70-100 hot (ready to convert), 40-69 warm (engaged but needs nurturing), 0-39 cold (low engagement). Return JSON with: score (number 0-100), factors (array of strings explaining key scoring factors), recommended_action (string with specific next step), priority ('hot' | 'warm' | 'cold'). Return ONLY the JSON object, no markdown fences.",
+      messages: [
+        {
+          role: "user",
+          content: `Score this lead:\n${JSON.stringify(leadData, null, 2)}`,
+        },
+      ],
+    });
+
+    const text =
+      message.content[0].type === "text" ? message.content[0].text : "";
+    const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as LeadScoreResult;
+
+    if (
+      typeof parsed.score !== "number" ||
+      !Array.isArray(parsed.factors) ||
+      !["hot", "warm", "cold"].includes(parsed.priority)
+    ) {
+      throw new Error("Invalid lead score response shape");
+    }
+
+    parsed.score = Math.max(0, Math.min(100, Math.round(parsed.score)));
+
+    return parsed;
+  } catch (error) {
+    console.error(
+      "Anthropic API error for lead scoring, falling back to rules-based:",
+      error
+    );
+    return generateRulesBasedLeadScore(leadData);
+  }
+}
+
+function generateRulesBasedLeadScore(
+  leadData: LeadScoreInput
+): LeadScoreResult {
+  let score = 30; // baseline
+  const factors: string[] = [];
+
+  // Source weight
+  const highValueSources = ["referral", "google", "instagram"];
+  const mediumValueSources = ["website", "walk-in", "event"];
+  if (highValueSources.includes(leadData.source.toLowerCase())) {
+    score += 15;
+    factors.push(`High-value source: ${leadData.source}`);
+  } else if (mediumValueSources.includes(leadData.source.toLowerCase())) {
+    score += 8;
+    factors.push(`Medium-value source: ${leadData.source}`);
+  }
+
+  // Activity weight
+  if (leadData.activity_count_7d >= 3) {
+    score += 20;
+    factors.push(`High recent activity: ${leadData.activity_count_7d} actions in 7 days`);
+  } else if (leadData.activity_count_7d >= 1) {
+    score += 10;
+    factors.push(`Some recent activity: ${leadData.activity_count_7d} actions in 7 days`);
+  }
+
+  if (leadData.activity_count_30d >= 5) {
+    score += 10;
+    factors.push(`Strong 30-day engagement: ${leadData.activity_count_30d} actions`);
+  }
+
+  // Email engagement weight
+  if (leadData.emails_clicked > 0) {
+    score += 15;
+    factors.push(`Email click-through: ${leadData.emails_clicked} clicks`);
+  } else if (leadData.emails_opened > 0) {
+    score += 5;
+    factors.push(`Email opens: ${leadData.emails_opened} opened`);
+  }
+
+  // Trial booked is a strong signal
+  if (leadData.trial_booked) {
+    score += 20;
+    factors.push("Trial session booked — high intent");
+  }
+
+  // Phone provided
+  if (leadData.phone) {
+    score += 5;
+    factors.push("Phone number provided");
+  }
+
+  // Recency decay
+  if (leadData.days_since_created > 30) {
+    score -= 10;
+    factors.push(`Lead aging: ${leadData.days_since_created} days old`);
+  } else if (leadData.days_since_created > 14) {
+    score -= 5;
+    factors.push(`Lead created ${leadData.days_since_created} days ago`);
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  const priority: LeadScoreResult["priority"] =
+    score >= 70 ? "hot" : score >= 40 ? "warm" : "cold";
+
+  let recommendedAction: string;
+  if (priority === "hot") {
+    recommendedAction =
+      "Reach out directly — this lead is ready to convert. Offer a trial session or membership consultation.";
+  } else if (priority === "warm") {
+    recommendedAction =
+      "Nurture with targeted content. Send a personalized email highlighting class options and member benefits.";
+  } else {
+    recommendedAction =
+      "Add to drip campaign. Monitor for engagement signals before personal outreach.";
+  }
+
+  return { score, factors, recommended_action: recommendedAction, priority };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Send Time Optimization
+// ---------------------------------------------------------------------------
+
+export interface SendTimeInput {
+  member_id: string;
+  timezone: string;
+  recent_open_times: string[]; // ISO datetime strings of recent email opens
+  recent_booking_times: string[]; // ISO datetime strings of recent bookings
+  membership_type: string | null;
+}
+
+export interface SendTimeResult {
+  optimal_hour: number; // 0-23
+  optimal_day: string; // e.g. "Tuesday"
+  confidence: "high" | "medium" | "low";
+  rationale: string;
+}
+
+/**
+ * Determine the optimal send time for a member using AI analysis.
+ * Falls back to rules-based calculation if ANTHROPIC_API_KEY is not set.
+ */
+export async function optimizeSendTime(
+  memberData: SendTimeInput
+): Promise<SendTimeResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return generateRulesBasedSendTime(memberData);
+  }
+
+  try {
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      system:
+        "You are Meridian AI. Determine the optimal email send time for a fitness studio member based on their engagement patterns. Return JSON with: optimal_hour (number 0-23 in member's timezone), optimal_day (string day of week like 'Tuesday'), confidence ('high' | 'medium' | 'low'), rationale (brief explanation). Return ONLY the JSON object, no markdown fences.",
+      messages: [
+        {
+          role: "user",
+          content: `Determine optimal send time for this member:\n${JSON.stringify(memberData, null, 2)}`,
+        },
+      ],
+    });
+
+    const text =
+      message.content[0].type === "text" ? message.content[0].text : "";
+    const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as SendTimeResult;
+
+    if (
+      typeof parsed.optimal_hour !== "number" ||
+      typeof parsed.optimal_day !== "string" ||
+      !["high", "medium", "low"].includes(parsed.confidence)
+    ) {
+      throw new Error("Invalid send time response shape");
+    }
+
+    parsed.optimal_hour = Math.max(0, Math.min(23, Math.round(parsed.optimal_hour)));
+
+    return parsed;
+  } catch (error) {
+    console.error(
+      "Anthropic API error for send time optimization, falling back to rules-based:",
+      error
+    );
+    return generateRulesBasedSendTime(memberData);
+  }
+}
+
+function generateRulesBasedSendTime(
+  memberData: SendTimeInput
+): SendTimeResult {
+  // If we have recent open times, find the most common hour
+  if (memberData.recent_open_times.length >= 3) {
+    const hourCounts: Record<number, number> = {};
+    const dayCounts: Record<string, number> = {};
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    for (const timeStr of memberData.recent_open_times) {
+      try {
+        const d = new Date(timeStr);
+        const hour = d.getHours();
+        const day = dayNames[d.getDay()];
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+        dayCounts[day] = (dayCounts[day] || 0) + 1;
+      } catch {
+        // skip invalid dates
+      }
+    }
+
+    const topHour = Object.entries(hourCounts).sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+    const topDay = Object.entries(dayCounts).sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+
+    if (topHour && topDay) {
+      return {
+        optimal_hour: parseInt(topHour[0], 10),
+        optimal_day: topDay[0],
+        confidence: memberData.recent_open_times.length >= 10 ? "high" : "medium",
+        rationale: `Based on ${memberData.recent_open_times.length} recent email opens, this member is most active at ${topHour[0]}:00 on ${topDay[0]}s.`,
+      };
+    }
+  }
+
+  // If we have booking times but not enough open times
+  if (memberData.recent_booking_times.length >= 3) {
+    const hourCounts: Record<number, number> = {};
+    for (const timeStr of memberData.recent_booking_times) {
+      try {
+        const d = new Date(timeStr);
+        const hour = d.getHours();
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      } catch {
+        // skip invalid dates
+      }
+    }
+
+    const topHour = Object.entries(hourCounts).sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+
+    if (topHour) {
+      // Send 1-2 hours before their typical booking time
+      const sendHour = Math.max(0, parseInt(topHour[0], 10) - 1);
+      return {
+        optimal_hour: sendHour,
+        optimal_day: "Tuesday",
+        confidence: "medium",
+        rationale: `Based on booking patterns, this member typically books around ${topHour[0]}:00. Sending 1 hour before at ${sendHour}:00 on Tuesday.`,
+      };
+    }
+  }
+
+  // Default fallback
+  return {
+    optimal_hour: 9,
+    optimal_day: "Tuesday",
+    confidence: "low",
+    rationale:
+      "No engagement data available. Defaulting to 9:00 AM on Tuesday, which is the industry standard for highest open rates.",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Campaign Summary
+// ---------------------------------------------------------------------------
+
+export interface CampaignSummaryInput {
+  campaign_name: string;
+  channel: string;
+  sent_count: number;
+  delivered_count: number;
+  open_count: number;
+  click_count: number;
+  bounce_count: number;
+  unsubscribe_count: number;
+  conversion_count: number;
+  revenue_attributed: number;
+  segment_name: string;
+  sent_at: string;
+}
+
+export interface CampaignSummaryResult {
+  summary: string;
+  highlights: string[];
+  concerns: string[];
+  recommendation: string;
+}
+
+/**
+ * Generate an AI-powered post-campaign summary with performance analysis.
+ * Falls back to rules-based templates if ANTHROPIC_API_KEY is not set.
+ */
+export async function summarizeCampaign(
+  data: CampaignSummaryInput
+): Promise<CampaignSummaryResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return generateRulesBasedCampaignSummary(data);
+  }
+
+  try {
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 600,
+      system:
+        "You are Meridian AI. Summarize the performance of an email/SMS campaign for a fitness/wellness studio. Be data-driven and actionable. Return JSON with: summary (2-3 sentence overview), highlights (array of positive takeaways), concerns (array of issues to watch), recommendation (single actionable next step). Return ONLY the JSON object, no markdown fences.",
+      messages: [
+        {
+          role: "user",
+          content: `Summarize this campaign's performance:\n${JSON.stringify(data, null, 2)}`,
+        },
+      ],
+    });
+
+    const text =
+      message.content[0].type === "text" ? message.content[0].text : "";
+    const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as CampaignSummaryResult;
+
+    if (
+      typeof parsed.summary !== "string" ||
+      !Array.isArray(parsed.highlights) ||
+      !Array.isArray(parsed.concerns) ||
+      typeof parsed.recommendation !== "string"
+    ) {
+      throw new Error("Invalid campaign summary response shape");
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error(
+      "Anthropic API error for campaign summary, falling back to rules-based:",
+      error
+    );
+    return generateRulesBasedCampaignSummary(data);
+  }
+}
+
+function generateRulesBasedCampaignSummary(
+  data: CampaignSummaryInput
+): CampaignSummaryResult {
+  const openRate =
+    data.delivered_count > 0
+      ? ((data.open_count / data.delivered_count) * 100).toFixed(1)
+      : "0.0";
+  const clickRate =
+    data.delivered_count > 0
+      ? ((data.click_count / data.delivered_count) * 100).toFixed(1)
+      : "0.0";
+  const bounceRate =
+    data.sent_count > 0
+      ? ((data.bounce_count / data.sent_count) * 100).toFixed(1)
+      : "0.0";
+  const conversionRate =
+    data.click_count > 0
+      ? ((data.conversion_count / data.click_count) * 100).toFixed(1)
+      : "0.0";
+  const deliveryRate =
+    data.sent_count > 0
+      ? ((data.delivered_count / data.sent_count) * 100).toFixed(1)
+      : "0.0";
+
+  const summary = `"${data.campaign_name}" was sent to ${data.sent_count.toLocaleString()} recipients in the "${data.segment_name}" segment via ${data.channel}. It achieved a ${openRate}% open rate and ${clickRate}% click rate, generating ${data.conversion_count} conversions and $${data.revenue_attributed.toLocaleString()} in attributed revenue.`;
+
+  const highlights: string[] = [];
+  const concerns: string[] = [];
+
+  if (parseFloat(openRate) >= 25) {
+    highlights.push(`Strong open rate of ${openRate}% (above 25% benchmark)`);
+  }
+  if (parseFloat(clickRate) >= 3) {
+    highlights.push(`Solid click rate of ${clickRate}% (above 3% benchmark)`);
+  }
+  if (data.conversion_count > 0) {
+    highlights.push(
+      `${data.conversion_count} conversions with ${conversionRate}% click-to-conversion rate`
+    );
+  }
+  if (data.revenue_attributed > 0) {
+    highlights.push(
+      `$${data.revenue_attributed.toLocaleString()} revenue attributed`
+    );
+  }
+  if (parseFloat(deliveryRate) >= 98) {
+    highlights.push(`Excellent delivery rate of ${deliveryRate}%`);
+  }
+
+  if (parseFloat(openRate) < 15) {
+    concerns.push(
+      `Open rate of ${openRate}% is below the 15% minimum threshold — consider testing subject lines`
+    );
+  }
+  if (parseFloat(bounceRate) > 3) {
+    concerns.push(
+      `Bounce rate of ${bounceRate}% exceeds 3% — review list hygiene`
+    );
+  }
+  if (data.unsubscribe_count > 0) {
+    const unsubRate =
+      data.delivered_count > 0
+        ? ((data.unsubscribe_count / data.delivered_count) * 100).toFixed(2)
+        : "0.00";
+    concerns.push(
+      `${data.unsubscribe_count} unsubscribes (${unsubRate}%) — monitor content relevance`
+    );
+  }
+  if (parseFloat(clickRate) < 1 && parseFloat(openRate) >= 15) {
+    concerns.push(
+      `Low click rate (${clickRate}%) despite decent opens — improve CTA placement or copy`
+    );
+  }
+
+  if (highlights.length === 0) {
+    highlights.push("Campaign delivered successfully");
+  }
+  if (concerns.length === 0) {
+    concerns.push("No significant concerns detected");
+  }
+
+  let recommendation: string;
+  if (parseFloat(openRate) < 15) {
+    recommendation =
+      "A/B test subject lines on the next campaign to improve open rates. Try personalization or urgency-based subjects.";
+  } else if (parseFloat(clickRate) < 1) {
+    recommendation =
+      "Focus on improving click-through rates. Test different CTA button copy, placement, and offer clarity.";
+  } else if (data.conversion_count === 0 && data.click_count > 0) {
+    recommendation =
+      "Clicks are happening but not converting. Review the landing page experience and simplify the conversion path.";
+  } else {
+    recommendation =
+      "Campaign performed well. Replicate this approach for the next send and consider expanding the segment.";
+  }
+
+  return { summary, highlights, concerns, recommendation };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Automation Recommendations
+// ---------------------------------------------------------------------------
+
+export interface AutomationRecommendationInput {
+  active_members: number;
+  at_risk_members: number;
+  new_members_30d: number;
+  avg_visits_per_week: number;
+  churn_rate_30d: number;
+  active_automations: string[];
+  revenue_mtd: number;
+}
+
+export interface AutomationRecommendation {
+  name: string;
+  trigger_type: string;
+  description: string;
+  estimated_impact: string;
+  priority: "high" | "medium" | "low";
+}
+
+/**
+ * Recommend marketing automations based on studio data and current automation state.
+ * Falls back to rules-based recommendations if ANTHROPIC_API_KEY is not set.
+ */
+export async function recommendAutomations(
+  studioData: AutomationRecommendationInput
+): Promise<AutomationRecommendation[]> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return generateRulesBasedAutomationRecommendations(studioData);
+  }
+
+  try {
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 800,
+      system:
+        "You are Meridian AI. Recommend marketing automations for a fitness/wellness studio based on their metrics and current automation setup. Prioritize automations that address the biggest gaps. Return a JSON array of objects with: name (string), trigger_type (string like 'event-based', 'time-based', 'threshold-based'), description (string), estimated_impact (string describing expected outcome), priority ('high' | 'medium' | 'low'). Return ONLY the JSON array, no markdown fences.",
+      messages: [
+        {
+          role: "user",
+          content: `Recommend automations for this studio:\n${JSON.stringify(studioData, null, 2)}`,
+        },
+      ],
+    });
+
+    const text =
+      message.content[0].type === "text" ? message.content[0].text : "";
+    const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as AutomationRecommendation[];
+
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error("Invalid automation recommendations response shape");
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error(
+      "Anthropic API error for automation recommendations, falling back to rules-based:",
+      error
+    );
+    return generateRulesBasedAutomationRecommendations(studioData);
+  }
+}
+
+function generateRulesBasedAutomationRecommendations(
+  studioData: AutomationRecommendationInput
+): AutomationRecommendation[] {
+  const recommendations: AutomationRecommendation[] = [];
+  const activeSet = new Set(
+    studioData.active_automations.map((a) => a.toLowerCase())
+  );
+
+  // Core 4 automations — recommend any that aren't active
+  if (!activeSet.has("welcome series") && !activeSet.has("welcome")) {
+    recommendations.push({
+      name: "Welcome Series",
+      trigger_type: "event-based",
+      description:
+        "Automatically send a 3-email welcome sequence when a new member joins. Includes studio intro, first visit tips, and a check-in after their first week.",
+      estimated_impact: `With ${studioData.new_members_30d} new members in the last 30 days, a welcome series can improve first-month retention by 15-25%.`,
+      priority: "high",
+    });
+  }
+
+  if (!activeSet.has("win-back") && !activeSet.has("winback") && !activeSet.has("re-engagement")) {
+    const urgency = studioData.at_risk_members > studioData.active_members * 0.1 ? "high" : "medium";
+    recommendations.push({
+      name: "Win-Back Campaign",
+      trigger_type: "threshold-based",
+      description:
+        "Trigger a re-engagement email when a member hasn't visited in 14+ days. Escalate to a personal outreach task at 30+ days.",
+      estimated_impact: `${studioData.at_risk_members} members are currently at risk. Win-back automations typically recover 10-15% of lapsed members.`,
+      priority: urgency,
+    });
+  }
+
+  if (!activeSet.has("failed payment") && !activeSet.has("dunning") && !activeSet.has("payment recovery")) {
+    recommendations.push({
+      name: "Failed Payment Recovery",
+      trigger_type: "event-based",
+      description:
+        "Send an automated email when a recurring payment fails. Follow up at 3, 7, and 14 days with escalating urgency. Pause membership after 14 days.",
+      estimated_impact:
+        "Automated dunning recovers 30-50% of failed payments that would otherwise churn. Protects recurring revenue.",
+      priority: "high",
+    });
+  }
+
+  if (!activeSet.has("churn prevention") && !activeSet.has("churn")) {
+    const urgency = studioData.churn_rate_30d > 0.05 ? "high" : "medium";
+    recommendations.push({
+      name: "Churn Prevention",
+      trigger_type: "threshold-based",
+      description:
+        "Monitor member health scores and trigger personalized outreach when a member's score drops below 40. Include special offers or personal check-ins.",
+      estimated_impact: `Current 30-day churn rate is ${(studioData.churn_rate_30d * 100).toFixed(1)}%. Proactive churn prevention can reduce churn by 20-30%.`,
+      priority: urgency,
+    });
+  }
+
+  // Additional recommendations based on studio data
+  if (recommendations.length < 3) {
+    if (!activeSet.has("milestone") && !activeSet.has("celebration")) {
+      recommendations.push({
+        name: "Milestone Celebrations",
+        trigger_type: "threshold-based",
+        description:
+          "Automatically congratulate members at key milestones: 10th visit, 50th visit, 1-year anniversary. Include a small reward or social share prompt.",
+        estimated_impact:
+          "Milestone emails have 2-3x higher engagement than standard campaigns and reinforce long-term commitment.",
+        priority: "low",
+      });
+    }
+
+    if (!activeSet.has("referral") && !activeSet.has("refer a friend")) {
+      recommendations.push({
+        name: "Referral Prompt",
+        trigger_type: "time-based",
+        description:
+          "Send a referral prompt to highly engaged members (health score 80+) after their 5th visit. Include a shareable link or promo code.",
+        estimated_impact:
+          "Referred members have 25% higher retention. Automating referral asks at peak engagement maximizes conversion.",
+        priority: "medium",
+      });
+    }
+  }
+
+  return recommendations;
 }

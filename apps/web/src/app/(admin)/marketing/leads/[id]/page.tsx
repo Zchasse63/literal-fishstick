@@ -1,0 +1,591 @@
+'use client'
+
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import {
+  ArrowLeft,
+  Phone,
+  Mail,
+  Globe,
+  Star,
+  Clock,
+  UserPlus,
+  MessageSquare,
+  Send,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  FileText,
+  CalendarCheck,
+  ArrowUpRight,
+  ChevronDown,
+  X,
+  Plus,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  PhoneCall,
+  UserCheck,
+} from 'lucide-react'
+import Link from 'next/link'
+
+// ─── Animation ──────────────────────────────────────────────
+const fadeInUp = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
+}
+
+// ─── Types ──────────────────────────────────────────────────
+type ActivityType =
+  | 'created'
+  | 'status_change'
+  | 'note_added'
+  | 'email_sent'
+  | 'email_opened'
+  | 'call_logged'
+  | 'form_submitted'
+  | 'trial_booked'
+  | 'converted'
+
+interface Activity {
+  id: string
+  type: ActivityType
+  description: string
+  timestamp: string
+  performedBy?: { name: string; initials: string }
+}
+
+interface ScoreFactor {
+  label: string
+  impact: 'positive' | 'negative' | 'neutral'
+  value: string
+}
+
+// ─── Mock Data ──────────────────────────────────────────────
+const LEAD = {
+  id: 'l1',
+  firstName: 'Sarah',
+  lastName: 'Mitchell',
+  email: 'sarah.m@gmail.com',
+  phone: '(813) 555-0142',
+  source: 'website' as const,
+  score: 85,
+  status: 'trial' as const,
+  assignedTo: { name: 'Zach', initials: 'ZR' },
+  tags: ['hot', 'fitness-enthusiast', 'referred-by-connor'],
+  createdAt: 'Mar 5, 2026',
+  nextFollowUp: '2026-03-22',
+}
+
+const ACTIVITIES: Activity[] = [
+  {
+    id: 'a1',
+    type: 'trial_booked',
+    description: 'Booked trial class — Free Flow Open Sauna, Mar 21 at 6:00 PM',
+    timestamp: '1h ago',
+    performedBy: { name: 'Sarah Mitchell', initials: 'SM' },
+  },
+  {
+    id: 'a2',
+    type: 'email_opened',
+    description: 'Opened email: "Your trial class is confirmed"',
+    timestamp: '2h ago',
+  },
+  {
+    id: 'a3',
+    type: 'email_sent',
+    description: 'Sent trial confirmation email with class details and waiver link',
+    timestamp: '3h ago',
+    performedBy: { name: 'System', initials: 'SY' },
+  },
+  {
+    id: 'a4',
+    type: 'status_change',
+    description: 'Status changed from Contacted to Trial',
+    timestamp: '3h ago',
+    performedBy: { name: 'Zach', initials: 'ZR' },
+  },
+  {
+    id: 'a5',
+    type: 'call_logged',
+    description: 'Called to discuss membership options. Interested in unlimited plan. Will try a class first.',
+    timestamp: '1d ago',
+    performedBy: { name: 'Zach', initials: 'ZR' },
+  },
+  {
+    id: 'a6',
+    type: 'note_added',
+    description: 'Mentioned she does hot yoga 3x/week and is looking for recovery options. Friend Connor Murphy recommended us.',
+    timestamp: '2d ago',
+    performedBy: { name: 'Zach', initials: 'ZR' },
+  },
+  {
+    id: 'a7',
+    type: 'form_submitted',
+    description: 'Submitted inquiry form on website — interested in sauna + cold plunge benefits',
+    timestamp: '5d ago',
+    performedBy: { name: 'Sarah Mitchell', initials: 'SM' },
+  },
+  {
+    id: 'a8',
+    type: 'created',
+    description: 'Lead created from website form submission',
+    timestamp: 'Mar 5, 2026',
+    performedBy: { name: 'System', initials: 'SY' },
+  },
+]
+
+const SCORE_FACTORS: ScoreFactor[] = [
+  { label: 'Form submitted', impact: 'positive', value: '+20' },
+  { label: 'Email opened (2x)', impact: 'positive', value: '+15' },
+  { label: 'Trial booked', impact: 'positive', value: '+25' },
+  { label: 'Referral source', impact: 'positive', value: '+15' },
+  { label: 'Active engagement', impact: 'positive', value: '+10' },
+  { label: 'No purchase yet', impact: 'negative', value: '-5' },
+  { label: 'Base score', impact: 'neutral', value: '+5' },
+]
+
+const ACTIVITY_ICONS: Record<ActivityType, typeof Star> = {
+  created: UserPlus,
+  status_change: ArrowUpRight,
+  note_added: MessageSquare,
+  email_sent: Send,
+  email_opened: Eye,
+  call_logged: PhoneCall,
+  form_submitted: FileText,
+  trial_booked: CalendarCheck,
+  converted: CheckCircle2,
+}
+
+const ACTIVITY_COLORS: Record<ActivityType, string> = {
+  created: 'bg-blue-100 text-blue-600',
+  status_change: 'bg-amber-100 text-amber-600',
+  note_added: 'bg-gray-100 text-gray-600',
+  email_sent: 'bg-indigo-100 text-indigo-600',
+  email_opened: 'bg-emerald-100 text-emerald-600',
+  call_logged: 'bg-violet-100 text-violet-600',
+  form_submitted: 'bg-cyan-100 text-cyan-600',
+  trial_booked: 'bg-emerald-100 text-emerald-600',
+  converted: 'bg-emerald-100 text-emerald-700',
+}
+
+const STATUS_OPTIONS = [
+  { value: 'new', label: 'New', color: 'bg-blue-100 text-blue-700' },
+  { value: 'contacted', label: 'Contacted', color: 'bg-amber-100 text-amber-700' },
+  { value: 'trial', label: 'Trial', color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'converted', label: 'Converted', color: 'bg-emerald-100 text-emerald-700' },
+  { value: 'lost', label: 'Lost', color: 'bg-gray-100 text-gray-700' },
+]
+
+// ─── Score Gauge ────────────────────────────────────────────
+function ScoreGauge({ score }: { score: number }) {
+  const circumference = 2 * Math.PI * 36
+  const offset = circumference - (score / 100) * circumference
+  const color = score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444'
+
+  return (
+    <div className="relative inline-flex h-24 w-24 items-center justify-center">
+      <svg className="h-24 w-24 -rotate-90" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="36" fill="none" stroke="#F3F4F6" strokeWidth="6" />
+        <motion.circle
+          cx="40"
+          cy="40"
+          r="36"
+          fill="none"
+          stroke={color}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="text-xl font-black text-gray-900 tabular-nums">{score}</span>
+        <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400">Score</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Convert Panel ──────────────────────────────────────────
+function ConvertPanel({ lead, onClose }: { lead: typeof LEAD; onClose: () => void }) {
+  const [membershipType, setMembershipType] = useState('unlimited')
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ duration: 0.25 }}
+      className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-gray-900">Convert to Member</h3>
+        <button onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100 transition-colors">
+          <X className="h-4 w-4 text-gray-500" />
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">First Name</label>
+            <input
+              defaultValue={lead.firstName}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Last Name</label>
+            <input
+              defaultValue={lead.lastName}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Email</label>
+          <input
+            defaultValue={lead.email}
+            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Phone</label>
+          <input
+            defaultValue={lead.phone}
+            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Membership Type</label>
+          <div className="relative mt-1">
+            <select
+              value={membershipType}
+              onChange={(e) => setMembershipType(e.target.value)}
+              className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value="unlimited">Unlimited ($149/mo)</option>
+              <option value="10-class">10-Class Pack ($120)</option>
+              <option value="6-class">6-Class Pack ($80)</option>
+              <option value="drop-in">Drop-in ($25)</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
+        </div>
+      </div>
+
+      <button className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors">
+        <UserCheck className="mr-2 inline h-4 w-4" />
+        Convert to Member
+      </button>
+    </motion.div>
+  )
+}
+
+// ─── Main Page ──────────────────────────────────────────────
+export default function LeadDetailPage() {
+  const [lead] = useState(LEAD)
+  const [activities] = useState(ACTIVITIES)
+  const [newNote, setNewNote] = useState('')
+  const [tags, setTags] = useState(LEAD.tags)
+  const [newTag, setNewTag] = useState('')
+  const [showConvert, setShowConvert] = useState(false)
+  const [status, setStatus] = useState(LEAD.status)
+  const [assigned, setAssigned] = useState(LEAD.assignedTo.name)
+  const [followUp, setFollowUp] = useState(LEAD.nextFollowUp)
+
+  const currentStatusOption = STATUS_OPTIONS.find((s) => s.value === status)!
+
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim().toLowerCase())) {
+      setTags([...tags, newTag.trim().toLowerCase()])
+      setNewTag('')
+    }
+  }
+
+  const removeTag = (tag: string) => {
+    setTags(tags.filter((t) => t !== tag))
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="mx-auto max-w-[1200px] px-6 py-8">
+        {/* Back Link */}
+        <motion.div {...fadeInUp}>
+          <Link
+            href="/marketing/leads"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Pipeline
+          </Link>
+        </motion.div>
+
+        {/* Header */}
+        <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.05 }} className="mb-8 flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start gap-5">
+            <ScoreGauge score={lead.score} />
+            <div>
+              <h1 className="text-2xl font-black text-gray-900">
+                {lead.firstName} {lead.lastName}
+              </h1>
+              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                <span className="inline-flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" />
+                  {lead.email}
+                </span>
+                {lead.phone && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5" />
+                    {lead.phone}
+                  </span>
+                )}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', currentStatusOption.color)}>
+                  {currentStatusOption.label}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                  <Globe className="h-3 w-3" />
+                  {lead.source.charAt(0).toUpperCase() + lead.source.slice(1)}
+                </span>
+                <span className="text-xs text-gray-400">Lead since {lead.createdAt}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Two Column Layout */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Left — Activity Timeline (2/3) */}
+          <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.1 }} className="lg:col-span-2 space-y-4">
+            {/* Add Note */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Add Note</label>
+              <textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Write a note about this lead..."
+                rows={3}
+                className="mt-2 w-full resize-none rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+              <div className="mt-3 flex justify-end">
+                <button
+                  disabled={!newNote.trim()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Note
+                </button>
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-5">Activity Timeline</h2>
+
+              <div className="relative space-y-0">
+                {/* Vertical line */}
+                <div className="absolute left-[17px] top-2 bottom-2 w-px bg-gray-200" />
+
+                {activities.map((activity, idx) => {
+                  const Icon = ACTIVITY_ICONS[activity.type]
+                  const colorClass = ACTIVITY_COLORS[activity.type]
+
+                  return (
+                    <motion.div
+                      key={activity.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.2, delay: idx * 0.03 }}
+                      className="relative flex gap-4 pb-6 last:pb-0"
+                    >
+                      <div className={cn('z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full', colorClass)}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+
+                      <div className="min-w-0 flex-1 pt-1">
+                        <p className="text-sm text-gray-900">{activity.description}</p>
+                        <div className="mt-1 flex items-center gap-3">
+                          <span className="text-xs text-gray-400">{activity.timestamp}</span>
+                          {activity.performedBy && (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-100 text-[8px] font-bold text-gray-600">
+                                {activity.performedBy.initials}
+                              </span>
+                              {activity.performedBy.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right — Details Panel (1/3) */}
+          <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.15 }} className="space-y-4">
+            {/* Score Breakdown */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Score Breakdown</h3>
+              <div className="space-y-2.5">
+                {SCORE_FACTORS.map((factor) => (
+                  <div key={factor.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {factor.impact === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
+                      {factor.impact === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
+                      {factor.impact === 'neutral' && <Minus className="h-3.5 w-3.5 text-gray-400" />}
+                      <span className="text-sm text-gray-700">{factor.label}</span>
+                    </div>
+                    <span
+                      className={cn(
+                        'text-xs font-bold tabular-nums',
+                        factor.impact === 'positive' && 'text-emerald-600',
+                        factor.impact === 'negative' && 'text-red-600',
+                        factor.impact === 'neutral' && 'text-gray-500'
+                      )}
+                    >
+                      {factor.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Assignment */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Assigned To</h3>
+              <div className="relative">
+                <select
+                  value={assigned}
+                  onChange={(e) => setAssigned(e.target.value)}
+                  className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                >
+                  <option value="Zach">Zach</option>
+                  <option value="Whitney">Whitney Cooper</option>
+                  <option value="Unassigned">Unassigned</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Status</h3>
+              <div className="relative">
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as typeof status)}
+                  className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Tags</h3>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+                  >
+                    {tag}
+                    <button onClick={() => removeTag(tag)} className="hover:text-indigo-900 transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {tags.length === 0 && <span className="text-xs text-gray-400">No tags</span>}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                  placeholder="Add tag..."
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+                <button onClick={addTag} className="rounded-lg bg-gray-100 px-2.5 py-1.5 hover:bg-gray-200 transition-colors">
+                  <Plus className="h-3.5 w-3.5 text-gray-600" />
+                </button>
+              </div>
+            </div>
+
+            {/* Source Details */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Source Details</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Source</span>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                    <Globe className="h-3.5 w-3.5 text-gray-400" />
+                    Website
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Landing Page</span>
+                  <span className="text-sm font-medium text-gray-900">/recovery</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">UTM Campaign</span>
+                  <span className="text-sm font-medium text-gray-900">spring_2026</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Next Follow-up */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Next Follow-up</h3>
+              <input
+                type="date"
+                value={followUp}
+                onChange={(e) => setFollowUp(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            {/* Quick Actions */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-2.5">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Quick Actions</h3>
+              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <PhoneCall className="h-4 w-4 text-violet-500" />
+                Log Call
+              </button>
+              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <Send className="h-4 w-4 text-indigo-500" />
+                Send Email
+              </button>
+              <button
+                onClick={() => setShowConvert(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+              >
+                <UserCheck className="h-4 w-4" />
+                Convert to Member
+              </button>
+            </div>
+
+            {/* Convert Panel */}
+            <AnimatePresence>
+              {showConvert && <ConvertPanel lead={lead} onClose={() => setShowConvert(false)} />}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  )
+}

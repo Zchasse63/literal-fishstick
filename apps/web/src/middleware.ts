@@ -4,9 +4,17 @@ import { createServerClient } from "@supabase/ssr";
 
 const PUBLIC_ROUTES = ["/login", "/auth/callback"];
 
+// Phase 2: Public API endpoints that don't require authentication
+const PUBLIC_API_ROUTES = [
+  "/api/leads/capture",      // Lead capture form submission (public embed)
+  "/api/unsubscribe",        // Email unsubscribe (token-based)
+  "/api/inngest",            // Inngest webhook endpoint (verified via signing key)
+];
+
 function isPublicRoute(pathname: string): boolean {
   return (
     PUBLIC_ROUTES.some((route) => pathname.startsWith(route)) ||
+    PUBLIC_API_ROUTES.some((route) => pathname.startsWith(route)) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   );
