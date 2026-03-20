@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { CommandPalette } from '@/components/command-palette'
 import { cn } from '@/lib/utils'
 
 const breadcrumbs: Record<string, string> = {
@@ -29,6 +30,7 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
+      <CommandPalette />
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}

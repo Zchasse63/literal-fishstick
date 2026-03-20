@@ -33,6 +33,10 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
 } from 'recharts'
 
 const fadeInUp = {
@@ -115,6 +119,47 @@ const DONUT_DATA = [
   { name: 'Merch', value: 7, color: '#F59E0B' },
   { name: 'Corporate', value: 3, color: '#10B981' },
   { name: 'Gift Cards', value: 2, color: '#EC4899' },
+]
+
+// ─── 30-Day Daily Revenue Trend ──────────────────────────────
+const DAILY_REVENUE = (() => {
+  const base = 800
+  const data = []
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(2026, 2, 20) // Mar 20, 2026
+    date.setDate(date.getDate() - i)
+    const dayOfWeek = date.getDay()
+    // Weekends are busier
+    const weekendBoost = dayOfWeek === 0 || dayOfWeek === 6 ? 1.4 : 1.0
+    // Slight upward trend
+    const trendFactor = 1 + (29 - i) * 0.008
+    const noise = 0.8 + Math.random() * 0.4
+    const revenue = Math.round(base * weekendBoost * trendFactor * noise)
+    data.push({
+      date: `${date.getMonth() + 1}/${date.getDate()}`,
+      revenue,
+    })
+  }
+  return data
+})()
+
+// ─── Revenue Breakdown by Source ─────────────────────────────
+const REVENUE_BY_SOURCE = [
+  { source: 'Memberships', amount: 4850, color: '#4F46E5' },
+  { source: 'Drop-ins', amount: 1170, color: '#8B5CF6' },
+  { source: 'Class Packs', amount: 1600, color: '#10B981' },
+  { source: 'Events', amount: 780, color: '#F59E0B' },
+  { source: 'Merchandise', amount: 540, color: '#F97316' },
+]
+
+// ─── 6-Month MRR Growth ─────────────────────────────────────
+const MRR_GROWTH = [
+  { month: 'Oct', mrr: 3100 },
+  { month: 'Nov', mrr: 3350 },
+  { month: 'Dec', mrr: 3200 },
+  { month: 'Jan', mrr: 3650 },
+  { month: 'Feb', mrr: 4200 },
+  { month: 'Mar', mrr: 4850 },
 ]
 
 const MEMBERSHIP_PLANS = [
@@ -324,6 +369,176 @@ function OverviewTab() {
               )}
             />
           </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ─── 30-Day Revenue Trend ─────────────────────────── */}
+      <div className="col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+              Daily Revenue
+            </p>
+            <p className="text-lg font-bold text-gray-900">30-Day Trend</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-indigo-500" />
+            <span className="text-[11px] text-gray-500">Revenue</span>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart data={DAILY_REVENUE} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="dailyRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4F46E5" stopOpacity={0.2} />
+                <stop offset="100%" stopColor="#4F46E5" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              axisLine={false}
+              tickLine={false}
+              interval={4}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `$${v.toLocaleString()}`}
+            />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.[0]) return null
+                return (
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
+                    <p className="text-lg font-bold text-gray-900 tabular-nums">
+                      ${payload[0].value?.toLocaleString()}
+                    </p>
+                  </div>
+                )
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="#4F46E5"
+              strokeWidth={2.5}
+              fill="url(#dailyRevenueGradient)"
+              dot={false}
+              activeDot={{ r: 5, fill: '#4F46E5', stroke: '#fff', strokeWidth: 2 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ─── Revenue Breakdown by Source (Horizontal Bar) ── */}
+      <div className="lg:col-span-6 col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="mb-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+            Revenue Breakdown
+          </p>
+          <p className="text-lg font-bold text-gray-900">By Source (This Month)</p>
+        </div>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart
+            data={REVENUE_BY_SOURCE}
+            layout="vertical"
+            margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+            />
+            <YAxis
+              type="category"
+              dataKey="source"
+              tick={{ fontSize: 12, fill: '#6B7280', fontWeight: 500 }}
+              axisLine={false}
+              tickLine={false}
+              width={100}
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.[0]) return null
+                const data = payload[0].payload
+                return (
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">{data.source}</p>
+                    <p className="text-lg font-bold text-gray-900 tabular-nums">
+                      ${data.amount.toLocaleString()}
+                    </p>
+                  </div>
+                )
+              }}
+            />
+            <Bar dataKey="amount" radius={[0, 6, 6, 0]} barSize={28}>
+              {REVENUE_BY_SOURCE.map((entry, i) => (
+                <Cell key={i} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ─── MRR Growth (6-Month Line Chart) ──────────────── */}
+      <div className="lg:col-span-6 col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+              MRR Growth
+            </p>
+            <p className="text-lg font-bold text-gray-900">6-Month Trend</p>
+          </div>
+          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span className="text-xs font-bold tabular-nums">+56%</span>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={MRR_GROWTH} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 12, fill: '#9CA3AF' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`}
+              domain={['dataMin - 200', 'dataMax + 200']}
+            />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.[0]) return null
+                return (
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
+                    <p className="text-lg font-bold text-gray-900 tabular-nums">
+                      ${payload[0].value?.toLocaleString()}/mo
+                    </p>
+                  </div>
+                )
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="mrr"
+              stroke="#8B5CF6"
+              strokeWidth={2.5}
+              dot={{ r: 5, fill: '#8B5CF6', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 7, fill: '#8B5CF6', stroke: '#fff', strokeWidth: 3 }}
+            />
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </motion.div>
