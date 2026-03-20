@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronDown,
@@ -8,11 +8,17 @@ import {
   Download,
   FileText,
   CreditCard,
-  DollarSign,
   Building2,
   Pencil,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  useEmployeeProfile,
+  usePayrollPeriods,
+  useClockEntries,
+  useTrainerClassLog,
+} from '@/hooks/use-employee'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 6 },
@@ -20,27 +26,30 @@ const fadeInUp = {
   transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
 }
 
-interface PayStub {
-  id: string
-  period: string
-  payDate: string
-  grossPay: number
-  netPay: number
-  hoursWorked: number
-  bonus: number
-  taxes: number
-  deductions: number
-}
-
-const payStubs: PayStub[] = [
-  { id: '1', period: 'Mar 1 – 15, 2026', payDate: 'Mar 20, 2026', grossPay: 2280, netPay: 1768, hoursWorked: 72, bonus: 180, taxes: 387.60, deductions: 124.40 },
-  { id: '2', period: 'Feb 16 – 28, 2026', payDate: 'Mar 5, 2026', grossPay: 2100, netPay: 1628, hoursWorked: 64, bonus: 140, taxes: 357, deductions: 115 },
-  { id: '3', period: 'Feb 1 – 15, 2026', payDate: 'Feb 20, 2026', grossPay: 2340, netPay: 1814, hoursWorked: 76, bonus: 200, taxes: 397.80, deductions: 128.20 },
-  { id: '4', period: 'Jan 16 – 31, 2026', payDate: 'Feb 5, 2026', grossPay: 2460, netPay: 1907, hoursWorked: 80, bonus: 260, taxes: 418.20, deductions: 134.80 },
-]
-
-function PayStubRow({ stub }: { stub: PayStub }) {
+function PayStubRow({ period, payRate, bonusForPeriod }: {
+  period: { id: string; period_start: string; period_end: string; total_gross: number | null; total_bonuses: number | null; total_payroll: number | null; status: string }
+  payRate: number
+  bonusForPeriod: number
+}) {
   const [expanded, setExpanded] = useState(false)
+
+  const periodStart = new Date(period.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const periodEnd = new Date(period.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const periodLabel = `${periodStart} – ${periodEnd}`
+
+  const grossPay = period.total_gross ?? 0
+  const bonuses = period.total_bonuses ?? bonusForPeriod
+  const totalPayroll = period.total_payroll ?? grossPay
+  // Estimate taxes at ~17% and deductions at ~5.5%
+  const estimatedTaxes = Math.round(grossPay * 0.17 * 100) / 100
+  const estimatedDeductions = Math.round(grossPay * 0.055 * 100) / 100
+  const netPay = Math.round((totalPayroll - estimatedTaxes - estimatedDeductions) * 100) / 100
+  const hoursWorked = payRate > 0 ? Math.round(((grossPay - bonuses) / payRate) * 10) / 10 : 0
+
+  // Pay date is typically 5 days after period end
+  const payDate = new Date(period.period_end)
+  payDate.setDate(payDate.getDate() + 5)
+  const payDateStr = payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   return (
     <div className="border-b border-gray-100 last:border-b-0">
@@ -53,13 +62,13 @@ function PayStubRow({ stub }: { stub: PayStub }) {
             <FileText className="w-5 h-5 text-indigo-600" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-gray-900">{stub.period}</p>
-            <p className="text-xs text-gray-500">Paid {stub.payDate}</p>
+            <p className="text-sm font-semibold text-gray-900">{periodLabel}</p>
+            <p className="text-xs text-gray-500">Paid {payDateStr}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm font-bold tabular-nums text-gray-900">${stub.netPay.toLocaleString()}</p>
+            <p className="text-sm font-bold tabular-nums text-gray-900">${netPay > 0 ? netPay.toLocaleString() : totalPayroll.toLocaleString()}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Net Pay</p>
           </div>
           {expanded ? (
@@ -82,19 +91,19 @@ function PayStubRow({ stub }: { stub: PayStub }) {
               <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Gross Pay</p>
-                  <p className="text-lg font-bold tabular-nums text-gray-900">${stub.grossPay.toLocaleString()}</p>
+                  <p className="text-lg font-bold tabular-nums text-gray-900">${grossPay.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Hours</p>
-                  <p className="text-lg font-bold tabular-nums text-gray-900">{stub.hoursWorked}h</p>
+                  <p className="text-lg font-bold tabular-nums text-gray-900">{hoursWorked}h</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Bonus</p>
-                  <p className="text-lg font-bold tabular-nums text-emerald-600">${stub.bonus}</p>
+                  <p className="text-lg font-bold tabular-nums text-emerald-600">${bonuses}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Taxes</p>
-                  <p className="text-lg font-bold tabular-nums text-red-500">-${stub.taxes}</p>
+                  <p className="text-lg font-bold tabular-nums text-red-500">-${estimatedTaxes}</p>
                 </div>
               </div>
               <button className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
@@ -110,6 +119,45 @@ function PayStubRow({ stub }: { stub: PayStub }) {
 }
 
 export default function PayPage() {
+  const { employee, trainer, loading: profileLoading } = useEmployeeProfile()
+  const { periods, loading: periodsLoading } = usePayrollPeriods()
+  const { entries: classLog } = useTrainerClassLog(trainer?.id)
+
+  const loading = profileLoading || periodsLoading
+  const payRate = employee?.pay_rate ?? 0
+
+  // YTD calculations
+  const currentYear = new Date().getFullYear()
+  const ytdPeriods = periods.filter((p) => new Date(p.period_start).getFullYear() === currentYear)
+  const ytdGross = ytdPeriods.reduce((acc, p) => acc + (p.total_gross ?? 0), 0)
+  const ytdBonuses = ytdPeriods.reduce((acc, p) => acc + (p.total_bonuses ?? 0), 0)
+  const ytdNet = Math.round(ytdGross * 0.775 * 100) / 100 // Approximate net after taxes/deductions
+
+  // Map bonus amounts per period from class log
+  const bonusByPeriod = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const entry of classLog) {
+      if (!entry.bonus_earned) continue
+      const d = new Date(entry.created_at)
+      // Find which period this falls in
+      for (const p of periods) {
+        if (d >= new Date(p.period_start) && d <= new Date(p.period_end)) {
+          map[p.id] = (map[p.id] ?? 0) + (entry.bonus_amount ?? 0)
+          break
+        }
+      }
+    }
+    return map
+  }, [classLog, periods])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -128,15 +176,15 @@ export default function PayPage() {
         <div className="grid grid-cols-3 gap-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Gross Earnings</p>
-            <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">$26,340</p>
+            <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">${ytdGross.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Net Earnings</p>
-            <p className="text-[28px] font-black tabular-nums text-emerald-600 leading-none">$20,424</p>
+            <p className="text-[28px] font-black tabular-nums text-emerald-600 leading-none">${ytdNet.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Bonuses</p>
-            <p className="text-[28px] font-black tabular-nums text-violet-600 leading-none">$2,140</p>
+            <p className="text-[28px] font-black tabular-nums text-violet-600 leading-none">${ytdBonuses.toLocaleString()}</p>
           </div>
         </div>
       </motion.div>
@@ -150,9 +198,18 @@ export default function PayPage() {
         <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="text-sm font-bold text-gray-900">Pay Stubs</h3>
         </div>
-        {payStubs.map((stub) => (
-          <PayStubRow key={stub.id} stub={stub} />
-        ))}
+        {periods.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-gray-400">No pay stubs available</div>
+        ) : (
+          periods.map((period) => (
+            <PayStubRow
+              key={period.id}
+              period={period}
+              payRate={payRate}
+              bonusForPeriod={bonusByPeriod[period.id] ?? 0}
+            />
+          ))
+        )}
       </motion.div>
 
       {/* Tax Documents + Direct Deposit */}
@@ -171,7 +228,7 @@ export default function PayPage() {
                   <FileText className="w-4 h-4 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">W-2 — 2024</p>
+                  <p className="text-sm font-semibold text-gray-900">W-2 — {currentYear - 1}</p>
                   <p className="text-xs text-gray-500">Annual wage statement</p>
                 </div>
               </div>
@@ -209,13 +266,19 @@ export default function PayPage() {
                 <Building2 className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">Chase Checking</p>
-                <p className="text-xs text-gray-500 tabular-nums">****4821</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {employee?.bank_account_last4 ? 'Bank Account' : 'No Account on File'}
+                </p>
+                {employee?.bank_account_last4 && (
+                  <p className="text-xs text-gray-500 tabular-nums">****{employee.bank_account_last4}</p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 mb-4">
               <CreditCard className="w-4 h-4 text-gray-400" />
-              <span className="text-xs text-gray-500">Primary account — 100% of net pay</span>
+              <span className="text-xs text-gray-500">
+                {employee?.bank_account_last4 ? 'Primary account — 100% of net pay' : 'Set up direct deposit to receive payments'}
+              </span>
             </div>
             <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
               <Pencil className="w-3.5 h-3.5" />

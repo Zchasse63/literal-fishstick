@@ -12,8 +12,19 @@ import {
   UserPlus,
   DollarSign,
   ChevronRight,
+  XCircle,
+  Calendar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  useCommandCenterData,
+  formatEasternTime,
+  formatCurrency,
+  type AIInsight,
+  type ClassData,
+  type ActivityItem,
+} from './use-command-center-data'
 
 // Animation variants
 const fadeInUp = {
@@ -22,29 +33,120 @@ const fadeInUp = {
   transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
 }
 
-// ─── AI Briefing Card ────────────────────────────────────────
-function AIBriefingCard() {
-  const insights = [
-    {
-      icon: TrendingUp,
-      text: 'Wednesday 7pm Guided class hit 10/12 capacity 3 weeks straight — consider adding a Thursday session',
-      action: 'Add Class',
-      color: 'text-indigo-600',
-    },
-    {
-      icon: AlertCircle,
-      text: '9 members haven\'t booked in 14+ days — churn risk campaign ready',
-      action: 'Send Campaign',
-      color: 'text-orange-600',
-    },
-    {
-      icon: Briefcase,
-      text: 'Tampa Tech corporate account is 3 sessions from their monthly cap',
-      action: 'Contact Account',
-      color: 'text-amber-600',
-    },
-  ]
+// ─── Icon map for AI insights ───────────────────────────────
+const INSIGHT_ICON_MAP = {
+  trending: TrendingUp,
+  alert: AlertCircle,
+  briefcase: Briefcase,
+} as const
 
+// ─── Activity icon/color map ────────────────────────────────
+function getActivityIcon(type: string) {
+  switch (type) {
+    case 'check_in':
+      return { icon: CheckCircle2, color: 'text-emerald-500' }
+    case 'booking':
+      return { icon: UserPlus, color: 'text-indigo-500' }
+    case 'payment':
+      return { icon: DollarSign, color: 'text-emerald-500' }
+    case 'cancellation':
+      return { icon: XCircle, color: 'text-orange-500' }
+    default:
+      return { icon: Calendar, color: 'text-gray-500' }
+  }
+}
+
+// ─── Loading Skeleton ───────────────────────────────────────
+function CommandCenterSkeleton() {
+  return (
+    <div className="space-y-5">
+      {/* AI Briefing skeleton */}
+      <div className="rounded-2xl border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Skeleton className="w-5 h-5 rounded" />
+          <Skeleton className="h-6 w-48" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex gap-3">
+              <Skeleton className="w-5 h-5 mt-0.5 flex-shrink-0 rounded" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-20 mt-1" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Metrics strip skeleton */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <Skeleton className="h-3 w-20 mb-3" />
+            <Skeleton className="h-8 w-16 mb-2" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        ))}
+      </div>
+
+      {/* Class Status + Timeline skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <Skeleton className="h-5 w-40 mb-4" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 flex-1" />
+                <Skeleton className="h-2 w-24 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <Skeleton className="h-5 w-36 mb-4" />
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex gap-3">
+                <Skeleton className="w-2.5 h-2.5 rounded-full mt-1.5" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-32" />
+                  <div className="flex gap-1">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Activity Feed skeleton */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <Skeleton className="h-5 w-32 mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-start gap-3 py-2 px-2">
+              <Skeleton className="w-5 h-5 rounded" />
+              <div className="flex-1 space-y-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-3 w-14" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── AI Briefing Card ────────────────────────────────────────
+function AIBriefingCard({ insights }: { insights: AIInsight[] }) {
   return (
     <div className="ai-border rounded-2xl p-6">
       <div className="bg-gradient-to-br from-indigo-500/[0.04] to-violet-500/[0.04] -m-6 p-6 rounded-2xl">
@@ -53,18 +155,21 @@ function AIBriefingCard() {
           <h2 className="text-lg font-bold text-gray-900">Good morning, Zach</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {insights.map((insight, i) => (
-            <div key={i} className="flex gap-3">
-              <insight.icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', insight.color)} />
-              <div>
-                <p className="text-sm text-gray-700 leading-relaxed">{insight.text}</p>
-                <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1">
-                  {insight.action}
-                  <ChevronRight className="w-3 h-3" />
-                </button>
+          {insights.map((insight, i) => {
+            const Icon = INSIGHT_ICON_MAP[insight.icon] || TrendingUp
+            return (
+              <div key={i} className="flex gap-3">
+                <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', insight.color)} />
+                <div>
+                  <p className="text-sm text-gray-700 leading-relaxed">{insight.text}</p>
+                  <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1">
+                    {insight.action}
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
@@ -101,23 +206,50 @@ function MetricCard({ label, value, trend, trendDirection, subtitle }: MetricCar
 }
 
 // ─── Class Status Board ──────────────────────────────────────
-function ClassStatusBoard() {
-  const classes = [
-    { time: '5:00 PM', name: 'Open Sauna', status: 'live' as const, booked: 11, capacity: 12 },
-    { time: '6:00 PM', name: 'Open Sauna', status: 'upcoming' as const, booked: 7, capacity: 12 },
-    { time: '7:00 PM', name: 'Guided: Whitney', status: 'upcoming' as const, booked: 9, capacity: 12, isGuided: true },
-    { time: '8:00 PM', name: 'Open Sauna', status: 'upcoming' as const, booked: 4, capacity: 12 },
-  ]
+function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
+  const now = new Date()
+
+  const classItems = classes.map((c) => {
+    const start = new Date(c.starts_at)
+    const end = new Date(c.ends_at)
+    const isLive = now >= start && now <= end
+    const isGuided = c.title.toLowerCase().includes('guided') || c.class_type_name?.toLowerCase().includes('guided')
+
+    return {
+      time: formatEasternTime(c.starts_at),
+      name: c.title,
+      status: isLive ? ('live' as const) : ('upcoming' as const),
+      booked: c.booked_count || c.attendees.length,
+      capacity: c.capacity,
+      isGuided,
+    }
+  })
+
+  // Show at least a message if no classes
+  if (classItems.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-gray-900">Class Status Board</h3>
+        </div>
+        <p className="text-sm text-gray-500">No classes scheduled for today.</p>
+      </div>
+    )
+  }
+
+  const hasLiveClass = classItems.some((c) => c.status === 'live')
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-gray-900">Class Status Board</h3>
-          <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-full">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            Live
-          </span>
+          {hasLiveClass && (
+            <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-full">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Live
+            </span>
+          )}
         </div>
         <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
           View All <ChevronRight className="w-3 h-3" />
@@ -125,7 +257,7 @@ function ClassStatusBoard() {
       </div>
 
       <div className="space-y-3">
-        {classes.map((cls, i) => (
+        {classItems.map((cls, i) => (
           <div key={i} className="flex items-center gap-3">
             <span className="text-sm font-medium text-gray-500 w-16 tabular-nums">{cls.time}</span>
             <span className={cn(
@@ -176,19 +308,64 @@ function ClassStatusBoard() {
 }
 
 // ─── Today's Timeline ────────────────────────────────────────
-function TodaysTimeline() {
-  const entries = [
-    { time: '5:00 PM', label: 'Open Sauna — In Progress', status: 'live', names: ['Sarah M.', 'David L.', 'Kevin S.', '+8 others'] },
-    { time: '6:00 PM', label: 'Open Sauna', status: 'upcoming', names: ['Michael R.', 'Tom B.', '+4 others'] },
-    { time: '7:00 PM', label: 'Guided — Whitney', status: 'upcoming', isGuided: true, names: ['Emily P.', 'Chris T.', '+6 others'] },
-    { time: '8:00 PM', label: 'Open Sauna', status: 'upcoming', names: ['Mike T.', '+3 others'] },
-  ]
+function TodaysTimeline({ classes }: { classes: ClassData[] }) {
+  const now = new Date()
+  const currentTimeStr = now.toLocaleTimeString('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  const entries = classes.map((c) => {
+    const start = new Date(c.starts_at)
+    const end = new Date(c.ends_at)
+    const isLive = now >= start && now <= end
+    const isGuided = c.title.toLowerCase().includes('guided') || c.class_type_name?.toLowerCase().includes('guided')
+
+    // Build display names from attendees
+    const displayNames: string[] = []
+    const totalBooked = c.booked_count || c.attendees.length
+    const shownAttendees = c.attendees.slice(0, 3)
+    for (const a of shownAttendees) {
+      // Format as "First L."
+      const parts = a.full_name.split(' ')
+      if (parts.length >= 2) {
+        displayNames.push(`${parts[0]} ${parts[parts.length - 1][0]}.`)
+      } else {
+        displayNames.push(a.full_name)
+      }
+    }
+    const remaining = totalBooked - shownAttendees.length
+    if (remaining > 0) {
+      displayNames.push(`+${remaining} others`)
+    }
+
+    return {
+      time: formatEasternTime(c.starts_at),
+      label: isLive
+        ? `${c.title} — In Progress`
+        : c.title,
+      status: isLive ? 'live' : 'upcoming',
+      isGuided,
+      names: displayNames.length > 0 ? displayNames : ['No bookings yet'],
+    }
+  })
+
+  if (entries.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <h3 className="font-bold text-gray-900">Today&apos;s Timeline</h3>
+        <p className="text-sm text-gray-500 mt-4">No classes scheduled for today.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-gray-900">Today&apos;s Timeline</h3>
-        <span className="text-xs font-medium text-gray-400 tabular-nums">17:14</span>
+        <span className="text-xs font-medium text-gray-400 tabular-nums">{currentTimeStr}</span>
       </div>
 
       <div className="space-y-4">
@@ -230,12 +407,15 @@ function TodaysTimeline() {
 }
 
 // ─── Activity Feed ───────────────────────────────────────────
-function ActivityFeed() {
-  const activities = [
-    { icon: CheckCircle2, color: 'text-emerald-500', text: 'Sarah M. checked in', detail: '5:00 PM Open Sauna', time: '5:00 PM' },
-    { icon: UserPlus, color: 'text-indigo-500', text: 'New booking: James K.', detail: '7:00 PM Guided, Whitney', time: '4:48 PM' },
-    { icon: DollarSign, color: 'text-emerald-500', text: 'Payment received: $149', detail: 'Mike T. — Unlimited Monthly', time: '4:30 PM' },
-  ]
+function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
+  if (activities.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <h3 className="font-bold text-gray-900">Activity Feed</h3>
+        <p className="text-sm text-gray-500 mt-4">No recent activity.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
@@ -250,16 +430,25 @@ function ActivityFeed() {
       </div>
 
       <div className="space-y-3">
-        {activities.map((activity, i) => (
-          <div key={i} className="flex items-start gap-3 py-2 px-2 rounded-xl hover:bg-gray-50/80 transition-colors cursor-pointer">
-            <activity.icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', activity.color)} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{activity.text}</p>
-              <p className="text-xs text-gray-500">{activity.detail}</p>
+        {activities.map((activity) => {
+          const { icon: Icon, color } = getActivityIcon(activity.type)
+          const time = formatEasternTime(activity.created_at)
+          // Split description into main text and detail
+          const parts = activity.description.split(' — ')
+          const mainText = parts[0]
+          const detail = parts.slice(1).join(' — ')
+
+          return (
+            <div key={activity.id} className="flex items-start gap-3 py-2 px-2 rounded-xl hover:bg-gray-50/80 transition-colors cursor-pointer">
+              <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', color)} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{mainText}</p>
+                {detail && <p className="text-xs text-gray-500">{detail}</p>}
+              </div>
+              <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">{time}</span>
             </div>
-            <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">{activity.time}</span>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -267,32 +456,76 @@ function ActivityFeed() {
 
 // ─── Command Center Page ─────────────────────────────────────
 export default function CommandCenter() {
+  const {
+    bookingsToday,
+    currentSessionBooked,
+    currentSessionCapacity,
+    currentSessionLive,
+    revenueToday,
+    walkInsToday,
+    noShowsToday,
+    classes,
+    activities,
+    aiInsights,
+    isLoading,
+  } = useCommandCenterData()
+
+  if (isLoading) {
+    return <CommandCenterSkeleton />
+  }
+
   return (
     <motion.div {...fadeInUp} className="space-y-5">
       {/* AI Briefing */}
-      <AIBriefingCard />
+      <AIBriefingCard insights={aiInsights} />
 
       {/* Metrics Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <MetricCard label="Bookings Today" value="34" trend="↗ 12%" trendDirection="up" />
-        <MetricCard label="Current Session" value="9/12" trend="↗ Live" trendDirection="up" subtitle="In progress" />
-        <MetricCard label="Revenue Today" value="$2,847" trend="↗ 8.2%" trendDirection="up" />
-        <MetricCard label="Walk-Ins" value="7" trend="↗ 2 today" trendDirection="up" />
-        <MetricCard label="No-Shows" value="1" trend="↘ 50%" trendDirection="down" />
+        <MetricCard
+          label="Bookings Today"
+          value={String(bookingsToday)}
+          trend={bookingsToday > 0 ? `${bookingsToday} total` : 'No bookings'}
+          trendDirection={bookingsToday > 0 ? 'up' : 'neutral'}
+        />
+        <MetricCard
+          label="Current Session"
+          value={`${currentSessionBooked}/${currentSessionCapacity}`}
+          trend={currentSessionLive ? 'Live' : 'No active session'}
+          trendDirection={currentSessionLive ? 'up' : 'neutral'}
+          subtitle={currentSessionLive ? 'In progress' : undefined}
+        />
+        <MetricCard
+          label="Revenue Today"
+          value={formatCurrency(revenueToday)}
+          trend={revenueToday > 0 ? 'Today' : 'No revenue yet'}
+          trendDirection={revenueToday > 0 ? 'up' : 'neutral'}
+        />
+        <MetricCard
+          label="Walk-Ins"
+          value={String(walkInsToday)}
+          trend={walkInsToday > 0 ? `${walkInsToday} today` : 'None today'}
+          trendDirection={walkInsToday > 0 ? 'up' : 'neutral'}
+        />
+        <MetricCard
+          label="No-Shows"
+          value={String(noShowsToday)}
+          trend={noShowsToday === 0 ? 'None' : `${noShowsToday} today`}
+          trendDirection={noShowsToday === 0 ? 'down' : 'up'}
+        />
       </div>
 
       {/* Class Status + Timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-7">
-          <ClassStatusBoard />
+          <ClassStatusBoard classes={classes} />
         </div>
         <div className="lg:col-span-5">
-          <TodaysTimeline />
+          <TodaysTimeline classes={classes} />
         </div>
       </div>
 
       {/* Activity Feed */}
-      <ActivityFeed />
+      <ActivityFeed activities={activities} />
     </motion.div>
   )
 }

@@ -17,6 +17,7 @@ const breadcrumbs: Record<string, string> = {
   '/analytics': 'Analytics > AI Insights Hub',
   '/segments': 'Members > Segments',
   '/engagement': 'Members > Engagement',
+  '/settings': 'Settings > Studio Configuration',
 }
 
 export default function AdminLayout({

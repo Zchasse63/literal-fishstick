@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -8,7 +8,8 @@ import {
   Crown,
   UserPlus,
   Sparkles,
-  Building2,
+  CreditCard,
+  Clock,
   Heart,
   X,
   Send,
@@ -18,6 +19,10 @@ import {
   Minus,
   ChevronRight,
   Zap,
+  Activity,
+  Infinity,
+  Star,
+  Loader2,
 } from 'lucide-react'
 
 const fadeInUp = {
@@ -27,7 +32,32 @@ const fadeInUp = {
 }
 
 // ─── Types ──────────────────────────────────────────────────
-interface Segment {
+interface SegmentRule {
+  field: string
+  operator: string
+  value: string | number | string[]
+}
+
+interface SegmentRules {
+  logic: 'AND' | 'OR'
+  conditions: SegmentRule[]
+}
+
+interface DbSegment {
+  id: string
+  name: string
+  description: string | null
+  rules: SegmentRules
+  color: string
+  icon: string
+  is_system: boolean
+  member_count: number
+  last_computed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface DisplaySegment {
   id: string
   name: string
   count: number
@@ -39,138 +69,55 @@ interface Segment {
   iconBg: string
   icon: React.ElementType
   type: 'auto' | 'manual'
-  members: SampleMember[]
+  dbColor: string
 }
 
-interface SampleMember {
-  name: string
-  lastVisit: string
-  ltv: number
+// ─── Icon Mapping ──────────────────────────────────────────────
+const ICON_MAP: Record<string, React.ElementType> = {
+  'activity': Activity,
+  'alert-triangle': AlertTriangle,
+  'credit-card': CreditCard,
+  'star': Star,
+  'crown': Crown,
+  'clock': Clock,
+  'user-plus': UserPlus,
+  'infinity': Infinity,
+  'heart': Heart,
+  'sparkles': Sparkles,
+  'users': Users,
+  'zap': Zap,
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const SEGMENTS: Segment[] = [
-  {
-    id: 'churn-risk',
-    name: 'Churn Risk',
-    count: 47,
-    description: 'No visit in 14+ days',
-    trend: 'up',
-    trendValue: '12%',
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-50',
-    iconBg: 'bg-orange-100',
-    icon: AlertTriangle,
-    type: 'auto',
-    members: [
-      { name: 'Marcus Chen', lastVisit: '18 days ago', ltv: 420 },
-      { name: 'Priya Sharma', lastVisit: '21 days ago', ltv: 680 },
-      { name: 'David Ortiz', lastVisit: '16 days ago', ltv: 310 },
-      { name: 'Emily Watson', lastVisit: '25 days ago', ltv: 540 },
-      { name: 'Ryan Thompson', lastVisit: '14 days ago', ltv: 190 },
-    ],
-  },
-  {
-    id: 'high-value',
-    name: 'High Value',
-    count: 89,
-    description: 'Top 10% by LTV',
-    trend: 'up',
-    trendValue: '5%',
-    color: 'text-emerald-500',
-    bgColor: 'bg-emerald-50',
-    iconBg: 'bg-emerald-100',
-    icon: Crown,
-    type: 'auto',
-    members: [
-      { name: 'Sarah Martinez', lastVisit: '1 day ago', ltv: 2840 },
-      { name: 'James Kowalski', lastVisit: '2 days ago', ltv: 2610 },
-      { name: 'Laura Gonzalez', lastVisit: 'Today', ltv: 2390 },
-      { name: 'Michael Park', lastVisit: '3 days ago', ltv: 2150 },
-      { name: 'Anna Li', lastVisit: '1 day ago', ltv: 1980 },
-    ],
-  },
-  {
-    id: 'new-members',
-    name: 'New Members',
-    count: 23,
-    description: 'Joined in last 30 days',
-    trend: 'up',
-    trendValue: '18%',
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-50',
-    iconBg: 'bg-indigo-100',
-    icon: UserPlus,
-    type: 'auto',
-    members: [
-      { name: 'Tyler Brooks', lastVisit: 'Today', ltv: 89 },
-      { name: 'Mia Johnson', lastVisit: '2 days ago', ltv: 149 },
-      { name: 'Chris Nguyen', lastVisit: '1 day ago', ltv: 89 },
-      { name: 'Sophia Davis', lastVisit: '4 days ago', ltv: 59 },
-      { name: 'Noah Williams', lastVisit: 'Today', ltv: 129 },
-    ],
-  },
-  {
-    id: 'guided-prospects',
-    name: 'Guided Prospects',
-    count: 61,
-    description: "Haven't tried Guided yet",
+// ─── Color Mapping ──────────────────────────────────────────────
+function getColorClasses(hex: string): { color: string; bgColor: string; iconBg: string } {
+  const colorMap: Record<string, { color: string; bgColor: string; iconBg: string }> = {
+    '#10B981': { color: 'text-emerald-500', bgColor: 'bg-emerald-50', iconBg: 'bg-emerald-100' },
+    '#F97316': { color: 'text-orange-500', bgColor: 'bg-orange-50', iconBg: 'bg-orange-100' },
+    '#06B6D4': { color: 'text-cyan-500', bgColor: 'bg-cyan-50', iconBg: 'bg-cyan-100' },
+    '#F59E0B': { color: 'text-amber-500', bgColor: 'bg-amber-50', iconBg: 'bg-amber-100' },
+    '#EF4444': { color: 'text-red-500', bgColor: 'bg-red-50', iconBg: 'bg-red-100' },
+    '#8B5CF6': { color: 'text-violet-500', bgColor: 'bg-violet-50', iconBg: 'bg-violet-100' },
+    '#4F46E5': { color: 'text-indigo-600', bgColor: 'bg-indigo-50', iconBg: 'bg-indigo-100' },
+    '#EC4899': { color: 'text-pink-500', bgColor: 'bg-pink-50', iconBg: 'bg-pink-100' },
+  }
+  return colorMap[hex] ?? { color: 'text-gray-500', bgColor: 'bg-gray-50', iconBg: 'bg-gray-100' }
+}
+
+function mapDbSegmentToDisplay(seg: DbSegment): DisplaySegment {
+  const colors = getColorClasses(seg.color)
+  return {
+    id: seg.id,
+    name: seg.name,
+    count: seg.member_count ?? 0,
+    description: seg.description ?? '',
     trend: 'stable',
     trendValue: '0%',
-    color: 'text-violet-500',
-    bgColor: 'bg-violet-50',
-    iconBg: 'bg-violet-100',
-    icon: Sparkles,
-    type: 'auto',
-    members: [
-      { name: 'Rachel Kim', lastVisit: '3 days ago', ltv: 440 },
-      { name: 'Kevin Patel', lastVisit: '5 days ago', ltv: 320 },
-      { name: 'Jasmine Torres', lastVisit: '1 day ago', ltv: 580 },
-      { name: 'Brandon Lee', lastVisit: '7 days ago', ltv: 210 },
-      { name: 'Olivia Brown', lastVisit: '2 days ago', ltv: 670 },
-    ],
-  },
-  {
-    id: 'corporate',
-    name: 'Corporate',
-    count: 34,
-    description: 'Company account members',
-    trend: 'up',
-    trendValue: '8%',
-    color: 'text-amber-500',
-    bgColor: 'bg-amber-50',
-    iconBg: 'bg-amber-100',
-    icon: Building2,
-    type: 'manual',
-    members: [
-      { name: 'Jessica Rivera', lastVisit: '1 day ago', ltv: 0 },
-      { name: 'Tom Anderson', lastVisit: '3 days ago', ltv: 0 },
-      { name: 'Amy Chang', lastVisit: 'Today', ltv: 0 },
-      { name: 'Derek Foster', lastVisit: '5 days ago', ltv: 0 },
-      { name: 'Nina Petrova', lastVisit: '2 days ago', ltv: 0 },
-    ],
-  },
-  {
-    id: 'ambassadors',
-    name: 'Ambassadors',
-    count: 18,
-    description: '3+ referrals',
-    trend: 'up',
-    trendValue: '22%',
-    color: 'text-teal-500',
-    bgColor: 'bg-teal-50',
-    iconBg: 'bg-teal-100',
-    icon: Heart,
-    type: 'auto',
-    members: [
-      { name: 'Carlos Mendez', lastVisit: 'Today', ltv: 1890 },
-      { name: 'Whitney Cooper', lastVisit: '1 day ago', ltv: 1540 },
-      { name: 'Aiden Moore', lastVisit: '2 days ago', ltv: 1320 },
-      { name: 'Grace Taylor', lastVisit: 'Today', ltv: 1780 },
-      { name: 'Ethan Reeves', lastVisit: '3 days ago', ltv: 1150 },
-    ],
-  },
-]
+    ...colors,
+    icon: ICON_MAP[seg.icon] ?? Users,
+    type: seg.is_system ? 'auto' : 'manual',
+    dbColor: seg.color,
+  }
+}
 
 // ─── Trend Icon ──────────────────────────────────────────────
 function TrendIndicator({ trend, value }: { trend: 'up' | 'down' | 'stable'; value: string }) {
@@ -197,7 +144,65 @@ function TrendIndicator({ trend, value }: { trend: 'up' | 'down' | 'stable'; val
 
 // ─── Page Component ──────────────────────────────────────────
 export default function SegmentsPage() {
-  const [selectedSegment, setSelectedSegment] = useState<Segment | null>(null)
+  const [segments, setSegments] = useState<DisplaySegment[]>([])
+  const [selectedSegment, setSelectedSegment] = useState<DisplaySegment | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchSegments = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/segments')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      const data: DbSegment[] = await res.json()
+      const mapped = data.map(mapDbSegmentToDisplay)
+      // Sort by count descending for visual impact
+      mapped.sort((a, b) => b.count - a.count)
+      setSegments(mapped)
+      setError(null)
+    } catch (err) {
+      console.error('Failed to fetch segments:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load segments')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSegments()
+  }, [fetchSegments])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <div className="flex items-center gap-3 text-gray-400">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm font-medium">Loading segments...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <div className="text-center">
+          <AlertTriangle className="mx-auto h-8 w-8 text-orange-400" />
+          <p className="mt-3 text-sm font-medium text-gray-700">Failed to load segments</p>
+          <p className="mt-1 text-xs text-gray-400">{error}</p>
+          <button
+            onClick={fetchSegments}
+            className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8">
@@ -215,6 +220,26 @@ export default function SegmentsPage() {
             Create Segment
           </button>
         </div>
+
+        {/* Summary stats */}
+        <div className="mt-6 flex gap-6">
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Segments</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-gray-900">{segments.length}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Members Tracked</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-gray-900">
+              {segments.reduce((sum, s) => sum + s.count, 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">System Segments</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-gray-900">
+              {segments.filter(s => s.type === 'auto').length}
+            </p>
+          </div>
+        </div>
       </motion.div>
 
       <div className="flex gap-6">
@@ -226,7 +251,7 @@ export default function SegmentsPage() {
           )}
           style={{ flex: selectedSegment ? '1 1 60%' : '1 1 100%' }}
         >
-          {SEGMENTS.map((segment, i) => {
+          {segments.map((segment, i) => {
             const Icon = segment.icon
             const isSelected = selectedSegment?.id === segment.id
 
@@ -269,7 +294,7 @@ export default function SegmentsPage() {
                       {segment.name}
                     </p>
                     <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900">
-                      {segment.count}
+                      {segment.count.toLocaleString()}
                     </p>
                     <p className="mt-1 text-sm text-gray-500">{segment.description}</p>
                   </div>
@@ -350,7 +375,7 @@ export default function SegmentsPage() {
                         Members
                       </p>
                       <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900">
-                        {selectedSegment.count}
+                        {selectedSegment.count.toLocaleString()}
                       </p>
                     </div>
                     <div className="text-right">
@@ -379,38 +404,34 @@ export default function SegmentsPage() {
                   </div>
                 </div>
 
-                {/* Sample Members */}
+                {/* Segment Info */}
                 <div className="p-5">
                   <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    Sample Members
+                    Segment Details
                   </p>
                   <div className="space-y-3">
-                    {selectedSegment.members.map((member) => (
-                      <div
-                        key={member.name}
-                        className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2.5"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
-                            {member.name
-                              .split(' ')
-                              .map((n) => n[0])
-                              .join('')}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {member.name}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {member.lastVisit}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-sm font-semibold tabular-nums text-gray-700">
-                          ${member.ltv.toLocaleString()}
-                        </p>
+                    <div className="rounded-xl bg-gray-50 px-4 py-3">
+                      <p className="text-xs font-medium text-gray-500">Description</p>
+                      <p className="mt-1 text-sm text-gray-900">{selectedSegment.description}</p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 px-4 py-3">
+                      <p className="text-xs font-medium text-gray-500">Type</p>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {selectedSegment.type === 'auto'
+                          ? 'System — auto-computed from member data'
+                          : 'Custom — manually defined rules'}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 px-4 py-3">
+                      <p className="text-xs font-medium text-gray-500">Color</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <div
+                          className="h-4 w-4 rounded-full"
+                          style={{ backgroundColor: selectedSegment.dbColor }}
+                        />
+                        <span className="text-sm text-gray-900">{selectedSegment.dbColor}</span>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
 

@@ -13,32 +13,16 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useEmployeeProfile, usePromoAttributions } from '@/hooks/use-employee'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
 }
-
-const stats = [
-  { label: 'Total Signups', value: '23', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Active Members', value: '19', icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { label: 'This Period', value: '$340', icon: DollarSign, color: 'text-violet-600', bg: 'bg-violet-50' },
-  { label: 'All-Time', value: '$2,890', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
-]
-
-const referrals = [
-  { name: 'Alex Rivera', date: 'Mar 14, 2026', plan: 'Unlimited Monthly', status: 'active' as const, commission: 25 },
-  { name: 'Jordan Lee', date: 'Mar 8, 2026', plan: '10-Class Pack', status: 'active' as const, commission: 15 },
-  { name: 'Morgan Chen', date: 'Feb 28, 2026', plan: 'Unlimited Monthly', status: 'active' as const, commission: 25 },
-  { name: 'Casey Kim', date: 'Feb 20, 2026', plan: '6-Class Pack', status: 'active' as const, commission: 10 },
-  { name: 'Taylor Brooks', date: 'Feb 12, 2026', plan: 'Unlimited Monthly', status: 'churned' as const, commission: 25 },
-  { name: 'Riley Adams', date: 'Jan 30, 2026', plan: 'Drop-In', status: 'one-time' as const, commission: 5 },
-  { name: 'Jamie Santos', date: 'Jan 22, 2026', plan: 'Unlimited Monthly', status: 'active' as const, commission: 25 },
-  { name: 'Quinn Parker', date: 'Jan 15, 2026', plan: '10-Class Pack', status: 'active' as const, commission: 15 },
-]
 
 const statusConfig = {
   active: { label: 'Active', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -48,11 +32,47 @@ const statusConfig = {
 
 export default function PromoPage() {
   const [copied, setCopied] = useState(false)
+  const { trainer, loading: profileLoading } = useEmployeeProfile()
+  const { attributions, loading: attribLoading } = usePromoAttributions(trainer?.id)
+
+  const loading = profileLoading || attribLoading
+  const promoCode = trainer?.promo_code ?? 'N/A'
+  const commissionRate = trainer?.commission_rate ?? 0
+
+  // Calculate stats
+  const totalSignups = attributions.length
+  const totalCommission = attributions.reduce((acc, a) => acc + (a.commission_amount ?? 0), 0)
+
+  // This period (current month)
+  const now = new Date()
+  const thisMonthAttribs = attributions.filter((a) => {
+    const d = new Date(a.created_at)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  })
+  const thisMonthCommission = thisMonthAttribs.reduce((acc, a) => acc + (a.commission_amount ?? 0), 0)
+
+  // Active vs churned — we consider commission_paid as a proxy for status
+  const paidCount = attributions.filter((a) => a.commission_paid).length
+
+  const stats = [
+    { label: 'Total Signups', value: String(totalSignups), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Paid Commissions', value: String(paidCount), icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'This Period', value: `$${thisMonthCommission.toLocaleString()}`, icon: DollarSign, color: 'text-violet-600', bg: 'bg-violet-50' },
+    { label: 'All-Time', value: `$${totalCommission.toLocaleString()}`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
+  ]
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('WHITNEY25')
+    navigator.clipboard.writeText(promoCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+      </div>
+    )
   }
 
   return (
@@ -72,8 +92,12 @@ export default function PromoPage() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
             <p className="text-sm font-medium text-indigo-200 mb-2">Your Promo Code</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-wider">WHITNEY25</h2>
-            <p className="text-sm text-indigo-200 mt-2">Members get 25% off their first month</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-wider">{promoCode}</h2>
+            {commissionRate > 0 && (
+              <p className="text-sm text-indigo-200 mt-2">
+                {commissionRate}% commission on referred purchases
+              </p>
+            )}
             <div className="flex items-center gap-3 mt-5">
               <button
                 onClick={handleCopy}
@@ -125,57 +149,66 @@ export default function PromoPage() {
         <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="text-sm font-bold text-gray-900">Referral Log</h3>
         </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left px-5 py-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Member</span>
-              </th>
-              <th className="text-left px-5 py-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Signup Date</span>
-              </th>
-              <th className="text-left px-5 py-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Plan</span>
-              </th>
-              <th className="text-left px-5 py-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</span>
-              </th>
-              <th className="text-left px-5 py-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Commission</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {referrals.map((ref, i) => {
-              const status = statusConfig[ref.status]
-              return (
-                <tr key={i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <span className="text-sm font-semibold text-gray-900">{ref.name}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="text-sm text-gray-600">{ref.date}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="text-sm font-medium text-gray-700">{ref.plan}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className={cn(
-                      'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold',
-                      status.bg, status.color
-                    )}>
-                      <status.icon className="w-3 h-3" />
-                      {status.label}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="text-sm font-bold tabular-nums text-emerald-600">${ref.commission}</span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+        {attributions.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-gray-400">No referrals yet</div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left px-5 py-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Member</span>
+                </th>
+                <th className="text-left px-5 py-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Signup Date</span>
+                </th>
+                <th className="text-left px-5 py-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Plan</span>
+                </th>
+                <th className="text-left px-5 py-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</span>
+                </th>
+                <th className="text-left px-5 py-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Commission</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {attributions.map((attr) => {
+                const memberName = attr.members?.profiles?.full_name ?? 'Member'
+                const date = new Date(attr.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                const paid = attr.commission_paid
+                const statusKey = paid ? 'active' : 'one-time'
+                const status = statusConfig[statusKey]
+
+                return (
+                  <tr key={attr.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-semibold text-gray-900">{memberName}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm text-gray-600">{date}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-medium text-gray-700">{attr.plan_purchased ?? 'N/A'}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={cn(
+                        'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold',
+                        status.bg, status.color
+                      )}>
+                        <status.icon className="w-3 h-3" />
+                        {status.label}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-bold tabular-nums text-emerald-600">${attr.commission_amount}</span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </motion.div>
     </div>
   )

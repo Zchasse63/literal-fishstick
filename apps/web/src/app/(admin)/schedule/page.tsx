@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -18,6 +18,9 @@ import {
   Edit3,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useClasses, useSupabase } from '@/hooks/use-supabase'
+import type { ClassInstance } from '@meridian/types'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 6 },
@@ -39,46 +42,158 @@ interface ClassBlock {
   capacity: number
   checkedIn: number
   attendees: Attendee[]
+  date: string // YYYY-MM-DD
 }
 
 interface Attendee {
+  id: string
   name: string
+  email: string
   status: 'checked_in' | 'booked' | 'no_show' | 'waitlisted'
+  isWalkIn: boolean
+  isGuest: boolean
+  checkedInAt: string | null
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const DATES = [12, 13, 14, 15, 16, 17, 18]
-const TIME_SLOTS = ['5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM']
+// ─── Date Helpers (Eastern Time) ────────────────────────────
+const EASTERN_TZ = 'America/New_York'
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const SCHEDULE: Record<string, ClassBlock[]> = {
-  'Mon-5:00 PM': [{ id: '1', time: '5:00 PM', type: 'open', name: 'Open Sauna', booked: 11, capacity: 12, checkedIn: 9, attendees: [
-    { name: 'Sarah Martinez', status: 'checked_in' }, { name: 'James K.', status: 'checked_in' }, { name: 'Laura G.', status: 'checked_in' },
-    { name: 'David S.', status: 'checked_in' }, { name: 'Emily W.', status: 'checked_in' }, { name: 'Mark T.', status: 'checked_in' },
-    { name: 'Jessica R.', status: 'checked_in' }, { name: 'Chris B.', status: 'checked_in' }, { name: 'Anna L.', status: 'checked_in' },
-    { name: 'Mike P.', status: 'booked' }, { name: 'Priya S.', status: 'booked' },
-  ]}],
-  'Mon-6:00 PM': [{ id: '2', time: '6:00 PM', type: 'guided', name: 'Guided', trainer: 'Trent', booked: 8, capacity: 12, checkedIn: 6, attendees: [
-    { name: 'Alex M.', status: 'checked_in' }, { name: 'Jordan P.', status: 'checked_in' }, { name: 'Taylor R.', status: 'checked_in' },
-    { name: 'Sam K.', status: 'checked_in' }, { name: 'Morgan B.', status: 'checked_in' }, { name: 'Casey L.', status: 'checked_in' },
-    { name: 'Drew H.', status: 'booked' }, { name: 'Riley N.', status: 'booked' },
-  ]}],
-  'Mon-7:00 PM': [{ id: '3', time: '7:00 PM', type: 'open', name: 'Open Sauna', booked: 5, capacity: 12, checkedIn: 0, attendees: [
-    { name: 'Pat D.', status: 'booked' }, { name: 'Quinn S.', status: 'booked' }, { name: 'Robin T.', status: 'booked' },
-    { name: 'Skyler M.', status: 'booked' }, { name: 'Jamie R.', status: 'booked' },
-  ]}],
-  'Wed-5:00 PM': [{ id: '4', time: '5:00 PM', type: 'open', name: 'Open Sauna', booked: 6, capacity: 12, checkedIn: 0, attendees: [] }],
-  'Wed-6:00 PM': [{ id: '5', time: '6:00 PM', type: 'open', name: 'Open Sauna', booked: 9, capacity: 12, checkedIn: 0, attendees: [] }],
-  'Wed-7:00 PM': [{ id: '6', time: '7:00 PM', type: 'guided', name: 'Guided', trainer: 'Whitney', booked: 9, capacity: 12, checkedIn: 0, attendees: [
-    { name: 'Sarah Martinez', status: 'booked' }, { name: 'James K.', status: 'booked' }, { name: 'Laura G.', status: 'booked' },
-    { name: 'David S.', status: 'booked' }, { name: 'Emily W.', status: 'booked' }, { name: 'Mark T.', status: 'booked' },
-    { name: 'Priya S.', status: 'booked' }, { name: 'Chris T.', status: 'booked' }, { name: 'John D.', status: 'booked' },
-  ]}],
-  'Sat-5:00 PM': [], // Weekend uses different times — remap below
-  'Sat-9:00 AM': [{ id: '7', time: '9:00 AM', type: 'open', name: 'Open Sauna', booked: 10, capacity: 12, checkedIn: 0, attendees: [] }],
-  'Sat-10:00 AM': [{ id: '8', time: '10:00 AM', type: 'open', name: 'Open Sauna', booked: 7, capacity: 12, checkedIn: 0, attendees: [] }],
-  'Sun-9:00 AM': [{ id: '9', time: '9:00 AM', type: 'open', name: 'Open Sauna', booked: 8, capacity: 12, checkedIn: 0, attendees: [] }],
-  'Sun-12:00 PM': [{ id: '10', time: '12:00 PM', type: 'guided', name: 'Guided', trainer: 'Drennen', booked: 8, capacity: 12, checkedIn: 0, attendees: [] }],
+function getEasternNow(): Date {
+  // Create a date object representing "now" in Eastern time
+  const now = new Date()
+  return now
+}
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay() // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day // Monday start
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function getWeekEnd(weekStart: Date): Date {
+  const d = new Date(weekStart)
+  d.setDate(d.getDate() + 6)
+  d.setHours(23, 59, 59, 999)
+  return d
+}
+
+function formatDateISO(date: Date): string {
+  return date.toISOString().split('T')[0]
+}
+
+function getWeekDays(weekStart: Date): { label: string; date: number; dateISO: string; dayOfWeek: number }[] {
+  const days: { label: string; date: number; dateISO: string; dayOfWeek: number }[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + i)
+    days.push({
+      label: DAY_LABELS[d.getDay()],
+      date: d.getDate(),
+      dateISO: formatDateISO(d),
+      dayOfWeek: d.getDay(), // 0=Sun, 6=Sat
+    })
+  }
+  return days
+}
+
+function formatWeekHeader(weekStart: Date): string {
+  const end = new Date(weekStart)
+  end.setDate(end.getDate() + 6)
+  const startMonth = weekStart.toLocaleDateString('en-US', { month: 'short', timeZone: EASTERN_TZ })
+  const endMonth = end.toLocaleDateString('en-US', { month: 'short', timeZone: EASTERN_TZ })
+  if (startMonth === endMonth) {
+    return `${startMonth} ${weekStart.getDate()} – ${end.getDate()}, ${end.getFullYear()}`
+  }
+  return `${startMonth} ${weekStart.getDate()} – ${endMonth} ${end.getDate()}, ${end.getFullYear()}`
+}
+
+/**
+ * Convert 24hr "HH:MM" to 12hr display "H:MM AM/PM" in Eastern time.
+ * We receive raw HH:MM from the database (already in Eastern since studio operates in ET).
+ */
+function formatTime24to12(time24: string): string {
+  const [hStr, mStr] = time24.split(':')
+  let h = parseInt(hStr, 10)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  if (h === 0) h = 12
+  else if (h > 12) h -= 12
+  return `${h}:${mStr} ${ampm}`
+}
+
+function classTypeToBlockType(classType: string): 'open' | 'guided' | 'private' {
+  if (classType === 'open_sauna') return 'open'
+  if (classType === 'guided') return 'guided'
+  return 'private'
+}
+
+function isToday(dateISO: string): boolean {
+  return formatDateISO(new Date()) === dateISO
+}
+
+// ─── Transform DB class to UI ClassBlock ────────────────────
+function classInstanceToBlock(cls: ClassInstance & { class_types: Record<string, unknown> | null }): ClassBlock {
+  return {
+    id: cls.id,
+    time: formatTime24to12(cls.start_time),
+    type: classTypeToBlockType(cls.class_type),
+    name: cls.name,
+    trainer: cls.trainer_name ?? undefined,
+    booked: cls.booked_count,
+    capacity: cls.capacity,
+    checkedIn: cls.checked_in_count,
+    attendees: [], // loaded on click
+    date: cls.date,
+  }
+}
+
+// ─── Loading Skeleton ───────────────────────────────────────
+function ScheduleSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[700px]">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="w-20 p-3 text-left">
+                <Skeleton className="h-3 w-10" />
+              </th>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <th key={i} className="p-3 text-center">
+                  <Skeleton className="h-3 w-8 mx-auto mb-1" />
+                  <Skeleton className="h-5 w-6 mx-auto" />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 4 }).map((_, rowIdx) => (
+              <tr key={rowIdx} className="border-b border-gray-50 last:border-0">
+                <td className="p-3 align-top">
+                  <Skeleton className="h-4 w-14" />
+                </td>
+                {Array.from({ length: 7 }).map((_, colIdx) => (
+                  <td key={colIdx} className="p-2 align-top">
+                    {(rowIdx + colIdx) % 3 !== 0 && (
+                      <Skeleton className="h-16 w-full rounded-lg" />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-6 px-5 py-3 border-t border-gray-100">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-3 w-24" />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // ─── Class Block Component ──────────────────────────────────
@@ -110,9 +225,21 @@ function ClassBlockCard({ cls, onClick, isSelected }: { cls: ClassBlock; onClick
 }
 
 // ─── Detail Panel ───────────────────────────────────────────
-function ClassDetailPanel({ cls, onClose }: { cls: ClassBlock; onClose: () => void }) {
+function ClassDetailPanel({
+  cls,
+  attendees,
+  loadingAttendees,
+  onClose,
+}: {
+  cls: ClassBlock
+  attendees: Attendee[]
+  loadingAttendees: boolean
+  onClose: () => void
+}) {
   const fillPercent = Math.round((cls.booked / cls.capacity) * 100)
   const typeBadgeColor = cls.type === 'guided' ? 'bg-violet-100 text-violet-700' : 'bg-indigo-100 text-indigo-700'
+  const checkedInCount = attendees.filter(a => a.status === 'checked_in').length
+  const bookedCount = attendees.filter(a => a.status === 'checked_in' || a.status === 'booked').length
 
   return (
     <motion.div
@@ -126,9 +253,9 @@ function ClassDetailPanel({ cls, onClose }: { cls: ClassBlock; onClose: () => vo
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-gray-900">{cls.time === '7:00 PM' && cls.type === 'guided' ? 'Wednesday 7pm Guided' : `${cls.time} ${cls.name}`}</h3>
+            <h3 className="font-bold text-gray-900">{cls.time} {cls.name}</h3>
             <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded-full', typeBadgeColor)}>
-              {cls.type === 'guided' ? 'Guided' : 'Open'}
+              {cls.type === 'guided' ? 'Guided' : cls.type === 'private' ? 'Private' : 'Open'}
             </span>
           </div>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -153,26 +280,39 @@ function ClassDetailPanel({ cls, onClose }: { cls: ClassBlock; onClose: () => vo
       </div>
 
       {/* Attendees */}
-      {cls.attendees.length > 0 && (
+      {loadingAttendees ? (
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-20" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : attendees.length > 0 ? (
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-            Attendees ({cls.checkedIn}/{cls.booked})
+            Attendees ({checkedInCount}/{bookedCount})
           </p>
           <div className="space-y-1.5 max-h-64 overflow-y-auto">
-            {cls.attendees.map((a, i) => (
-              <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-gray-50">
+            {attendees.map((a) => (
+              <div key={a.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-gray-50">
                 <div className="flex items-center gap-2">
                   <span className={cn(
                     'w-1.5 h-1.5 rounded-full',
                     a.status === 'checked_in' ? 'bg-emerald-500' :
-                    a.status === 'no_show' ? 'bg-red-500' : 'bg-gray-300'
+                    a.status === 'no_show' ? 'bg-red-500' :
+                    a.status === 'waitlisted' ? 'bg-amber-500' : 'bg-gray-300'
                   )} />
-                  <span className="text-sm font-medium text-gray-900">{a.name}</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {a.name}
+                    {a.isWalkIn && <span className="ml-1 text-[10px] text-gray-400">(walk-in)</span>}
+                    {a.isGuest && <span className="ml-1 text-[10px] text-gray-400">(guest)</span>}
+                  </span>
                 </div>
                 <span className={cn(
                   'text-xs font-medium capitalize',
                   a.status === 'checked_in' ? 'text-emerald-600' :
-                  a.status === 'no_show' ? 'text-red-600' : 'text-gray-400'
+                  a.status === 'no_show' ? 'text-red-600' :
+                  a.status === 'waitlisted' ? 'text-amber-600' : 'text-gray-400'
                 )}>
                   {a.status.replace('_', ' ')}
                 </span>
@@ -180,6 +320,8 @@ function ClassDetailPanel({ cls, onClose }: { cls: ClassBlock; onClose: () => vo
             ))}
           </div>
         </div>
+      ) : (
+        <p className="text-sm text-gray-400 text-center py-4">No attendees yet</p>
       )}
 
       {/* Actions */}
@@ -203,36 +345,148 @@ function ClassDetailPanel({ cls, onClose }: { cls: ClassBlock; onClose: () => vo
 
 // ─── Schedule Page ──────────────────────────────────────────
 export default function SchedulePage() {
+  const supabase = useSupabase()
   const [viewMode, setViewMode] = useState<ViewMode>('Week')
   const [activeFilter, setActiveFilter] = useState<ClassFilter>('All Classes')
   const [selectedClass, setSelectedClass] = useState<ClassBlock | null>(null)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [attendees, setAttendees] = useState<Attendee[]>([])
+  const [loadingAttendees, setLoadingAttendees] = useState(false)
 
   const viewModes: ViewMode[] = ['Day', 'Week', 'Month']
   const filters: ClassFilter[] = ['All Classes', 'Open Sauna', 'Guided', 'Private']
 
-  const weekdayTimeSlots = ['5:00 PM', '6:00 PM', '7:00 PM']
-  const weekendTimeSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM']
+  // ─── Week calculation ───────────────────────────────────────
+  const weekStart = useMemo(() => {
+    const base = getWeekStart(getEasternNow())
+    base.setDate(base.getDate() + weekOffset * 7)
+    return base
+  }, [weekOffset])
 
-  const getTimeSlots = (dayIndex: number) => {
-    return dayIndex >= 5 ? weekendTimeSlots : weekdayTimeSlots
+  const weekEnd = useMemo(() => getWeekEnd(weekStart), [weekStart])
+  const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
+  const todayISO = formatDateISO(new Date())
+
+  // ─── Fetch classes for current week ─────────────────────────
+  const { data: rawClasses, loading: classesLoading, error: classesError } = useClasses({
+    from: formatDateISO(weekStart),
+    to: formatDateISO(weekEnd),
+  })
+
+  // ─── Transform classes into ClassBlocks ─────────────────────
+  const classBlocks = useMemo<ClassBlock[]>(() => {
+    if (!rawClasses) return []
+    return rawClasses.map(classInstanceToBlock)
+  }, [rawClasses])
+
+  // ─── Collect all unique time slots from the data ────────────
+  const allTimeSlots = useMemo(() => {
+    const timesSet = new Set<string>()
+    for (const cls of classBlocks) {
+      timesSet.add(cls.time)
+    }
+    // If empty, provide some defaults so the grid isn't blank
+    if (timesSet.size === 0) {
+      return ['5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM']
+    }
+    // Sort time slots chronologically
+    return Array.from(timesSet).sort((a, b) => {
+      return parseTime12(a) - parseTime12(b)
+    })
+  }, [classBlocks])
+
+  // ─── Get classes for a given day + time cell ────────────────
+  const getClasses = useCallback(
+    (dateISO: string, time: string): ClassBlock[] => {
+      let filtered = classBlocks.filter(c => c.date === dateISO && c.time === time)
+      if (activeFilter === 'Open Sauna') filtered = filtered.filter(c => c.type === 'open')
+      else if (activeFilter === 'Guided') filtered = filtered.filter(c => c.type === 'guided')
+      else if (activeFilter === 'Private') filtered = filtered.filter(c => c.type === 'private')
+      return filtered
+    },
+    [classBlocks, activeFilter]
+  )
+
+  // ─── Fetch attendees when a class is selected ───────────────
+  const fetchAttendees = useCallback(
+    async (classId: string) => {
+      setLoadingAttendees(true)
+      setAttendees([])
+
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            status,
+            is_walk_in,
+            is_guest,
+            checked_in_at,
+            members!inner (
+              user_id,
+              profiles:user_id (
+                full_name,
+                email
+              )
+            )
+          `)
+          .eq('class_id', classId)
+          .in('status', ['confirmed', 'checked_in', 'no_show', 'waitlisted'])
+          .order('created_at', { ascending: true })
+
+        if (error) throw error
+
+        const mapped: Attendee[] = (data ?? []).map((row: any) => {
+          const profile = row.members?.profiles
+          return {
+            id: row.id,
+            name: profile?.full_name ?? 'Unknown',
+            email: profile?.email ?? '',
+            status: row.status === 'confirmed' ? 'booked' : row.status,
+            isWalkIn: row.is_walk_in,
+            isGuest: row.is_guest,
+            checkedInAt: row.checked_in_at,
+          }
+        })
+
+        // Sort: checked_in first, then booked, then waitlisted, then no_show
+        const order: Record<string, number> = { checked_in: 0, booked: 1, waitlisted: 2, no_show: 3 }
+        mapped.sort((a, b) => (order[a.status] ?? 4) - (order[b.status] ?? 4))
+
+        setAttendees(mapped)
+      } catch (err) {
+        console.error('Failed to fetch attendees:', err)
+        setAttendees([])
+      } finally {
+        setLoadingAttendees(false)
+      }
+    },
+    [supabase]
+  )
+
+  // Poll attendees every 60s when a class is selected
+  useEffect(() => {
+    if (!selectedClass) return
+    fetchAttendees(selectedClass.id)
+    const timer = setInterval(() => fetchAttendees(selectedClass.id), 60_000)
+    return () => clearInterval(timer)
+  }, [selectedClass?.id, fetchAttendees])
+
+  const handleClassClick = (cls: ClassBlock) => {
+    if (selectedClass?.id === cls.id) {
+      setSelectedClass(null)
+      setAttendees([])
+    } else {
+      setSelectedClass(cls)
+    }
   }
 
-  const getClasses = (day: string, time: string): ClassBlock[] => {
-    const key = `${day}-${time}`
-    const classes = SCHEDULE[key]
-    if (!classes) return []
-    if (activeFilter === 'All Classes') return classes
-    if (activeFilter === 'Open Sauna') return classes.filter(c => c.type === 'open')
-    if (activeFilter === 'Guided') return classes.filter(c => c.type === 'guided')
-    if (activeFilter === 'Private') return classes.filter(c => c.type === 'private')
-    return classes
-  }
-
-  // Stats
-  const allClasses = Object.values(SCHEDULE).flat()
-  const totalBookings = allClasses.reduce((sum, c) => sum + c.booked, 0)
-  const avgCapacity = allClasses.length > 0 ? Math.round((allClasses.reduce((sum, c) => sum + (c.booked / c.capacity), 0) / allClasses.length) * 100) : 0
-  const atCapacity = allClasses.filter(c => c.booked >= c.capacity).length
+  // ─── Stats ──────────────────────────────────────────────────
+  const totalBookings = classBlocks.reduce((sum, c) => sum + c.booked, 0)
+  const avgCapacity = classBlocks.length > 0
+    ? Math.round((classBlocks.reduce((sum, c) => sum + (c.booked / c.capacity), 0) / classBlocks.length) * 100)
+    : 0
+  const atCapacity = classBlocks.filter(c => c.booked >= c.capacity).length
 
   return (
     <motion.div {...fadeInUp} className="space-y-5">
@@ -253,6 +507,36 @@ export default function SchedulePage() {
                 {mode}
               </button>
             ))}
+          </div>
+
+          {/* Week Navigation */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setWeekOffset(prev => prev - 1)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setWeekOffset(0)}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              {formatWeekHeader(weekStart)}
+            </button>
+            <button
+              onClick={() => setWeekOffset(prev => prev + 1)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            {weekOffset !== 0 && (
+              <button
+                onClick={() => setWeekOffset(0)}
+                className="ml-1 px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              >
+                Today
+              </button>
+            )}
           </div>
 
           {/* Filters */}
@@ -278,6 +562,13 @@ export default function SchedulePage() {
         </button>
       </div>
 
+      {/* Error state */}
+      {classesError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+          Failed to load schedule: {classesError.message}
+        </div>
+      )}
+
       {/* Calendar Grid + Detail Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Calendar */}
@@ -285,129 +576,120 @@ export default function SchedulePage() {
           'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden',
           selectedClass ? 'lg:col-span-8' : 'lg:col-span-12'
         )}>
-          {/* Week header */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="w-20 p-3 text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Time</span>
-                  </th>
-                  {DAYS.map((day, i) => (
-                    <th key={day} className="p-3 text-center">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{day}</span>
-                      <p className={cn(
-                        'text-lg font-bold mt-0.5',
-                        i === 2 ? 'text-indigo-600' : 'text-gray-900' // Wednesday highlighted as today
-                      )}>
-                        {DATES[i]}
-                      </p>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {/* Render all unique time slots */}
-                {['5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM'].map((time) => (
-                  <tr key={time} className="border-b border-gray-50 last:border-0">
-                    <td className="p-3 align-top">
-                      <span className="text-sm font-medium text-gray-400 whitespace-nowrap">{time}</span>
-                    </td>
-                    {DAYS.map((day, dayIndex) => {
-                      const classes = getClasses(day, time)
-                      const isWeekend = dayIndex >= 5
-
-                      // Weekend doesn't have evening slots — show empty
-                      if (isWeekend && ['5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM'].includes(time)) {
-                        // Map weekend times
-                        const weekendMap: Record<string, string> = { '5:00 PM': '9:00 AM', '6:00 PM': '10:00 AM', '7:00 PM': '11:00 AM', '8:00 PM': '12:00 PM' }
-                        const mappedTime = weekendMap[time]
-                        const weekendClasses = getClasses(day, mappedTime)
-
-                        return (
-                          <td key={`${day}-${time}`} className="p-2 align-top min-h-[80px]">
-                            {weekendClasses.length > 0 ? (
-                              <div className="space-y-1">
-                                <span className="text-[9px] font-medium text-gray-400">{mappedTime}</span>
-                                {weekendClasses.map(cls => (
-                                  <ClassBlockCard
-                                    key={cls.id}
-                                    cls={cls}
-                                    onClick={() => setSelectedClass(cls)}
-                                    isSelected={selectedClass?.id === cls.id}
-                                  />
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="h-16 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                <button className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 flex items-center justify-center transition-colors">
-                                  <Plus className="w-4 h-4 text-gray-300" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        )
-                      }
-
-                      return (
-                        <td key={`${day}-${time}`} className="p-2 align-top min-h-[80px]">
-                          {classes.length > 0 ? (
-                            <div className="space-y-1">
-                              {classes.map(cls => (
-                                <ClassBlockCard
-                                  key={cls.id}
-                                  cls={cls}
-                                  onClick={() => setSelectedClass(cls)}
-                                  isSelected={selectedClass?.id === cls.id}
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="h-16 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                              <button className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 flex items-center justify-center transition-colors">
-                                <Plus className="w-4 h-4 text-gray-300" />
-                              </button>
-                            </div>
-                          )}
+          {classesLoading ? (
+            <ScheduleSkeleton />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="w-20 p-3 text-left">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Time</span>
+                      </th>
+                      {weekDays.map((day) => (
+                        <th key={day.dateISO} className="p-3 text-center">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{day.label}</span>
+                          <p className={cn(
+                            'text-lg font-bold mt-0.5',
+                            day.dateISO === todayISO ? 'text-indigo-600' : 'text-gray-900'
+                          )}>
+                            {day.date}
+                          </p>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allTimeSlots.map((time) => (
+                      <tr key={time} className="border-b border-gray-50 last:border-0">
+                        <td className="p-3 align-top">
+                          <span className="text-sm font-medium text-gray-400 whitespace-nowrap">{time}</span>
                         </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        {weekDays.map((day) => {
+                          const classes = getClasses(day.dateISO, time)
+                          return (
+                            <td key={`${day.dateISO}-${time}`} className="p-2 align-top min-h-[80px]">
+                              {classes.length > 0 ? (
+                                <div className="space-y-1">
+                                  {classes.map(cls => (
+                                    <ClassBlockCard
+                                      key={cls.id}
+                                      cls={cls}
+                                      onClick={() => handleClassClick(cls)}
+                                      isSelected={selectedClass?.id === cls.id}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="h-16 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                  <button className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 flex items-center justify-center transition-colors">
+                                    <Plus className="w-4 h-4 text-gray-300" />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          {/* Footer stats */}
-          <div className="flex items-center gap-6 px-5 py-3 border-t border-gray-100 text-xs text-gray-500">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-indigo-500 rounded-full" />
-              {allClasses.length} classes this week
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-              {totalBookings} total bookings
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-amber-500 rounded-full" />
-              {avgCapacity}% avg capacity
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-orange-500 rounded-full" />
-              {atCapacity} at capacity
-            </span>
-          </div>
+              {/* Footer stats */}
+              <div className="flex items-center gap-6 px-5 py-3 border-t border-gray-100 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full" />
+                  {classBlocks.length} classes this week
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+                  {totalBookings} total bookings
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-amber-500 rounded-full" />
+                  {avgCapacity}% avg capacity
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full" />
+                  {atCapacity} at capacity
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Detail Panel */}
         <AnimatePresence>
           {selectedClass && (
             <div className="lg:col-span-4">
-              <ClassDetailPanel cls={selectedClass} onClose={() => setSelectedClass(null)} />
+              <ClassDetailPanel
+                cls={selectedClass}
+                attendees={attendees}
+                loadingAttendees={loadingAttendees}
+                onClose={() => {
+                  setSelectedClass(null)
+                  setAttendees([])
+                }}
+              />
             </div>
           )}
         </AnimatePresence>
       </div>
     </motion.div>
   )
+}
+
+// ─── Utility ────────────────────────────────────────────────
+/** Parse "H:MM AM/PM" to minutes-since-midnight for sorting. */
+function parseTime12(time: string): number {
+  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!match) return 0
+  let h = parseInt(match[1], 10)
+  const m = parseInt(match[2], 10)
+  const period = match[3].toUpperCase()
+  if (period === 'PM' && h !== 12) h += 12
+  if (period === 'AM' && h === 12) h = 0
+  return h * 60 + m
 }

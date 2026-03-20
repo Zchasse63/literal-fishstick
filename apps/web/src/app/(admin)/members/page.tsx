@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
   Search,
   Plus,
@@ -26,6 +27,7 @@ import {
   ArrowUp,
   Mail,
   Phone,
+  Loader2,
 } from 'lucide-react'
 
 const fadeInUp = {
@@ -33,6 +35,8 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
 }
+
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Types ──────────────────────────────────────────────────
 type FilterTab = 'All' | 'Active' | 'Paused' | 'At Risk' | 'New'
@@ -62,83 +66,108 @@ interface Member {
   preferredType: string
   guidedSessions: number
   avgDuration: string
+  notes: string | null
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const MEMBERS: Member[] = [
-  {
-    id: '1', firstName: 'Sarah', lastName: 'Martinez', email: 'sarah.martinez@gmail.com', phone: '(813) 555-0142',
-    avatar: 'SM', avatarColor: 'bg-indigo-500', membership: 'Unlimited', membershipPrice: 225, membershipType: 'unlimited',
-    status: 'active', lastVisit: 'Today', credits: null, ltv: 2475, joinDate: 'Mar 15, 2025',
-    totalVisits: 156, avgVisitsPerWeek: 3.2, nextBilling: 'Apr 1, 2026', paymentMethod: 'Visa •••• 4242',
-    preferredTime: '6:00 PM', preferredType: 'Open Sauna', guidedSessions: 24, avgDuration: '52 min',
-  },
-  {
-    id: '2', firstName: 'James', lastName: 'Kim', email: 'james.kim@outlook.com', phone: '(813) 555-0198',
-    avatar: 'JK', avatarColor: 'bg-emerald-500', membership: '10-Class Pack', membershipPrice: 180, membershipType: '10-class',
-    status: 'active', lastVisit: 'Yesterday', credits: 6, ltv: 1440, joinDate: 'Jun 2, 2025',
-    totalVisits: 84, avgVisitsPerWeek: 2.1, nextBilling: 'Apr 8, 2026', paymentMethod: 'Apple Pay',
-    preferredTime: '7:00 PM', preferredType: 'Open Sauna', guidedSessions: 8, avgDuration: '48 min',
-  },
-  {
-    id: '3', firstName: 'Priya', lastName: 'Sharma', email: 'priya.s@gmail.com', phone: '(813) 555-0267',
-    avatar: 'PS', avatarColor: 'bg-violet-500', membership: 'Unlimited', membershipPrice: 225, membershipType: 'unlimited',
-    status: 'at-risk', lastVisit: '12 days ago', credits: null, ltv: 3150, joinDate: 'Jan 10, 2025',
-    totalVisits: 201, avgVisitsPerWeek: 1.0, nextBilling: 'Apr 1, 2026', paymentMethod: 'Mastercard •••• 8891',
-    preferredTime: '5:00 PM', preferredType: 'Guided', guidedSessions: 45, avgDuration: '55 min',
-  },
-  {
-    id: '4', firstName: 'Marcus', lastName: 'Johnson', email: 'mjohnson@yahoo.com', phone: '(813) 555-0334',
-    avatar: 'MJ', avatarColor: 'bg-amber-500', membership: '6-Class Pack', membershipPrice: 120, membershipType: '6-class',
-    status: 'active', lastVisit: '3 days ago', credits: 2, ltv: 840, joinDate: 'Sep 18, 2025',
-    totalVisits: 42, avgVisitsPerWeek: 1.8, nextBilling: 'Apr 15, 2026', paymentMethod: 'Visa •••• 1234',
-    preferredTime: '8:00 PM', preferredType: 'Open Sauna', guidedSessions: 3, avgDuration: '45 min',
-  },
-  {
-    id: '5', firstName: 'Emily', lastName: 'Chen', email: 'emily.chen@icloud.com', phone: '(813) 555-0411',
-    avatar: 'EC', avatarColor: 'bg-pink-500', membership: 'Unlimited', membershipPrice: 225, membershipType: 'unlimited',
-    status: 'new', lastVisit: '2 days ago', credits: null, ltv: 225, joinDate: 'Mar 5, 2026',
-    totalVisits: 4, avgVisitsPerWeek: 2.0, nextBilling: 'Apr 5, 2026', paymentMethod: 'Google Pay',
-    preferredTime: '6:00 PM', preferredType: 'Guided', guidedSessions: 3, avgDuration: '58 min',
-  },
-  {
-    id: '6', firstName: 'David', lastName: 'Thompson', email: 'dthompson@gmail.com', phone: '(813) 555-0489',
-    avatar: 'DT', avatarColor: 'bg-sky-500', membership: '10-Class Pack', membershipPrice: 180, membershipType: '10-class',
-    status: 'paused', lastVisit: '28 days ago', credits: 4, ltv: 1980, joinDate: 'Apr 22, 2025',
-    totalVisits: 112, avgVisitsPerWeek: 0, nextBilling: 'Paused', paymentMethod: 'Visa •••• 5678',
-    preferredTime: '7:00 PM', preferredType: 'Open Sauna', guidedSessions: 12, avgDuration: '50 min',
-  },
-  {
-    id: '7', firstName: 'Laura', lastName: 'Garcia', email: 'laura.g@gmail.com', phone: '(813) 555-0556',
-    avatar: 'LG', avatarColor: 'bg-rose-500', membership: 'Credit Pack (20)', membershipPrice: 300, membershipType: 'credit-pack',
-    status: 'active', lastVisit: 'Today', credits: 14, ltv: 1500, joinDate: 'Aug 1, 2025',
-    totalVisits: 68, avgVisitsPerWeek: 2.4, nextBilling: 'N/A', paymentMethod: 'Amex •••• 3456',
-    preferredTime: '5:00 PM', preferredType: 'Open Sauna', guidedSessions: 6, avgDuration: '47 min',
-  },
-  {
-    id: '8', firstName: 'Chris', lastName: 'Brooks', email: 'cbrooks@gmail.com', phone: '(813) 555-0612',
-    avatar: 'CB', avatarColor: 'bg-teal-500', membership: 'Unlimited', membershipPrice: 225, membershipType: 'unlimited',
-    status: 'at-risk', lastVisit: '18 days ago', credits: null, ltv: 2700, joinDate: 'Dec 1, 2024',
-    totalVisits: 178, avgVisitsPerWeek: 0.5, nextBilling: 'Apr 1, 2026', paymentMethod: 'Visa •••• 9012',
-    preferredTime: '8:00 PM', preferredType: 'Open Sauna', guidedSessions: 15, avgDuration: '42 min',
-  },
-]
-
-const FILTER_COUNTS: Record<FilterTab, number> = {
-  All: 8,
-  Active: 4,
-  Paused: 1,
-  'At Risk': 2,
-  New: 1,
+interface MemberBooking {
+  className: string
+  startsAt: string
+  status: string
 }
 
-const UPCOMING_BOOKINGS = [
-  { id: '1', className: 'Open Sauna', date: 'Tomorrow', time: '6:00 PM', spots: '9/12' },
-  { id: '2', className: 'Guided — Breathwork', date: 'Wed, Mar 25', time: '7:00 PM', trainer: 'Whitney' },
-  { id: '3', className: 'Open Sauna', date: 'Sat, Mar 28', time: '10:00 AM', spots: '5/12' },
-]
+interface MemberTransaction {
+  amount: number
+  type: string
+  status: string
+  description: string | null
+  createdAt: string
+}
 
 // ─── Helpers ────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  'bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500',
+  'bg-pink-500', 'bg-sky-500', 'bg-rose-500', 'bg-teal-500',
+  'bg-cyan-500', 'bg-fuchsia-500', 'bg-lime-500', 'bg-orange-500',
+]
+
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
+function getAvatarColor(name: string): string {
+  return AVATAR_COLORS[hashString(name) % AVATAR_COLORS.length]
+}
+
+function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+  return (fullName[0] || '?').toUpperCase()
+}
+
+function splitName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+  }
+  return { firstName: fullName, lastName: '' }
+}
+
+function mapTier(tier: string | null): { membership: string; membershipType: Member['membershipType']; membershipPrice: number } {
+  switch (tier) {
+    case 'unlimited':
+      return { membership: 'Unlimited', membershipType: 'unlimited', membershipPrice: 225 }
+    case '10_class':
+      return { membership: '10-Class Pack', membershipType: '10-class', membershipPrice: 180 }
+    case '6_class':
+      return { membership: '6-Class Pack', membershipType: '6-class', membershipPrice: 120 }
+    case 'credit_pack':
+    case 'credit-pack':
+      return { membership: 'Credit Pack', membershipType: 'credit-pack', membershipPrice: 120 }
+    default:
+      return { membership: tier || 'Unknown', membershipType: 'credit-pack', membershipPrice: 0 }
+  }
+}
+
+function mapStatus(dbStatus: string, joinDate: string, lastVisit: string | null): Member['status'] {
+  if (dbStatus === 'paused') return 'paused'
+  // "New" = joined in the last 30 days
+  const joinDt = new Date(joinDate)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  if (joinDt >= thirtyDaysAgo) return 'new'
+  // "At risk" = active but no visit in 30 days
+  if (dbStatus === 'active' && lastVisit) {
+    const lastDt = new Date(lastVisit)
+    if (lastDt < thirtyDaysAgo) return 'at-risk'
+  }
+  if (dbStatus === 'active') return 'active'
+  return 'active'
+}
+
+function formatLastVisit(dt: string | null): string {
+  if (!dt) return 'Never'
+  const visitDate = new Date(dt)
+  const now = new Date()
+  const diffMs = now.getTime() - visitDate.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 30) return `${diffDays} days ago`
+  return `${Math.floor(diffDays / 30)}mo ago`
+}
+
+function formatJoinDate(dt: string): string {
+  return new Date(dt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 function statusDot(status: Member['status']) {
   const colors: Record<Member['status'], string> = {
     active: 'bg-emerald-500',
@@ -177,7 +206,6 @@ function generateHeatmap() {
   for (let w = 0; w < HEATMAP_WEEKS; w++) {
     const week: number[] = []
     for (let d = 0; d < HEATMAP_DAYS; d++) {
-      // Weight toward Mon-Fri evenings
       const base = d < 5 ? 0.6 : 0.3
       week.push(Math.random() < base ? Math.floor(Math.random() * 4) + 1 : 0)
     }
@@ -196,28 +224,258 @@ function heatmapColor(val: number) {
   return 'bg-indigo-600'
 }
 
+// ─── Loading Skeleton ───────────────────────────────────────
+function MemberRowSkeleton() {
+  return (
+    <tr className="border-b border-gray-50">
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-gray-200 animate-pulse shrink-0" />
+          <div className="space-y-1.5">
+            <div className="h-3.5 w-28 bg-gray-200 rounded animate-pulse" />
+            <div className="h-3 w-36 bg-gray-100 rounded animate-pulse" />
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 hidden md:table-cell"><div className="h-6 w-20 bg-gray-100 rounded-lg animate-pulse" /></td>
+      <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-14 bg-gray-100 rounded animate-pulse" /></td>
+      <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 bg-gray-100 rounded animate-pulse" /></td>
+      <td className="px-4 py-3 hidden md:table-cell text-right"><div className="h-4 w-6 bg-gray-100 rounded animate-pulse ml-auto" /></td>
+      <td className="px-4 py-3 hidden lg:table-cell text-right"><div className="h-4 w-12 bg-gray-100 rounded animate-pulse ml-auto" /></td>
+      <td className="px-4 py-3 text-right"><div className="h-8 w-8 bg-gray-100 rounded-lg animate-pulse ml-auto" /></td>
+    </tr>
+  )
+}
+
 // ─── Component ──────────────────────────────────────────────
 export default function MembersPage() {
   const [filter, setFilter] = useState<FilterTab>('All')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [profileTab, setProfileTab] = useState<ProfileTab>('Overview')
-
-  const filtered = MEMBERS.filter((m) => {
-    const matchesFilter =
-      filter === 'All' ||
-      (filter === 'Active' && m.status === 'active') ||
-      (filter === 'Paused' && m.status === 'paused') ||
-      (filter === 'At Risk' && m.status === 'at-risk') ||
-      (filter === 'New' && m.status === 'new')
-
-    const matchesSearch =
-      search === '' ||
-      `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-      m.email.toLowerCase().includes(search.toLowerCase())
-
-    return matchesFilter && matchesSearch
+  const [members, setMembers] = useState<Member[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filterCounts, setFilterCounts] = useState<Record<FilterTab, number>>({
+    All: 0, Active: 0, Paused: 0, 'At Risk': 0, New: 0,
   })
+
+  // Detail panel data
+  const [memberBookings, setMemberBookings] = useState<MemberBooking[]>([])
+  const [memberTransactions, setMemberTransactions] = useState<MemberTransaction[]>([])
+  const [memberTags, setMemberTags] = useState<string[]>([])
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  const supabase = useRef(createBrowserClient()).current
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Fetch members
+  const fetchMembers = useCallback(async () => {
+    setLoading(true)
+    try {
+      let query = supabase
+        .from('members')
+        .select(`
+          id, membership_tier, membership_status, credits_remaining, total_visits,
+          join_date, notes, last_visit, lifetime_value,
+          profiles!inner ( full_name, email, phone, avatar_url )
+        `)
+        .eq('studio_id', STUDIO_ID)
+        .order('id', { ascending: true })
+        .limit(50)
+
+      // Apply search filter
+      if (debouncedSearch) {
+        query = query.or(
+          `full_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%`,
+          { referencedTable: 'profiles' }
+        )
+      }
+
+      // Apply status filter at DB level where possible
+      if (filter === 'Active') {
+        query = query.eq('membership_status', 'active')
+      } else if (filter === 'Paused') {
+        query = query.eq('membership_status', 'paused')
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching members:', error)
+        setMembers([])
+        setLoading(false)
+        return
+      }
+
+      const mapped: Member[] = (data || []).map((row: any) => {
+        const profile = row.profiles
+        const fullName = profile.full_name || 'Unknown'
+        const { firstName, lastName } = splitName(fullName)
+        const tierInfo = mapTier(row.membership_tier)
+        const computedStatus = mapStatus(row.membership_status, row.join_date, row.last_visit)
+
+        return {
+          id: row.id,
+          firstName,
+          lastName,
+          email: profile.email || '',
+          phone: profile.phone || '',
+          avatar: getInitials(fullName),
+          avatarColor: getAvatarColor(fullName),
+          ...tierInfo,
+          status: computedStatus,
+          lastVisit: formatLastVisit(row.last_visit),
+          credits: row.credits_remaining > 0 || tierInfo.membershipType !== 'unlimited' ? row.credits_remaining : null,
+          ltv: Math.round((row.lifetime_value || 0) / 100),
+          joinDate: formatJoinDate(row.join_date),
+          totalVisits: row.total_visits || 0,
+          avgVisitsPerWeek: row.total_visits
+            ? Math.round((row.total_visits / Math.max(1, Math.ceil((Date.now() - new Date(row.join_date).getTime()) / (7 * 24 * 60 * 60 * 1000)))) * 10) / 10
+            : 0,
+          nextBilling: row.membership_status === 'paused' ? 'Paused' : 'N/A',
+          paymentMethod: 'On file',
+          preferredTime: '6:00 PM',
+          preferredType: 'Open Sauna',
+          guidedSessions: 0,
+          avgDuration: '50 min',
+          notes: row.notes,
+        }
+      })
+
+      // Client-side filter for statuses we can't easily do at DB level
+      let filtered = mapped
+      if (filter === 'At Risk') {
+        filtered = mapped.filter((m) => m.status === 'at-risk')
+      } else if (filter === 'New') {
+        filtered = mapped.filter((m) => m.status === 'new')
+      }
+
+      setMembers(filtered)
+    } catch (err) {
+      console.error('Error fetching members:', err)
+      setMembers([])
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase, debouncedSearch, filter])
+
+  // Fetch filter counts
+  const fetchCounts = useCallback(async () => {
+    try {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const thirtyDaysAgoISO = thirtyDaysAgo.toISOString().split('T')[0]
+
+      const [allRes, activeRes, pausedRes, newRes] = await Promise.all([
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('studio_id', STUDIO_ID),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('studio_id', STUDIO_ID).eq('membership_status', 'active'),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('studio_id', STUDIO_ID).eq('membership_status', 'paused'),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('studio_id', STUDIO_ID).gte('join_date', thirtyDaysAgoISO),
+      ])
+
+      // For "at risk" we need to count active members with last_visit older than 30 days
+      const atRiskRes = await supabase
+        .from('members')
+        .select('id', { count: 'exact', head: true })
+        .eq('studio_id', STUDIO_ID)
+        .eq('membership_status', 'active')
+        .lt('last_visit', thirtyDaysAgo.toISOString())
+
+      setFilterCounts({
+        All: allRes.count || 0,
+        Active: activeRes.count || 0,
+        Paused: pausedRes.count || 0,
+        'At Risk': atRiskRes.count || 0,
+        New: newRes.count || 0,
+      })
+    } catch (err) {
+      console.error('Error fetching counts:', err)
+    }
+  }, [supabase])
+
+  // Fetch member detail data
+  const fetchMemberDetail = useCallback(async (memberId: string) => {
+    setDetailLoading(true)
+    try {
+      const [bookingsRes, txRes, tagsRes] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select('status, checked_in_at, classes!inner ( title, starts_at )')
+          .eq('member_id', memberId)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('transactions')
+          .select('amount, type, status, description, created_at')
+          .eq('member_id', memberId)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('member_tags')
+          .select('tag')
+          .eq('member_id', memberId),
+      ])
+
+      if (bookingsRes.data) {
+        setMemberBookings(bookingsRes.data.map((b: any) => ({
+          className: b.classes?.title || 'Unknown',
+          startsAt: b.classes?.starts_at || '',
+          status: b.status,
+        })))
+      } else {
+        setMemberBookings([])
+      }
+
+      if (txRes.data) {
+        setMemberTransactions(txRes.data.map((t: any) => ({
+          amount: t.amount,
+          type: t.type,
+          status: t.status,
+          description: t.description,
+          createdAt: t.created_at,
+        })))
+      } else {
+        setMemberTransactions([])
+      }
+
+      if (tagsRes.data) {
+        setMemberTags(tagsRes.data.map((t: any) => t.tag))
+      } else {
+        setMemberTags([])
+      }
+    } catch (err) {
+      console.error('Error fetching member details:', err)
+      setMemberBookings([])
+      setMemberTransactions([])
+      setMemberTags([])
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [supabase])
+
+  // Initial load + polling
+  useEffect(() => {
+    fetchMembers()
+    fetchCounts()
+    const interval = setInterval(() => {
+      fetchMembers()
+      fetchCounts()
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [fetchMembers, fetchCounts])
+
+  // Fetch detail when member selected
+  useEffect(() => {
+    if (selectedMember) {
+      fetchMemberDetail(selectedMember.id)
+    }
+  }, [selectedMember, fetchMemberDetail])
 
   return (
     <motion.div {...fadeInUp}>
@@ -232,7 +490,7 @@ export default function MembersPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Members</h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                {MEMBERS.length} total members
+                {filterCounts.All} total members
               </p>
             </div>
             <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
@@ -267,7 +525,7 @@ export default function MembersPage() {
 
                 {/* Filter Pills */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {(Object.keys(FILTER_COUNTS) as FilterTab[]).map((tab) => (
+                  {(Object.keys(filterCounts) as FilterTab[]).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setFilter(tab)}
@@ -283,7 +541,7 @@ export default function MembersPage() {
                         'ml-1.5 text-[10px]',
                         filter === tab ? 'text-indigo-200' : 'text-gray-400'
                       )}>
-                        {FILTER_COUNTS[tab]}
+                        {filterCounts[tab]}
                       </span>
                     </button>
                   ))}
@@ -320,93 +578,99 @@ export default function MembersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((member) => (
-                    <tr
-                      key={member.id}
-                      onClick={() => {
-                        setSelectedMember(member)
-                        setProfileTab('Overview')
-                      }}
-                      className={cn(
-                        'border-b border-gray-50 cursor-pointer transition-colors group',
-                        selectedMember?.id === member.id
-                          ? 'bg-indigo-50/60'
-                          : 'hover:bg-gray-50/80'
-                      )}
-                    >
-                      {/* Name + Avatar */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            'h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0',
-                            member.avatarColor
-                          )}>
-                            {member.avatar}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">
-                              {member.firstName} {member.lastName}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">{member.email}</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Membership Badge */}
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <span className={cn(
-                          'inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border',
-                          membershipBadgeColor(member.membershipType)
-                        )}>
-                          {member.membership}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <div className="flex items-center gap-2">
-                          <div className={cn('h-2 w-2 rounded-full', statusDot(member.status))} />
-                          <span className="text-sm text-gray-700">{statusLabel(member.status)}</span>
-                        </div>
-                      </td>
-
-                      {/* Last Visit */}
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <span className="text-sm text-gray-600">{member.lastVisit}</span>
-                      </td>
-
-                      {/* Credits */}
-                      <td className="px-4 py-3 text-right hidden md:table-cell">
-                        <span className="text-sm font-medium text-gray-700 tabular-nums">
-                          {member.credits !== null ? member.credits : '—'}
-                        </span>
-                      </td>
-
-                      {/* LTV */}
-                      <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        <span className="text-sm font-semibold text-gray-900 tabular-nums">
-                          ${member.ltv.toLocaleString()}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                  {loading ? (
+                    Array.from({ length: 6 }).map((_, i) => <MemberRowSkeleton key={i} />)
+                  ) : (
+                    <>
+                      {members.map((member) => (
+                        <tr
+                          key={member.id}
+                          onClick={() => {
+                            setSelectedMember(member)
+                            setProfileTab('Overview')
+                          }}
+                          className={cn(
+                            'border-b border-gray-50 cursor-pointer transition-colors group',
+                            selectedMember?.id === member.id
+                              ? 'bg-indigo-50/60'
+                              : 'hover:bg-gray-50/80'
+                          )}
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                          {/* Name + Avatar */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                'h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0',
+                                member.avatarColor
+                              )}>
+                                {member.avatar}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {member.firstName} {member.lastName}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">{member.email}</p>
+                              </div>
+                            </div>
+                          </td>
 
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-500">
-                        No members found matching your search.
-                      </td>
-                    </tr>
+                          {/* Membership Badge */}
+                          <td className="px-4 py-3 hidden md:table-cell">
+                            <span className={cn(
+                              'inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border',
+                              membershipBadgeColor(member.membershipType)
+                            )}>
+                              {member.membership}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            <div className="flex items-center gap-2">
+                              <div className={cn('h-2 w-2 rounded-full', statusDot(member.status))} />
+                              <span className="text-sm text-gray-700">{statusLabel(member.status)}</span>
+                            </div>
+                          </td>
+
+                          {/* Last Visit */}
+                          <td className="px-4 py-3 hidden lg:table-cell">
+                            <span className="text-sm text-gray-600">{member.lastVisit}</span>
+                          </td>
+
+                          {/* Credits */}
+                          <td className="px-4 py-3 text-right hidden md:table-cell">
+                            <span className="text-sm font-medium text-gray-700 tabular-nums">
+                              {member.credits !== null ? member.credits : '\u2014'}
+                            </span>
+                          </td>
+
+                          {/* LTV */}
+                          <td className="px-4 py-3 text-right hidden lg:table-cell">
+                            <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                              ${member.ltv.toLocaleString()}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {members.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-500">
+                            No members found matching your search.
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   )}
                 </tbody>
               </table>
@@ -415,7 +679,7 @@ export default function MembersPage() {
             {/* Footer */}
             <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
               <span className="text-xs text-gray-500">
-                Showing {filtered.length} of {MEMBERS.length} members
+                Showing {members.length} of {filterCounts.All} members
               </span>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-gray-500">Page 1 of 1</span>
@@ -482,19 +746,22 @@ export default function MembersPage() {
                     <Phone className="h-3 w-3" />
                     Call
                   </button>
-                  {selectedMember.membershipType !== 'unlimited' && (
-                    <span className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                      <Tag className="h-2.5 w-2.5" />
-                      10% Member Discount
-                    </span>
-                  )}
-                  {selectedMember.membershipType === 'unlimited' && (
-                    <span className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                      <Tag className="h-2.5 w-2.5" />
-                      10% Member Discount
-                    </span>
-                  )}
+                  <span className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                    <Tag className="h-2.5 w-2.5" />
+                    10% Member Discount
+                  </span>
                 </div>
+
+                {/* Tags */}
+                {memberTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
+                    {memberTags.map((tag) => (
+                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px] font-medium">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Stats Row */}
@@ -679,38 +946,48 @@ export default function MembersPage() {
                           </div>
                         </div>
 
-                        {/* Upcoming Bookings */}
+                        {/* Upcoming Bookings (from live data) */}
                         <div>
-                          <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Upcoming Bookings</h4>
+                          <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Recent Bookings</h4>
                           <div className="rounded-xl border border-gray-200 divide-y divide-gray-100">
-                            {UPCOMING_BOOKINGS.map((booking) => (
-                              <div key={booking.id} className="p-3 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className={cn(
-                                    'h-8 w-8 rounded-lg flex items-center justify-center',
-                                    booking.trainer
-                                      ? 'bg-violet-100 text-violet-600'
-                                      : 'bg-indigo-100 text-indigo-600'
-                                  )}>
-                                    {booking.trainer ? (
-                                      <Heart className="h-3.5 w-3.5" />
-                                    ) : (
-                                      <Flame className="h-3.5 w-3.5" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-semibold text-gray-900">{booking.className}</p>
-                                    <p className="text-[11px] text-gray-500">
-                                      {booking.date} at {booking.time}
-                                      {booking.trainer && <span> w/ {booking.trainer}</span>}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button className="text-[11px] font-semibold text-orange-500 hover:text-orange-600 transition-colors">
-                                  Cancel
-                                </button>
+                            {detailLoading ? (
+                              <div className="p-6 flex items-center justify-center">
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                               </div>
-                            ))}
+                            ) : memberBookings.length > 0 ? (
+                              memberBookings.slice(0, 5).map((booking, i) => (
+                                <div key={i} className="p-3 flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600">
+                                      <Flame className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-900">{booking.className}</p>
+                                      <p className="text-[11px] text-gray-500">
+                                        {new Date(booking.startsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        {' at '}
+                                        {new Date(booking.startsAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className={cn(
+                                    'text-[11px] font-semibold',
+                                    booking.status === 'checked_in' ? 'text-emerald-600' :
+                                    booking.status === 'cancelled' ? 'text-gray-400' :
+                                    booking.status === 'no_show' ? 'text-orange-500' :
+                                    'text-indigo-600'
+                                  )}>
+                                    {booking.status === 'checked_in' ? 'Checked In' :
+                                     booking.status === 'cancelled' ? 'Cancelled' :
+                                     booking.status === 'no_show' ? 'No Show' :
+                                     booking.status === 'booked' ? 'Booked' :
+                                     booking.status}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-xs text-gray-400">No bookings found</div>
+                            )}
                           </div>
                         </div>
 
@@ -748,11 +1025,51 @@ export default function MembersPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
                         transition={{ duration: 0.15 }}
-                        className="py-8 text-center"
                       >
-                        <Activity className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Visit history will appear here</p>
-                        <p className="text-xs text-gray-400 mt-1">Full session log with check-in times and class details</p>
+                        {detailLoading ? (
+                          <div className="py-8 flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                          </div>
+                        ) : memberBookings.length > 0 ? (
+                          <div className="space-y-2">
+                            {memberBookings.map((booking, i) => (
+                              <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-gray-100">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-8 w-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                    <Flame className="h-3.5 w-3.5" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-900">{booking.className}</p>
+                                    <p className="text-[11px] text-gray-500">
+                                      {new Date(booking.startsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {' at '}
+                                      {new Date(booking.startsAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className={cn(
+                                  'inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold',
+                                  booking.status === 'checked_in' ? 'bg-emerald-50 text-emerald-700' :
+                                  booking.status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
+                                  booking.status === 'no_show' ? 'bg-orange-50 text-orange-600' :
+                                  'bg-indigo-50 text-indigo-700'
+                                )}>
+                                  {booking.status === 'checked_in' ? 'Checked In' :
+                                   booking.status === 'cancelled' ? 'Cancelled' :
+                                   booking.status === 'no_show' ? 'No Show' :
+                                   booking.status === 'booked' ? 'Booked' :
+                                   booking.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-8 text-center">
+                            <Activity className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm text-gray-500">No visit history yet</p>
+                            <p className="text-xs text-gray-400 mt-1">Bookings will appear here once the member checks in</p>
+                          </div>
+                        )}
                       </motion.div>
                     )}
 
@@ -763,11 +1080,49 @@ export default function MembersPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
                         transition={{ duration: 0.15 }}
-                        className="py-8 text-center"
                       >
-                        <CreditCard className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Payment history will appear here</p>
-                        <p className="text-xs text-gray-400 mt-1">Invoices, transactions, and billing details</p>
+                        {detailLoading ? (
+                          <div className="py-8 flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                          </div>
+                        ) : memberTransactions.length > 0 ? (
+                          <div className="space-y-2">
+                            {memberTransactions.map((tx, i) => (
+                              <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-gray-100">
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-900">
+                                    {tx.description || tx.type}
+                                  </p>
+                                  <p className="text-[11px] text-gray-500">
+                                    {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className={cn(
+                                    'text-sm font-bold tabular-nums',
+                                    tx.status === 'refunded' ? 'text-gray-400 line-through' : 'text-gray-900'
+                                  )}>
+                                    ${(tx.amount / 100).toFixed(2)}
+                                  </p>
+                                  <span className={cn(
+                                    'text-[10px] font-semibold',
+                                    tx.status === 'completed' ? 'text-emerald-600' :
+                                    tx.status === 'failed' ? 'text-orange-500' :
+                                    'text-gray-400'
+                                  )}>
+                                    {tx.status}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-8 text-center">
+                            <CreditCard className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm text-gray-500">No transactions yet</p>
+                            <p className="text-xs text-gray-400 mt-1">Payment history will appear here</p>
+                          </div>
+                        )}
                       </motion.div>
                     )}
 
