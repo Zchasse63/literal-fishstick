@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 const ALLOWED_ROLES = ["owner", "manager", "trainer"];
 
@@ -37,6 +38,12 @@ export async function GET(request: NextRequest) {
         { error: "Insufficient permissions." },
         { status: 403 }
       );
+    }
+
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     // ─── Query Params ──────────────────────────────────────────

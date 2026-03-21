@@ -5,6 +5,8 @@ import {
   ChurnInput,
   ChurnPredictionResult,
 } from "@/lib/ai/churn-prediction";
+import { requireRole } from "@/lib/auth/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 
 const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -169,10 +171,10 @@ async function buildChurnInput(
     // Credits remaining
     supabase
       .from("credit_packs")
-      .select("remaining")
+      .select("credits_remaining")
       .eq("studio_id", STUDIO_ID)
       .eq("member_id", memberId)
-      .gt("remaining", 0),
+      .gt("credits_remaining", 0),
 
     // Credits expiring within 7 days
     supabase
@@ -180,7 +182,7 @@ async function buildChurnInput(
       .select("id", { count: "exact", head: true })
       .eq("studio_id", STUDIO_ID)
       .eq("member_id", memberId)
-      .gt("remaining", 0)
+      .gt("credits_remaining", 0)
       .gte("expires_at", now.toISOString())
       .lte("expires_at", sevenDaysFromNow),
 
@@ -241,7 +243,7 @@ async function buildChurnInput(
   // Credits
   const creditsRemaining =
     creditsResult.data?.reduce(
-      (sum: number, c: { remaining: number }) => sum + (c.remaining ?? 0),
+      (sum: number, c: { credits_remaining: number }) => sum + (c.credits_remaining ?? 0),
       0
     ) ?? 0;
 
@@ -319,15 +321,14 @@ async function cacheResult(
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { user, supabase } = auth;
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     const body = await request.json();

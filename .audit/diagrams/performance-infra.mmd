@@ -1,0 +1,35 @@
+graph TD
+    subgraph Build["Build Pipeline"]
+        GIT[Git Push]
+        TURBO_BUILD["Turbo build\npackages first → web app"]
+        NETLIFY_DETECT["Netlify Auto-detect\nno netlify.toml"]
+    end
+
+    subgraph Runtime["Runtime Architecture"]
+        CDN["Netlify CDN\nStatic assets cached"]
+        NEXT_EDGE["Next.js Edge Runtime\nApp Router RSC"]
+        NEXT_FN["Next.js Serverless Functions\nRoute Handlers\n26s timeout — Inngest risk"]
+    end
+
+    subgraph DataLayer["Data Layer Performance"]
+        SUPA_CONN["Supabase\nConnection pool: Supabase managed"]
+        INDEXES["DB Indexes\nPhase 2: 15+ indexes added\nGaps: bookings.checked_in_at\ntransactions.member_id+created_at"]
+        AI_CACHE["AI Result Cache\nai_briefings: 30min\nai_cache: 24h\nNo invalidation triggers"]
+    end
+
+    subgraph BackgroundPerf["Background Jobs"]
+        INNGEST_Q["Inngest Queue\nEvaluate triggers: every 10min\nCron jobs: daily/hourly"]
+        STEP_FN["Inngest step.run()\nStep chunking prevents timeout\nif steps correctly defined"]
+    end
+
+    GIT --> TURBO_BUILD
+    TURBO_BUILD --> NETLIFY_DETECT
+    NETLIFY_DETECT --> CDN
+    NETLIFY_DETECT --> NEXT_FN
+    CDN --> NEXT_EDGE
+    NEXT_FN --> SUPA_CONN
+    SUPA_CONN --> INDEXES
+    NEXT_FN --> AI_CACHE
+    NEXT_FN --> INNGEST_Q
+    INNGEST_Q --> STEP_FN
+    STEP_FN --> SUPA_CONN

@@ -1,0 +1,66 @@
+graph TD
+    subgraph Clients
+        ADMIN_C[Admin Dashboard]
+        EMP_C[Employee Portal]
+        PUBLIC_C[Public / Webhooks]
+    end
+
+    subgraph Auth["Auth Layer (per-handler, no middleware)"]
+        JWT[supabase.auth.getUser]
+        ROLE[Role Check\nadmin/manager only\n— campaigns only]
+        STUDIO[studio_id resolution\nfrom profile OR hardcoded fallback]
+    end
+
+    subgraph APIGroups["API Route Groups"]
+        AI_EP["/api/ai/ — 13 endpoints\nClaude-powered, no rate limit"]
+        CORE_EP["/api/members,classes,bookings\nrevenue,segments — CRUD"]
+        MKTG_EP["/api/campaigns,automations\nleads,content — Marketing"]
+        OPS_EP["/api/clock,geofence\npayroll,employees — Operations"]
+        CORP_EP["/api/corporate,events\ninvoices — Corporate"]
+        ANALYTICS_EP["/api/analytics — 7 endpoints"]
+        INFRA_EP["/api/inngest,openapi\ncron,migration — Infra"]
+    end
+
+    subgraph PublicEndpoints["Public Endpoints (no auth)"]
+        LEAD_CAP["/api/leads/capture\n— no rate limit"]
+        OPENAPI["/api/openapi"]
+        UNSUB["/api/unsubscribe/token"]
+        WEBHOOKS["/api/webhooks/stripe,resend\ntwilio,easypost\n— signature verified"]
+    end
+
+    subgraph Backends["Backend Services"]
+        SUPABASE_DB[(Supabase\nPostgres + RLS)]
+        CLAUDE_SVC[Anthropic Claude\nclaude-sonnet-4-6]
+        STRIPE_SVC[Stripe]
+        RESEND_SVC[Resend]
+        INNGEST_SVC[Inngest]
+    end
+
+    ADMIN_C --> JWT
+    EMP_C --> JWT
+    JWT --> ROLE
+    JWT --> STUDIO
+    ROLE --> MKTG_EP
+    STUDIO --> AI_EP
+    STUDIO --> CORE_EP
+    STUDIO --> OPS_EP
+    STUDIO --> CORP_EP
+    STUDIO --> ANALYTICS_EP
+    STUDIO --> INFRA_EP
+
+    PUBLIC_C --> LEAD_CAP
+    PUBLIC_C --> OPENAPI
+    PUBLIC_C --> UNSUB
+    PUBLIC_C --> WEBHOOKS
+
+    AI_EP --> CLAUDE_SVC
+    AI_EP --> SUPABASE_DB
+    CORE_EP --> SUPABASE_DB
+    MKTG_EP --> SUPABASE_DB
+    MKTG_EP --> RESEND_SVC
+    OPS_EP --> SUPABASE_DB
+    CORP_EP --> SUPABASE_DB
+    ANALYTICS_EP --> SUPABASE_DB
+    INFRA_EP --> INNGEST_SVC
+    WEBHOOKS --> SUPABASE_DB
+    WEBHOOKS --> STRIPE_SVC

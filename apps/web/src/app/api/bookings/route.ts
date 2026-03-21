@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { validateBody, bookingCreateSchema } from "@/lib/validation";
 
 /**
  * GET /api/bookings
@@ -31,12 +32,21 @@ export async function GET(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 
     const studioId =
       profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+
+    // Role check
+    const roles: string[] = profile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
 
     let query = supabase
       .from("bookings")
@@ -96,18 +106,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { class_id, member_id } = body;
-
-    if (!class_id || !member_id) {
-      return NextResponse.json(
-        { error: "class_id and member_id are required" },
-        { status: 400 }
-      );
-    }
+    const { data: validated, error: validationError } = validateBody(bookingCreateSchema, body);
+    if (validationError) return validationError;
+    const { class_id, member_id } = validated;
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 

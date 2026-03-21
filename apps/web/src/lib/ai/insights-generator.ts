@@ -115,7 +115,13 @@ export async function generateInsights(
       message.content[0].type === "text" ? message.content[0].text : "";
 
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = JSON.parse(jsonStr) as AIInsight[];
+    let parsed: AIInsight[];
+    try {
+      parsed = JSON.parse(jsonStr) as AIInsight[];
+    } catch (parseError) {
+      console.error("Failed to parse AI insights JSON, falling back to rules-based:", parseError);
+      return generateRulesBasedInsights(context);
+    }
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
       console.error(

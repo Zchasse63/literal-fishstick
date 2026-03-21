@@ -113,7 +113,13 @@ export async function predictSeasonalTrends(
       message.content[0].type === "text" ? message.content[0].text : "";
 
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = JSON.parse(jsonStr) as SeasonalPrediction;
+    let parsed: SeasonalPrediction;
+    try {
+      parsed = JSON.parse(jsonStr) as SeasonalPrediction;
+    } catch (parseError) {
+      console.error("Failed to parse seasonal prediction JSON, falling back to rules-based:", parseError);
+      return generateRulesBasedPrediction(data);
+    }
 
     // Validate shape
     if (

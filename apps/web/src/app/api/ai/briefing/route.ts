@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { generateBriefing, BriefingContext } from "@/lib/anthropic";
+import { requireRole } from "@/lib/auth/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/ai/briefing
@@ -9,28 +11,15 @@ import { generateBriefing, BriefingContext } from "@/lib/anthropic";
  */
 export async function GET() {
   try {
-    const supabase = await createServerClient();
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { user, supabase, studioId } = auth;
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("studio_id")
-      .eq("id", user.id)
-      .single();
-
-    const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
 
     // Check for a cached briefing from the last 30 minutes
     const { data: cached } = await supabase

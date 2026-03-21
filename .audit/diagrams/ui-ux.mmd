@@ -1,0 +1,53 @@
+graph TD
+    subgraph AdminApp["Admin Dashboard (Next.js App Router)"]
+        subgraph AdminLayout["AdminLayout (route group: admin)"]
+            CMD_PAL[CommandPalette\ncmdk — Cmd+K]
+            SIDEBAR_A[Sidebar\n10 nav items · collapse toggle]
+            HEADER_A[Header\nbreadcrumb · actions]
+        end
+
+        subgraph AdminPages["Admin Pages"]
+            CC[Command Center\nAI briefing · KPIs · Schedule · Activity]
+            SCH[Schedule\nCalendar · Kiosk · Waitlist]
+            MEM[Members\nDirectory · Profile panel · AI health score]
+            REV[Revenue\nMRR · Transactions · Memberships]
+            MKT[Marketing\nCampaigns · Automations · Leads · Content]
+            CORP[Corporate\nAccounts · Events · Invoices]
+            OPS[Operations\nEmployees · Payroll · Documents]
+            ANA[Analytics\nDashboards · Reports · AI Insights · Trainers]
+        end
+    end
+
+    subgraph EmployeeApp["Employee Portal (route group: employee)"]
+        subgraph EmpLayout["EmployeeLayout"]
+            SIDEBAR_E[Sidebar\nMain nav + Trainer section]
+            HEADER_E[Header\nClock badge · Notifications]
+        end
+
+        subgraph EmpPages["Employee Pages"]
+            EMP_HOME[Home · Dashboard]
+            EMP_SCH[My Schedule]
+            EMP_TIME[Timesheets]
+            EMP_PAY[Pay & Taxes]
+            EMP_PROF[My Profile]
+            EMP_CLASSES[My Classes]
+            EMP_PERF[Performance]
+            EMP_PROMO[Promo Code]
+        end
+    end
+
+    subgraph SharedUI["Shared UI Primitives"]
+        SHADCN[shadcn/ui\n~20 components]
+        FRAMER[framer-motion\nspring animations]
+        RECHARTS[recharts\narea/bar/pie/funnel charts]
+        LUCIDE[lucide-react\nicons]
+    end
+
+    AdminLayout --> AdminPages
+    EmpLayout --> EmpPages
+    AdminPages --> SHADCN
+    AdminPages --> FRAMER
+    AdminPages --> RECHARTS
+    AdminPages --> LUCIDE
+    EmpPages --> SHADCN
+    EmpPages --> FRAMER

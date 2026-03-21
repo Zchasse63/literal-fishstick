@@ -6,6 +6,8 @@ import {
   RevenueAnomalyResult,
   RevenueWeek,
 } from "@/lib/ai/revenue-anomaly";
+import { requireRole } from "@/lib/auth/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 
 const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours — shorter since revenue changes frequently
@@ -112,16 +114,14 @@ function buildWeeklyBuckets(
 
 export async function GET() {
   try {
-    const supabase = await createServerClient();
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { user, supabase } = auth;
 
-    // Auth check
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     // -----------------------------------------------------------------------

@@ -104,6 +104,11 @@ export async function createPaymentIntent(
   metadata?: Record<string, string>
 ) {
   const stripe = getStripe()
+  // Generate idempotency key from order/member context to prevent duplicate charges
+  const idempotencyKey = metadata?.order_id
+    ? `pi_${metadata.order_id}_${customerId}`
+    : `pi_${customerId}_${amount}_${Date.now()}`
+
   return stripe.paymentIntents.create({
     amount,
     currency: 'usd',
@@ -115,6 +120,8 @@ export async function createPaymentIntent(
       studio_id: '11111111-1111-1111-1111-111111111111',
       ...metadata,
     },
+  }, {
+    idempotencyKey,
   })
 }
 

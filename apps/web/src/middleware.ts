@@ -4,17 +4,26 @@ import { createServerClient } from "@supabase/ssr";
 
 const PUBLIC_ROUTES = ["/login", "/auth/callback"];
 
-// Phase 2: Public API endpoints that don't require authentication
+// Public API endpoints that don't require authentication
 const PUBLIC_API_ROUTES = [
-  "/api/leads/capture",      // Lead capture form submission (public embed)
-  "/api/unsubscribe",        // Email unsubscribe (token-based)
-  "/api/inngest",            // Inngest webhook endpoint (verified via signing key)
+  "/api/leads/capture",        // Lead capture form submission (public embed)
+  "/api/unsubscribe",          // Email unsubscribe (token-based)
+  "/api/inngest",              // Inngest webhook endpoint (verified via signing key)
+  "/api/webhooks/stripe",      // Stripe webhook (verified via signature)
+  "/api/webhooks/resend",      // Resend webhook (verified via signature)
+  "/api/webhooks/easypost",    // EasyPost webhook
+  "/api/webhooks/twilio",      // Twilio webhook
+  "/api/openapi",              // API docs (public read)
 ];
+
+// Cron endpoints are secured by x-cron-secret header, not user auth
+const CRON_API_PREFIX = "/api/cron/";
 
 function isPublicRoute(pathname: string): boolean {
   return (
     PUBLIC_ROUTES.some((route) => pathname.startsWith(route)) ||
     PUBLIC_API_ROUTES.some((route) => pathname.startsWith(route)) ||
+    pathname.startsWith(CRON_API_PREFIX) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   );
@@ -22,6 +31,14 @@ function isPublicRoute(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   // Refresh the auth session on every request
+  //
+  // TODO(RLS): Phase 2+ tables use `current_setting('app.studio_id')::uuid` in
+  // RLS policies, but server-side route handlers use a service-role client that
+  // bypasses RLS entirely. All queries already filter by studio_id manually.
+  // When client-side access is added in Phase 5, RLS policies must be rewritten
+  // to use `auth.uid()` or `current_setting('app.studio_id')` must be set via
+  // a Supabase `set_config` call before each request.
+  //
   const response = await updateSession(request);
 
   const { pathname } = request.nextUrl;
@@ -51,7 +68,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Redirect unauthenticated users to login for protected route groups
+  // Unauthenticated API requests get a JSON 401 (not a redirect)
+  if (!user && pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Redirect unauthenticated users to login for protected page routes
   if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

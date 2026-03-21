@@ -29,11 +29,17 @@ export async function GET(
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 
     const studioId = profile?.studio_id ?? STUDIO_ID;
+
+    // Role check
+    const roles: string[] = profile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // ─── Fetch Export Record ───────────────────────────────────
     const { data: exportRecord, error: exportError } = await supabase

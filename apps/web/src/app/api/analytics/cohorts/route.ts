@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireRole } from "@/lib/auth/require-role";
 
 /**
  * GET /api/analytics/cohorts
@@ -8,7 +9,6 @@ import { createServerClient } from "@/lib/supabase/server";
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
     const { searchParams } = request.nextUrl;
 
     const monthsBack = Math.min(
@@ -16,27 +16,10 @@ export async function GET(request: NextRequest) {
       36
     );
 
-    // ─── Auth ──────────────────────────────────────────────────
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("studio_id")
-      .eq("id", user.id)
-      .single();
-
-    const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+    // ─── Auth + Role Check ─────────────────────────────────────
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { studioId, supabase } = auth;
 
     // ─── Query cohort_snapshots ───────────────────────────────
     const cutoffDate = new Date();
@@ -98,6 +81,8 @@ export async function GET(request: NextRequest) {
         months_back: monthsBack,
         cohorts,
       },
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300' },
     });
   } catch (err) {
     console.error("GET /api/analytics/cohorts error:", err);

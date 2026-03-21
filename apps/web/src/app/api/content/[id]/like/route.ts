@@ -25,12 +25,21 @@ export async function POST(
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 
     const studioId =
       profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+
+    // Role check
+    const roles: string[] = profile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
 
     // Verify post exists
     const { data: post, error: postError } = await supabase

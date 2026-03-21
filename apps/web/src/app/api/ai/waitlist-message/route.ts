@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
 import { sendTransactionalEmail } from "@/lib/resend";
 import {
   generateWaitlistMessage,
   type WaitlistMemberContext,
   type WaitlistMessageType,
 } from "@/lib/ai/waitlist-messaging";
+import { requireRole } from "@/lib/auth/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 
 const VALID_MESSAGE_TYPES: WaitlistMessageType[] = [
   "promoted",
@@ -22,16 +23,14 @@ const VALID_MESSAGE_TYPES: WaitlistMessageType[] = [
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerClient();
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { user, supabase } = auth;
 
-    // Authenticate
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     // Parse request body

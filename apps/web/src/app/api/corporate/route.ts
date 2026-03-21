@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { validateBody, corporateCreateSchema } from '@/lib/validation'
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 const ALLOWED_ROLES = ['admin', 'manager']
@@ -101,8 +102,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ─── Parse Body ────────────────────────────────────────────
+    // ─── Parse & Validate Body ─────────────────────────────────
     const body = await request.json()
+    const { data: validated, error: validationError } = validateBody(corporateCreateSchema, body)
+    if (validationError) return validationError
+
     const {
       name,
       legal_name,
@@ -126,37 +130,7 @@ export async function POST(request: NextRequest) {
       status,
       notes,
       tags,
-    } = body as {
-      name: string
-      legal_name?: string
-      tax_id?: string
-      industry?: string
-      company_size?: string
-      contact_name: string
-      contact_email: string
-      contact_phone?: string
-      contact_title?: string
-      billing_email?: string
-      billing_address?: Record<string, unknown>
-      stripe_customer_id?: string
-      payment_terms?: string
-      contract_start?: string
-      contract_end?: string
-      contract_value?: number
-      monthly_credit_allocation?: number
-      credit_rollover_cap?: number
-      auto_renew?: boolean
-      status?: string
-      notes?: string
-      tags?: string[]
-    }
-
-    if (!name || !contact_name || !contact_email) {
-      return NextResponse.json(
-        { error: 'name, contact_name, and contact_email are required' },
-        { status: 400 }
-      )
-    }
+    } = validated
 
     // ─── Insert ────────────────────────────────────────────────
     const { data: company, error: insertError } = await supabase

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { validateBody, eventCreateSchema } from '@/lib/validation'
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 const ALLOWED_ROLES = ['owner', 'manager']
@@ -124,8 +125,11 @@ export async function POST(request: NextRequest) {
 
     const studioId = profile?.studio_id || STUDIO_ID
 
-    // ─── Parse Body ────────────────────────────────────────────
+    // ─── Parse & Validate Body ─────────────────────────────────
     const body = await request.json()
+    const { data: validated, error: validationError } = validateBody(eventCreateSchema, body)
+    if (validationError) return validationError
+
     const {
       name,
       description,
@@ -149,37 +153,7 @@ export async function POST(request: NextRequest) {
       internal_notes,
       assigned_staff,
       resources_reserved,
-    } = body as {
-      name: string
-      description?: string
-      event_type: string
-      start_time: string
-      end_time: string
-      setup_time_minutes?: number
-      cleanup_time_minutes?: number
-      min_guests?: number
-      max_guests?: number
-      expected_guests?: number
-      base_price?: number
-      per_person_price?: number
-      total_price?: number
-      deposit_amount?: number
-      company_id?: string
-      contact_name?: string
-      contact_email?: string
-      contact_phone?: string
-      special_requests?: string
-      internal_notes?: string
-      assigned_staff?: string[]
-      resources_reserved?: unknown[]
-    }
-
-    if (!name || !event_type || !start_time || !end_time) {
-      return NextResponse.json(
-        { error: 'name, event_type, start_time, and end_time are required' },
-        { status: 400 }
-      )
-    }
+    } = validated
 
     // ─── Insert ────────────────────────────────────────────────
     const { data: event, error: insertError } = await supabase

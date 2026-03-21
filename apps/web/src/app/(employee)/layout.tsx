@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -20,8 +20,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
+import { useEmployeeProfile, useClockAction } from '@/hooks/use-employee'
 
 const mainNav = [
   { label: 'Home', href: '/employee', icon: Home },
@@ -44,8 +47,51 @@ export default function EmployeeLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
-  const [clockedIn, setClockedIn] = useState(true)
   const pathname = usePathname()
+
+  // Auth + employee data
+  const { profile } = useAuth()
+  const { employee, fullName, loading: empLoading } = useEmployeeProfile()
+  const { isClockedIn, loading: clockLoading, clockIn, clockOut } = useClockAction(employee?.id)
+
+  // Dark mode persistence
+  useEffect(() => {
+    const saved = localStorage.getItem('meridian-theme')
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setDarkMode(true)
+      document.documentElement.classList.add('dark')
+    }
+  }, [])
+
+  const toggleDark = () => {
+    const next = !darkMode
+    setDarkMode(next)
+    document.documentElement.classList.toggle('dark')
+    localStorage.setItem('meridian-theme', next ? 'dark' : 'light')
+  }
+
+  // Clock toggle handler
+  const [clockBusy, setClockBusy] = useState(false)
+  const handleClockToggle = async () => {
+    if (clockBusy || clockLoading) return
+    setClockBusy(true)
+    try {
+      if (isClockedIn) {
+        await clockOut()
+      } else {
+        await clockIn()
+      }
+    } catch (err) {
+      console.error('Clock toggle failed:', err)
+    } finally {
+      setClockBusy(false)
+    }
+  }
+
+  // User identity
+  const displayName = fullName || 'Employee'
+  const displayInitials = displayName.split(/\s+/).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)
+  const displayRole = profile?.roles?.includes('trainer') ? 'Trainer' : 'Employee'
 
   const isActive = (href: string) => {
     if (href === '/employee') return pathname === '/employee'
@@ -124,7 +170,7 @@ export default function EmployeeLayout({
               >
                 {active && (
                   <motion.div
-                    layoutId="employee-nav-pill"
+                    layoutId="employee-trainer-nav-pill"
                     className="absolute inset-0 bg-indigo-50 rounded-xl"
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
@@ -149,7 +195,7 @@ export default function EmployeeLayout({
             {!collapsed && <span>Switch to Admin</span>}
           </Link>
           <button
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={toggleDark}
             className={cn(
               'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-50 w-full transition-colors',
               collapsed && 'justify-center px-0'
@@ -160,13 +206,13 @@ export default function EmployeeLayout({
           </button>
           <div className={cn('flex items-center gap-2.5 px-3 py-2', collapsed && 'justify-center px-0')}>
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">WC</span>
+              <span className="text-white text-xs font-bold">{displayInitials}</span>
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">Whitney C.</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[10px] font-bold uppercase tracking-wider">
-                  Trainer
+                  {displayRole}
                 </span>
               </div>
             )}
@@ -194,16 +240,22 @@ export default function EmployeeLayout({
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setClockedIn(!clockedIn)}
+            onClick={handleClockToggle}
+            disabled={clockBusy || clockLoading}
             className={cn(
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors',
-              clockedIn
+              isClockedIn
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-gray-100 text-gray-500 border border-gray-200'
+                : 'bg-gray-100 text-gray-500 border border-gray-200',
+              (clockBusy || clockLoading) && 'opacity-60 cursor-not-allowed'
             )}
           >
-            <Circle className={cn('w-2 h-2 fill-current', clockedIn ? 'text-emerald-500' : 'text-gray-400')} />
-            {clockedIn ? 'Clocked In' : 'Clocked Out'}
+            {clockBusy ? (
+              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+            ) : (
+              <Circle className={cn('w-2 h-2 fill-current', isClockedIn ? 'text-emerald-500' : 'text-gray-400')} />
+            )}
+            {isClockedIn ? 'Clocked In' : 'Clocked Out'}
           </button>
           <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors">
             <Bell className="w-5 h-5 text-gray-500" />

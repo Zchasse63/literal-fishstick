@@ -1,31 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { translateToSQL, NLSearchResult } from "@/lib/anthropic";
-
-const DEFAULT_STUDIO_ID = "11111111-1111-1111-1111-111111111111";
-
-// ---------------------------------------------------------------------------
-// Simple in-memory rate limiter: max 10 queries per minute per studio
-// ---------------------------------------------------------------------------
-
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(studioId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(studioId);
-
-  if (!entry || now >= entry.resetAt) {
-    rateLimitMap.set(studioId, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-
-  if (entry.count >= 10) {
-    return true;
-  }
-
-  entry.count += 1;
-  return false;
-}
+import { requireRole } from "@/lib/auth/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
 // POST /api/ai/search
@@ -33,9 +10,19 @@ function isRateLimited(studioId: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    // Auth + role check
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { user, studioId } = auth;
+
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     const body = await request.json();
     const query: string | undefined = body.query;
-    const studioId: string = body.studio_id || DEFAULT_STUDIO_ID;
 
     if (!query || typeof query !== "string" || query.trim().length === 0) {
       return NextResponse.json(
@@ -51,18 +38,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate limiting
-    if (isRateLimited(studioId)) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Maximum 10 queries per minute." },
-        { status: 429 }
-      );
-    }
-
     // Translate natural language to SQL
     const translated = await translateToSQL({
       query: query.trim(),
-      studio_id: studioId,
+      studio_id: studioId!,
     });
 
     // If translation itself failed, return early with the error

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 import {
   generateInsights,
   StudioMetricsContext,
@@ -45,6 +46,12 @@ export async function POST() {
         { error: "Insufficient permissions. Owner or manager role required." },
         { status: 403 }
       );
+    }
+
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     // ─── Gather Studio Metrics Context (last 30 days) ────────

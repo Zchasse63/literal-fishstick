@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/require-role'
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
@@ -16,6 +17,12 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Role check
+    const { data: _rp } = await supabase.from('profiles').select('roles').eq('id', user.id).single()
+    if (!_rp?.roles?.some((r: string) => ['owner', 'manager'].includes(r))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { searchParams } = request.nextUrl
@@ -62,6 +69,12 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Role check
+    const { data: _rp } = await supabase.from('profiles').select('roles').eq('id', user.id).single()
+    if (!_rp?.roles?.some((r: string) => ['owner', 'manager'].includes(r))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -112,6 +125,12 @@ export async function PUT(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Role check
+    const { data: _rp } = await supabase.from('profiles').select('roles').eq('id', user.id).single()
+    if (!_rp?.roles?.some((r: string) => ['owner', 'manager'].includes(r))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -250,8 +250,40 @@ function NavCard({
   )
 }
 
+// ─── Skeleton Pulse ─────────────────────────────────────────
+function SkeletonPulse({ className }: { className?: string }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
+}
+
 // ─── Page ───────────────────────────────────────────────────
 export default function MarketingPage() {
+  const [campaigns, setCampaigns] = useState<RecentCampaign[]>(RECENT_CAMPAIGNS)
+  const [leadCount, setLeadCount] = useState<number>(142)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    Promise.all([
+      fetch('/api/campaigns?limit=5&status=sent')
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && d.data) setCampaigns(d.data)
+        })
+        .catch(() => {}),
+      fetch('/api/leads?limit=1')
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && typeof d.count === 'number') setLeadCount(d.count)
+        })
+        .catch(() => {}),
+    ]).finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+
+    return () => { cancelled = true }
+  }, [])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -316,7 +348,19 @@ export default function MarketingPage() {
 
           {/* Campaign rows */}
           <div className="divide-y divide-gray-50">
-            {RECENT_CAMPAIGNS.map((campaign) => (
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="flex-1"><SkeletonPulse className="h-4 w-40" /></div>
+                  <div className="w-[72px]"><SkeletonPulse className="h-5 w-14 rounded-full" /></div>
+                  <div className="w-16"><SkeletonPulse className="h-4 w-16" /></div>
+                  <div className="w-14"><SkeletonPulse className="h-4 w-10 ml-auto" /></div>
+                  <div className="w-14"><SkeletonPulse className="h-4 w-10 ml-auto" /></div>
+                  <div className="w-20"><SkeletonPulse className="h-4 w-14 ml-auto" /></div>
+                </div>
+              ))
+            ) : (
+            campaigns.map((campaign) => (
               <Link
                 key={campaign.id}
                 href={`/marketing/campaigns/${campaign.id}/report`}
@@ -349,7 +393,8 @@ export default function MarketingPage() {
                   </p>
                 </div>
               </Link>
-            ))}
+            ))
+            )}
           </div>
         </motion.div>
 

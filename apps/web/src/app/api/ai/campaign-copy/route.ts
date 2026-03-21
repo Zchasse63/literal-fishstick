@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
 import {
   generateCampaignCopy,
   CampaignCopyRequest,
 } from "@/lib/anthropic";
+import { requireRole } from "@/lib/auth/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 
 const VALID_CAMPAIGN_TYPES = [
   "winback",
@@ -23,16 +24,14 @@ const VALID_TONES = ["friendly", "urgent", "professional", "casual"] as const;
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerClient();
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { user, supabase } = auth;
 
-    // Authenticate
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Rate limit: 20 requests per minute per user
+    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
     // Parse and validate request body

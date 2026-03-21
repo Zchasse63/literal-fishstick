@@ -1,0 +1,32 @@
+{
+  "primary_language": "TypeScript",
+  "languages": ["TypeScript", "SQL", "YAML", "CSS"],
+  "frameworks": ["Next.js 16 (App Router)", "React 19", "Supabase", "Inngest", "Stripe"],
+  "has_frontend": true,
+  "has_backend": true,
+  "ai_detected": true,
+  "ai_frameworks": ["Anthropic Claude SDK", "pgvector"],
+  "test_frameworks": [],
+  "package_manager": "npm",
+  "monorepo": true,
+  "monorepo_tool": "Turborepo",
+  "build_tool": "Turbopack",
+  "hosting": "Netlify",
+  "database": "PostgreSQL (Supabase)",
+  "auth": "Supabase Auth (Magic Link / SSO)",
+  "css": "Tailwind CSS",
+  "ui_libraries": ["framer-motion", "recharts", "lucide-react", "reactflow", "@dnd-kit"],
+  "api_style": "REST (Next.js Route Handlers)",
+  "total_routes_estimated": 120,
+  "total_pages_estimated": 45,
+  "total_lines_estimated": 45000,
+  "packages": ["@meridian/types", "@meridian/utils", "@meridian/supabase", "web"],
+  "notable": {
+    "sms_provider": "Twilio (with stub fallback)",
+    "email_provider": "Resend",
+    "payments": "Stripe (direct)",
+    "shipping": "EasyPost (stub + real)",
+    "realtime": "60s polling (Phase 1)",
+    "multi_tenancy": "RLS with studio_id"
+  }
+}

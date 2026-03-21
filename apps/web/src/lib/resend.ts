@@ -17,7 +17,7 @@ function getResend(): Resend {
 }
 
 const DRY_RUN = process.env.RESEND_DRY_RUN === 'true'
-const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS ?? 'The Sauna Guys <noreply@thesaunaguys.com>'
+const FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS || process.env.RESEND_FROM_ADDRESS || 'The Sauna Guys <noreply@thesaunaguys.com>'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -130,15 +130,13 @@ export async function sendCampaignEmail(
 
 // ─── Batch Email ─────────────────────────────────────────────
 
+const RESEND_BATCH_LIMIT = 100
+
 export async function sendBatchEmails(
   emails: BatchEmail[]
 ): Promise<{ ids: (string | null)[]; error: string | null; dryRun: boolean }> {
   if (emails.length === 0) {
     return { ids: [], error: null, dryRun: false }
-  }
-
-  if (emails.length > 100) {
-    return { ids: [], error: 'Batch size exceeds maximum of 100 emails', dryRun: false }
   }
 
   if (DRY_RUN) {
@@ -148,24 +146,32 @@ export async function sendBatchEmails(
   }
 
   const resend = getResend()
+  const allIds: (string | null)[] = []
 
-  const { data, error } = await resend.batch.send(
-    emails.map((email) => ({
-      from: FROM_ADDRESS,
-      to: email.to,
-      subject: email.subject,
-      html: email.html,
-      replyTo: email.replyTo,
-      headers: email.headers,
-      tags: email.tags,
-    }))
-  )
+  // Chunk into batches of 100 (Resend API limit)
+  for (let i = 0; i < emails.length; i += RESEND_BATCH_LIMIT) {
+    const chunk = emails.slice(i, i + RESEND_BATCH_LIMIT)
 
-  if (error) {
-    console.error('[RESEND] Batch email error:', error)
-    return { ids: [], error: error.message, dryRun: false }
+    const { data, error } = await resend.batch.send(
+      chunk.map((email) => ({
+        from: FROM_ADDRESS,
+        to: email.to,
+        subject: email.subject,
+        html: email.html,
+        replyTo: email.replyTo,
+        headers: email.headers,
+        tags: email.tags,
+      }))
+    )
+
+    if (error) {
+      console.error(`[RESEND] Batch email error (chunk ${Math.floor(i / RESEND_BATCH_LIMIT) + 1}):`, error)
+      return { ids: allIds, error: error.message, dryRun: false }
+    }
+
+    const chunkIds = data?.data?.map((d) => d.id) ?? []
+    allIds.push(...chunkIds)
   }
 
-  const ids = data?.data?.map((d) => d.id) ?? []
-  return { ids, error: null, dryRun: false }
+  return { ids: allIds, error: null, dryRun: false }
 }

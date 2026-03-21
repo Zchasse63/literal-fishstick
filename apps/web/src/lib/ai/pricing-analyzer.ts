@@ -116,7 +116,13 @@ export async function analyzePricingScenario(
       message.content[0].type === "text" ? message.content[0].text : "";
 
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = JSON.parse(jsonStr) as PricingAnalysis;
+    let parsed: PricingAnalysis;
+    try {
+      parsed = JSON.parse(jsonStr) as PricingAnalysis;
+    } catch (parseError) {
+      console.error("Failed to parse pricing analysis JSON, falling back to rules-based:", parseError);
+      return generateRulesBasedAnalysis(scenario);
+    }
 
     // Validate shape
     if (

@@ -1,0 +1,50 @@
+graph TD
+    subgraph APIRoutes["AI API Endpoints (13)"]
+        BRIEF["/api/ai/briefing\nGET — 30min cache"]
+        CHURN["/api/ai/churn-prediction\nPOST — 24h cache"]
+        INSIGHTS["/api/ai/insights\nPOST — fingerprinted"]
+        CAMP["/api/ai/campaign-copy\nPOST"]
+        SEARCH["/api/ai/search\nGET/POST + pgvector"]
+        HEALTH["/api/ai/health-score\nPOST"]
+        ANOMALY["/api/ai/revenue-anomaly\nPOST"]
+        TRAINER["/api/ai/trainer-summary\nPOST"]
+        INTAKE["/api/ai/intake-enrichment\nPOST"]
+        WAITLIST["/api/ai/waitlist-message\nPOST"]
+        AUTOREPLY["/api/ai/auto-reply\nPOST"]
+        BOOKING["/api/ai/booking-patterns\nPOST"]
+        RECS["/api/ai/recommendations\nPOST"]
+    end
+
+    subgraph LibModules["AI Library Modules"]
+        LIB_MAIN["lib/anthropic.ts\ngenerateBriefing()\ngenerateRecommendations()"]
+        LIB_CHURN_M["lib/ai/churn-prediction.ts\npredictChurn() + fallback"]
+        LIB_INS_M["lib/ai/insights-generator.ts\ngenerateInsights()"]
+        LIB_OTHER["lib/ai/*.ts\n10 additional modules\n5 unwired (cross-sell, pricing-analyzer,\nreport-narrative, seasonal-predictor,\ntrainer-comparison)"]
+    end
+
+    subgraph CacheLayer["AI Cache (Supabase)"]
+        BRIEF_C[("ai_briefings\nstudio scoped\n30min TTL")]
+        GENERIC_C[("ai_cache\ncache_type + entity_id\nconfigurable TTL")]
+    end
+
+    subgraph InngestAI["Inngest AI Crons"]
+        CRON_I["cron-ai-insights (daily)"]
+        CRON_T["cron-trainer-metrics"]
+        CRON_C["cron-cohort-refresh"]
+    end
+
+    subgraph ExternalAI["External AI Services"]
+        CLAUDE_API["Anthropic Claude\nclaude-sonnet-4-6\nno temperature set"]
+        PGVECTOR["pgvector\nsemantic embeddings"]
+    end
+
+    BRIEF --> LIB_MAIN --> CLAUDE_API
+    CHURN --> LIB_CHURN_M --> CLAUDE_API
+    INSIGHTS --> LIB_INS_M --> CLAUDE_API
+    CAMP --> LIB_OTHER --> CLAUDE_API
+    SEARCH --> PGVECTOR
+    SEARCH --> CLAUDE_API
+    LIB_MAIN --> BRIEF_C
+    LIB_CHURN_M --> GENERIC_C
+    CRON_I --> LIB_INS_M
+    CRON_I --> GENERIC_C

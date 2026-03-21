@@ -98,7 +98,13 @@ export async function compareTrainers(
       message.content[0].type === "text" ? message.content[0].text : "";
 
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = JSON.parse(jsonStr) as TeamInsight;
+    let parsed: TeamInsight;
+    try {
+      parsed = JSON.parse(jsonStr) as TeamInsight;
+    } catch (parseError) {
+      console.error("Failed to parse trainer comparison JSON, falling back to rules-based:", parseError);
+      return generateRulesBasedComparison(trainers);
+    }
 
     // Validate shape
     if (

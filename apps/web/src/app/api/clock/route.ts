@@ -60,6 +60,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Role check — any staff member can clock in/out
+    const { data: _rp } = await supabase.from("profiles").select("roles").eq("id", user.id).single();
+    if (!_rp?.roles?.some((r: string) => ["owner", "manager", "trainer", "staff"].includes(r))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { action, location_id } = body;
     // Support both latitude/longitude and legacy lat/lng

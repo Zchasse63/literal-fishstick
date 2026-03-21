@@ -314,11 +314,13 @@ export async function canEnrollMember(
     .eq('studio_id', flow.studio_id)
     .in('status', ['active', 'paused'])
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (active) return false; // already enrolled
 
-  // If reenrollment is not allowed, check for any past enrollment
+  // If reenrollment is not allowed, check for any past enrollment that
+  // completed successfully. Failed or exited enrollments should NOT block
+  // reenrollment — only completed ones count as "has been through this flow".
   if (!flow.allow_reenrollment) {
     const { data: past } = await db
       .from('automation_enrollments')
@@ -326,8 +328,9 @@ export async function canEnrollMember(
       .eq('automation_id', flow.id)
       .eq('member_id', memberId)
       .eq('studio_id', flow.studio_id)
+      .eq('status', 'completed')
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (past) return false;
   }
@@ -346,7 +349,7 @@ export async function canEnrollMember(
       .eq('studio_id', flow.studio_id)
       .gte('completed_at', cooldownCutoff)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (recent) return false;
   }

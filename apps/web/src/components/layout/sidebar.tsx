@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
 import {
   LayoutDashboard,
   Calendar,
@@ -32,8 +33,8 @@ const navItems = [
   { id: 'corporate', label: 'Corporate', icon: Briefcase, href: '/corporate', shortcut: '6' },
   { id: 'operations', label: 'Operations', icon: Building2, href: '/operations', shortcut: '7' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/analytics', shortcut: '8' },
-  { id: 'segments', label: 'Segments', icon: Target, href: '/segments', shortcut: '8' },
-  { id: 'engagement', label: 'Engagement', icon: Trophy, href: '/engagement', shortcut: '9' },
+  { id: 'segments', label: 'Segments', icon: Target, href: '/segments', shortcut: '9' },
+  { id: 'engagement', label: 'Engagement', icon: Trophy, href: '/engagement', shortcut: '0' },
 ]
 
 interface SidebarProps {
@@ -43,6 +44,28 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
+  const { profile } = useAuth()
+
+  // Dark mode
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const saved = localStorage.getItem('meridian-theme')
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setIsDark(true)
+      document.documentElement.classList.add('dark')
+    }
+  }, [])
+  const toggleDark = () => {
+    const next = !isDark
+    setIsDark(next)
+    document.documentElement.classList.toggle('dark')
+    localStorage.setItem('meridian-theme', next ? 'dark' : 'light')
+  }
+
+  // User identity
+  const userName = profile?.full_name || 'User'
+  const userInitials = userName.split(/\s+/).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)
+  const userRole = profile?.roles?.[0] === 'owner' ? 'Studio Owner' : profile?.roles?.[0] === 'admin' ? 'Admin' : profile?.roles?.[0] || 'Member'
 
   const getActiveId = () => {
     if (pathname === '/') return 'dashboard'
@@ -122,20 +145,23 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Bottom */}
       <div className="border-t border-gray-100 p-3 space-y-2">
         {/* Dark mode toggle */}
-        <button className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-50 w-full transition-colors">
-          <Sun className="w-5 h-5" />
-          {!collapsed && <span>Light Mode</span>}
+        <button
+          onClick={toggleDark}
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-50 w-full transition-colors"
+        >
+          {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          {!collapsed && <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>}
         </button>
 
         {/* User */}
         <div className="flex items-center gap-3 px-3 py-2">
           <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-indigo-700 text-xs font-bold">ZM</span>
+            <span className="text-indigo-700 text-xs font-bold">{userInitials}</span>
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">Zach M.</p>
-              <p className="text-xs text-gray-500">Studio Owner</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">{userName}</p>
+              <p className="text-xs text-gray-500">{userRole}</p>
             </div>
           )}
           {!collapsed && (

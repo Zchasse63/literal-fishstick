@@ -27,12 +27,21 @@ export async function GET(
 
     const { data: authProfile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 
     const studioId =
       authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+
+    // Role check
+    const roles: string[] = authProfile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
 
     // Fetch member profile with memberships
     const { data: member, error: memberError } = await supabase
@@ -147,7 +156,7 @@ export async function PUT(
 
     const { data: authProfile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 
@@ -215,6 +224,14 @@ export async function PUT(
       metadata: updates,
     });
 
+    // Invalidate AI cache entries for this member so stale predictions
+    // (churn, health score, etc.) are regenerated on next request.
+    await supabase
+      .from("ai_cache")
+      .delete()
+      .eq("studio_id", studioId)
+      .eq("entity_id", id);
+
     return NextResponse.json({ data: updated });
   } catch (err) {
     console.error("PUT /api/members/[id] error:", err);
@@ -251,7 +268,7 @@ export async function DELETE(
 
     const { data: authProfile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 

@@ -1,0 +1,44 @@
+graph LR
+    subgraph Monorepo["Meridian Monorepo (Turborepo)"]
+        subgraph Apps
+            WEB["apps/web\nNext.js 16 App Router\n~45k lines"]
+        end
+        subgraph Packages
+            TYPES["@meridian/types\n14 domain modules"]
+            SUPA["@meridian/supabase\nbrowser + server clients"]
+            UTILS["@meridian/utils\ndates · currency · constants"]
+        end
+    end
+
+    subgraph WebRouteGroups["Next.js Route Groups"]
+        ADMIN["(admin)\n12 modules · 45+ pages"]
+        EMP["(employee)\n8 portal pages"]
+        AUTH["(auth)\nlogin · callback"]
+        API["api/\n40+ domains · ~120 endpoints"]
+    end
+
+    subgraph ExternalServices["External Services"]
+        SUPABASE_SVC["Supabase\nPostgres + Auth + RLS"]
+        STRIPE["Stripe\nPayments + Webhooks"]
+        ANTHROPIC["Anthropic\nclaude-sonnet-4-6"]
+        INNGEST["Inngest\nEvent-Driven Jobs"]
+        RESEND["Resend\nEmail"]
+        TWILIO["Twilio\nSMS (stub)"]
+        EASYPOST["EasyPost\nShipping"]
+    end
+
+    WEB --> TYPES
+    WEB --> SUPA
+    WEB --> UTILS
+    WEB --> ADMIN
+    WEB --> EMP
+    WEB --> AUTH
+    WEB --> API
+    SUPA --> SUPABASE_SVC
+    API --> SUPABASE_SVC
+    API --> STRIPE
+    API --> ANTHROPIC
+    API --> INNGEST
+    API --> RESEND
+    API --> TWILIO
+    API --> EASYPOST

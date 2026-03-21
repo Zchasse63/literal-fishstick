@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -318,6 +318,20 @@ export default function AnalyticsPage() {
   const [dismissedRecs, setDismissedRecs] = useState<Set<string>>(new Set())
   const [heatmapFilter, setHeatmapFilter] = useState<HeatmapFilter>('All')
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null)
+  const [kpiMetrics, setKpiMetrics] = useState<KPIMetric[]>(KPI_METRICS)
+  const [kpiLoading, setKpiLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/analytics/summary')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.data) setKpiMetrics(d.data)
+      })
+      .catch(() => {}) // keep mock on error
+      .finally(() => { if (!cancelled) setKpiLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   const visibleRecs = AI_RECOMMENDATIONS.filter((r) => !dismissedRecs.has(r.id))
 
@@ -368,7 +382,19 @@ export default function AnalyticsPage() {
           transition={{ ...fadeInUp.transition, delay: 0.03 }}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"
         >
-          {KPI_METRICS.map((metric) => {
+          {kpiLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-3 w-16 bg-gray-200 animate-pulse rounded" />
+                  <div className="h-3.5 w-3.5 bg-gray-200 animate-pulse rounded" />
+                </div>
+                <div className="h-8 w-20 bg-gray-200 animate-pulse rounded mb-1" />
+                <div className="h-3 w-14 bg-gray-100 animate-pulse rounded" />
+              </div>
+            ))
+          ) : (
+          kpiMetrics.map((metric) => {
             const Icon = metric.icon
             const isPositive = metric.label === 'Monthly Churn' ? metric.trend < 0 : metric.trend > 0
             return (
@@ -404,7 +430,8 @@ export default function AnalyticsPage() {
                 </div>
               </Link>
             )
-          })}
+          })
+          )}
         </motion.div>
 
         {/* ─── AI Recommendations Strip ────────────────── */}

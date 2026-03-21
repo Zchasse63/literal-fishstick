@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Role check
+  const { data: _rp } = await supabase.from('profiles').select('roles').eq('id', user.id).single()
+  if (!_rp?.roles?.some((r: string) => ['owner', 'manager'].includes(r))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   // ─── Parse Body ────────────────────────────────────────────
   const body = await request.json()
   const {

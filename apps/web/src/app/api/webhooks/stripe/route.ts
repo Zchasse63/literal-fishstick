@@ -39,6 +39,13 @@ export async function POST(request: NextRequest) {
             })
             .eq('id', memberId)
 
+          // Invalidate AI cache (churn/health predictions are now stale)
+          await supabase
+            .from('ai_cache')
+            .delete()
+            .eq('entity_id', memberId)
+            .eq('studio_id', '11111111-1111-1111-1111-111111111111')
+
           await logActivity(supabase, 'subscription_created', {
             member_id: memberId,
             subscription_id: subscription.id,
@@ -56,6 +63,13 @@ export async function POST(request: NextRequest) {
             .from('members')
             .update({ membership_status: status })
             .eq('id', memberId)
+
+          // Invalidate AI cache (churn/health predictions are now stale)
+          await supabase
+            .from('ai_cache')
+            .delete()
+            .eq('entity_id', memberId)
+            .eq('studio_id', '11111111-1111-1111-1111-111111111111')
         }
         break
       }
@@ -68,6 +82,13 @@ export async function POST(request: NextRequest) {
             .from('members')
             .update({ membership_status: 'expired' })
             .eq('id', memberId)
+
+          // Invalidate AI cache (churn/health predictions are now stale)
+          await supabase
+            .from('ai_cache')
+            .delete()
+            .eq('entity_id', memberId)
+            .eq('studio_id', '11111111-1111-1111-1111-111111111111')
 
           await logActivity(supabase, 'subscription_canceled', {
             member_id: memberId,

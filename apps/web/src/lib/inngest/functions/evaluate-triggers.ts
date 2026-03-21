@@ -12,7 +12,9 @@
 import { inngest } from '@/lib/inngest/client';
 import { getAdminClient, canEnrollMember } from '@/lib/inngest/helpers';
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111';
+// TODO: Multi-tenancy — query `studios` table and iterate all active studios
+// instead of hardcoding a single studio ID. See MED-001.
+const STUDIO_ID = process.env.DEFAULT_STUDIO_ID || '11111111-1111-1111-1111-111111111111';
 
 // 10-minute window for polling-based triggers
 const POLLING_WINDOW_MS = 10 * 60 * 1000;
@@ -53,7 +55,7 @@ export const evaluateTriggers = inngest.createFunction(
         .from('automation_flows')
         .select('*')
         .eq('studio_id', STUDIO_ID)
-        .eq('status', 'active');
+        .eq('is_active', true);
 
       if (error) {
         console.error('[automation] Failed to load flows:', error);

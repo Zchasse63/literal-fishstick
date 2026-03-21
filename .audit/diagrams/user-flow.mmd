@@ -1,0 +1,45 @@
+sequenceDiagram
+    participant Owner as Studio Owner
+    participant Browser as Admin Dashboard
+    participant API as Next.js API
+    participant DB as Supabase DB
+    participant Claude as Anthropic Claude
+    participant Inngest as Inngest
+
+    Note over Owner,Inngest: Primary Admin Flow
+
+    Owner->>Browser: Login via magic link
+    Browser->>API: GET /auth/callback
+    API->>DB: Verify session
+    DB-->>Browser: Session + profile
+    Browser->>API: GET /api/ai/briefing
+    API->>DB: Parallel: classes, transactions, members, credits, waitlist
+    API->>Claude: Generate daily briefing
+    Claude-->>API: Briefing text
+    API->>DB: Cache in ai_briefings (30min TTL)
+    API-->>Browser: Briefing + metrics
+
+    Owner->>Browser: Click member
+    Browser->>API: GET /api/members/[id]
+    Browser->>API: POST /api/ai/churn-prediction
+    API->>DB: Aggregate 90-day behavioral data
+    API->>Claude: Predict churn risk
+    Claude-->>API: Risk score + narrative
+    API->>DB: Cache in ai_cache (24h TTL)
+    API-->>Browser: ChurnPredictionResult
+
+    Note over Inngest,DB: Background Automation Flow (every 10min)
+    Inngest->>DB: Query active automation_flows
+    Note right of DB: BUG: queries status='active'\nbut field is is_active BOOLEAN
+    DB-->>Inngest: 0 flows returned (bug)
+    Inngest->>Inngest: No enrollments created
+
+    Note over Owner,DB: Campaign Send Flow
+    Owner->>Browser: Create campaign
+    Browser->>API: POST /api/campaigns
+    Owner->>Browser: Send campaign
+    Browser->>API: POST /api/campaigns/send
+    API->>DB: Build recipient list from segment
+    API->>DB: Insert campaign_recipients
+    API->>API: Send via Resend API
+    Note right of API: Async: Resend webhooks\nupdate delivery/open/click metrics

@@ -1,0 +1,76 @@
+erDiagram
+    studios ||--o{ profiles : "members_staff_trainers"
+    studios ||--o{ classes : "hosts"
+    studios ||--o{ campaigns : "sends"
+    studios ||--o{ automation_flows : "defines"
+    studios ||--o{ leads : "tracks"
+    studios ||--o{ geofence_locations : "has"
+
+    profiles ||--o{ bookings : "makes"
+    profiles ||--o{ credit_packs : "owns"
+    profiles ||--o{ transactions : "generates"
+    profiles ||--o{ campaign_recipients : "receives"
+    profiles ||--o{ automation_enrollments : "enrolled_in"
+    profiles ||--o{ email_preferences : "has"
+    profiles ||--o{ content_posts : "authors"
+    profiles ||--o{ clock_entries : "logs"
+
+    classes ||--o{ bookings : "fills"
+    classes }o--|| class_types : "typed_as"
+    classes }o--o| profiles : "led_by"
+
+    campaigns ||--o{ campaign_recipients : "targets"
+    campaigns }o--o| email_templates : "uses"
+
+    automation_flows ||--o{ automation_enrollments : "enrolls"
+    automation_enrollments }o--|| profiles : "for_member"
+
+    leads ||--o{ lead_activities : "has_timeline"
+    leads }o--o| profiles : "converted_to"
+
+    content_posts ||--o{ content_comments : "has"
+    content_posts ||--o{ content_likes : "receives"
+
+    bookings {
+        uuid id PK
+        uuid studio_id FK
+        uuid class_id FK
+        uuid member_id FK
+        text status
+        timestamptz booked_at
+        timestamptz checked_in_at
+    }
+
+    profiles {
+        uuid id PK
+        uuid studio_id FK
+        text roles
+        text membership_type
+        text membership_status
+        boolean exclude_from_analytics
+        text acquisition_source
+        text timezone
+    }
+
+    campaigns {
+        uuid id PK
+        uuid studio_id FK
+        text status
+        text[] channels
+        boolean ab_test_enabled
+        jsonb ab_variants
+        int recipient_count
+        int open_count
+        int click_count
+    }
+
+    automation_flows {
+        uuid id PK
+        uuid studio_id FK
+        text trigger_type
+        jsonb trigger_config
+        jsonb steps
+        boolean is_active
+        int version
+        bool allow_reenrollment
+    }

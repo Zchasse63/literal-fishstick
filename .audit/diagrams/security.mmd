@@ -1,0 +1,36 @@
+graph TD
+    subgraph Internet["Public Internet"]
+        LEGIT[Authenticated Admin/Employee\nSupabase JWT session]
+        ANON[Unauthenticated Requests]
+        WEBHOOKS[External Webhooks\nStripe · Resend · Twilio · EasyPost]
+    end
+
+    subgraph NextJS["Next.js Server (no middleware.ts)"]
+        UNPROTECTED["Public Endpoints\n/api/leads/capture — no rate limit\n/api/openapi — schema exposed\n/api/unsubscribe/token"]
+        AUTHED["Auth-checked Endpoints\n~120 handlers\nper-handler getUser()"]
+        WH["Webhook Handlers\nStripe: HMAC verified\nResend: Svix verified\nTwilio: UNKNOWN\nEasyPost: UNKNOWN"]
+    end
+
+    subgraph DB["Database Layer"]
+        SUPA_AUTH[Supabase Auth\nJWT validation]
+        RLS["RLS Policies\nCRITICAL: app.studio_id\nsession var may not be set"]
+        POSTGRES[(PostgreSQL)]
+    end
+
+    LEGIT --> AUTHED
+    ANON --> UNPROTECTED
+    WEBHOOKS --> WH
+
+    AUTHED --> SUPA_AUTH
+    SUPA_AUTH --> RLS
+    RLS --> POSTGRES
+
+    WH --> POSTGRES
+    UNPROTECTED --> POSTGRES
+
+    classDef critical fill:#fee2e2,stroke:#ef4444
+    classDef warning fill:#fef3c7,stroke:#f59e0b
+
+    class RLS critical
+    class WH warning
+    class UNPROTECTED warning

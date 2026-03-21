@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { createSMSProvider } from '@/lib/sms';
+import { rateLimit } from '@/lib/rate-limit';
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111';
 const ALLOWED_ROLES = ['admin', 'manager'];
@@ -37,6 +38,12 @@ export async function POST(request: NextRequest) {
       { error: 'Insufficient permissions. Admin or manager role required.' },
       { status: 403 },
     );
+  }
+
+  // Rate limit: 5 requests per minute per user
+  const rl = rateLimit(`sms:${user.id}`, 5, 60_000);
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
   // ── Parse Body ──────────────────────────────────────────────

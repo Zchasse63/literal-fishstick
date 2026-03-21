@@ -31,12 +31,21 @@ export async function POST(
 
     const { data: authProfile } = await supabase
       .from("profiles")
-      .select("studio_id")
+      .select("studio_id, roles")
       .eq("id", user.id)
       .single();
 
     const studioId =
       authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+
+    // Role check
+    const roles: string[] = authProfile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
 
     const body = await request.json();
     const { new_plan } = body as { new_plan: Plan };

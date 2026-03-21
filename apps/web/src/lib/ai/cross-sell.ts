@@ -100,7 +100,13 @@ export async function detectCrossSellOpportunities(
       message.content[0].type === "text" ? message.content[0].text : "";
 
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = JSON.parse(jsonStr) as CrossSellResult;
+    let parsed: CrossSellResult;
+    try {
+      parsed = JSON.parse(jsonStr) as CrossSellResult;
+    } catch (parseError) {
+      console.error("Failed to parse cross-sell JSON, falling back to rules-based:", parseError);
+      return generateRulesBasedCrossSell(input);
+    }
 
     // Validate shape
     if (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireRole } from "@/lib/auth/require-role";
 
 /**
  * GET /api/analytics/summary
@@ -8,32 +9,13 @@ import { createServerClient } from "@/lib/supabase/server";
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
-
     // Suppress unused variable warning — nextUrl is available if needed later
     void request;
 
-    // ─── Auth ──────────────────────────────────────────────────
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("studio_id")
-      .eq("id", user.id)
-      .single();
-
-    const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+    // ─── Auth + Role Check ─────────────────────────────────────
+    const auth = await requireRole(["owner", "manager"]);
+    if (auth.error) return auth.error;
+    const { studioId, supabase } = auth;
 
     // ─── Get latest daily_metrics row ─────────────────────────
     const { data: latestMetric } = await supabase
@@ -142,6 +124,8 @@ export async function GET(request: NextRequest) {
         },
         as_of: latestMetric?.metric_date ?? null,
       },
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
     });
   } catch (err) {
     console.error("GET /api/analytics/summary error:", err);

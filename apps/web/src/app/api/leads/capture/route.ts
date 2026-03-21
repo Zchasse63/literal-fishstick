@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/leads/capture
@@ -10,12 +11,16 @@ import { createServerClient } from "@/lib/supabase/server";
  *
  * studio_token is used to identify the studio (maps to a row in studio_settings or studios table).
  * The honeypot field should be empty — if filled, the request is likely a bot.
- *
- * Rate limiting note: In production, add rate limiting via middleware or edge function
- * (e.g., 10 requests per IP per minute). This route does not enforce rate limits itself.
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 10 requests per minute per IP
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = rateLimit(`leads-capture:${ip}`, 10, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     const supabase = await createServerClient();
 
     const body = await request.json();

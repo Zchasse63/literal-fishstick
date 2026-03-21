@@ -47,7 +47,7 @@ BEGIN
   -- Anonymize lead activities performed by this member
   UPDATE lead_activities SET performed_by = NULL WHERE performed_by = p_member_id;
 
-  -- Anonymize content (set author to NULL or delete)
+  -- Anonymize content (reassign to deleted-user placeholder or delete)
   DELETE FROM content_likes WHERE author_id = p_member_id;
   DELETE FROM content_comments WHERE author_id = p_member_id;
   UPDATE content_posts SET author_id = '00000000-0000-0000-0000-000000000000'

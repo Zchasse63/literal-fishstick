@@ -1,0 +1,54 @@
+graph TD
+    subgraph Meridian["Meridian Platform"]
+        API["/api/* Route Handlers\n~120 endpoints"]
+        INNGEST_FN["Inngest Functions\n12 cron + event handlers"]
+        WH["Webhook Handlers\nstripe · resend · twilio · easypost"]
+    end
+
+    subgraph AuthDB["Auth & Database"]
+        SUPA_A["Supabase Auth\nMagic Link / SSO\n@supabase/ssr"]
+        SUPA_DB[("Supabase Postgres\nRLS + studio_id isolation")]
+        SUPA_RT["Supabase Realtime\nWebSocket subscriptions"]
+        SUPA_SVC[("Service-Role Client\nBypasses RLS\nInngest only — explicit studio_id required")]
+    end
+
+    subgraph PaymentsBlock["Payments"]
+        STRIPE["Stripe\nv20.4.1\nSubscriptions + Webhooks"]
+    end
+
+    subgraph EmailSMS["Messaging"]
+        RESEND["Resend\nv6.9.4\nTransactional + Batch + Webhooks\nSvix verified"]
+        TWILIO["Twilio\nv5.13.0\nSMS — STUBBED by default"]
+    end
+
+    subgraph AI["AI & ML"]
+        CLAUDE["Anthropic Claude\nclaude-sonnet-4-6\nNew client per request"]
+        PGVEC["pgvector\nSemantic search embeddings"]
+    end
+
+    subgraph Jobs["Background Jobs"]
+        INNGEST_SVC["Inngest Cloud\nEvent queue + scheduler\nBuilt-in retries"]
+    end
+
+    subgraph ShippingBlock["Shipping"]
+        EASYPOST["EasyPost\nStubbed — Phase 4"]
+    end
+
+    API --> SUPA_A
+    API --> SUPA_DB
+    API --> SUPA_RT
+    API --> STRIPE
+    API --> RESEND
+    API --> TWILIO
+    API --> CLAUDE
+    API --> INNGEST_SVC
+    API --> EASYPOST
+
+    INNGEST_FN --> SUPA_SVC
+    INNGEST_FN --> CLAUDE
+    INNGEST_FN --> RESEND
+    INNGEST_SVC --> INNGEST_FN
+
+    WH --> SUPA_DB
+    WH --> STRIPE
+    WH --> RESEND
