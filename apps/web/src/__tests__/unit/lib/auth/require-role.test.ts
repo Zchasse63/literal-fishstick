@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockSupabaseClient, createMockProfile } from '../../helpers/mock-supabase'
+import { createMockSupabaseClient, createMockProfile } from '../../../helpers/mock-supabase'
 
 // vi.hoisted runs before vi.mock hoisting, so mockSupabase is available in the factory
 const mockSupabase = vi.hoisted(() => {
