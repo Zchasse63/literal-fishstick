@@ -59,7 +59,6 @@ export async function POST(
     let React: any
 
     try {
-      // @ts-expect-error -- @react-pdf/renderer is an optional dependency
       ReactPDF = await import('@react-pdf/renderer')
       React = await import('react')
     } catch {

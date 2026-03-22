@@ -63,7 +63,6 @@ export async function generatePDF(
   let React: any;
 
   try {
-    // @ts-expect-error -- @react-pdf/renderer is an optional dependency (PDF spike)
     ReactPDF = await import("@react-pdf/renderer");
     React = await import("react");
   } catch {
