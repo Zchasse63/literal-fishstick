@@ -107,7 +107,13 @@ export function useQuery<T = Record<string, unknown>>(
 
       setData(rows as T[])
     } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)))
+      if (err instanceof Error) {
+        setError(err)
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        setError(new Error((err as { message: string }).message))
+      } else {
+        setError(new Error(JSON.stringify(err)))
+      }
     } finally {
       setLoading(false)
     }
@@ -170,15 +176,15 @@ export function useClasses(
 
   if (dateRange) {
     filters.push(
-      { column: 'date', operator: 'gte', value: dateRange.from },
-      { column: 'date', operator: 'lte', value: dateRange.to },
+      { column: 'starts_at', operator: 'gte', value: dateRange.from },
+      { column: 'starts_at', operator: 'lte', value: dateRange.to },
     )
   }
 
   return useQuery<ClassInstance & { class_types: Record<string, unknown> | null }>('classes', {
-    select: '*, class_types:template_id ( * )',
+    select: '*, class_types:class_type_id ( * )',
     filters,
-    orderBy: { column: 'date', ascending: true },
+    orderBy: { column: 'starts_at', ascending: true },
     poll: true,
   })
 }
