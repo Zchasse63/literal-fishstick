@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -80,24 +81,7 @@ const COLUMNS: Column[] = [
   { id: 'lost', label: 'Lost', color: 'bg-gray-400', borderColor: 'border-t-gray-400' },
 ]
 
-// ─── Mock Data ──────────────────────────────────────────────
-const INITIAL_LEADS: Lead[] = [
-  { id: 'l1', firstName: 'Sarah', lastName: 'Mitchell', email: 'sarah.m@gmail.com', phone: '(813) 555-0142', source: 'website', score: 85, status: 'new', lastActivity: '2 min ago', tags: ['hot'], assignedTo: { name: 'Zach', initials: 'ZR' } },
-  { id: 'l2', firstName: 'James', lastName: 'Rodriguez', email: 'jrod@outlook.com', source: 'instagram', score: 72, status: 'new', lastActivity: '15 min ago', tags: ['fitness'], assignedTo: { name: 'Whitney', initials: 'WC' } },
-  { id: 'l3', firstName: 'Emily', lastName: 'Chen', email: 'echen@gmail.com', phone: '(813) 555-0199', source: 'referral', score: 91, status: 'new', lastActivity: '1h ago', tags: ['hot', 'referral'] },
-  { id: 'l4', firstName: 'Marcus', lastName: 'Thompson', email: 'marcus.t@yahoo.com', source: 'campaign', score: 56, status: 'contacted', lastActivity: '3h ago', tags: [], assignedTo: { name: 'Zach', initials: 'ZR' } },
-  { id: 'l5', firstName: 'Olivia', lastName: 'Park', email: 'olivia.park@gmail.com', source: 'website', score: 63, status: 'contacted', lastActivity: '5h ago', tags: ['corporate'], assignedTo: { name: 'Whitney', initials: 'WC' } },
-  { id: 'l6', firstName: 'Daniel', lastName: 'Kim', email: 'dkim@proton.me', phone: '(813) 555-0221', source: 'walk_in', score: 78, status: 'contacted', lastActivity: '1d ago', tags: ['walk-in'] },
-  { id: 'l7', firstName: 'Rachel', lastName: 'Foster', email: 'rachel.f@gmail.com', source: 'instagram', score: 44, status: 'trial', lastActivity: '2d ago', tags: [], assignedTo: { name: 'Zach', initials: 'ZR' } },
-  { id: 'l8', firstName: 'Tyler', lastName: 'Washington', email: 'twash@gmail.com', phone: '(813) 555-0387', source: 'referral', score: 82, status: 'trial', lastActivity: '6h ago', tags: ['hot'] },
-  { id: 'l9', firstName: 'Aisha', lastName: 'Patel', email: 'aisha.p@outlook.com', source: 'campaign', score: 35, status: 'trial', lastActivity: '3d ago', tags: [] },
-  { id: 'l10', firstName: 'Connor', lastName: 'Murphy', email: 'cmurphy@gmail.com', phone: '(813) 555-0456', source: 'website', score: 95, status: 'converted', lastActivity: '1d ago', tags: ['unlimited'], assignedTo: { name: 'Whitney', initials: 'WC' } },
-  { id: 'l11', firstName: 'Priya', lastName: 'Sharma', email: 'priya.s@gmail.com', source: 'referral', score: 88, status: 'converted', lastActivity: '4d ago', tags: ['10-class'] },
-  { id: 'l12', firstName: 'Lucas', lastName: 'Brown', email: 'lbrown@yahoo.com', source: 'instagram', score: 76, status: 'converted', lastActivity: '1w ago', tags: ['drop-in'] },
-  { id: 'l13', firstName: 'Megan', lastName: 'Davis', email: 'meg.d@gmail.com', source: 'walk_in', score: 22, status: 'lost', lastActivity: '2w ago', tags: ['price-sensitive'] },
-  { id: 'l14', firstName: 'Brian', lastName: 'Wilson', email: 'bwilson@hotmail.com', source: 'campaign', score: 18, status: 'lost', lastActivity: '3w ago', tags: [] },
-  { id: 'l15', firstName: 'Sophia', lastName: 'Lee', email: 'sophia.lee@gmail.com', source: 'website', score: 31, status: 'lost', lastActivity: '1w ago', tags: ['relocated'] },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const SOURCE_ICONS: Record<LeadSource, typeof Globe> = {
   website: Globe,
@@ -407,9 +391,60 @@ function QuickAddModal({ onClose, onAdd }: { onClose: () => void; onAdd: (lead: 
   )
 }
 
+function getRelativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  const weeks = Math.floor(days / 7)
+  return `${weeks}w ago`
+}
+
 // ─── Main Page ──────────────────────────────────────────────
 export default function LeadPipelinePage() {
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS)
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadLeads() {
+      const { data } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (cancelled) return
+
+      if (data) {
+        setLeads(
+          data.map((l: any) => ({
+            id: l.id,
+            firstName: l.first_name || '',
+            lastName: l.last_name || '',
+            email: l.email || '',
+            phone: l.phone || undefined,
+            source: (l.source || 'website') as LeadSource,
+            score: l.score ?? 50,
+            status: (l.status || 'new') as LeadStatus,
+            lastActivity: l.updated_at ? getRelativeTime(l.updated_at) : 'Just now',
+            tags: l.tags || [],
+            assignedTo: l.assigned_to_name ? { name: l.assigned_to_name, initials: l.assigned_to_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() } : undefined,
+          }))
+        )
+      }
+
+      setLoading(false)
+    }
+
+    loadLeads()
+    return () => { cancelled = true }
+  }, [])
   const [activeLead, setActiveLead] = useState<Lead | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showAddModal, setShowAddModal] = useState(false)

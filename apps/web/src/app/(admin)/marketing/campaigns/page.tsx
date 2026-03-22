@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -48,105 +49,7 @@ interface Campaign {
   scheduledDate: string | null
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const CAMPAIGNS: Campaign[] = [
-  {
-    id: '1',
-    name: 'Win-Back: 14-Day Inactive',
-    status: 'sent',
-    channels: ['email', 'sms'],
-    recipients: 47,
-    openRate: 52.3,
-    clickRate: 12.4,
-    revenue: 1240,
-    sentDate: 'Mar 14, 2026',
-    scheduledDate: null,
-  },
-  {
-    id: '2',
-    name: 'Guided Upsell — Whitney',
-    status: 'sent',
-    channels: ['email'],
-    recipients: 134,
-    openRate: 44.1,
-    clickRate: 9.1,
-    revenue: 890,
-    sentDate: 'Mar 12, 2026',
-    scheduledDate: null,
-  },
-  {
-    id: '3',
-    name: 'New Member Welcome Series',
-    status: 'sending',
-    channels: ['email'],
-    recipients: 63,
-    openRate: 71.2,
-    clickRate: 18.2,
-    revenue: 2340,
-    sentDate: null,
-    scheduledDate: null,
-  },
-  {
-    id: '4',
-    name: 'Failed Payment Recovery',
-    status: 'sent',
-    channels: ['email', 'sms'],
-    recipients: 12,
-    openRate: 67.0,
-    clickRate: 14.8,
-    revenue: 560,
-    sentDate: 'Mar 10, 2026',
-    scheduledDate: null,
-  },
-  {
-    id: '5',
-    name: 'June Promo: Bring a Friend',
-    status: 'scheduled',
-    channels: ['email', 'push'],
-    recipients: 289,
-    openRate: null,
-    clickRate: null,
-    revenue: null,
-    sentDate: null,
-    scheduledDate: 'Jun 1, 2026 at 9:00 AM',
-  },
-  {
-    id: '6',
-    name: 'Summer Solstice Event Blast',
-    status: 'scheduled',
-    channels: ['email'],
-    recipients: 310,
-    openRate: null,
-    clickRate: null,
-    revenue: null,
-    sentDate: null,
-    scheduledDate: 'Jun 15, 2026 at 10:00 AM',
-  },
-  {
-    id: '7',
-    name: 'Holiday Promo Dec Prep',
-    status: 'draft',
-    channels: ['email', 'sms', 'push'],
-    recipients: 0,
-    openRate: null,
-    clickRate: null,
-    revenue: null,
-    sentDate: null,
-    scheduledDate: null,
-  },
-  {
-    id: '8',
-    name: 'Black Friday — 20% Off',
-    status: 'cancelled',
-    channels: ['email'],
-    recipients: 412,
-    openRate: null,
-    clickRate: null,
-    revenue: null,
-    sentDate: null,
-    scheduledDate: null,
-  },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ────────────────────────────────────────────────
 const statusConfig: Record<CampaignStatus, { label: string; className: string }> = {
@@ -262,10 +165,49 @@ function ActionDropdown({ campaignId }: { campaignId: string }) {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function CampaignsPage() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredCampaigns = CAMPAIGNS.filter((c) => {
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadCampaigns() {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (cancelled) return
+
+      if (data) {
+        setCampaigns(
+          data.map((c: any) => ({
+            id: c.id,
+            name: c.name || 'Untitled Campaign',
+            status: c.status || 'draft',
+            channels: [c.channel || 'email'] as Channel[],
+            recipients: c.recipient_count ?? 0,
+            openRate: c.open_rate ?? null,
+            clickRate: c.click_rate ?? null,
+            revenue: c.revenue_attributed ?? null,
+            sentDate: c.sent_at ? new Date(c.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+            scheduledDate: c.scheduled_at ? new Date(c.scheduled_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null,
+          }))
+        )
+      }
+
+      setLoading(false)
+    }
+
+    loadCampaigns()
+    return () => { cancelled = true }
+  }, [])
+
+  const filteredCampaigns = campaigns.filter((c) => {
     const matchesStatus = statusFilter === 'All' || c.status === statusFilter.toLowerCase()
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesStatus && matchesSearch
@@ -337,7 +279,12 @@ export default function CampaignsPage() {
         {...fadeInUp}
         className="bg-white rounded-2xl border border-gray-200 shadow-sm"
       >
-        {filteredCampaigns.length > 0 ? (
+        {loading ? (
+          <div className="py-16 text-center">
+            <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin mx-auto mb-3" />
+            <p className="text-sm text-gray-500">Loading campaigns...</p>
+          </div>
+        ) : filteredCampaigns.length > 0 ? (
           <>
             {/* Table header */}
             <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
@@ -437,7 +384,7 @@ export default function CampaignsPage() {
         <div className="flex items-center justify-between mt-3 px-1">
           <p className="text-xs text-gray-400">
             Showing <span className="font-semibold text-gray-600">{filteredCampaigns.length}</span> of{' '}
-            <span className="font-semibold text-gray-600">{CAMPAIGNS.length}</span> campaigns
+            <span className="font-semibold text-gray-600">{campaigns.length}</span> campaigns
           </p>
         </div>
       )}

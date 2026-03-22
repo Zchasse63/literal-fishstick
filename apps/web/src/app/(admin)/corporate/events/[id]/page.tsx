@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -32,41 +33,7 @@ const fadeInUp = {
 type EventStatus = 'inquiry' | 'quoted' | 'confirmed' | 'deposit_paid' | 'completed' | 'invoiced' | 'paid'
 type RSVPStatus = 'confirmed' | 'pending' | 'declined'
 
-// ─── Mock Data ──────────────────────────────────────────────
-const EVENT = {
-  id: '6',
-  name: 'Team Building Retreat',
-  company: 'Tech Data Corp',
-  companyId: '4',
-  eventType: 'team_building' as const,
-  status: 'confirmed' as EventStatus,
-  date: 'March 22, 2026',
-  time: '1:00 PM - 4:00 PM',
-  location: 'The Sauna Guys — Main Facility',
-  description: 'Full facility team building retreat for Tech Data Corp engineering team. Includes guided breathwork session, sauna circuit, cold plunge introduction, and group wellness workshop. Catering provided by local vendor.',
-  capacity: 24,
-  guests: 20,
-  basePrice: 1500,
-  perPersonPrice: 45,
-  totalPrice: 2400,
-  specialRequests: 'Vegan catering option required for 4 guests. Need extra towels. One guest has cold sensitivity — provide warm-up area access. Photography allowed for internal comms only.',
-  assignedStaff: ['Whitney Cooper', 'Jake Martinez', 'Elena Volkov'],
-  internalNotes: 'Contact prefers email. Budget approved by VP Engineering. Potential for quarterly recurring booking if this goes well. Lisa Park is the on-site coordinator.',
-  invoiceId: null as string | null,
-}
-
-const GUESTS = [
-  { id: '1', name: 'Lisa Park', email: 'lpark@techdata.com', rsvp: 'confirmed' as RSVPStatus, checkedIn: true },
-  { id: '2', name: 'James Wilson', email: 'jwilson@techdata.com', rsvp: 'confirmed' as RSVPStatus, checkedIn: false },
-  { id: '3', name: 'Maria Santos', email: 'msantos@techdata.com', rsvp: 'confirmed' as RSVPStatus, checkedIn: false },
-  { id: '4', name: 'Kevin Brown', email: 'kbrown@techdata.com', rsvp: 'confirmed' as RSVPStatus, checkedIn: false },
-  { id: '5', name: 'Amy Chang', email: 'achang@techdata.com', rsvp: 'confirmed' as RSVPStatus, checkedIn: false },
-  { id: '6', name: 'David Lee', email: 'dlee@techdata.com', rsvp: 'pending' as RSVPStatus, checkedIn: false },
-  { id: '7', name: 'Sarah Miller', email: 'smiller@techdata.com', rsvp: 'pending' as RSVPStatus, checkedIn: false },
-  { id: '8', name: 'Tom Richards', email: 'trichards@techdata.com', rsvp: 'confirmed' as RSVPStatus, checkedIn: false },
-  { id: '9', name: 'Nina Patel', email: 'npatel@techdata.com', rsvp: 'declined' as RSVPStatus, checkedIn: false },
-  { id: '10', name: 'Chris Olsen', email: 'colsen@techdata.com', rsvp: 'confirmed' as RSVPStatus, checkedIn: false },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ────────────────────────────────────────────────
 const STATUS_FLOW: EventStatus[] = ['inquiry', 'quoted', 'confirmed', 'deposit_paid', 'completed', 'invoiced', 'paid']
@@ -122,12 +89,84 @@ function getActionButton(status: EventStatus) {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function EventDetailPage() {
-  const currentStepIndex = STATUS_FLOW.indexOf(EVENT.status)
-  const action = getActionButton(EVENT.status)
-  const typeConfig = eventTypeConfig[EVENT.eventType]
+  const [EVENT, setEVENT] = useState<any>(null)
+  const [GUESTS, setGUESTS] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const confirmedCount = GUESTS.filter((g) => g.rsvp === 'confirmed').length
-  const checkedInCount = GUESTS.filter((g) => g.checkedIn).length
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+    const eventId = typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : ''
+
+    async function loadEvent() {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .eq('studio_id', STUDIO_ID)
+        .single()
+
+      if (cancelled) return
+
+      if (data) {
+        setEVENT({
+          id: data.id,
+          name: data.name || 'Unnamed Event',
+          company: data.company_name || '',
+          companyId: data.company_id || '',
+          eventType: data.event_type || 'corporate',
+          status: (data.status || 'inquiry') as EventStatus,
+          date: data.event_date ? new Date(data.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '',
+          time: data.event_time || '',
+          location: data.location || 'The Sauna Guys — Main Facility',
+          description: data.description || '',
+          capacity: data.capacity ?? 24,
+          guests: data.guest_count ?? 0,
+          basePrice: data.base_price ?? 0,
+          perPersonPrice: data.per_person_price ?? 0,
+          totalPrice: data.total_price ?? 0,
+          specialRequests: data.special_requests || '',
+          assignedStaff: data.assigned_staff || [],
+          internalNotes: data.internal_notes || '',
+          invoiceId: data.invoice_id || null,
+        })
+      }
+
+      setLoading(false)
+    }
+
+    loadEvent()
+    return () => { cancelled = true }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!EVENT) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="text-center">
+          <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-gray-900 mb-1">Event not found</h3>
+          <Link href="/corporate/events" className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-indigo-600">
+            Back to Events
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const currentStepIndex = STATUS_FLOW.indexOf(EVENT.status as EventStatus)
+  const action = getActionButton(EVENT.status as EventStatus)
+  const typeConfig = eventTypeConfig[EVENT.eventType as keyof typeof eventTypeConfig] || eventTypeConfig['corporate']
+
+  const confirmedCount = GUESTS.filter((g: any) => g.rsvp === 'confirmed').length
+  const checkedInCount = GUESTS.filter((g: any) => g.checkedIn).length
 
   return (
     <motion.div
@@ -153,8 +192,8 @@ export default function EventDetailPage() {
             <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', typeConfig.className)}>
               {typeConfig.label}
             </span>
-            <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', statusBadgeConfig[EVENT.status].className)}>
-              {statusLabels[EVENT.status]}
+            <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', statusBadgeConfig[EVENT.status as EventStatus]?.className)}>
+              {statusLabels[EVENT.status as EventStatus]}
             </span>
           </div>
           <div className="flex items-center gap-4 mt-1.5">
@@ -300,7 +339,7 @@ export default function EventDetailPage() {
               <h3 className="text-base font-bold text-gray-900">Assigned Staff</h3>
             </div>
             <div className="flex flex-wrap gap-2">
-              {EVENT.assignedStaff.map((name) => (
+              {EVENT.assignedStaff.map((name: string) => (
                 <span
                   key={name}
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 text-sm font-semibold text-gray-700"
@@ -350,7 +389,7 @@ export default function EventDetailPage() {
             </div>
 
             <div className="divide-y divide-gray-50">
-              {GUESTS.map((guest) => (
+              {GUESTS.map((guest: { id: string; name: string; email: string; rsvp: string; checkedIn: boolean }) => (
                 <div key={guest.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/80 transition-colors">
                   <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
                     {guest.name.split(' ').map((n) => n[0]).join('')}
@@ -359,8 +398,8 @@ export default function EventDetailPage() {
                     <p className="text-sm font-semibold text-gray-900 truncate">{guest.name}</p>
                     <p className="text-[11px] text-gray-400 truncate">{guest.email}</p>
                   </div>
-                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0', rsvpConfig[guest.rsvp].className)}>
-                    {rsvpConfig[guest.rsvp].label}
+                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0', rsvpConfig[guest.rsvp as RSVPStatus]?.className)}>
+                    {rsvpConfig[guest.rsvp as RSVPStatus]?.label}
                   </span>
                   <button
                     className={cn(

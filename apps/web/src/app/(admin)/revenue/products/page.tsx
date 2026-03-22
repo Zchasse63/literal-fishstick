@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -43,21 +44,7 @@ interface Product {
   active: boolean
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const PRODUCTS: Product[] = [
-  { id: '1', name: 'Meridian Logo Tee — Black', category: 'apparel', priceInCents: 3500, sku: 'APP-TEE-BLK-001', inventory: 24, image: null, active: true },
-  { id: '2', name: 'Meridian Logo Tee — White', category: 'apparel', priceInCents: 3500, sku: 'APP-TEE-WHT-001', inventory: 18, image: null, active: true },
-  { id: '3', name: 'Recovery Hoodie — Charcoal', category: 'apparel', priceInCents: 6500, sku: 'APP-HOD-CHR-001', inventory: 12, image: null, active: true },
-  { id: '4', name: 'Sauna Session Shorts', category: 'apparel', priceInCents: 4200, sku: 'APP-SHR-BLK-001', inventory: 8, image: null, active: true },
-  { id: '5', name: 'Insulated Water Bottle — 32oz', category: 'accessories', priceInCents: 2800, sku: 'ACC-BTL-32-001', inventory: 31, image: null, active: true },
-  { id: '6', name: 'Meridian Sport Towel', category: 'accessories', priceInCents: 1800, sku: 'ACC-TWL-SPT-001', inventory: 45, image: null, active: true },
-  { id: '7', name: 'Eucalyptus Sauna Oil — 4oz', category: 'supplements', priceInCents: 2200, sku: 'SUP-OIL-EUC-001', inventory: 6, image: null, active: true },
-  { id: '8', name: 'Cold Plunge Recovery Balm', category: 'supplements', priceInCents: 1900, sku: 'SUP-BLM-RCV-001', inventory: 2, image: null, active: true },
-  { id: '9', name: 'Breathwork Timer — Pro', category: 'equipment', priceInCents: 4900, sku: 'EQP-TMR-PRO-001', inventory: 5, image: null, active: true },
-  { id: '10', name: 'Sauna Hat — Wool Felt', category: 'accessories', priceInCents: 2400, sku: 'ACC-HAT-WOL-001', inventory: 0, image: null, active: false },
-  { id: '11', name: 'Electrolyte Mix — 30 Pack', category: 'supplements', priceInCents: 3200, sku: 'SUP-ELT-30P-001', inventory: 15, image: null, active: true },
-  { id: '12', name: 'Meridian Gym Bag', category: 'accessories', priceInCents: 5500, sku: 'ACC-BAG-GYM-001', inventory: 9, image: null, active: true },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -153,22 +140,58 @@ function ProductGridCard({ product, delay }: { product: Product; delay: number }
 
 // ─── Page ───────────────────────────────────────────────────
 export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState<Category>('all')
   const [search, setSearch] = useState('')
   const [inStockOnly, setInStockOnly] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
 
-  const filtered = PRODUCTS.filter((p) => {
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadProducts() {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('name')
+
+      if (cancelled) return
+
+      if (data) {
+        setProducts(data.map((p: any) => ({
+          id: p.id,
+          name: p.name || 'Unnamed Product',
+          category: (p.category || 'all') as Category,
+          priceInCents: p.price_in_cents ?? 0,
+          compareAtPriceInCents: p.compare_at_price_in_cents || undefined,
+          sku: p.sku || '',
+          inventory: p.inventory ?? 0,
+          image: p.image_url || null,
+          active: p.active ?? true,
+        })))
+      }
+
+      setLoading(false)
+    }
+
+    loadProducts()
+    return () => { cancelled = true }
+  }, [])
+
+  const filtered = products.filter((p) => {
     if (category !== 'all' && p.category !== category) return false
     if (inStockOnly && p.inventory === 0) return false
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.sku.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
-  const totalProducts = PRODUCTS.length
-  const inStock = PRODUCTS.filter((p) => p.inventory > 0).length
-  const lowStock = PRODUCTS.filter((p) => p.inventory >= 1 && p.inventory <= 10).length
-  const outOfStock = PRODUCTS.filter((p) => p.inventory === 0).length
+  const totalProducts = products.length
+  const inStock = products.filter((p) => p.inventory > 0).length
+  const lowStock = products.filter((p) => p.inventory >= 1 && p.inventory <= 10).length
+  const outOfStock = products.filter((p) => p.inventory === 0).length
 
   return (
     <motion.div

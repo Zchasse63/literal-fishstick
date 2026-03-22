@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import {
@@ -58,35 +60,7 @@ interface Invoice {
   dueDate: string
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const COMPANIES: Company[] = [
-  { id: '1', name: 'Tampa Bay Buccaneers', contact: 'Mike Chen', contractValue: 36000, creditsRemaining: 18, creditsTotal: 30, stage: 'active' },
-  { id: '2', name: 'Raymond James Financial', contact: 'Sarah Williams', contractValue: 24000, creditsRemaining: 12, creditsTotal: 20, stage: 'active' },
-  { id: '3', name: 'WellCare Health Plans', contact: 'David Rodriguez', contractValue: 18000, creditsRemaining: 8, creditsTotal: 15, stage: 'active' },
-  { id: '4', name: 'Tech Data Corp', contact: 'Lisa Park', contractValue: 12000, creditsRemaining: 10, creditsTotal: 10, stage: 'active' },
-  { id: '5', name: 'Mosaic Company', contact: 'James Foster', contractValue: 15000, creditsRemaining: 5, creditsTotal: 15, stage: 'active' },
-  { id: '6', name: 'Publix Super Markets', contact: 'Anna Smith', contractValue: 0, creditsRemaining: 0, creditsTotal: 0, stage: 'prospect' },
-  { id: '7', name: 'Jabil Inc', contact: 'Tom Harris', contractValue: 9500, creditsRemaining: 0, creditsTotal: 10, stage: 'paused' },
-  { id: '8', name: 'HSN (Home Shopping)', contact: 'Karen White', contractValue: 10000, creditsRemaining: 0, creditsTotal: 15, stage: 'churned' },
-  { id: '9', name: 'USAA Tampa', contact: 'Robert Garcia', contractValue: 0, creditsRemaining: 0, creditsTotal: 0, stage: 'prospect' },
-  { id: '10', name: 'BayCare Health System', contact: 'Emily Nguyen', contractValue: 0, creditsRemaining: 0, creditsTotal: 0, stage: 'prospect' },
-]
-
-const UPCOMING_EVENTS: UpcomingEvent[] = [
-  { id: '1', date: 'Mar 22, 2026', company: 'Tampa Bay Buccaneers', eventType: 'team_building', guests: 24, status: 'confirmed' },
-  { id: '2', date: 'Mar 25, 2026', company: 'Raymond James Financial', eventType: 'corporate', guests: 15, status: 'deposit_paid' },
-  { id: '3', date: 'Mar 28, 2026', company: 'WellCare Health Plans', eventType: 'workshop', guests: 12, status: 'quoted' },
-  { id: '4', date: 'Apr 2, 2026', company: 'Tech Data Corp', eventType: 'private_party', guests: 30, status: 'inquiry' },
-  { id: '5', date: 'Apr 5, 2026', company: 'Mosaic Company', eventType: 'birthday', guests: 18, status: 'confirmed' },
-]
-
-const RECENT_INVOICES: Invoice[] = [
-  { id: '1', number: 'INV-2026-041', company: 'Tampa Bay Buccaneers', amount: 3600, status: 'paid', dueDate: 'Mar 15, 2026' },
-  { id: '2', number: 'INV-2026-042', company: 'Raymond James Financial', amount: 2400, status: 'sent', dueDate: 'Mar 25, 2026' },
-  { id: '3', number: 'INV-2026-038', company: 'Jabil Inc', amount: 950, status: 'overdue', dueDate: 'Mar 1, 2026' },
-  { id: '4', number: 'INV-2026-039', company: 'WellCare Health Plans', amount: 1800, status: 'overdue', dueDate: 'Mar 5, 2026' },
-  { id: '5', number: 'INV-2026-043', company: 'Mosaic Company', amount: 1500, status: 'draft', dueDate: 'Apr 1, 2026' },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ────────────────────────────────────────────────
 const stageConfig: Record<PipelineStage, { label: string; className: string }> = {
@@ -200,7 +174,65 @@ function PipelineColumn({ stage, companies }: { stage: PipelineStage; companies:
 
 // ─── Page ───────────────────────────────────────────────────
 export default function CorporatePage() {
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [events, setEvents] = useState<UpcomingEvent[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
   const pipelineStages: PipelineStage[] = ['prospect', 'active', 'paused', 'churned']
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadData() {
+      const [companiesRes, eventsRes, invoicesRes] = await Promise.all([
+        supabase.from('company_accounts').select('*').eq('studio_id', STUDIO_ID).order('name'),
+        supabase.from('events').select('*').eq('studio_id', STUDIO_ID).order('event_date', { ascending: true }).limit(5),
+        supabase.from('corporate_invoices').select('*').eq('studio_id', STUDIO_ID).order('created_at', { ascending: false }).limit(5),
+      ])
+
+      if (cancelled) return
+
+      if (companiesRes.data) {
+        setCompanies(companiesRes.data.map((c: any) => ({
+          id: c.id,
+          name: c.name || 'Unnamed Company',
+          contact: c.contact_name || '',
+          contractValue: c.contract_value ?? 0,
+          creditsRemaining: c.credits_remaining ?? 0,
+          creditsTotal: c.credits_total ?? 0,
+          stage: (c.stage || 'prospect') as PipelineStage,
+        })))
+      }
+
+      if (eventsRes.data) {
+        setEvents(eventsRes.data.map((e: any) => ({
+          id: e.id,
+          date: e.event_date ? new Date(e.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          company: e.company_name || '',
+          eventType: (e.event_type || 'corporate') as EventType,
+          guests: e.guest_count ?? 0,
+          status: (e.status || 'inquiry') as EventStatus,
+        })))
+      }
+
+      if (invoicesRes.data) {
+        setInvoices(invoicesRes.data.map((inv: any) => ({
+          id: inv.id,
+          number: inv.invoice_number || '',
+          company: inv.company_name || '',
+          amount: inv.amount ?? 0,
+          status: (inv.status || 'draft') as InvoiceStatus,
+          dueDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+        })))
+      }
+
+      setLoading(false)
+    }
+
+    loadData()
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <motion.div
@@ -226,10 +258,10 @@ export default function CorporatePage() {
 
       {/* ─── Metrics Row ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <MetricCard icon={Building2} label="Active Companies" value="8" change="+2 this quarter" delay={0} />
-        <MetricCard icon={DollarSign} label="Total Contract Value" value="$124,500" change="+18%" delay={0.05} />
-        <MetricCard icon={CreditCard} label="Credits Allocated" value="240/mo" change="+15 this month" delay={0.1} />
-        <MetricCard icon={AlertTriangle} label="Overdue Invoices" value="2" change="$2,750 outstanding" delay={0.15} />
+        <MetricCard icon={Building2} label="Active Companies" value={String(companies.filter(c => c.stage === 'active').length)} change="--" delay={0} />
+        <MetricCard icon={DollarSign} label="Total Contract Value" value={`$${companies.reduce((sum, c) => sum + c.contractValue, 0).toLocaleString()}`} change="--" delay={0.05} />
+        <MetricCard icon={CreditCard} label="Credits Remaining" value={String(companies.reduce((sum, c) => sum + c.creditsRemaining, 0))} change="--" delay={0.1} />
+        <MetricCard icon={AlertTriangle} label="Overdue Invoices" value={String(invoices.filter(i => i.status === 'overdue').length)} change={invoices.filter(i => i.status === 'overdue').length > 0 ? `$${invoices.filter(i => i.status === 'overdue').reduce((s, i) => s + i.amount, 0).toLocaleString()} outstanding` : '--'} delay={0.15} />
       </div>
 
       {/* ─── Pipeline View ──────────────────────────────────── */}
@@ -249,7 +281,7 @@ export default function CorporatePage() {
             <PipelineColumn
               key={stage}
               stage={stage}
-              companies={COMPANIES.filter((c) => c.stage === stage)}
+              companies={companies.filter((c) => c.stage === stage)}
             />
           ))}
         </div>
@@ -278,7 +310,14 @@ export default function CorporatePage() {
           </div>
 
           <div className="divide-y divide-gray-50">
-            {UPCOMING_EVENTS.map((event) => (
+            {events.length === 0 && (
+              <div className="py-12 text-center">
+                <Calendar className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-gray-500">No upcoming events</p>
+                <p className="text-xs text-gray-400 mt-0.5">Events will appear here once created</p>
+              </div>
+            )}
+            {events.map((event) => (
               <Link
                 key={event.id}
                 href={`/corporate/events/${event.id}`}
@@ -335,7 +374,14 @@ export default function CorporatePage() {
           </div>
 
           <div className="divide-y divide-gray-50">
-            {RECENT_INVOICES.map((invoice) => (
+            {invoices.length === 0 && (
+              <div className="py-12 text-center">
+                <CreditCard className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-gray-500">No invoices yet</p>
+                <p className="text-xs text-gray-400 mt-0.5">Corporate invoices will appear here</p>
+              </div>
+            )}
+            {invoices.map((invoice) => (
               <div
                 key={invoice.id}
                 className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 transition-colors"

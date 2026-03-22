@@ -1,8 +1,10 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
   Users,
   Trophy,
@@ -28,9 +30,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from 'recharts'
+
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 6 },
@@ -38,56 +40,22 @@ const fadeInUp = {
   transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────
 
-const MEMBER_MOVEMENT = [
-  { date: 'Dec 21', new: 6, churned: -3, net: 3 },
-  { date: 'Dec 28', new: 4, churned: -2, net: 2 },
-  { date: 'Jan 4', new: 12, churned: -3, net: 9 },
-  { date: 'Jan 11', new: 10, churned: -2, net: 8 },
-  { date: 'Jan 18', new: 11, churned: -1, net: 10 },
-  { date: 'Jan 25', new: 12, churned: -3, net: 9 },
-  { date: 'Feb 1', new: 9, churned: -2, net: 7 },
-  { date: 'Feb 8', new: 10, churned: -1, net: 9 },
-  { date: 'Feb 15', new: 8, churned: -2, net: 6 },
-  { date: 'Feb 22', new: 11, churned: -2, net: 9 },
-  { date: 'Mar 1', new: 14, churned: -1, net: 13 },
-  { date: 'Mar 8', new: 13, churned: -2, net: 11 },
-  { date: 'Mar 15', new: 14, churned: -3, net: 11 },
-]
+interface MemberMovementRow {
+  date: string
+  new: number
+  churned: number
+  net: number
+}
 
-// Cohort comparison — this month vs last month
-const COHORT_PERIODS = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5']
-const COHORT_THIS_MONTH = [100, 93, 86, 80, 76, 73]
-const COHORT_LAST_MONTH = [100, 85, 74, 68, 63, 59]
-
-const AT_RISK_MEMBERS = [
-  { name: 'Tom Harris', membership: 'Unlimited', lastVisit: '14 days ago', riskScore: 92, trend: 'declining' },
-  { name: 'Nicole Brown', membership: '10-Class Pack', lastVisit: '18 days ago', riskScore: 88, trend: 'declining' },
-  { name: 'Chris Moore', membership: 'Unlimited', lastVisit: '11 days ago', riskScore: 85, trend: 'declining' },
-  { name: 'Amy Foster', membership: 'Unlimited', lastVisit: '21 days ago', riskScore: 82, trend: 'inactive' },
-  { name: 'David Wu', membership: '10-Class Pack', lastVisit: '16 days ago', riskScore: 79, trend: 'declining' },
-  { name: 'Rachel Green', membership: 'Unlimited', lastVisit: '9 days ago', riskScore: 74, trend: 'declining' },
-  { name: 'Jake Monroe', membership: '6-Class Pack', lastVisit: '25 days ago', riskScore: 71, trend: 'inactive' },
-  { name: 'Sara Voss', membership: 'Unlimited', lastVisit: '12 days ago', riskScore: 68, trend: 'declining' },
-  { name: 'Ben Wright', membership: '10-Class Pack', lastVisit: '20 days ago', riskScore: 65, trend: 'declining' },
-  { name: 'Lisa Wang', membership: 'Unlimited', lastVisit: '8 days ago', riskScore: 61, trend: 'declining' },
-]
-
-const FUNNEL_DATA = [
-  { stage: 'New Leads', count: 48, color: '#C4B5FD' },
-  { stage: 'Contacted', count: 32, color: '#A78BFA' },
-  { stage: 'Trial', count: 18, color: '#8B5CF6' },
-  { stage: 'Converted', count: 11, color: '#4F46E5' },
-]
-
-const TRAINERS = [
-  { name: 'Whitney Cooper', avatar: 'WC', avgAttendance: 9.2, classesLed: 24, bonusHitRate: 83, maxAttendance: 12 },
-  { name: 'Drennen Hall', avatar: 'DH', avgAttendance: 8.1, classesLed: 18, bonusHitRate: 67, maxAttendance: 12 },
-  { name: 'Trent Bailey', avatar: 'TB', avgAttendance: 7.4, classesLed: 20, bonusHitRate: 55, maxAttendance: 12 },
-  { name: 'Sara Voss', avatar: 'SV', avgAttendance: 6.8, classesLed: 16, bonusHitRate: 44, maxAttendance: 12 },
-  { name: 'Jake Monroe', avatar: 'JM', avgAttendance: 6.2, classesLed: 14, bonusHitRate: 36, maxAttendance: 12 },
-]
+interface AtRiskMember {
+  name: string
+  membership: string
+  lastVisit: string
+  riskScore: number
+  trend: string
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -100,6 +68,10 @@ function EmptyState({ icon: Icon, message }: { icon: typeof BarChart3; message: 
       <p className="text-sm text-gray-400">{message}</p>
     </div>
   )
+}
+
+function LoadingSkeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
 }
 
 function MovementTooltip({ active, payload, label }: any) {
@@ -124,9 +96,181 @@ function getRiskBadge(score: number) {
   return { label: 'Low', color: 'bg-gray-50 text-gray-500' }
 }
 
+function getTimeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diffMs = now - then
+  const diffDays = Math.floor(diffMs / 86400000)
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return '1 day ago'
+  return `${diffDays} days ago`
+}
+
 // ─── Page Component ──────────────────────────────────────────
 
 export default function GrowthDashboardPage() {
+  const supabase = createBrowserClient()
+
+  // ─── State ─────────────────────────────────────────────────
+  const [memberMovement, setMemberMovement] = useState<MemberMovementRow[]>([])
+  const [movementLoading, setMovementLoading] = useState(true)
+  const [cohortData, setCohortData] = useState<any[]>([])
+  const [cohortLoading, setCohortLoading] = useState(true)
+  const [atRiskMembers, setAtRiskMembers] = useState<AtRiskMember[]>([])
+  const [atRiskLoading, setAtRiskLoading] = useState(true)
+  const [funnelData, setFunnelData] = useState<{ stage: string; count: number; color: string }[]>([])
+  const [funnelLoading, setFunnelLoading] = useState(true)
+  const [trainers, setTrainers] = useState<any[]>([])
+  const [trainerLoading, setTrainerLoading] = useState(true)
+
+  // ─── Fetch Member Movement ─────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    const now = new Date()
+    const end = now.toISOString().split('T')[0]!
+    const start = new Date(now)
+    start.setDate(start.getDate() - 90)
+    const startStr = start.toISOString().split('T')[0]!
+    fetch(`/api/analytics/member-movement?start_date=${startStr}&end_date=${end}&group_by=week`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const rows: MemberMovementRow[] = (d.data.periods ?? []).map((p: any) => {
+          const dateObj = new Date(p.period + 'T00:00:00')
+          const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          return {
+            date: label,
+            new: p.new_members ?? 0,
+            churned: -(p.churned_members ?? 0),
+            net: p.net_change ?? 0,
+          }
+        })
+        setMemberMovement(rows)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setMovementLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // ─── Fetch Cohort Comparison ───────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/analytics/cohorts?months_back=6')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const cohorts = d.data.cohorts ?? []
+        // Get last two cohorts for comparison
+        const periods = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5']
+        if (cohorts.length >= 2) {
+          const latest = cohorts[cohorts.length - 1]
+          const prev = cohorts[cohorts.length - 2]
+          const latestLabel = new Date(latest.cohort_month + '-01').toLocaleString('en-US', { month: 'short' })
+          const prevLabel = new Date(prev.cohort_month + '-01').toLocaleString('en-US', { month: 'short' })
+          const chartData = periods.map((period, i) => {
+            const latestEntry = (latest.retention ?? []).find((r: any) => r.month === i)
+            const prevEntry = (prev.retention ?? []).find((r: any) => r.month === i)
+            return {
+              period,
+              [`${latestLabel} Cohort`]: latestEntry ? Math.round(latestEntry.rate * 100) : 0,
+              [`${prevLabel} Cohort`]: prevEntry ? Math.round(prevEntry.rate * 100) : 0,
+            }
+          })
+          setCohortData(chartData)
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCohortLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // ─── Fetch At-Risk Members ─────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    async function fetchAtRisk() {
+      // Get members with oldest last_visit_at, active membership
+      const { data: members } = await supabase
+        .from('memberships')
+        .select('*, profiles:member_id ( full_name, email )')
+        .eq('studio_id', STUDIO_ID)
+        .eq('status', 'active')
+        .order('last_visit_at', { ascending: true, nullsFirst: true })
+        .limit(10)
+
+      if (cancelled) return
+
+      const atRisk: AtRiskMember[] = (members ?? []).map((m: any) => {
+        const lastVisit = m.last_visit_at ? getTimeAgo(m.last_visit_at) : 'Never'
+        const daysSince = m.last_visit_at
+          ? Math.floor((Date.now() - new Date(m.last_visit_at).getTime()) / 86400000)
+          : 999
+        // Simple risk score based on inactivity days
+        const riskScore = Math.min(99, Math.round(50 + daysSince * 2))
+        return {
+          name: m.profiles?.full_name ?? 'Unknown',
+          membership: m.plan_name ?? m.type ?? 'Membership',
+          lastVisit,
+          riskScore,
+          trend: daysSince > 14 ? 'inactive' : 'declining',
+        }
+      })
+      setAtRiskMembers(atRisk)
+      setAtRiskLoading(false)
+    }
+    fetchAtRisk()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Fetch Lead Pipeline ───────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    async function fetchLeads() {
+      // Count leads by stage
+      const stages = [
+        { stage: 'New Leads', status: 'new', color: '#C4B5FD' },
+        { stage: 'Contacted', status: 'contacted', color: '#A78BFA' },
+        { stage: 'Trial', status: 'trial', color: '#8B5CF6' },
+        { stage: 'Converted', status: 'converted', color: '#4F46E5' },
+      ]
+      const results = []
+      for (const s of stages) {
+        const { count } = await supabase
+          .from('leads')
+          .select('id', { count: 'exact', head: true })
+          .eq('studio_id', STUDIO_ID)
+          .eq('status', s.status)
+        results.push({ stage: s.stage, count: count ?? 0, color: s.color })
+      }
+      if (!cancelled) {
+        setFunnelData(results)
+        setFunnelLoading(false)
+      }
+    }
+    fetchLeads().catch(() => { if (!cancelled) setFunnelLoading(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Fetch Trainer Leaderboard ─────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/analytics/snapshot')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return
+        if (d.data?.trainers) {
+          setTrainers(d.data.trainers.slice(0, 5))
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setTrainerLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // ─── Derived values ────────────────────────────────────────
+  const cohortKeys = cohortData.length > 0 ? Object.keys(cohortData[0]).filter(k => k !== 'period') : []
+
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
@@ -157,12 +301,14 @@ export default function GrowthDashboardPage() {
               <p className="text-xs text-gray-400 mt-0.5">New vs churned vs net members, last 90 days (weekly)</p>
             </div>
 
-            {MEMBER_MOVEMENT.length === 0 ? (
+            {movementLoading ? (
+              <LoadingSkeleton className="h-[280px] w-full rounded-xl" />
+            ) : memberMovement.length === 0 ? (
               <EmptyState icon={Users} message="No member movement data available" />
             ) : (
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={MEMBER_MOVEMENT} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <AreaChart data={memberMovement} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                     <XAxis
                       dataKey="date"
@@ -215,22 +361,17 @@ export default function GrowthDashboardPage() {
           >
             <div className="mb-4">
               <h2 className="text-sm font-semibold text-gray-900">Cohort Retention Comparison</h2>
-              <p className="text-xs text-gray-400 mt-0.5">March cohort vs February cohort</p>
+              <p className="text-xs text-gray-400 mt-0.5">Latest vs previous cohort</p>
             </div>
 
-            {COHORT_THIS_MONTH.length === 0 ? (
+            {cohortLoading ? (
+              <LoadingSkeleton className="h-[260px] w-full rounded-xl" />
+            ) : cohortData.length === 0 ? (
               <EmptyState icon={Users} message="Not enough cohort data yet" />
             ) : (
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={COHORT_PERIODS.map((period, i) => ({
-                      period,
-                      'Mar Cohort': COHORT_THIS_MONTH[i],
-                      'Feb Cohort': COHORT_LAST_MONTH[i],
-                    }))}
-                    margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-                  >
+                  <AreaChart data={cohortData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                     <XAxis
                       dataKey="period"
@@ -264,23 +405,27 @@ export default function GrowthDashboardPage() {
                       }}
                     />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-                    <Area
-                      type="monotone"
-                      dataKey="Mar Cohort"
-                      stroke="#4F46E5"
-                      fill="#4F46E520"
-                      strokeWidth={2.5}
-                      dot={{ r: 4, fill: '#4F46E5', strokeWidth: 2, stroke: '#fff' }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="Feb Cohort"
-                      stroke="#A78BFA"
-                      fill="#A78BFA15"
-                      strokeWidth={2}
-                      strokeDasharray="6 3"
-                      dot={{ r: 3, fill: '#A78BFA', strokeWidth: 0 }}
-                    />
+                    {cohortKeys[0] && (
+                      <Area
+                        type="monotone"
+                        dataKey={cohortKeys[0]}
+                        stroke="#4F46E5"
+                        fill="#4F46E520"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#4F46E5', strokeWidth: 2, stroke: '#fff' }}
+                      />
+                    )}
+                    {cohortKeys[1] && (
+                      <Area
+                        type="monotone"
+                        dataKey={cohortKeys[1]}
+                        stroke="#A78BFA"
+                        fill="#A78BFA15"
+                        strokeWidth={2}
+                        strokeDasharray="6 3"
+                        dot={{ r: 3, fill: '#A78BFA', strokeWidth: 0 }}
+                      />
+                    )}
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -306,15 +451,24 @@ export default function GrowthDashboardPage() {
               </Link>
             </div>
 
-            {FUNNEL_DATA.length === 0 ? (
+            {funnelLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i}>
+                    <LoadingSkeleton className="h-4 w-full mb-1.5" />
+                    <LoadingSkeleton className="h-8 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : funnelData.every((f) => f.count === 0) ? (
               <EmptyState icon={Target} message="No leads in pipeline" />
             ) : (
               <div className="space-y-3">
-                {FUNNEL_DATA.map((stage, i) => {
-                  const maxCount = FUNNEL_DATA[0].count
+                {funnelData.map((stage, i) => {
+                  const maxCount = Math.max(funnelData[0]?.count ?? 1, 1)
                   const width = Math.max((stage.count / maxCount) * 100, 15)
-                  const conversionRate = i > 0
-                    ? Math.round((stage.count / FUNNEL_DATA[i - 1].count) * 100)
+                  const conversionRate = i > 0 && funnelData[i - 1].count > 0
+                    ? Math.round((stage.count / funnelData[i - 1].count) * 100)
                     : null
                   const StageIcon = i === 0 ? UserPlus : i === 1 ? Phone : i === 2 ? CalendarCheck : CheckCircle2
                   return (
@@ -344,14 +498,16 @@ export default function GrowthDashboardPage() {
                     </div>
                   )
                 })}
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Overall Conversion</span>
-                    <span className="text-sm font-bold text-indigo-600 tabular-nums">
-                      {Math.round((FUNNEL_DATA[FUNNEL_DATA.length - 1].count / FUNNEL_DATA[0].count) * 100)}%
-                    </span>
+                {funnelData.length > 0 && funnelData[0].count > 0 && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Overall Conversion</span>
+                      <span className="text-sm font-bold text-indigo-600 tabular-nums">
+                        {Math.round((funnelData[funnelData.length - 1].count / funnelData[0].count) * 100)}%
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </motion.div>
@@ -365,12 +521,18 @@ export default function GrowthDashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-sm font-semibold text-gray-900">At-Risk Members</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Top 10 by AI churn score</p>
+                <p className="text-xs text-gray-400 mt-0.5">Top 10 by inactivity</p>
               </div>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
 
-            {AT_RISK_MEMBERS.length === 0 ? (
+            {atRiskLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : atRiskMembers.length === 0 ? (
               <EmptyState icon={Users} message="No at-risk members detected" />
             ) : (
               <div className="overflow-x-auto">
@@ -384,7 +546,7 @@ export default function GrowthDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {AT_RISK_MEMBERS.map((member) => {
+                    {atRiskMembers.map((member) => {
                       const badge = getRiskBadge(member.riskScore)
                       return (
                         <tr key={member.name} className="border-b border-gray-50 last:border-0">
@@ -436,40 +598,56 @@ export default function GrowthDashboardPage() {
               </Link>
             </div>
 
-            {TRAINERS.length === 0 ? (
+            {trainerLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : trainers.length === 0 ? (
               <EmptyState icon={Trophy} message="No trainer data yet" />
             ) : (
               <div className="space-y-3">
-                {TRAINERS.map((trainer, i) => (
-                  <div key={trainer.name} className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-gray-300 w-4 tabular-nums">#{i + 1}</span>
-                    <div
-                      className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-                        i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
-                      )}
-                    >
-                      {trainer.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{trainer.name}</p>
-                      <p className="text-[10px] text-gray-400">
-                        {trainer.classesLed} classes &middot; {trainer.bonusHitRate}% bonus rate
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={cn('h-full rounded-full', i === 0 ? 'bg-indigo-600' : 'bg-indigo-300')}
-                          style={{ width: `${(trainer.avgAttendance / trainer.maxAttendance) * 100}%` }}
-                        />
+                {trainers.map((trainer: any, i: number) => {
+                  const initials = (trainer.name ?? '')
+                    .split(' ')
+                    .map((n: string) => n[0] ?? '')
+                    .join('')
+                    .toUpperCase()
+                  const avg = trainer.avg_attendance ?? trainer.avgAttendance ?? 0
+                  const classes = trainer.classes_led ?? trainer.classesLed ?? 0
+                  const bonus = trainer.bonus_hit_rate ?? trainer.bonusHitRate ?? 0
+                  return (
+                    <div key={trainer.name ?? i} className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-300 w-4 tabular-nums">#{i + 1}</span>
+                      <div
+                        className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                          i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+                        )}
+                      >
+                        {initials || '??'}
                       </div>
-                      <span className="text-sm font-bold tabular-nums text-gray-900 w-8 text-right">
-                        {trainer.avgAttendance}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{trainer.name}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {classes} classes &middot; {bonus}% bonus rate
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={cn('h-full rounded-full', i === 0 ? 'bg-indigo-600' : 'bg-indigo-300')}
+                            style={{ width: `${(avg / 12) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-bold tabular-nums text-gray-900 w-8 text-right">
+                          {typeof avg === 'number' ? avg.toFixed(1) : avg}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </motion.div>

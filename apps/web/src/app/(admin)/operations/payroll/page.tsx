@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
+  Loader2,
   ArrowLeft,
   Plus,
   Download,
@@ -66,68 +68,11 @@ interface PayrollPeriod {
   lineItems: PayrollLineItem[]
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const PAYROLL_PERIODS: PayrollPeriod[] = [
-  {
-    id: 'pp-001',
-    startDate: 'Mar 1, 2026',
-    endDate: 'Mar 15, 2026',
-    payDate: 'Mar 20, 2026',
-    status: 'open',
-    totalGross: 3_288,
-    totalBonuses: 225,
-    totalCommissions: 102,
-    totalPayroll: 3_615,
-    employeesCalculated: 3,
-    totalEmployees: 5,
-    lineItems: [
-      { employeeId: '1', name: 'Whitney Cooper', initials: 'WC', role: 'Trainer', regularHours: 18, overtimeHours: 0, basePay: 630, overtimePay: 0, bonuses: 75, commissions: 42, grossPay: 747, estimatedTaxes: 127, estimatedNet: 620 },
-      { employeeId: '2', name: 'Drennen', initials: 'DR', role: 'Trainer', regularHours: 14, overtimeHours: 0, basePay: 490, overtimePay: 0, bonuses: 50, commissions: 27, grossPay: 567, estimatedTaxes: 96, estimatedNet: 471 },
-      { employeeId: '3', name: 'Trent', initials: 'TR', role: 'Trainer', regularHours: 16, overtimeHours: 0, basePay: 560, overtimePay: 0, bonuses: 50, commissions: 33, grossPay: 643, estimatedTaxes: 109, estimatedNet: 534 },
-      { employeeId: '4', name: 'Tara Kim', initials: 'TK', role: 'Front Desk', regularHours: 38, overtimeHours: 0, basePay: 608, overtimePay: 0, bonuses: 0, commissions: 0, grossPay: 608, estimatedTaxes: 103, estimatedNet: 505 },
-      { employeeId: '5', name: 'Alex Park', initials: 'AP', role: 'Trainer', regularHours: 0, overtimeHours: 0, basePay: 0, overtimePay: 0, bonuses: 0, commissions: 0, grossPay: 0, estimatedTaxes: 0, estimatedNet: 0 },
-    ],
-  },
-  {
-    id: 'pp-002',
-    startDate: 'Feb 15, 2026',
-    endDate: 'Feb 28, 2026',
-    payDate: 'Mar 5, 2026',
-    status: 'approved',
-    totalGross: 2_578,
-    totalBonuses: 225,
-    totalCommissions: 116,
-    totalPayroll: 2_919,
-    employeesCalculated: 4,
-    totalEmployees: 4,
-    lineItems: [
-      { employeeId: '1', name: 'Whitney Cooper', initials: 'WC', role: 'Trainer', regularHours: 20, overtimeHours: 0, basePay: 700, overtimePay: 0, bonuses: 100, commissions: 56, grossPay: 856, estimatedTaxes: 146, estimatedNet: 710 },
-      { employeeId: '2', name: 'Drennen', initials: 'DR', role: 'Trainer', regularHours: 16, overtimeHours: 0, basePay: 560, overtimePay: 0, bonuses: 50, commissions: 27, grossPay: 637, estimatedTaxes: 108, estimatedNet: 529 },
-      { employeeId: '3', name: 'Trent', initials: 'TR', role: 'Trainer', regularHours: 18, overtimeHours: 0, basePay: 630, overtimePay: 0, bonuses: 75, commissions: 33, grossPay: 738, estimatedTaxes: 125, estimatedNet: 613 },
-      { employeeId: '4', name: 'Tara Kim', initials: 'TK', role: 'Front Desk', regularHours: 40, overtimeHours: 2, basePay: 640, overtimePay: 48, bonuses: 0, commissions: 0, grossPay: 688, estimatedTaxes: 117, estimatedNet: 571 },
-    ],
-  },
-  {
-    id: 'pp-003',
-    startDate: 'Feb 1, 2026',
-    endDate: 'Feb 14, 2026',
-    payDate: 'Feb 20, 2026',
-    status: 'paid',
-    totalGross: 2_770,
-    totalBonuses: 250,
-    totalCommissions: 126,
-    totalPayroll: 3_146,
-    employeesCalculated: 5,
-    totalEmployees: 5,
-    lineItems: [
-      { employeeId: '1', name: 'Whitney Cooper', initials: 'WC', role: 'Trainer', regularHours: 22, overtimeHours: 0, basePay: 770, overtimePay: 0, bonuses: 100, commissions: 63, grossPay: 933, estimatedTaxes: 159, estimatedNet: 774 },
-      { employeeId: '2', name: 'Drennen', initials: 'DR', role: 'Trainer', regularHours: 14, overtimeHours: 0, basePay: 490, overtimePay: 0, bonuses: 25, commissions: 21, grossPay: 536, estimatedTaxes: 91, estimatedNet: 445 },
-      { employeeId: '3', name: 'Trent', initials: 'TR', role: 'Trainer', regularHours: 16, overtimeHours: 0, basePay: 560, overtimePay: 0, bonuses: 50, commissions: 27, grossPay: 637, estimatedTaxes: 108, estimatedNet: 529 },
-      { employeeId: '4', name: 'Tara Kim', initials: 'TK', role: 'Front Desk', regularHours: 40, overtimeHours: 0, basePay: 640, overtimePay: 0, bonuses: 0, commissions: 0, grossPay: 640, estimatedTaxes: 109, estimatedNet: 531 },
-      { employeeId: '5', name: 'Alex Park', initials: 'AP', role: 'Trainer', regularHours: 10, overtimeHours: 0, basePay: 350, overtimePay: 0, bonuses: 75, commissions: 15, grossPay: 440, estimatedTaxes: 75, estimatedNet: 365 },
-    ],
-  },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+
+function getInitials(name: string): string {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
 
 // ─── Helpers ────────────────────────────────────────────────
 function formatCurrency(n: number) {
@@ -152,11 +97,94 @@ const roleBadgeClasses: Record<string, string> = {
 
 // ─── Component ──────────────────────────────────────────────
 export default function PayrollPage() {
-  const [expandedPeriod, setExpandedPeriod] = useState<string | null>(PAYROLL_PERIODS[0].id)
+  const [payrollPeriods, setPayrollPeriods] = useState<PayrollPeriod[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedPeriod, setExpandedPeriod] = useState<string | null>(null)
   const [actionMenu, setActionMenu] = useState<string | null>(null)
   const [reopenModal, setReopenModal] = useState<PayrollPeriod | null>(null)
 
-  const activePeriod = PAYROLL_PERIODS[0]
+  useEffect(() => {
+    async function fetchPayroll() {
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from('payroll_periods')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('start_date', { ascending: false })
+
+      if (data && data.length > 0) {
+        const mapped: PayrollPeriod[] = data.map((pp: any) => ({
+          id: pp.id,
+          startDate: new Date(pp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          endDate: new Date(pp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          payDate: pp.pay_date ? new Date(pp.pay_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+          status: pp.status ?? 'open',
+          totalGross: pp.total_gross ?? 0,
+          totalBonuses: pp.total_bonuses ?? 0,
+          totalCommissions: pp.total_commissions ?? 0,
+          totalPayroll: pp.total_payroll ?? 0,
+          employeesCalculated: pp.employees_calculated ?? 0,
+          totalEmployees: pp.total_employees ?? 0,
+          lineItems: (pp.line_items ?? []).map((li: any) => ({
+            employeeId: li.employee_id ?? '',
+            name: li.name ?? '',
+            initials: getInitials(li.name ?? 'U'),
+            role: li.role ?? 'Trainer',
+            regularHours: li.regular_hours ?? 0,
+            overtimeHours: li.overtime_hours ?? 0,
+            basePay: li.base_pay ?? 0,
+            overtimePay: li.overtime_pay ?? 0,
+            bonuses: li.bonuses ?? 0,
+            commissions: li.commissions ?? 0,
+            grossPay: li.gross_pay ?? 0,
+            estimatedTaxes: li.estimated_taxes ?? 0,
+            estimatedNet: li.estimated_net ?? 0,
+          })),
+        }))
+        setPayrollPeriods(mapped)
+        setExpandedPeriod(mapped[0].id)
+      }
+      setLoading(false)
+    }
+    fetchPayroll()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
+
+  if (payrollPeriods.length === 0) {
+    return (
+      <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/operations" className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Payroll</h1>
+              <p className="mt-0.5 text-sm text-gray-500">Manage pay periods, review calculations, and export payroll</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center shadow-sm">
+          <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
+          <h3 className="mt-4 text-base font-semibold text-gray-900">No payroll periods yet</h3>
+          <p className="mt-1 text-sm text-gray-500">Create your first pay period to start tracking payroll.</p>
+          <button className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
+            <Plus className="h-4 w-4" />
+            New Period
+          </button>
+        </div>
+      </motion.div>
+    )
+  }
+
+  const activePeriod = payrollPeriods[0]
 
   return (
     <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] p-6">
@@ -245,7 +273,7 @@ export default function PayrollPage() {
         </div>
 
         <div className="divide-y divide-gray-100">
-          {PAYROLL_PERIODS.map((period) => {
+          {payrollPeriods.map((period) => {
             const isExpanded = expandedPeriod === period.id
             const config = statusConfig[period.status]
 

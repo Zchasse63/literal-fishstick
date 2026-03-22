@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
+import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -22,6 +24,7 @@ import {
   CheckCircle2,
   XCircle,
   BarChart3,
+  Loader2,
 } from 'lucide-react'
 import {
   LineChart,
@@ -60,74 +63,99 @@ interface AttendanceRow {
   fillRate: number
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const TRAINERS = ['Whitney Cooper', 'Marcus Rivera', 'Aisha Patel', 'Jordan Lee']
-const CLASSES = [
-  { name: 'Guided Breathwork', id: 'cls-001' },
-  { name: 'Open Sauna — Morning', id: 'cls-002' },
-  { name: 'Open Sauna — Evening', id: 'cls-003' },
-  { name: 'Cold Plunge Intro', id: 'cls-004' },
-  { name: 'Recovery Flow', id: 'cls-005' },
-]
+// ─── Constants ──────────────────────────────────────────────
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
-function generateRows(): AttendanceRow[] {
-  const rows: AttendanceRow[] = []
-  const baseDate = new Date(2026, 2, 1) // March 1, 2026
-  for (let i = 0; i < 40; i++) {
-    const date = new Date(baseDate)
-    date.setDate(date.getDate() + Math.floor(i / 2))
-    const cls = CLASSES[i % CLASSES.length]
-    const trainer = TRAINERS[i % TRAINERS.length]
-    const bookings = Math.floor(Math.random() * 6) + 6
-    const checkIns = Math.max(bookings - Math.floor(Math.random() * 3), 0)
-    const noShows = bookings - checkIns
-    rows.push({
-      id: `row-${i}`,
-      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      className: cls.name,
-      classId: cls.id,
-      trainer,
-      trainerId: `mbr-${(i % 4) + 100}`,
-      bookings,
-      checkIns,
-      noShows,
-      fillRate: Math.round((checkIns / 12) * 100),
-    })
-  }
-  return rows
-}
-
-const MOCK_ROWS = generateRows()
-
-const CHART_DATA = [
-  { date: 'Mar 1', bookings: 22, checkIns: 19, noShows: 3 },
-  { date: 'Mar 3', bookings: 18, checkIns: 16, noShows: 2 },
-  { date: 'Mar 5', bookings: 24, checkIns: 21, noShows: 3 },
-  { date: 'Mar 7', bookings: 20, checkIns: 18, noShows: 2 },
-  { date: 'Mar 9', bookings: 26, checkIns: 23, noShows: 3 },
-  { date: 'Mar 11', bookings: 21, checkIns: 19, noShows: 2 },
-  { date: 'Mar 13', bookings: 28, checkIns: 25, noShows: 3 },
-  { date: 'Mar 15', bookings: 24, checkIns: 22, noShows: 2 },
-  { date: 'Mar 17', bookings: 30, checkIns: 27, noShows: 3 },
-  { date: 'Mar 19', bookings: 25, checkIns: 23, noShows: 2 },
-]
-
-const SUMMARY_METRICS = [
-  { label: 'Total Bookings', value: '938', icon: Users, color: 'text-indigo-600' },
-  { label: 'Total Check-Ins', value: '841', icon: CheckCircle2, color: 'text-emerald-600' },
-  { label: 'Total No-Shows', value: '97', icon: XCircle, color: 'text-red-500' },
-  { label: 'Avg Fill Rate', value: '72%', icon: BarChart3, color: 'text-blue-600' },
+const summaryMetrics_PLACEHOLDER_TEMP = [
+  { label: 'Total Bookings', value: '0', icon: Users, color: 'text-indigo-600' },
+  { label: 'Total Check-Ins', value: '0', icon: CheckCircle2, color: 'text-emerald-600' },
+  { label: 'Total No-Shows', value: '0', icon: XCircle, color: 'text-red-500' },
+  { label: 'Avg Fill Rate', value: '0%', icon: BarChart3, color: 'text-blue-600' },
 ]
 
 const ROWS_PER_PAGE = 50
 
 // ─── Component ──────────────────────────────────────────────
 export default function ReportViewerPage() {
+  const params = useParams()
+  const reportId = params?.id as string
   const [timeRange, setTimeRange] = useState<TimeRange>('30d')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortCol, setSortCol] = useState<keyof AttendanceRow>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [currentPage, setCurrentPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [reportName, setReportName] = useState('Report')
+  const [allRows, setAllRows] = useState<AttendanceRow[]>([])
+  const [chartData, setChartData] = useState<any[]>([])
+  const [summaryMetrics, setSummaryMetrics] = useState(summaryMetrics_PLACEHOLDER_TEMP)
+
+  useEffect(() => {
+    async function fetchReport() {
+      const supabase = createBrowserClient()
+
+      // Fetch saved report metadata
+      const { data: report } = await supabase
+        .from('saved_reports')
+        .select('*')
+        .eq('id', reportId)
+        .eq('studio_id', STUDIO_ID)
+        .single()
+
+      if (report) {
+        setReportName(report.name ?? 'Report')
+      }
+
+      // Fetch bookings for attendance data
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('id, class_id, member_id, status, created_at, classes(name, trainer_id, profiles:trainer_id(full_name))')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+        .limit(200)
+
+      if (bookings && bookings.length > 0) {
+        const mapped: AttendanceRow[] = bookings.map((b: any, i: number) => {
+          const cls = b.classes as any
+          return {
+            id: b.id ?? `row-${i}`,
+            date: b.created_at ? new Date(b.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+            className: cls?.name ?? 'Unknown Class',
+            classId: b.class_id ?? '',
+            trainer: cls?.profiles?.full_name ?? '—',
+            trainerId: cls?.trainer_id ?? '',
+            bookings: 1,
+            checkIns: b.status === 'checked_in' ? 1 : 0,
+            noShows: b.status === 'no_show' ? 1 : 0,
+            fillRate: b.status === 'checked_in' ? 100 : 0,
+          }
+        })
+        setAllRows(mapped)
+
+        const totalBookings = mapped.length
+        const totalCheckins = mapped.filter(r => r.checkIns > 0).length
+        const totalNoShows = mapped.filter(r => r.noShows > 0).length
+        const avgFill = totalBookings > 0 ? Math.round((totalCheckins / totalBookings) * 100) : 0
+
+        setSummaryMetrics([
+          { label: 'Total Bookings', value: totalBookings.toString(), icon: Users, color: 'text-indigo-600' },
+          { label: 'Total Check-Ins', value: totalCheckins.toString(), icon: CheckCircle2, color: 'text-emerald-600' },
+          { label: 'Total No-Shows', value: totalNoShows.toString(), icon: XCircle, color: 'text-red-500' },
+          { label: 'Avg Fill Rate', value: `${avgFill}%`, icon: BarChart3, color: 'text-blue-600' },
+        ])
+      }
+      setLoading(false)
+    }
+    if (reportId) fetchReport()
+  }, [reportId])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
   const [scheduleModal, setScheduleModal] = useState(false)
 
   const TIME_RANGES: { key: TimeRange; label: string }[] = [
@@ -139,7 +167,7 @@ export default function ReportViewerPage() {
   ]
 
   const filtered = useMemo(() => {
-    let rows = [...MOCK_ROWS]
+    let rows = [...allRows]
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       rows = rows.filter(
@@ -160,7 +188,7 @@ export default function ReportViewerPage() {
         : String(bVal).localeCompare(String(aVal))
     })
     return rows
-  }, [searchQuery, sortCol, sortDir])
+  }, [allRows, searchQuery, sortCol, sortDir])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE))
   const paginatedRows = filtered.slice(
@@ -255,7 +283,7 @@ export default function ReportViewerPage() {
 
         {/* ─── Summary Row ────────────────────────────────────── */}
         <motion.div {...fadeInUp} className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {SUMMARY_METRICS.map((metric, i) => {
+          {summaryMetrics.map((metric, i) => {
             const Icon = metric.icon
             return (
               <motion.div
@@ -289,7 +317,7 @@ export default function ReportViewerPage() {
           </p>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={CHART_DATA}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                 <XAxis
                   dataKey="date"

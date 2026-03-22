@@ -1,53 +1,67 @@
 graph TD
     subgraph AdminApp["Admin Dashboard (Next.js App Router)"]
-        subgraph AdminLayout["AdminLayout (route group: admin)"]
-            CMD_PAL[CommandPalette\ncmdk — Cmd+K]
-            SIDEBAR_A[Sidebar\n10 nav items · collapse toggle]
-            HEADER_A[Header\nbreadcrumb · actions]
+        subgraph AdminLayout["AdminLayout — (admin) route group"]
+            CMD_PAL[CommandPalette\ncmdk — Cmd+K]:::green
+            SIDEBAR_A[Sidebar\n10 nav items · collapse toggle\nAuth-wired user identity]:::green
+            HEADER_A[Header\nbreadcrumb · Quick Create · Bell\nno onClick on Quick Create / Bell]:::yellow
         end
 
-        subgraph AdminPages["Admin Pages"]
-            CC[Command Center\nAI briefing · KPIs · Schedule · Activity]
-            SCH[Schedule\nCalendar · Kiosk · Waitlist]
-            MEM[Members\nDirectory · Profile panel · AI health score]
-            REV[Revenue\nMRR · Transactions · Memberships]
-            MKT[Marketing\nCampaigns · Automations · Leads · Content]
-            CORP[Corporate\nAccounts · Events · Invoices]
-            OPS[Operations\nEmployees · Payroll · Documents]
-            ANA[Analytics\nDashboards · Reports · AI Insights · Trainers]
+        subgraph AdminCore["Core Pages — Live Data"]
+            CC[Command Center\nAI briefing · KPIs · Activity feed]:::green
+            SCH[Schedule\nWeek calendar · Detail panel\nDay / Month views unimplemented]:::yellow
+            MEM[Members\nDirectory · Profile panel\nAdd Member button has no onClick]:::red
+            REV[Revenue\nMRR · Transactions · Charts]:::yellow
+            SEG[Segments\nSmart segments — live data]:::green
+        end
+
+        subgraph AdminMock["Pages — Mock / Stub Data"]
+            MKT[Marketing\nCampaigns · Automations · Leads · Content]:::yellow
+            CORP[Corporate\nAccounts · Events · Invoices\nhardcoded real business names]:::red
+            OPS[Operations\nEmployees · Payroll · Documents\nall mock data]:::red
+            ANA[Analytics\nDashboards · Reports · AI Insights\nall KPIs are hardcoded strings]:::red
+            ENG[Engagement]:::red
         end
     end
 
-    subgraph EmployeeApp["Employee Portal (route group: employee)"]
+    subgraph EmployeeApp["Employee Portal — (employee) route group"]
         subgraph EmpLayout["EmployeeLayout"]
-            SIDEBAR_E[Sidebar\nMain nav + Trainer section]
-            HEADER_E[Header\nClock badge · Notifications]
+            SIDEBAR_E[Employee Sidebar\n220px · live clock badge]:::green
+            HEADER_E[Header\nClock in/out toggle · Bell]:::green
         end
 
         subgraph EmpPages["Employee Pages"]
-            EMP_HOME[Home · Dashboard]
-            EMP_SCH[My Schedule]
-            EMP_TIME[Timesheets]
-            EMP_PAY[Pay & Taxes]
-            EMP_PROF[My Profile]
-            EMP_CLASSES[My Classes]
-            EMP_PERF[Performance]
-            EMP_PROMO[Promo Code]
+            EMP_HOME[Home / Dashboard\nlive clock + class data]:::green
+            EMP_SCH[My Schedule\nlive]:::green
+            EMP_TIME[Timesheets\nlive]:::green
+            EMP_PAY[Pay & Taxes\nmix of real + mock]:::yellow
+            EMP_PERF[Performance\nlive trainer metrics]:::yellow
         end
     end
 
     subgraph SharedUI["Shared UI Primitives"]
-        SHADCN[shadcn/ui\n~20 components]
-        FRAMER[framer-motion\nspring animations]
-        RECHARTS[recharts\narea/bar/pie/funnel charts]
-        LUCIDE[lucide-react\nicons]
+        SHADCN["shadcn/ui (~20 components)\nbutton, dialog, skeleton, tabs, table…"]:::green
+        FRAMER[framer-motion\nfadeInUp on all pages]:::green
+        RECHARTS[recharts\narea / bar / pie / funnel]:::green
+        LUCIDE[lucide-react icons]:::green
     end
 
-    AdminLayout --> AdminPages
+    subgraph GlobalPages["Global Pages"]
+        ERR[error.tsx\nGlobal error boundary]:::green
+        NF[not-found.tsx\n404 page]:::green
+    end
+
+    AdminLayout --> AdminCore
+    AdminLayout --> AdminMock
     EmpLayout --> EmpPages
-    AdminPages --> SHADCN
-    AdminPages --> FRAMER
-    AdminPages --> RECHARTS
-    AdminPages --> LUCIDE
+    AdminCore --> SHADCN
+    AdminCore --> FRAMER
+    AdminCore --> RECHARTS
+    AdminCore --> LUCIDE
+    AdminMock --> FRAMER
+    AdminMock --> RECHARTS
     EmpPages --> SHADCN
     EmpPages --> FRAMER
+
+    classDef green fill:#d1fae5,stroke:#10b981,color:#065f46
+    classDef yellow fill:#fef9c3,stroke:#f59e0b,color:#78350f
+    classDef red fill:#fee2e2,stroke:#ef4444,color:#991b1b

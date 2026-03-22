@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -92,166 +92,87 @@ const HISTORY_STATUS_STYLES: Record<HistoryStatus, { bg: string; text: string; l
   done: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Done' },
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const INITIAL_INSIGHTS: Insight[] = [
-  {
-    id: '1',
-    type: 'scheduling',
-    urgency: 'suggestion',
-    title: 'Wednesday 7pm class consistently at 95% capacity',
-    summary: 'The Wednesday 7pm Guided session with Whitney Cooper has averaged 95% fill rate over the past 4 weeks. Waitlist has been activated 3 times. Adding a second session on Thursday at the same time could capture unmet demand.',
-    action: 'Add Thursday 7pm Guided session',
-    actionLink: '/schedule',
-    createdAt: '2 hours ago',
-    status: 'active',
-  },
-  {
-    id: '2',
-    type: 'retention',
-    urgency: 'attention',
-    title: '12 members haven\'t visited in 14+ days',
-    summary: 'These members had been averaging 2.3 visits per week before going inactive. 8 of 12 are on unlimited plans. A targeted win-back campaign could re-engage them before they churn.',
-    action: 'View at-risk members',
-    actionLink: '/members',
-    createdAt: '4 hours ago',
-    status: 'active',
-  },
-  {
-    id: '3',
-    type: 'revenue',
-    urgency: 'info',
-    title: 'Revenue up 8% month-over-month',
-    summary: 'Total revenue reached $31,150 this month, driven primarily by a 14% increase in credit pack purchases and 3 new corporate account sign-ups. Subscription revenue held steady.',
-    action: 'View revenue breakdown',
-    actionLink: '/revenue',
-    createdAt: '6 hours ago',
-    status: 'active',
-  },
-  {
-    id: '4',
-    type: 'trainer',
-    urgency: 'info',
-    title: 'Trainer Whitney\'s classes average 9.2 check-ins vs team average of 6.8',
-    summary: 'Whitney Cooper continues to outperform with a 35% higher average attendance than the team mean. Her bonus hit rate is 83%. Consider featuring her in promotional content or offering a premium guided tier.',
-    action: 'View trainer details',
-    actionLink: '/analytics/trainers',
-    createdAt: '8 hours ago',
-    status: 'active',
-  },
-  {
-    id: '5',
-    type: 'pricing',
-    urgency: 'suggestion',
-    title: '5-class pack has lowest conversion rate',
-    summary: 'Only 2 purchases of the 5-class pack in the last 90 days. The 10-class pack outsells it 8:1. Consider replacing the 5-class option with a "Sampler 3-Pack" for first-timers or removing it entirely.',
-    action: 'Review pricing tiers',
-    actionLink: '/revenue',
-    createdAt: '12 hours ago',
-    status: 'active',
-  },
-  {
-    id: '6',
-    type: 'anomaly',
-    urgency: 'urgent',
-    title: 'Unusual spike in cancellations — Monday 6pm',
-    summary: 'Monday 6pm Open sessions have seen a 340% increase in late cancellations over the past 2 weeks. This coincides with a local gym opening a competing hot yoga class at the same time. No-show rate also up 25%.',
-    action: 'View cancellation details',
-    actionLink: '/schedule',
-    createdAt: '1 day ago',
-    status: 'active',
-  },
-  {
-    id: '7',
-    type: 'growth',
-    urgency: 'suggestion',
-    title: 'Referral members have 40% higher LTV',
-    summary: 'Members acquired through trainer promo codes and guest passes have a 40% higher lifetime value and 28% lower churn rate. Expanding the referral program could significantly improve unit economics.',
-    action: 'View referral analytics',
-    actionLink: '/analytics',
-    createdAt: '1 day ago',
-    status: 'active',
-  },
-  {
-    id: '8',
-    type: 'scheduling',
-    urgency: 'attention',
-    title: 'Saturday 8-9am consistently underperforming',
-    summary: 'Saturday morning early slots average only 25% fill rate over the past 6 weeks. This slot has the highest no-show rate at 18%. Consider shifting it to 9-10am or converting to a Guided session to drive interest.',
-    action: 'Edit Saturday schedule',
-    actionLink: '/schedule',
-    createdAt: '2 days ago',
-    status: 'active',
-  },
-  {
-    id: '9',
-    type: 'retention',
-    urgency: 'info',
-    title: 'New member 30-day retention hit 91%',
-    summary: 'The latest cohort of new members (signed up in February) has a 91% 30-day retention rate, up from 84% in January. The new welcome email series may be contributing to the improvement.',
-    action: 'View cohort details',
-    actionLink: '/analytics',
-    createdAt: '2 days ago',
-    status: 'active',
-  },
-  {
-    id: '10',
-    type: 'revenue',
-    urgency: 'suggestion',
-    title: 'Gift card sales opportunity — Spring holidays approaching',
-    summary: 'Last year, gift card purchases spiked 180% in the 2 weeks before Mother\'s Day. Setting up a promotional campaign now could capture early buyers. Current gift card balance outstanding: $2,340.',
-    action: 'Create gift card campaign',
-    actionLink: '/marketing/campaigns/new',
-    createdAt: '3 days ago',
-    status: 'active',
-  },
-]
+function LoadingSkeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
+}
 
-const HISTORY_INSIGHTS: Insight[] = [
-  {
-    id: 'h1',
-    type: 'pricing',
-    urgency: 'suggestion',
-    title: 'Drop-in price below market average',
-    summary: 'Your $25 drop-in rate is 15% below the area average of $29. A $5 increase would add an estimated $400/month with minimal impact on volume.',
-    action: 'Adjust pricing',
-    actionLink: '/revenue',
-    createdAt: '5 days ago',
-    status: 'done',
-    resolvedAt: '3 days ago',
-  },
-  {
-    id: 'h2',
-    type: 'scheduling',
-    urgency: 'attention',
-    title: 'Friday 7pm slot needs trainer coverage',
-    summary: 'No trainer assigned for Friday 7pm starting next week. Auto-assigned as Open session.',
-    action: 'Assign trainer',
-    actionLink: '/schedule',
-    createdAt: '1 week ago',
-    status: 'dismissed',
-    resolvedAt: '5 days ago',
-  },
-  {
-    id: 'h3',
-    type: 'growth',
-    urgency: 'info',
-    title: 'Instagram traffic up 23% this week',
-    summary: 'Website visits from Instagram increased 23%. The trainer spotlight reel posted Tuesday received 4x average engagement.',
-    action: 'View content hub',
-    actionLink: '/marketing/content',
-    createdAt: '1 week ago',
-    status: 'done',
-    resolvedAt: '6 days ago',
-  },
-]
+function getTimeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diffMs = now - then
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${diffMin} min ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr} hours ago`
+  const diffDays = Math.floor(diffHr / 24)
+  if (diffDays === 1) return '1 day ago'
+  if (diffDays < 7) return `${diffDays} days ago`
+  return `${Math.floor(diffDays / 7)} week${diffDays >= 14 ? 's' : ''} ago`
+}
 
 // ─── Page Component ──────────────────────────────────────────
 export default function AIInsightsPage() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [viewTab, setViewTab] = useState<ViewTab>('active')
-  const [insights, setInsights] = useState<Insight[]>(INITIAL_INSIGHTS)
-  const [history, setHistory] = useState<Insight[]>(HISTORY_INSIGHTS)
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [history, setHistory] = useState<Insight[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [lastGenerated, setLastGenerated] = useState<string | null>(null)
+
+  // ─── Transform API insight to local format ─────────────────
+  const transformInsight = useCallback((raw: any): Insight => ({
+    id: raw.id,
+    type: raw.type ?? 'retention',
+    urgency: raw.urgency ?? 'info',
+    title: raw.title ?? '',
+    summary: raw.summary ?? '',
+    action: raw.action_label ?? 'View Details',
+    actionLink: raw.action_link ?? '/analytics',
+    createdAt: raw.generated_at ? getTimeAgo(raw.generated_at) : '',
+    status: raw.status ?? 'active',
+    resolvedAt: raw.resolved_at ? getTimeAgo(raw.resolved_at) : undefined,
+  }), [])
+
+  // ─── Fetch Active Insights ─────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetch('/api/ai/insights?limit=20')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const items = (d.data as any[]).map(transformInsight)
+        setInsights(items)
+        if (items.length > 0) {
+          setLastGenerated(items[0].createdAt)
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [transformInsight])
+
+  // ─── Fetch History Insights ────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    setHistoryLoading(true)
+    fetch('/api/ai/insights/history?limit=50')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        // Filter to only dismissed and done
+        const items = (d.data as any[])
+          .filter((i: any) => i.status === 'dismissed' || i.status === 'done')
+          .map(transformInsight)
+        setHistory(items)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setHistoryLoading(false) })
+    return () => { cancelled = true }
+  }, [transformInsight])
 
   const filteredInsights = insights.filter((i) => {
     if (activeFilter === 'all') return true
@@ -263,9 +184,13 @@ export default function AIInsightsPage() {
     return i.type === activeFilter
   })
 
-  const handleDismiss = (id: string) => {
+  const handleDismiss = async (id: string) => {
     const insight = insights.find((i) => i.id === id)
     if (!insight) return
+    // Call dismiss API
+    try {
+      await fetch(`/api/ai/insights/${id}/dismiss`, { method: 'POST' })
+    } catch {}
     setInsights((prev) => prev.filter((i) => i.id !== id))
     setHistory((prev) => [
       { ...insight, status: 'dismissed' as const, resolvedAt: 'Just now' },
@@ -273,9 +198,13 @@ export default function AIInsightsPage() {
     ])
   }
 
-  const handleMarkDone = (id: string) => {
+  const handleMarkDone = async (id: string) => {
     const insight = insights.find((i) => i.id === id)
     if (!insight) return
+    // Call action API
+    try {
+      await fetch(`/api/ai/insights/${id}/action`, { method: 'POST' })
+    } catch {}
     setInsights((prev) => prev.filter((i) => i.id !== id))
     setHistory((prev) => [
       { ...insight, status: 'done' as const, resolvedAt: 'Just now' },
@@ -283,9 +212,20 @@ export default function AIInsightsPage() {
     ])
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true)
-    setTimeout(() => setIsGenerating(false), 2000)
+    try {
+      await fetch('/api/ai/insights/generate', { method: 'POST' })
+      // Re-fetch active insights
+      const res = await fetch('/api/ai/insights?limit=20')
+      const d = await res.json()
+      if (d.data) {
+        const items = (d.data as any[]).map(transformInsight)
+        setInsights(items)
+        if (items.length > 0) setLastGenerated(items[0].createdAt)
+      }
+    } catch {}
+    setIsGenerating(false)
   }
 
   return (
@@ -309,7 +249,7 @@ export default function AIInsightsPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <Clock className="w-3.5 h-3.5" />
-              <span>Last generated 2 hours ago</span>
+              <span>{lastGenerated ? `Last generated ${lastGenerated}` : 'Loading...'}</span>
             </div>
             <button
               onClick={handleGenerate}
@@ -391,7 +331,22 @@ export default function AIInsightsPage() {
               exit={{ opacity: 0 }}
               className="space-y-4"
             >
-              {filteredInsights.length === 0 ? (
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                      <div className="flex items-start gap-4">
+                        <LoadingSkeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                        <div className="flex-1">
+                          <LoadingSkeleton className="h-4 w-3/4 mb-2" />
+                          <LoadingSkeleton className="h-3 w-full mb-1" />
+                          <LoadingSkeleton className="h-3 w-2/3" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredInsights.length === 0 ? (
                 <motion.div
                   {...fadeInUp}
                   className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center"
@@ -414,9 +369,9 @@ export default function AIInsightsPage() {
                 </motion.div>
               ) : (
                 filteredInsights.map((insight, i) => {
-                  const Icon = TYPE_ICONS[insight.type]
-                  const typeColor = TYPE_COLORS[insight.type]
-                  const urgency = URGENCY_STYLES[insight.urgency]
+                  const Icon = TYPE_ICONS[insight.type] ?? Brain
+                  const typeColor = TYPE_COLORS[insight.type] ?? TYPE_COLORS.retention
+                  const urgency = URGENCY_STYLES[insight.urgency] ?? URGENCY_STYLES.info
 
                   return (
                     <motion.div
@@ -506,7 +461,21 @@ export default function AIInsightsPage() {
               exit={{ opacity: 0 }}
               className="space-y-4"
             >
-              {filteredHistory.length === 0 ? (
+              {historyLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 opacity-75">
+                      <div className="flex items-start gap-4">
+                        <LoadingSkeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                        <div className="flex-1">
+                          <LoadingSkeleton className="h-4 w-3/4 mb-2" />
+                          <LoadingSkeleton className="h-3 w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredHistory.length === 0 ? (
                 <motion.div
                   {...fadeInUp}
                   className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center"
@@ -523,9 +492,9 @@ export default function AIInsightsPage() {
                 </motion.div>
               ) : (
                 filteredHistory.map((insight, i) => {
-                  const Icon = TYPE_ICONS[insight.type]
-                  const typeColor = TYPE_COLORS[insight.type]
-                  const statusStyle = HISTORY_STATUS_STYLES[insight.status as HistoryStatus]
+                  const Icon = TYPE_ICONS[insight.type] ?? Brain
+                  const typeColor = TYPE_COLORS[insight.type] ?? TYPE_COLORS.retention
+                  const statusStyle = HISTORY_STATUS_STYLES[insight.status as HistoryStatus] ?? HISTORY_STATUS_STYLES.dismissed
 
                   return (
                     <motion.div

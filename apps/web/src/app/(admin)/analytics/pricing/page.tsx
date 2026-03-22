@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
   Plus,
@@ -38,34 +39,7 @@ interface Simulation {
   appliedAt?: string
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-
-const SIMULATIONS: Simulation[] = [
-  {
-    id: 'sim-1',
-    name: 'Q2 Price Increase',
-    description: 'Test 10% increase across all unlimited and pack plans to offset rising facility costs.',
-    createdAt: '2026-03-15',
-    status: 'Applied',
-    projectedRevenueDelta: 2840,
-    appliedAt: '2026-03-18',
-  },
-  {
-    id: 'sim-2',
-    name: 'Student Tier Expansion',
-    description: 'Reduce student unlimited from $99 to $79 to capture college market near USF campus.',
-    createdAt: '2026-03-12',
-    status: 'Analyzed',
-    projectedRevenueDelta: -620,
-  },
-  {
-    id: 'sim-3',
-    name: 'Drop-in Premium Pricing',
-    description: 'Increase drop-in rate from $25 to $30 to incentivize membership conversion.',
-    createdAt: '2026-03-19',
-    status: 'Draft',
-  },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -96,8 +70,34 @@ const STATUS_STYLES: Record<SimulationStatus, string> = {
 // ─── Page Component ──────────────────────────────────────────
 
 export default function PricingSimulatorPage() {
-  const [simulations, setSimulations] = useState<Simulation[]>(SIMULATIONS)
+  const [simulations, setSimulations] = useState<Simulation[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchSimulations() {
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from('pricing_simulations')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (data && data.length > 0) {
+        setSimulations(data.map((s: any) => ({
+          id: s.id,
+          name: s.name ?? 'Untitled',
+          description: s.description ?? '',
+          createdAt: s.created_at?.split('T')[0] ?? '',
+          status: s.status ?? 'Draft',
+          projectedRevenueDelta: s.projected_revenue_delta,
+          appliedAt: s.applied_at?.split('T')[0],
+        })))
+      }
+      setLoading(false)
+    }
+    fetchSimulations()
+  }, [])
 
   const handleDelete = (id: string) => {
     setSimulations((prev) => prev.filter((s) => s.id !== id))

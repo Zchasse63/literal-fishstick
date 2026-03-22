@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
+  Loader2,
   ArrowLeft,
   MapPin,
   Plus,
@@ -35,21 +37,35 @@ interface GeofenceLocation {
   isActive: boolean
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const INITIAL_LOCATIONS: GeofenceLocation[] = [
-  {
-    id: 'loc-001',
-    name: 'The Sauna Guys - Tampa',
-    latitude: 27.9506,
-    longitude: -82.4572,
-    radius: 150,
-    isActive: true,
-  },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Component ──────────────────────────────────────────────
 export default function GeofenceSettingsPage() {
-  const [locations, setLocations] = useState<GeofenceLocation[]>(INITIAL_LOCATIONS)
+  const [locations, setLocations] = useState<GeofenceLocation[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchLocations() {
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from('geofence_locations')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+
+      if (data && data.length > 0) {
+        setLocations(data.map((loc: any) => ({
+          id: loc.id,
+          name: loc.name ?? 'Unnamed Location',
+          latitude: loc.latitude ?? 0,
+          longitude: loc.longitude ?? 0,
+          radius: loc.radius ?? 150,
+          isActive: loc.is_active ?? true,
+        })))
+      }
+      setLoading(false)
+    }
+    fetchLocations()
+  }, [])
   const [showAddForm, setShowAddForm] = useState(false)
   const [newName, setNewName] = useState('')
   const [newLat, setNewLat] = useState('')
@@ -78,6 +94,14 @@ export default function GeofenceSettingsPage() {
     setNewLng('')
     setNewRadius(150)
     setShowAddForm(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
   }
 
   return (

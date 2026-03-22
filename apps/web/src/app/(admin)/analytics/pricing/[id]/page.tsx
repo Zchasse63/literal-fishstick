@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
+import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -21,6 +23,7 @@ import {
   Users,
   BarChart3,
   Shield,
+  Loader2,
 } from 'lucide-react'
 import {
   BarChart,
@@ -50,15 +53,8 @@ interface PricingPlan {
   mrrContribution: number
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-
-const INITIAL_PLANS: PricingPlan[] = [
-  { id: 'unlimited', name: 'Unlimited', currentPrice: 149, newPrice: 149, subscribers: 84, mrrContribution: 12516 },
-  { id: '10-class', name: '10-Class Pack', currentPrice: 129, newPrice: 129, subscribers: 42, mrrContribution: 5418 },
-  { id: '6-class', name: '6-Class Pack', currentPrice: 89, newPrice: 89, subscribers: 31, mrrContribution: 2759 },
-  { id: 'dropin', name: 'Drop-in', currentPrice: 25, newPrice: 25, subscribers: 0, mrrContribution: 1875 },
-  { id: 'student', name: 'Student Unlimited', currentPrice: 99, newPrice: 99, subscribers: 18, mrrContribution: 1782 },
-]
+// ─── Constants ──────────────────────────────────────────────
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 type SimulationStatus = 'Draft' | 'Analyzed' | 'Applied' | 'Reverted'
 
@@ -68,14 +64,6 @@ interface SimulationState {
   status: SimulationStatus
   createdAt: string
   appliedAt: string | null
-}
-
-const MOCK_SIMULATION: SimulationState = {
-  id: 'sim-2',
-  name: 'Student Tier Expansion',
-  status: 'Analyzed',
-  createdAt: '2026-03-12',
-  appliedAt: null,
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -115,10 +103,75 @@ function SensitivityTooltip({ active, payload, label }: any) {
 // ─── Page Component ──────────────────────────────────────────
 
 export default function PricingSimulatorDetailPage() {
-  const [plans, setPlans] = useState<PricingPlan[]>(INITIAL_PLANS)
-  const [isAnalyzed, setIsAnalyzed] = useState(true)
+  const params = useParams()
+  const simId = params?.id as string
+  const [plans, setPlans] = useState<PricingPlan[]>([])
+  const [isAnalyzed, setIsAnalyzed] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [simulation, setSimulation] = useState(MOCK_SIMULATION)
+  const [simulation, setSimulation] = useState<SimulationState>({ id: '', name: '', status: 'Draft', createdAt: '', appliedAt: null })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchSimulation() {
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from('pricing_simulations')
+        .select('*')
+        .eq('id', simId)
+        .eq('studio_id', STUDIO_ID)
+        .single()
+
+      if (data) {
+        setSimulation({
+          id: data.id,
+          name: data.name ?? 'Untitled',
+          status: data.status ?? 'Draft',
+          createdAt: data.created_at?.split('T')[0] ?? '',
+          appliedAt: data.applied_at?.split('T')[0] ?? null,
+        })
+        setIsAnalyzed(data.status === 'Analyzed' || data.status === 'Applied')
+
+        // Load plans from simulation config or membership_plans
+        const simPlans = data.plans ?? []
+        if (simPlans.length > 0) {
+          setPlans(simPlans.map((p: any) => ({
+            id: p.id ?? '',
+            name: p.name ?? '',
+            currentPrice: p.current_price ?? 0,
+            newPrice: p.new_price ?? p.current_price ?? 0,
+            subscribers: p.subscribers ?? 0,
+            mrrContribution: p.mrr_contribution ?? 0,
+          })))
+        } else {
+          // Fallback: load from membership_plans
+          const { data: mpData } = await supabase
+            .from('membership_plans')
+            .select('*')
+            .eq('studio_id', STUDIO_ID)
+          if (mpData) {
+            setPlans(mpData.map((p: any) => ({
+              id: p.id,
+              name: p.name ?? 'Plan',
+              currentPrice: p.price ?? 0,
+              newPrice: p.price ?? 0,
+              subscribers: p.subscriber_count ?? 0,
+              mrrContribution: (p.price ?? 0) * (p.subscriber_count ?? 0),
+            })))
+          }
+        }
+      }
+      setLoading(false)
+    }
+    if (simId) fetchSimulation()
+  }, [simId])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   const isApplied = simulation.status === 'Applied'
 
@@ -163,7 +216,7 @@ export default function PricingSimulatorDetailPage() {
 
   const handleRevert = () => {
     setSimulation((prev) => ({ ...prev, status: 'Reverted' as const, appliedAt: null }))
-    setPlans(INITIAL_PLANS)
+    setPlans(plans.map(p => ({ ...p, newPrice: p.currentPrice })))
     setIsAnalyzed(false)
   }
 

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
   Calendar,
@@ -58,7 +59,7 @@ interface SavedReport {
   schedule: string
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
+// ─── Report Templates (static config) ───────────────────────
 const REPORT_TEMPLATES: ReportTemplate[] = [
   {
     id: 'attendance',
@@ -168,53 +169,52 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
   },
 ]
 
-const SAVED_REPORTS: SavedReport[] = [
-  {
-    id: 'rpt-001',
-    name: 'Weekly Attendance Summary',
-    type: 'Attendance',
-    typeBadgeColor: 'bg-indigo-50 text-indigo-700',
-    lastGenerated: 'Mar 19, 2026',
-    schedule: 'Weekly',
-  },
-  {
-    id: 'rpt-002',
-    name: 'Monthly Revenue Breakdown',
-    type: 'Revenue',
-    typeBadgeColor: 'bg-emerald-50 text-emerald-700',
-    lastGenerated: 'Mar 1, 2026',
-    schedule: 'Monthly',
-  },
-  {
-    id: 'rpt-003',
-    name: 'Trainer Payroll — March',
-    type: 'Trainer Payroll',
-    typeBadgeColor: 'bg-violet-50 text-violet-700',
-    lastGenerated: 'Mar 15, 2026',
-    schedule: 'Manual',
-  },
-  {
-    id: 'rpt-004',
-    name: 'At-Risk Members Alert',
-    type: 'Churn Risk',
-    typeBadgeColor: 'bg-orange-50 text-orange-700',
-    lastGenerated: 'Mar 18, 2026',
-    schedule: 'Daily',
-  },
-  {
-    id: 'rpt-005',
-    name: 'Failed Payments — Last 30d',
-    type: 'Failed Payments',
-    typeBadgeColor: 'bg-red-50 text-red-700',
-    lastGenerated: 'Mar 17, 2026',
-    schedule: 'Weekly',
-  },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+
+const TYPE_BADGE_COLORS: Record<string, string> = {
+  Attendance: 'bg-indigo-50 text-indigo-700',
+  Revenue: 'bg-emerald-50 text-emerald-700',
+  'Trainer Payroll': 'bg-violet-50 text-violet-700',
+  'Trainer Performance': 'bg-purple-50 text-purple-700',
+  'Churn Risk': 'bg-orange-50 text-orange-700',
+  'Class Performance': 'bg-cyan-50 text-cyan-700',
+  'Credit Pack Usage': 'bg-teal-50 text-teal-700',
+  'Transaction Log': 'bg-gray-100 text-gray-700',
+  'Failed Payments': 'bg-red-50 text-red-700',
+  'Member Movement': 'bg-amber-50 text-amber-700',
+  Membership: 'bg-blue-50 text-blue-700',
+}
 
 // ─── Component ──────────────────────────────────────────────
 export default function ReportLibraryPage() {
   const [search, setSearch] = useState('')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchReports() {
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from('saved_reports')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (data && data.length > 0) {
+        setSavedReports(data.map((r: any) => ({
+          id: r.id,
+          name: r.name ?? 'Untitled Report',
+          type: r.type ?? 'Attendance',
+          typeBadgeColor: TYPE_BADGE_COLORS[r.type] ?? 'bg-gray-100 text-gray-700',
+          lastGenerated: r.last_generated_at ? new Date(r.last_generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+          schedule: r.schedule ?? 'Manual',
+        })))
+      }
+      setLoading(false)
+    }
+    fetchReports()
+  }, [])
 
   const filteredTemplates = REPORT_TEMPLATES.filter(
     (t) =>
@@ -222,7 +222,7 @@ export default function ReportLibraryPage() {
       t.description.toLowerCase().includes(search.toLowerCase())
   )
 
-  const filteredReports = SAVED_REPORTS.filter((r) =>
+  const filteredReports = savedReports.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
     r.type.toLowerCase().includes(search.toLowerCase())
   )

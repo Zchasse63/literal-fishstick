@@ -75,7 +75,20 @@ interface KPIMetric {
   icon: typeof DollarSign
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
+interface RevenueSource {
+  name: string
+  value: number
+  color: string
+}
+
+interface MemberMovementRow {
+  month: string
+  new: number
+  churned: number
+  net: number
+}
+
+// ─── Constants ──────────────────────────────────────────────
 
 const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: '7d', label: '7 days' },
@@ -84,145 +97,30 @@ const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: '12m', label: '12 months' },
 ]
 
-const KPI_METRICS: KPIMetric[] = [
-  { label: 'MRR', value: '$18,420', trend: 12.3, trendLabel: 'vs last period', href: '/revenue', icon: DollarSign },
-  { label: 'ARPM', value: '$67.40', trend: 4.2, trendLabel: 'vs last period', href: '/revenue', icon: Activity },
-  { label: 'Active Members', value: '273', trend: 8.1, trendLabel: 'vs last period', href: '/members', icon: Users },
-  { label: 'Monthly Churn', value: '3.2%', trend: -1.4, trendLabel: 'vs last period', href: '/members', icon: Percent },
-  { label: 'Avg Fill Rate', value: '71%', trend: 5.6, trendLabel: 'vs last period', href: '/schedule', icon: CalendarCheck },
-  { label: 'Revenue MTD', value: '$24,850', trend: 9.7, trendLabel: 'vs last period', href: '/revenue', icon: CreditCard },
-]
-
-const AI_RECOMMENDATIONS: AIRecommendation[] = [
-  {
-    id: '1',
-    icon: CalendarCheck,
-    title: 'Add Thursday 7pm Guided',
-    summary: 'Wednesday Guided at 92% fill rate for 3 consecutive weeks. Strong demand signal for an additional guided session.',
-    action: 'View Schedule',
-    actionHref: '/schedule',
-    tag: 'Schedule',
-    tagColor: 'bg-indigo-50 text-indigo-700',
-  },
-  {
-    id: '2',
-    icon: CreditCard,
-    title: 'Discontinue 5-Pack',
-    summary: 'Only 2 purchases in the last 90 days. Consider replacing with a 3-visit sampler pack at a lower price point.',
-    action: 'View Pricing',
-    actionHref: '/revenue',
-    tag: 'Pricing',
-    tagColor: 'bg-amber-50 text-amber-700',
-  },
-  {
-    id: '3',
-    icon: UserPlus,
-    title: 'First Guided Free Campaign',
-    summary: '61 active members have never tried a Guided class. A targeted email could drive trial and increase Guided fill rates.',
-    action: 'Create Campaign',
-    actionHref: '/marketing/campaigns/new',
-    tag: 'Growth',
-    tagColor: 'bg-emerald-50 text-emerald-700',
-  },
-]
-
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const HOURS = ['5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM']
 
-// Fill rates (%) by [hourIndex][dayIndex] — 12 hours x 7 days
-const HEATMAP_ALL: number[][] = [
-  [20, 15, 10, 12, 18, 45, 50],
-  [35, 30, 25, 28, 40, 65, 70],
-  [55, 50, 45, 48, 60, 80, 85],
-  [70, 65, 60, 58, 72, 90, 92],
-  [85, 80, 75, 70, 88, 95, 90],
-  [92, 88, 82, 75, 90, 85, 80],
-  [88, 85, 80, 72, 85, 75, 70],
-  [80, 78, 75, 68, 80, 70, 65],
-  [65, 60, 58, 55, 68, 60, 55],
-  [50, 48, 45, 42, 55, 50, 45],
-  [35, 33, 30, 28, 40, 38, 35],
-  [25, 22, 20, 18, 30, 28, 25],
-]
+const RETENTION_PERIODS = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5']
 
-const HEATMAP_OPEN: number[][] = [
-  [20, 15, 10, 12, 18, 45, 50],
-  [30, 25, 20, 25, 35, 60, 65],
-  [50, 45, 40, 42, 55, 75, 80],
-  [65, 60, 55, 52, 68, 85, 88],
-  [80, 75, 70, 65, 82, 90, 85],
-  [88, 82, 78, 70, 85, 80, 75],
-  [82, 80, 75, 68, 80, 70, 65],
-  [75, 72, 70, 62, 75, 65, 60],
-  [60, 55, 52, 50, 62, 55, 50],
-  [45, 42, 40, 38, 50, 45, 40],
-  [30, 28, 25, 22, 35, 33, 30],
-  [20, 18, 15, 14, 25, 22, 20],
-]
-
-const HEATMAP_GUIDED: number[][] = [
-  [0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 92, 0],
-  [0, 0, 0, 0, 0, 85, 90],
-  [0, 0, 92, 0, 0, 0, 0],
-  [83, 0, 92, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0],
-]
-
-const HEATMAP_DATA: Record<HeatmapFilter, number[][]> = {
-  All: HEATMAP_ALL,
-  Open: HEATMAP_OPEN,
-  Guided: HEATMAP_GUIDED,
+const REVENUE_COLORS: Record<string, string> = {
+  memberships: '#4F46E5',
+  credit_packs: '#6366F1',
+  drop_ins: '#8B5CF6',
+  merch: '#A78BFA',
+  corporate: '#C4B5FD',
+  gift_cards: '#DDD6FE',
+  events: '#EDE9FE',
 }
 
-// Cohort retention heatmap data
-const COHORT_MONTHS = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-const RETENTION_PERIODS = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5']
-const COHORT_RETENTION: number[][] = [
-  [100, 88, 79, 72, 68, 65],
-  [100, 85, 74, 68, 63, 0],
-  [100, 91, 82, 76, 0, 0],
-  [100, 87, 78, 0, 0, 0],
-  [100, 93, 0, 0, 0, 0],
-  [100, 0, 0, 0, 0, 0],
-]
-
-// Revenue by source
-const REVENUE_DATA = [
-  { name: 'Subscriptions', value: 18400, color: '#4F46E5' },
-  { name: 'Credit Packs', value: 4200, color: '#6366F1' },
-  { name: 'Drop-ins', value: 2800, color: '#8B5CF6' },
-  { name: 'Merch', value: 1600, color: '#A78BFA' },
-  { name: 'Corporate', value: 3200, color: '#C4B5FD' },
-  { name: 'Gift Cards', value: 950, color: '#DDD6FE' },
-]
-
-const REVENUE_TOTAL = REVENUE_DATA.reduce((sum, d) => sum + d.value, 0)
-
-// Trainer leaderboard
-const TRAINERS = [
-  { name: 'Whitney Cooper', avatar: 'WC', avgAttendance: 9.2, classesLed: 24, bonusHitRate: 83, maxAttendance: 12 },
-  { name: 'Drennen Hall', avatar: 'DH', avgAttendance: 8.1, classesLed: 18, bonusHitRate: 67, maxAttendance: 12 },
-  { name: 'Trent Bailey', avatar: 'TB', avgAttendance: 7.4, classesLed: 20, bonusHitRate: 55, maxAttendance: 12 },
-  { name: 'Sara Voss', avatar: 'SV', avgAttendance: 6.8, classesLed: 16, bonusHitRate: 44, maxAttendance: 12 },
-  { name: 'Jake Monroe', avatar: 'JM', avgAttendance: 6.2, classesLed: 14, bonusHitRate: 36, maxAttendance: 12 },
-]
-
-// Member movement data
-const MEMBER_MOVEMENT = [
-  { month: 'Oct', new: 32, churned: -8, net: 24 },
-  { month: 'Nov', new: 28, churned: -11, net: 17 },
-  { month: 'Dec', new: 18, churned: -14, net: 4 },
-  { month: 'Jan', new: 45, churned: -9, net: 36 },
-  { month: 'Feb', new: 38, churned: -7, net: 31 },
-  { month: 'Mar', new: 41, churned: -6, net: 35 },
-]
+const REVENUE_LABELS: Record<string, string> = {
+  memberships: 'Subscriptions',
+  credit_packs: 'Credit Packs',
+  drop_ins: 'Drop-ins',
+  merch: 'Merch',
+  corporate: 'Corporate',
+  gift_cards: 'Gift Cards',
+  events: 'Events',
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -265,6 +163,19 @@ function formatCurrency(value: number): string {
   }).format(value)
 }
 
+function getDateRange(range: TimeRange): { start: string; end: string } {
+  const now = new Date()
+  const end = now.toISOString().split('T')[0]!
+  const start = new Date(now)
+  switch (range) {
+    case '7d': start.setDate(start.getDate() - 7); break
+    case '30d': start.setDate(start.getDate() - 30); break
+    case '90d': start.setDate(start.getDate() - 90); break
+    case '12m': start.setFullYear(start.getFullYear() - 1); break
+  }
+  return { start: start.toISOString().split('T')[0]!, end }
+}
+
 // ─── Empty State Component ──────────────────────────────────
 
 function EmptyState({ icon: Icon, message }: { icon: typeof BarChart3; message: string }) {
@@ -278,12 +189,17 @@ function EmptyState({ icon: Icon, message }: { icon: typeof BarChart3; message: 
   )
 }
 
+function LoadingSkeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
+}
+
 // ─── Custom Tooltip Components ──────────────────────────────
 
-function RevenueTooltip({ active, payload }: any) {
+function RevenueTooltip({ active, payload, revenueTotal }: any) {
   if (!active || !payload?.length) return null
   const { name, value } = payload[0]
-  const pct = ((value / REVENUE_TOTAL) * 100).toFixed(1)
+  const total = revenueTotal || 1
+  const pct = ((value / total) * 100).toFixed(1)
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-xs">
       <p className="font-semibold text-gray-900">{name}</p>
@@ -318,28 +234,202 @@ export default function AnalyticsPage() {
   const [dismissedRecs, setDismissedRecs] = useState<Set<string>>(new Set())
   const [heatmapFilter, setHeatmapFilter] = useState<HeatmapFilter>('All')
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null)
-  const [kpiMetrics, setKpiMetrics] = useState<KPIMetric[]>(KPI_METRICS)
-  const [kpiLoading, setKpiLoading] = useState(true)
 
+  // ─── Live data state ───────────────────────────────────────
+  const [kpiMetrics, setKpiMetrics] = useState<KPIMetric[]>([])
+  const [kpiLoading, setKpiLoading] = useState(true)
+  const [revenueData, setRevenueData] = useState<RevenueSource[]>([])
+  const [revenueTotal, setRevenueTotal] = useState(0)
+  const [revenueLoading, setRevenueLoading] = useState(true)
+  const [memberMovement, setMemberMovement] = useState<MemberMovementRow[]>([])
+  const [movementLoading, setMovementLoading] = useState(true)
+  const [heatmapData, setHeatmapData] = useState<number[][]>([])
+  const [heatmapLoading, setHeatmapLoading] = useState(true)
+  const [cohortMonths, setCohortMonths] = useState<string[]>([])
+  const [cohortRetention, setCohortRetention] = useState<number[][]>([])
+  const [cohortLoading, setCohortLoading] = useState(true)
+  const [aiRecs, setAiRecs] = useState<AIRecommendation[]>([])
+  const [aiRecsLoading, setAiRecsLoading] = useState(true)
+
+  // ─── Fetch KPIs ────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
+    setKpiLoading(true)
     fetch('/api/analytics/summary')
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled && d.data) setKpiMetrics(d.data)
+        if (cancelled || !d.data) return
+        const raw = d.data
+        const metrics: KPIMetric[] = [
+          { label: 'MRR', value: formatCurrency(raw.mrr?.value ?? 0), trend: raw.mrr?.trend ?? 0, trendLabel: 'vs last period', href: '/revenue', icon: DollarSign },
+          { label: 'ARPM', value: `$${(raw.arpm?.value ?? 0).toFixed(2)}`, trend: raw.arpm?.trend ?? 0, trendLabel: 'vs last period', href: '/revenue', icon: Activity },
+          { label: 'Active Members', value: String(raw.active_members?.value ?? 0), trend: raw.active_members?.trend ?? 0, trendLabel: 'vs last period', href: '/members', icon: Users },
+          { label: 'Monthly Churn', value: `${(raw.monthly_churn_rate?.value ?? 0).toFixed(1)}%`, trend: raw.monthly_churn_rate?.trend ?? 0, trendLabel: 'vs last period', href: '/members', icon: Percent },
+          { label: 'Avg Fill Rate', value: `${Math.round(raw.avg_fill_rate?.value ?? 0)}%`, trend: raw.avg_fill_rate?.trend ?? 0, trendLabel: 'vs last period', href: '/schedule', icon: CalendarCheck },
+          { label: 'Revenue MTD', value: formatCurrency(raw.revenue_mtd?.value ?? 0), trend: raw.revenue_mtd?.trend ?? 0, trendLabel: 'vs last period', href: '/revenue', icon: CreditCard },
+        ]
+        setKpiMetrics(metrics)
       })
-      .catch(() => {}) // keep mock on error
+      .catch(() => {})
       .finally(() => { if (!cancelled) setKpiLoading(false) })
     return () => { cancelled = true }
   }, [])
 
-  const visibleRecs = AI_RECOMMENDATIONS.filter((r) => !dismissedRecs.has(r.id))
+  // ─── Fetch Revenue Breakdown ───────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    setRevenueLoading(true)
+    const { start, end } = getDateRange(timeRange)
+    fetch(`/api/analytics/revenue-breakdown?start_date=${start}&end_date=${end}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const breakdown: RevenueSource[] = (d.data.breakdown ?? [])
+          .filter((b: any) => b.total > 0)
+          .map((b: any) => ({
+            name: REVENUE_LABELS[b.source] ?? b.source,
+            value: b.total,
+            color: REVENUE_COLORS[b.source] ?? '#CBD5E1',
+          }))
+        setRevenueData(breakdown)
+        setRevenueTotal(d.data.grand_total ?? 0)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setRevenueLoading(false) })
+    return () => { cancelled = true }
+  }, [timeRange])
+
+  // ─── Fetch Member Movement ─────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    setMovementLoading(true)
+    const { start, end } = getDateRange(timeRange)
+    fetch(`/api/analytics/member-movement?start_date=${start}&end_date=${end}&group_by=month`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const rows: MemberMovementRow[] = (d.data.periods ?? []).map((p: any) => {
+          const label = p.period.length === 7
+            ? new Date(p.period + '-01').toLocaleString('en-US', { month: 'short' })
+            : p.period
+          return {
+            month: label,
+            new: p.new_members ?? 0,
+            churned: -(p.churned_members ?? 0),
+            net: p.net_change ?? 0,
+          }
+        })
+        setMemberMovement(rows)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setMovementLoading(false) })
+    return () => { cancelled = true }
+  }, [timeRange])
+
+  // ─── Fetch Heatmap ─────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    setHeatmapLoading(true)
+    const { start, end } = getDateRange(timeRange)
+    const classTypeParam = heatmapFilter !== 'All' ? `&class_type=${heatmapFilter.toLowerCase()}` : ''
+    fetch(`/api/analytics/heatmap?start_date=${start}&end_date=${end}${classTypeParam}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        // API returns array of { day_of_week, hour_of_day, avg_fill_rate }
+        // Build 12x7 grid (hours 5-16, days Mon-Sun 1-7)
+        const grid: number[][] = Array.from({ length: 12 }, () => Array(7).fill(0))
+        for (const row of d.data) {
+          const hourIdx = (row.hour_of_day ?? 5) - 5
+          const dayIdx = (row.day_of_week ?? 1) - 1
+          if (hourIdx >= 0 && hourIdx < 12 && dayIdx >= 0 && dayIdx < 7) {
+            grid[hourIdx][dayIdx] = Math.round((row.avg_fill_rate ?? 0) * 100)
+          }
+        }
+        setHeatmapData(grid)
+      })
+      .catch(() => { setHeatmapData([]) })
+      .finally(() => { if (!cancelled) setHeatmapLoading(false) })
+    return () => { cancelled = true }
+  }, [timeRange, heatmapFilter])
+
+  // ─── Fetch Cohorts ─────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    setCohortLoading(true)
+    fetch('/api/analytics/cohorts?months_back=6')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const cohorts = d.data.cohorts ?? []
+        const months: string[] = []
+        const retention: number[][] = []
+        for (const c of cohorts) {
+          const label = new Date(c.cohort_month + '-01').toLocaleString('en-US', { month: 'short' })
+          months.push(label)
+          const row: number[] = []
+          for (let i = 0; i < 6; i++) {
+            const entry = (c.retention ?? []).find((r: any) => r.month === i)
+            row.push(entry ? Math.round(entry.rate * 100) : 0)
+          }
+          retention.push(row)
+        }
+        setCohortMonths(months)
+        setCohortRetention(retention)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCohortLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // ─── Fetch AI Insights for recommendations ────────────────
+  useEffect(() => {
+    let cancelled = false
+    setAiRecsLoading(true)
+    fetch('/api/ai/insights?limit=3')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const TAG_ICONS: Record<string, typeof Sparkles> = {
+          scheduling: CalendarCheck,
+          pricing: CreditCard,
+          retention: Users,
+          revenue: DollarSign,
+          trainer: Trophy,
+          growth: UserPlus,
+          anomaly: Target,
+        }
+        const TAG_COLORS: Record<string, string> = {
+          scheduling: 'bg-indigo-50 text-indigo-700',
+          pricing: 'bg-amber-50 text-amber-700',
+          retention: 'bg-violet-50 text-violet-700',
+          revenue: 'bg-emerald-50 text-emerald-700',
+          trainer: 'bg-teal-50 text-teal-700',
+          growth: 'bg-blue-50 text-blue-700',
+          anomaly: 'bg-red-50 text-red-700',
+        }
+        const recs: AIRecommendation[] = (d.data as any[]).map((insight) => ({
+          id: insight.id,
+          icon: TAG_ICONS[insight.type] ?? Sparkles,
+          title: insight.title,
+          summary: insight.summary,
+          action: insight.action_label ?? 'View Details',
+          actionHref: insight.action_link ?? '/analytics/insights',
+          tag: insight.type ? insight.type.charAt(0).toUpperCase() + insight.type.slice(1) : 'Insight',
+          tagColor: TAG_COLORS[insight.type] ?? 'bg-gray-50 text-gray-700',
+        }))
+        setAiRecs(recs)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setAiRecsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const visibleRecs = aiRecs.filter((r) => !dismissedRecs.has(r.id))
 
   const dismissRec = (id: string) => {
     setDismissedRecs((prev) => new Set(prev).add(id))
   }
-
-  const heatmapData = HEATMAP_DATA[heatmapFilter]
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
@@ -386,11 +476,11 @@ export default function AnalyticsPage() {
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="h-3 w-16 bg-gray-200 animate-pulse rounded" />
-                  <div className="h-3.5 w-3.5 bg-gray-200 animate-pulse rounded" />
+                  <LoadingSkeleton className="h-3 w-16" />
+                  <LoadingSkeleton className="h-3.5 w-3.5" />
                 </div>
-                <div className="h-8 w-20 bg-gray-200 animate-pulse rounded mb-1" />
-                <div className="h-3 w-14 bg-gray-100 animate-pulse rounded" />
+                <LoadingSkeleton className="h-8 w-20 mb-1" />
+                <LoadingSkeleton className="h-3 w-14" />
               </div>
             ))
           ) : (
@@ -447,7 +537,17 @@ export default function AnalyticsPage() {
           </div>
 
           <AnimatePresence mode="wait">
-            {visibleRecs.length > 0 ? (
+            {aiRecsLoading ? (
+              <motion.div key="loading" className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-200/50 rounded-2xl p-4">
+                    <LoadingSkeleton className="h-4 w-24 mb-3" />
+                    <LoadingSkeleton className="h-4 w-full mb-2" />
+                    <LoadingSkeleton className="h-3 w-3/4" />
+                  </div>
+                ))}
+              </motion.div>
+            ) : visibleRecs.length > 0 ? (
               <motion.div
                 key="recs"
                 initial={{ opacity: 0 }}
@@ -546,7 +646,13 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {heatmapData.every((row) => row.every((v) => v === 0)) ? (
+            {heatmapLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : heatmapData.length === 0 || heatmapData.every((row) => row.every((v) => v === 0)) ? (
               <EmptyState icon={BarChart3} message="No attendance data for this filter" />
             ) : (
               <>
@@ -639,7 +745,15 @@ export default function AnalyticsPage() {
               <p className="text-xs text-gray-400 mt-0.5">Last 30 days</p>
             </div>
 
-            {REVENUE_DATA.length === 0 ? (
+            {revenueLoading ? (
+              <div className="space-y-3 py-4">
+                <LoadingSkeleton className="h-[200px] w-full rounded-xl" />
+                <LoadingSkeleton className="h-8 w-32" />
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+            ) : revenueData.length === 0 ? (
               <EmptyState icon={DollarSign} message="No revenue data available" />
             ) : (
               <>
@@ -647,7 +761,7 @@ export default function AnalyticsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={REVENUE_DATA}
+                        data={revenueData}
                         cx="50%"
                         cy="50%"
                         innerRadius={55}
@@ -656,22 +770,22 @@ export default function AnalyticsPage() {
                         dataKey="value"
                         stroke="none"
                       >
-                        {REVENUE_DATA.map((entry) => (
+                        {revenueData.map((entry) => (
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip content={<RevenueTooltip />} />
+                      <Tooltip content={<RevenueTooltip revenueTotal={revenueTotal} />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
 
                 <div className="mt-2 mb-2">
-                  <p className="text-[28px] font-black text-gray-900 tabular-nums">{formatCurrency(REVENUE_TOTAL)}</p>
+                  <p className="text-[28px] font-black text-gray-900 tabular-nums">{formatCurrency(revenueTotal)}</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Revenue</p>
                 </div>
 
                 <div className="space-y-2">
-                  {REVENUE_DATA.map((item) => (
+                  {revenueData.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
                       <span className="text-xs text-gray-600 flex-1 truncate">{item.name}</span>
@@ -696,7 +810,13 @@ export default function AnalyticsPage() {
               <p className="text-xs text-gray-400 mt-0.5">% of members retained by signup month</p>
             </div>
 
-            {COHORT_RETENTION.length === 0 ? (
+            {cohortLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : cohortRetention.length === 0 ? (
               <EmptyState icon={Users} message="No cohort data available yet" />
             ) : (
               <div className="overflow-x-auto">
@@ -717,11 +837,11 @@ export default function AnalyticsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {COHORT_MONTHS.map((month, rowIdx) => (
+                    {cohortMonths.map((month, rowIdx) => (
                       <tr key={month}>
                         <td className="text-xs font-semibold text-gray-700 pr-3 py-1">{month}</td>
                         {RETENTION_PERIODS.map((_, colIdx) => {
-                          const val = COHORT_RETENTION[rowIdx][colIdx]
+                          const val = cohortRetention[rowIdx]?.[colIdx] ?? 0
                           return (
                             <td key={colIdx} className="p-0.5">
                               <div
@@ -769,42 +889,7 @@ export default function AnalyticsPage() {
               </Link>
             </div>
 
-            {TRAINERS.length === 0 ? (
-              <EmptyState icon={Trophy} message="No trainer data yet" />
-            ) : (
-              <div className="space-y-3">
-                {TRAINERS.map((trainer, i) => (
-                  <div key={trainer.name} className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-gray-300 w-4 tabular-nums">#{i + 1}</span>
-                    <div
-                      className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-                        i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
-                      )}
-                    >
-                      {trainer.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{trainer.name}</p>
-                      <p className="text-[10px] text-gray-400">
-                        {trainer.classesLed} classes &middot; {trainer.bonusHitRate}% bonus rate
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={cn('h-full rounded-full', i === 0 ? 'bg-indigo-600' : 'bg-indigo-300')}
-                          style={{ width: `${(trainer.avgAttendance / trainer.maxAttendance) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-bold tabular-nums text-gray-900 w-8 text-right">
-                        {trainer.avgAttendance}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <TrainerLeaderboard />
           </motion.div>
 
           {/* ─── Member Movement Chart ─── */}
@@ -818,12 +903,14 @@ export default function AnalyticsPage() {
               <p className="text-xs text-gray-400 mt-0.5">New vs churned vs net members</p>
             </div>
 
-            {MEMBER_MOVEMENT.length === 0 ? (
+            {movementLoading ? (
+              <LoadingSkeleton className="h-[280px] w-full rounded-xl" />
+            ) : memberMovement.length === 0 ? (
               <EmptyState icon={Users} message="No member movement data available" />
             ) : (
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={MEMBER_MOVEMENT} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <AreaChart data={memberMovement} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                     <XAxis
                       dataKey="month"
@@ -869,6 +956,95 @@ export default function AnalyticsPage() {
           </motion.div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Trainer Leaderboard Sub-component ──────────────────────
+
+function TrainerLeaderboard() {
+  const [trainers, setTrainers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    // Use the snapshot endpoint which includes trainer stats
+    fetch('/api/analytics/snapshot')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return
+        if (d.data?.trainers) {
+          setTrainers(d.data.trainers.slice(0, 5))
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <LoadingSkeleton className="w-4 h-4" />
+            <LoadingSkeleton className="w-8 h-8 rounded-full" />
+            <div className="flex-1">
+              <LoadingSkeleton className="h-4 w-28 mb-1" />
+              <LoadingSkeleton className="h-3 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (trainers.length === 0) {
+    return <EmptyState icon={Trophy} message="No trainer data yet" />
+  }
+
+  return (
+    <div className="space-y-3">
+      {trainers.map((trainer: any, i: number) => {
+        const initials = (trainer.name ?? '')
+          .split(' ')
+          .map((n: string) => n[0] ?? '')
+          .join('')
+          .toUpperCase()
+        const avg = trainer.avg_attendance ?? trainer.avgAttendance ?? 0
+        const classes = trainer.classes_led ?? trainer.classesLed ?? 0
+        const bonus = trainer.bonus_hit_rate ?? trainer.bonusHitRate ?? 0
+        return (
+          <div key={trainer.name ?? i} className="flex items-center gap-3">
+            <span className="text-xs font-bold text-gray-300 w-4 tabular-nums">#{i + 1}</span>
+            <div
+              className={cn(
+                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+              )}
+            >
+              {initials || '??'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{trainer.name}</p>
+              <p className="text-[10px] text-gray-400">
+                {classes} classes &middot; {bonus}% bonus rate
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full', i === 0 ? 'bg-indigo-600' : 'bg-indigo-300')}
+                  style={{ width: `${(avg / 12) * 100}%` }}
+                />
+              </div>
+              <span className="text-sm font-bold tabular-nums text-gray-900 w-8 text-right">
+                {typeof avg === 'number' ? avg.toFixed(1) : avg}
+              </span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

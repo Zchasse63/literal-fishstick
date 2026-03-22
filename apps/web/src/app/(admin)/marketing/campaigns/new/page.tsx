@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -58,18 +59,7 @@ interface Segment {
   count: number
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const SEGMENTS: Segment[] = [
-  { id: 'all', name: 'All Members', count: 847 },
-  { id: 'active', name: 'Active Members', count: 623 },
-  { id: 'inactive-14', name: 'Inactive 14+ Days', count: 47 },
-  { id: 'inactive-30', name: 'Inactive 30+ Days', count: 23 },
-  { id: 'at-risk', name: 'At-Risk (Churn)', count: 31 },
-  { id: 'new-members', name: 'New Members (30 days)', count: 58 },
-  { id: 'unlimited', name: 'Unlimited Plan', count: 189 },
-  { id: 'class-pack', name: 'Class Pack Holders', count: 267 },
-  { id: 'expired-credits', name: 'Expiring Credits (7 days)', count: 14 },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const TEMPLATES: Template[] = [
   {
@@ -445,7 +435,34 @@ function AIGeneratePanel({
 
 // ─── Page ───────────────────────────────────────────────────
 export default function CampaignBuilderPage() {
+  const [segments, setSegments] = useState<Segment[]>([])
   const [currentStep, setCurrentStep] = useState<Step>(1)
+
+  // Load segments from Supabase
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadSegments() {
+      const { data } = await supabase
+        .from('smart_segments')
+        .select('id, name, member_count')
+        .eq('studio_id', STUDIO_ID)
+        .order('name')
+
+      if (cancelled) return
+      if (data) {
+        setSegments(data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          count: s.member_count ?? 0,
+        })))
+      }
+    }
+
+    loadSegments()
+    return () => { cancelled = true }
+  }, [])
 
   // Step 1 state
   const [campaignName, setCampaignName] = useState('')
@@ -474,7 +491,7 @@ export default function CampaignBuilderPage() {
   const [testSent, setTestSent] = useState(false)
 
   const recipientCount = useMemo(() => {
-    return SEGMENTS.find((s) => s.id === selectedSegment)?.count ?? 0
+    return segments.find((s) => s.id === selectedSegment)?.count ?? 0
   }, [selectedSegment])
 
   const toggleChannel = useCallback((ch: ChannelType) => {
@@ -635,7 +652,7 @@ export default function CampaignBuilderPage() {
                     backgroundPosition: 'right 12px center',
                   }}
                 >
-                  {SEGMENTS.map((seg) => (
+                  {segments.map((seg) => (
                     <option key={seg.id} value={seg.id}>
                       {seg.name} ({seg.count.toLocaleString()})
                     </option>
@@ -997,7 +1014,7 @@ export default function CampaignBuilderPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">Segment</span>
                       <span className="text-xs font-semibold text-gray-700">
-                        {SEGMENTS.find((s) => s.id === selectedSegment)?.name}
+                        {segments.find((s) => s.id === selectedSegment)?.name}
                       </span>
                     </div>
                   </div>
@@ -1047,7 +1064,7 @@ export default function CampaignBuilderPage() {
                       Segment
                     </p>
                     <p className="text-sm font-semibold text-gray-900">
-                      {SEGMENTS.find((s) => s.id === selectedSegment)?.name}
+                      {segments.find((s) => s.id === selectedSegment)?.name}
                     </p>
                   </div>
                   <div>

@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
+  Loader2,
   ArrowLeft,
   FileText,
   Upload,
@@ -50,114 +52,7 @@ interface EmployeeDocument {
   expiresDate: string | null
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const DOCUMENTS: EmployeeDocument[] = [
-  {
-    id: 'doc-001',
-    employeeId: '1',
-    employeeName: 'Whitney Cooper',
-    employeeInitials: 'WC',
-    documentType: 'W4',
-    documentName: 'W4_Whitney_Cooper_2026.pdf',
-    taxYear: '2026',
-    status: 'approved',
-    uploadedDate: 'Jan 12, 2026',
-    expiresDate: null,
-  },
-  {
-    id: 'doc-002',
-    employeeId: '1',
-    employeeName: 'Whitney Cooper',
-    employeeInitials: 'WC',
-    documentType: 'Certification',
-    documentName: 'CPR_Certification.pdf',
-    taxYear: '2026',
-    status: 'pending',
-    uploadedDate: 'Mar 5, 2026',
-    expiresDate: 'Jun 15, 2026',
-  },
-  {
-    id: 'doc-003',
-    employeeId: '2',
-    employeeName: 'Drennen',
-    employeeInitials: 'DR',
-    documentType: 'I9',
-    documentName: 'I9_Drennen_2026.pdf',
-    taxYear: '2026',
-    status: 'approved',
-    uploadedDate: 'Mar 1, 2026',
-    expiresDate: null,
-  },
-  {
-    id: 'doc-004',
-    employeeId: '2',
-    employeeName: 'Drennen',
-    employeeInitials: 'DR',
-    documentType: 'W9',
-    documentName: 'W9_Drennen_2026.pdf',
-    taxYear: '2026',
-    status: 'pending',
-    uploadedDate: 'Mar 10, 2026',
-    expiresDate: null,
-  },
-  {
-    id: 'doc-005',
-    employeeId: '3',
-    employeeName: 'Trent',
-    employeeInitials: 'TR',
-    documentType: 'Contract',
-    documentName: 'Trainer_Contract_Trent.pdf',
-    taxYear: '2025',
-    status: 'expired',
-    uploadedDate: 'Feb 20, 2025',
-    expiresDate: 'Feb 20, 2026',
-  },
-  {
-    id: 'doc-006',
-    employeeId: '3',
-    employeeName: 'Trent',
-    employeeInitials: 'TR',
-    documentType: 'W4',
-    documentName: 'W4_Trent_2026.pdf',
-    taxYear: '2026',
-    status: 'approved',
-    uploadedDate: 'Jan 8, 2026',
-    expiresDate: null,
-  },
-  {
-    id: 'doc-007',
-    employeeId: '4',
-    employeeName: 'Tara Kim',
-    employeeInitials: 'TK',
-    documentType: 'Direct Deposit',
-    documentName: 'DirectDeposit_TaraKim.pdf',
-    taxYear: '2026',
-    status: 'approved',
-    uploadedDate: 'Nov 15, 2025',
-    expiresDate: null,
-  },
-  {
-    id: 'doc-008',
-    employeeId: '4',
-    employeeName: 'Tara Kim',
-    employeeInitials: 'TK',
-    documentType: '1099',
-    documentName: '1099_TaraKim_2025.pdf',
-    taxYear: '2025',
-    status: 'rejected',
-    uploadedDate: 'Feb 1, 2026',
-    expiresDate: null,
-  },
-]
-
-const EMPLOYEES_LIST = [
-  { id: 'all', name: 'All Employees' },
-  { id: '1', name: 'Whitney Cooper' },
-  { id: '2', name: 'Drennen' },
-  { id: '3', name: 'Trent' },
-  { id: '4', name: 'Tara Kim' },
-  { id: '5', name: 'Alex Park' },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const DOC_TYPE_FILTERS: DocFilter[] = ['All', 'W4', 'W9', 'I9', 'W2', '1099', 'Contract', 'Certification', 'Direct Deposit']
 
@@ -183,6 +78,10 @@ const docTypeColors: Record<DocType, string> = {
 }
 
 // ─── Component ──────────────────────────────────────────────
+function getInitials(name: string): string {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
 export default function DocumentsPage() {
   const [selectedEmployee, setSelectedEmployee] = useState('all')
   const [docTypeFilter, setDocTypeFilter] = useState<DocFilter>('All')
@@ -190,18 +89,77 @@ export default function DocumentsPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [uploadDocType, setUploadDocType] = useState<DocType>('W4')
   const [uploadTaxYear, setUploadTaxYear] = useState('2026')
-  const [uploadEmployee, setUploadEmployee] = useState('1')
+  const [uploadEmployee, setUploadEmployee] = useState('')
 
-  const pendingCount = DOCUMENTS.filter(d => d.status === 'pending').length
+  const [documents, setDocuments] = useState<EmployeeDocument[]>([])
+  const [employeesList, setEmployeesList] = useState<{ id: string; name: string }[]>([{ id: 'all', name: 'All Employees' }])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createBrowserClient()
+
+      // Fetch employee documents
+      const { data: docs } = await supabase
+        .from('employee_documents')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (docs && docs.length > 0) {
+        setDocuments(docs.map((d: any) => ({
+          id: d.id,
+          employeeId: d.employee_id ?? '',
+          employeeName: d.employee_name ?? 'Unknown',
+          employeeInitials: getInitials(d.employee_name ?? 'U'),
+          documentType: d.document_type ?? 'W4',
+          documentName: d.document_name ?? d.file_name ?? 'Untitled',
+          taxYear: d.tax_year ?? new Date().getFullYear().toString(),
+          status: d.status ?? 'pending',
+          uploadedDate: d.created_at ? new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+          expiresDate: d.expires_at ? new Date(d.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+        })))
+      }
+
+      // Fetch employees for dropdown
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('studio_id', STUDIO_ID)
+
+      if (profiles) {
+        setEmployeesList([
+          { id: 'all', name: 'All Employees' },
+          ...profiles.map((p: any) => ({ id: p.id, name: p.full_name ?? 'Unknown' })),
+        ])
+        if (profiles.length > 0 && !uploadEmployee) {
+          setUploadEmployee(profiles[0].id)
+        }
+      }
+
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  const pendingCount = documents.filter(d => d.status === 'pending').length
 
   const filteredDocuments = useMemo(() => {
-    return DOCUMENTS.filter(doc => {
+    return documents.filter(doc => {
       if (selectedEmployee !== 'all' && doc.employeeId !== selectedEmployee) return false
       if (docTypeFilter !== 'All' && doc.documentType !== docTypeFilter) return false
       if (taxYearFilter !== 'All' && doc.taxYear !== taxYearFilter) return false
       return true
     })
-  }, [selectedEmployee, docTypeFilter, taxYearFilter])
+  }, [selectedEmployee, docTypeFilter, taxYearFilter, documents])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   return (
     <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] p-6">
@@ -241,7 +199,7 @@ export default function DocumentsPage() {
             onChange={(e) => setSelectedEmployee(e.target.value)}
             className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           >
-            {EMPLOYEES_LIST.map(emp => (
+            {employeesList.map(emp => (
               <option key={emp.id} value={emp.id}>{emp.name}</option>
             ))}
           </select>
@@ -367,8 +325,8 @@ export default function DocumentsPage() {
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center">
                     <FileText className="mx-auto h-8 w-8 text-gray-300" />
-                    <p className="mt-2 text-sm font-semibold text-gray-500">No documents found</p>
-                    <p className="text-xs text-gray-400">Try adjusting your filters</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-500">No documents yet</p>
+                    <p className="text-xs text-gray-400">{documents.length === 0 ? 'Upload employee documents using the form below' : 'Try adjusting your filters'}</p>
                   </td>
                 </tr>
               )}
@@ -394,7 +352,7 @@ export default function DocumentsPage() {
               onChange={(e) => setUploadEmployee(e.target.value)}
               className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             >
-              {EMPLOYEES_LIST.filter(e => e.id !== 'all').map(emp => (
+              {employeesList.filter(e => e.id !== 'all').map(emp => (
                 <option key={emp.id} value={emp.id}>{emp.name}</option>
               ))}
             </select>

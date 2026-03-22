@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -39,79 +40,45 @@ const fadeInUp = {
   transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────
 
-const KPI_METRICS = [
-  { label: 'MRR', value: '$18,420', trend: 12.3, href: '/revenue', icon: DollarSign },
-  { label: 'ARPM', value: '$67.40', trend: 4.2, href: '/revenue', icon: Activity },
-  { label: 'Active Members', value: '273', trend: 8.1, href: '/members', icon: Users },
-  { label: 'Churn Rate', value: '3.2%', trend: -1.4, href: '/members', icon: Percent },
-  { label: 'Revenue MTD', value: '$24,850', trend: 9.7, href: '/revenue', icon: CreditCard },
-]
+interface KPIMetric {
+  label: string
+  value: string
+  trend: number
+  href: string
+  icon: typeof DollarSign
+}
 
-const MONTHLY_REVENUE = [
-  { month: 'Apr', revenue: 16200 },
-  { month: 'May', revenue: 17100 },
-  { month: 'Jun', revenue: 16800 },
-  { month: 'Jul', revenue: 18400 },
-  { month: 'Aug', revenue: 19200 },
-  { month: 'Sep', revenue: 18900 },
-  { month: 'Oct', revenue: 20100 },
-  { month: 'Nov', revenue: 19600 },
-  { month: 'Dec', revenue: 17800 },
-  { month: 'Jan', revenue: 21400 },
-  { month: 'Feb', revenue: 22800 },
-  { month: 'Mar', revenue: 24850 },
-]
+interface RevenueSource {
+  name: string
+  value: number
+  color: string
+}
 
-const REVENUE_DATA = [
-  { name: 'Subscriptions', value: 18400, color: '#4F46E5' },
-  { name: 'Credit Packs', value: 4200, color: '#6366F1' },
-  { name: 'Drop-ins', value: 2800, color: '#8B5CF6' },
-  { name: 'Merch', value: 1600, color: '#A78BFA' },
-  { name: 'Corporate', value: 3200, color: '#C4B5FD' },
-  { name: 'Gift Cards', value: 950, color: '#DDD6FE' },
-]
+// ─── Constants ──────────────────────────────────────────────
 
-const REVENUE_TOTAL = REVENUE_DATA.reduce((sum, d) => sum + d.value, 0)
+const REVENUE_COLORS: Record<string, string> = {
+  memberships: '#4F46E5',
+  credit_packs: '#6366F1',
+  drop_ins: '#8B5CF6',
+  merch: '#A78BFA',
+  corporate: '#C4B5FD',
+  gift_cards: '#DDD6FE',
+  events: '#EDE9FE',
+}
 
-const COHORT_MONTHS = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-const RETENTION_PERIODS = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5']
-const COHORT_RETENTION: number[][] = [
-  [100, 88, 79, 72, 68, 65],
-  [100, 85, 74, 68, 63, 0],
-  [100, 91, 82, 76, 0, 0],
-  [100, 87, 78, 0, 0, 0],
-  [100, 93, 0, 0, 0, 0],
-  [100, 0, 0, 0, 0, 0],
-]
+const REVENUE_LABELS: Record<string, string> = {
+  memberships: 'Subscriptions',
+  credit_packs: 'Credit Packs',
+  drop_ins: 'Drop-ins',
+  merch: 'Merch',
+  corporate: 'Corporate',
+  gift_cards: 'Gift Cards',
+  events: 'Events',
+}
 
-const AI_INSIGHTS = [
-  {
-    id: '1',
-    icon: CalendarCheck,
-    title: 'Add Thursday 7pm Guided',
-    summary: 'Wednesday Guided has been at 92% fill for 3 weeks. Strong demand signal for an additional session.',
-    action: 'View Schedule',
-    actionHref: '/schedule',
-  },
-  {
-    id: '2',
-    icon: CreditCard,
-    title: 'Retire 5-Pack Pricing',
-    summary: 'Only 2 purchases in 90 days. Redirect buyers to the 10-visit pack with better unit economics.',
-    action: 'View Pricing',
-    actionHref: '/revenue',
-  },
-  {
-    id: '3',
-    icon: UserPlus,
-    title: 'Trial Campaign for Guided',
-    summary: '61 members have never tried Guided. A free first-class email campaign could boost attendance.',
-    action: 'Create Campaign',
-    actionHref: '/marketing/campaigns/new',
-  },
-]
+const COHORT_MONTHS_LABELS = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5']
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -150,6 +117,10 @@ function EmptyState({ icon: Icon, message }: { icon: typeof BarChart3; message: 
   )
 }
 
+function LoadingSkeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
+}
+
 function RevenueLineTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
@@ -160,10 +131,11 @@ function RevenueLineTooltip({ active, payload, label }: any) {
   )
 }
 
-function RevenueDonutTooltip({ active, payload }: any) {
+function RevenueDonutTooltip({ active, payload, revenueTotal }: any) {
   if (!active || !payload?.length) return null
   const { name, value } = payload[0]
-  const pct = ((value / REVENUE_TOTAL) * 100).toFixed(1)
+  const total = revenueTotal || 1
+  const pct = ((value / total) * 100).toFixed(1)
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-xs">
       <p className="font-semibold text-gray-900">{name}</p>
@@ -177,6 +149,138 @@ function RevenueDonutTooltip({ active, payload }: any) {
 // ─── Page Component ──────────────────────────────────────────
 
 export default function ExecutiveDashboardPage() {
+  // ─── State ─────────────────────────────────────────────────
+  const [kpiMetrics, setKpiMetrics] = useState<KPIMetric[]>([])
+  const [kpiLoading, setKpiLoading] = useState(true)
+  const [monthlyRevenue, setMonthlyRevenue] = useState<{ month: string; revenue: number }[]>([])
+  const [revenueChartLoading, setRevenueChartLoading] = useState(true)
+  const [revenueData, setRevenueData] = useState<RevenueSource[]>([])
+  const [revenueTotal, setRevenueTotal] = useState(0)
+  const [revenueLoading, setRevenueLoading] = useState(true)
+  const [cohortMonths, setCohortMonths] = useState<string[]>([])
+  const [cohortRetention, setCohortRetention] = useState<number[][]>([])
+  const [cohortLoading, setCohortLoading] = useState(true)
+  const [aiInsights, setAiInsights] = useState<any[]>([])
+  const [aiLoading, setAiLoading] = useState(true)
+
+  // ─── Fetch KPIs ────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/analytics/summary')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const raw = d.data
+        const metrics: KPIMetric[] = [
+          { label: 'MRR', value: formatCurrency(raw.mrr?.value ?? 0), trend: raw.mrr?.trend ?? 0, href: '/revenue', icon: DollarSign },
+          { label: 'ARPM', value: `$${(raw.arpm?.value ?? 0).toFixed(2)}`, trend: raw.arpm?.trend ?? 0, href: '/revenue', icon: Activity },
+          { label: 'Active Members', value: String(raw.active_members?.value ?? 0), trend: raw.active_members?.trend ?? 0, href: '/members', icon: Users },
+          { label: 'Churn Rate', value: `${(raw.monthly_churn_rate?.value ?? 0).toFixed(1)}%`, trend: raw.monthly_churn_rate?.trend ?? 0, href: '/members', icon: Percent },
+          { label: 'Revenue MTD', value: formatCurrency(raw.revenue_mtd?.value ?? 0), trend: raw.revenue_mtd?.trend ?? 0, href: '/revenue', icon: CreditCard },
+        ]
+        setKpiMetrics(metrics)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setKpiLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // ─── Fetch Monthly Revenue (12 months) ─────────────────────
+  useEffect(() => {
+    let cancelled = false
+    const now = new Date()
+    const end = now.toISOString().split('T')[0]!
+    const start = new Date(now)
+    start.setFullYear(start.getFullYear() - 1)
+    const startStr = start.toISOString().split('T')[0]!
+    fetch(`/api/analytics/revenue-breakdown?start_date=${startStr}&end_date=${end}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        // Group daily data by month
+        const monthMap: Record<string, number> = {}
+        for (const day of d.data.daily ?? []) {
+          const monthKey = day.date?.slice(0, 7)
+          if (monthKey) {
+            monthMap[monthKey] = (monthMap[monthKey] ?? 0) + (day.total ?? 0)
+          }
+        }
+        const sorted = Object.entries(monthMap)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, value]) => ({
+            month: new Date(key + '-01').toLocaleString('en-US', { month: 'short' }),
+            revenue: Math.round(value),
+          }))
+        setMonthlyRevenue(sorted)
+
+        // Also use this for the donut
+        const breakdown: RevenueSource[] = (d.data.breakdown ?? [])
+          .filter((b: any) => b.total > 0)
+          .map((b: any) => ({
+            name: REVENUE_LABELS[b.source] ?? b.source,
+            value: b.total,
+            color: REVENUE_COLORS[b.source] ?? '#CBD5E1',
+          }))
+        setRevenueData(breakdown)
+        setRevenueTotal(d.data.grand_total ?? 0)
+        setRevenueLoading(false)
+      })
+      .catch(() => { setRevenueLoading(false) })
+      .finally(() => { if (!cancelled) setRevenueChartLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // ─── Fetch Cohorts ─────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/analytics/cohorts?months_back=6')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const cohorts = d.data.cohorts ?? []
+        const months: string[] = []
+        const retention: number[][] = []
+        for (const c of cohorts) {
+          const label = new Date(c.cohort_month + '-01').toLocaleString('en-US', { month: 'short' })
+          months.push(label)
+          const row: number[] = []
+          for (let i = 0; i < 6; i++) {
+            const entry = (c.retention ?? []).find((r: any) => r.month === i)
+            row.push(entry ? Math.round(entry.rate * 100) : 0)
+          }
+          retention.push(row)
+        }
+        setCohortMonths(months)
+        setCohortRetention(retention)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCohortLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // ─── Fetch AI Insights ─────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/ai/insights?limit=3')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        setAiInsights(d.data)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setAiLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const AI_ICON_MAP: Record<string, typeof CalendarCheck> = {
+    scheduling: CalendarCheck,
+    pricing: CreditCard,
+    growth: UserPlus,
+    retention: Users,
+    revenue: DollarSign,
+    trainer: TrendingUp,
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
@@ -201,42 +305,52 @@ export default function ExecutiveDashboardPage() {
           transition={{ ...fadeInUp.transition, delay: 0.03 }}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"
         >
-          {KPI_METRICS.map((metric) => {
-            const Icon = metric.icon
-            const isPositive = metric.label === 'Churn Rate' ? metric.trend < 0 : metric.trend > 0
-            return (
-              <Link
-                key={metric.label}
-                href={metric.href}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 transition-all group"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    {metric.label}
-                  </span>
-                  <Icon className="w-3.5 h-3.5 text-gray-300 group-hover:text-indigo-400 transition-colors" />
-                </div>
-                <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none mb-1">
-                  {metric.value}
-                </p>
-                <div className="flex items-center gap-1">
-                  {isPositive ? (
-                    <ArrowUpRight className="w-3 h-3 text-emerald-500" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3 text-red-500" />
-                  )}
-                  <span
-                    className={cn(
-                      'text-xs font-semibold tabular-nums',
-                      isPositive ? 'text-emerald-600' : 'text-red-600'
+          {kpiLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+                <LoadingSkeleton className="h-3 w-16 mb-2" />
+                <LoadingSkeleton className="h-8 w-20 mb-1" />
+                <LoadingSkeleton className="h-3 w-14" />
+              </div>
+            ))
+          ) : (
+            kpiMetrics.map((metric) => {
+              const Icon = metric.icon
+              const isPositive = metric.label === 'Churn Rate' ? metric.trend < 0 : metric.trend > 0
+              return (
+                <Link
+                  key={metric.label}
+                  href={metric.href}
+                  className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 transition-all group"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      {metric.label}
+                    </span>
+                    <Icon className="w-3.5 h-3.5 text-gray-300 group-hover:text-indigo-400 transition-colors" />
+                  </div>
+                  <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none mb-1">
+                    {metric.value}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    {isPositive ? (
+                      <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                    ) : (
+                      <ArrowDownRight className="w-3 h-3 text-red-500" />
                     )}
-                  >
-                    {Math.abs(metric.trend)}%
-                  </span>
-                </div>
-              </Link>
-            )
-          })}
+                    <span
+                      className={cn(
+                        'text-xs font-semibold tabular-nums',
+                        isPositive ? 'text-emerald-600' : 'text-red-600'
+                      )}
+                    >
+                      {Math.abs(metric.trend)}%
+                    </span>
+                  </div>
+                </Link>
+              )
+            })
+          )}
         </motion.div>
 
         {/* ─── Charts Row ─────────────────────────────── */}
@@ -252,12 +366,14 @@ export default function ExecutiveDashboardPage() {
               <p className="text-xs text-gray-400 mt-0.5">Monthly revenue, last 12 months</p>
             </div>
 
-            {MONTHLY_REVENUE.length === 0 ? (
+            {revenueChartLoading ? (
+              <LoadingSkeleton className="h-[300px] w-full rounded-xl" />
+            ) : monthlyRevenue.length === 0 ? (
               <EmptyState icon={TrendingUp} message="No revenue trend data available" />
             ) : (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={MONTHLY_REVENUE} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <LineChart data={monthlyRevenue} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                     <XAxis
                       dataKey="month"
@@ -298,7 +414,12 @@ export default function ExecutiveDashboardPage() {
               <p className="text-xs text-gray-400 mt-0.5">Last 30 days</p>
             </div>
 
-            {REVENUE_DATA.length === 0 ? (
+            {revenueLoading ? (
+              <div className="space-y-3 py-4">
+                <LoadingSkeleton className="h-[180px] w-full rounded-xl" />
+                <LoadingSkeleton className="h-8 w-32" />
+              </div>
+            ) : revenueData.length === 0 ? (
               <EmptyState icon={DollarSign} message="No revenue data available" />
             ) : (
               <>
@@ -306,7 +427,7 @@ export default function ExecutiveDashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={REVENUE_DATA}
+                        data={revenueData}
                         cx="50%"
                         cy="50%"
                         innerRadius={50}
@@ -315,22 +436,22 @@ export default function ExecutiveDashboardPage() {
                         dataKey="value"
                         stroke="none"
                       >
-                        {REVENUE_DATA.map((entry) => (
+                        {revenueData.map((entry) => (
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip content={<RevenueDonutTooltip />} />
+                      <Tooltip content={<RevenueDonutTooltip revenueTotal={revenueTotal} />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
 
                 <div className="mt-2 mb-3">
-                  <p className="text-[28px] font-black text-gray-900 tabular-nums">{formatCurrency(REVENUE_TOTAL)}</p>
+                  <p className="text-[28px] font-black text-gray-900 tabular-nums">{formatCurrency(revenueTotal)}</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total</p>
                 </div>
 
                 <div className="space-y-1.5">
-                  {REVENUE_DATA.map((item) => (
+                  {revenueData.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
                       <span className="text-xs text-gray-600 flex-1 truncate">{item.name}</span>
@@ -355,7 +476,13 @@ export default function ExecutiveDashboardPage() {
               <p className="text-xs text-gray-400 mt-0.5">% of members retained by signup month</p>
             </div>
 
-            {COHORT_RETENTION.length === 0 ? (
+            {cohortLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : cohortRetention.length === 0 ? (
               <EmptyState icon={Users} message="No cohort data available" />
             ) : (
               <div className="overflow-x-auto">
@@ -365,7 +492,7 @@ export default function ExecutiveDashboardPage() {
                       <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-2 text-left pr-3">
                         Cohort
                       </th>
-                      {RETENTION_PERIODS.map((period) => (
+                      {COHORT_MONTHS_LABELS.map((period) => (
                         <th
                           key={period}
                           className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-2 text-center px-1"
@@ -376,11 +503,11 @@ export default function ExecutiveDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {COHORT_MONTHS.map((month, rowIdx) => (
+                    {cohortMonths.map((month, rowIdx) => (
                       <tr key={month}>
                         <td className="text-xs font-semibold text-gray-700 pr-3 py-1">{month}</td>
-                        {RETENTION_PERIODS.map((_, colIdx) => {
-                          const val = COHORT_RETENTION[rowIdx][colIdx]
+                        {COHORT_MONTHS_LABELS.map((_, colIdx) => {
+                          const val = cohortRetention[rowIdx]?.[colIdx] ?? 0
                           return (
                             <td key={colIdx} className="p-0.5">
                               <div
@@ -422,13 +549,21 @@ export default function ExecutiveDashboardPage() {
               </span>
             </div>
 
-            {AI_INSIGHTS.length === 0 ? (
+            {aiLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-200/50 rounded-2xl p-4">
+                  <LoadingSkeleton className="h-4 w-32 mb-2" />
+                  <LoadingSkeleton className="h-3 w-full mb-1" />
+                  <LoadingSkeleton className="h-3 w-3/4" />
+                </div>
+              ))
+            ) : aiInsights.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <EmptyState icon={Sparkles} message="No insights available right now" />
               </div>
             ) : (
-              AI_INSIGHTS.map((insight) => {
-                const Icon = insight.icon
+              aiInsights.map((insight: any) => {
+                const Icon = AI_ICON_MAP[insight.type] ?? CalendarCheck
                 return (
                   <div
                     key={insight.id}
@@ -442,10 +577,10 @@ export default function ExecutiveDashboardPage() {
                     </div>
                     <p className="text-xs text-gray-600 leading-relaxed mb-3">{insight.summary}</p>
                     <Link
-                      href={insight.actionHref}
+                      href={insight.action_link ?? '/analytics/insights'}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
                     >
-                      {insight.action}
+                      {insight.action_label ?? 'View Details'}
                       <ChevronRight className="w-3 h-3" />
                     </Link>
                   </div>

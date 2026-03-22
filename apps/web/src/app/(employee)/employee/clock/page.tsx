@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
+  Loader2,
   Clock,
   MapPin,
   CheckCircle2,
@@ -16,7 +18,6 @@ import {
   Navigation,
   Shield,
   Timer,
-  Loader2,
 } from 'lucide-react'
 
 // ─── Animation ──────────────────────────────────────────────
@@ -38,21 +39,7 @@ interface ClockEntry {
   withinRadius: boolean
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const MOCK_STATUS: ClockStatus = 'clocked-in'
-const MOCK_CLOCKED_IN_SINCE = new Date(2026, 2, 20, 14, 0, 0) // 2:00 PM today
-const MOCK_LOCATION_PERMISSION: LocationPermission = 'granted'
-const MOCK_DISTANCE = 45 // meters
-const MOCK_RADIUS = 150 // meters
-
-const MOCK_ENTRIES: ClockEntry[] = [
-  { id: '1', type: 'clock-in', time: '2:00 PM', distance: 32, withinRadius: true },
-  { id: '2', type: 'break-start', time: '4:15 PM', distance: 28, withinRadius: true },
-  { id: '3', type: 'break-end', time: '4:45 PM', distance: 41, withinRadius: true },
-]
-
-const MOCK_WEEKLY_HOURS = 22.5
-const MOCK_WEEKLY_OT = 0
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ────────────────────────────────────────────────
 function formatTime(date: Date): string {
@@ -80,10 +67,72 @@ const entryConfig: Record<ClockEntry['type'], { label: string; color: string; bg
 
 // ─── Component ──────────────────────────────────────────────
 export default function EmployeeClockPage() {
-  const [clockStatus, setClockStatus] = useState<ClockStatus>(MOCK_STATUS)
-  const [locationPermission, setLocationPermission] = useState<LocationPermission>(MOCK_LOCATION_PERMISSION)
+  const [clockStatus, setClockStatus] = useState<ClockStatus>('clocked-out')
+  const [locationPermission, setLocationPermission] = useState<LocationPermission>('pending')
   const [now, setNow] = useState(new Date())
-  const [entries, setEntries] = useState<ClockEntry[]>(MOCK_ENTRIES)
+  const [entries, setEntries] = useState<ClockEntry[]>([])
+  const [clockedInSince, setClockedInSince] = useState<Date | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [currentDistance, setCurrentDistance] = useState(0)
+  const [geoRadius, setGeoRadius] = useState(150)
+  const [weeklyHours, setWeeklyHours] = useState(0)
+  const [weeklyOT, setWeeklyOT] = useState(0)
+
+  // Fetch clock entries and geofence
+  useEffect(() => {
+    async function fetchClockData() {
+      const supabase = createBrowserClient()
+
+      // Fetch today's clock entries
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const { data: clockEntries } = await supabase
+        .from('clock_entries')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .gte('created_at', todayStart.toISOString())
+        .order('created_at', { ascending: true })
+
+      if (clockEntries && clockEntries.length > 0) {
+        const mapped: ClockEntry[] = clockEntries.map((e: any) => ({
+          id: e.id,
+          type: e.type ?? 'clock-in',
+          time: e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—',
+          distance: e.distance ?? 0,
+          withinRadius: e.within_radius ?? true,
+        }))
+        setEntries(mapped)
+
+        // Determine current status from last entry
+        const lastEntry = clockEntries[clockEntries.length - 1]
+        if (lastEntry.type === 'clock-in' || lastEntry.type === 'break-end') {
+          setClockStatus('clocked-in')
+          setClockedInSince(new Date(lastEntry.created_at))
+        } else if (lastEntry.type === 'break-start') {
+          setClockStatus('on-break')
+          setClockedInSince(new Date(clockEntries.find((e: any) => e.type === 'clock-in')?.created_at ?? lastEntry.created_at))
+        } else {
+          setClockStatus('clocked-out')
+        }
+      }
+
+      // Fetch geofence
+      const { data: geo } = await supabase
+        .from('geofence_locations')
+        .select('radius')
+        .eq('studio_id', STUDIO_ID)
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+
+      if (geo) {
+        setGeoRadius(geo.radius ?? 150)
+      }
+
+      setLoading(false)
+    }
+    fetchClockData()
+  }, [])
 
   // Tick clock every second
   useEffect(() => {
@@ -91,27 +140,29 @@ export default function EmployeeClockPage() {
     return () => clearInterval(timer)
   }, [])
 
-  const elapsedMs = clockStatus !== 'clocked-out' ? now.getTime() - MOCK_CLOCKED_IN_SINCE.getTime() : 0
-  const isWithinRadius = MOCK_DISTANCE <= MOCK_RADIUS
+  const elapsedMs = clockStatus !== 'clocked-out' && clockedInSince ? now.getTime() - clockedInSince.getTime() : 0
+  const isWithinRadius = currentDistance <= geoRadius
 
   const handleClockIn = () => {
     setClockStatus('clocked-in')
+    setClockedInSince(new Date())
     setEntries(prev => [...prev, {
       id: `entry-${Date.now()}`,
       type: 'clock-in',
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      distance: MOCK_DISTANCE,
+      distance: currentDistance,
       withinRadius: true,
     }])
   }
 
   const handleClockOut = () => {
     setClockStatus('clocked-out')
+    setClockedInSince(null)
     setEntries(prev => [...prev, {
       id: `entry-${Date.now()}`,
       type: 'clock-out',
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      distance: MOCK_DISTANCE,
+      distance: currentDistance,
       withinRadius: true,
     }])
   }
@@ -122,7 +173,7 @@ export default function EmployeeClockPage() {
       id: `entry-${Date.now()}`,
       type: 'break-start',
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      distance: MOCK_DISTANCE,
+      distance: currentDistance,
       withinRadius: true,
     }])
   }
@@ -133,9 +184,17 @@ export default function EmployeeClockPage() {
       id: `entry-${Date.now()}`,
       type: 'break-end',
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      distance: MOCK_DISTANCE,
+      distance: currentDistance,
       withinRadius: true,
     }])
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
   }
 
   return (
@@ -293,10 +352,10 @@ export default function EmployeeClockPage() {
                     <XCircle className="h-4 w-4 text-red-500" />
                   )}
                   <span className={cn('text-sm font-bold tabular-nums', isWithinRadius ? 'text-emerald-700' : 'text-red-700')}>
-                    {MOCK_DISTANCE}m
+                    {currentDistance}m
                   </span>
                   <span className={cn('text-xs', isWithinRadius ? 'text-emerald-600' : 'text-red-600')}>
-                    (within {MOCK_RADIUS}m radius)
+                    (within {geoRadius}m radius)
                   </span>
                 </div>
               </div>
@@ -377,24 +436,24 @@ export default function EmployeeClockPage() {
             <div className="space-y-5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Hours</p>
-                <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900">{MOCK_WEEKLY_HOURS}h</p>
+                <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900">{weeklyHours}h</p>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
                   <div
                     className="h-full rounded-full bg-indigo-600 transition-all duration-500"
-                    style={{ width: `${Math.min((MOCK_WEEKLY_HOURS / 40) * 100, 100)}%` }}
+                    style={{ width: `${Math.min((weeklyHours / 40) * 100, 100)}%` }}
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-400">{MOCK_WEEKLY_HOURS} of 40 hours</p>
+                <p className="mt-1 text-xs text-gray-400">{weeklyHours} of 40 hours</p>
               </div>
 
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Overtime</p>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <p className="text-[28px] font-black tabular-nums text-gray-900">{MOCK_WEEKLY_OT}h</p>
-                  {MOCK_WEEKLY_OT === 0 ? (
+                  <p className="text-[28px] font-black tabular-nums text-gray-900">{weeklyOT}h</p>
+                  {weeklyOT === 0 ? (
                     <span className="text-xs font-semibold text-emerald-600">No overtime</span>
                   ) : (
-                    <span className="text-xs font-semibold text-amber-600">{MOCK_WEEKLY_OT}h overtime</span>
+                    <span className="text-xs font-semibold text-amber-600">{weeklyOT}h overtime</span>
                   )}
                 </div>
               </div>

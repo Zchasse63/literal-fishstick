@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
+import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -21,6 +23,7 @@ import {
   ChevronRight,
   Calendar,
   Inbox,
+  Loader2,
 } from 'lucide-react'
 import {
   LineChart,
@@ -57,92 +60,11 @@ interface MonthlyPerformance {
   fillRate: number
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const TRAINER = {
-  id: 'whitney-cooper',
-  name: 'Whitney Cooper',
-  avatar: 'WC',
-  role: 'Lead Trainer',
-  classesPerWeek: 6,
-  totalMembersServed: 847,
-}
+// ─── Supabase ──────────────────────────────────────────────
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
-const AI_NARRATIVE =
-  'Whitney Cooper is your highest-performing trainer by every key metric. Her Wednesday 7pm Guided session is the most popular class on the schedule, consistently hitting 95%+ capacity. Members who attend her classes have a 34% higher retention rate than the studio average. Her promo code "WHITNEY10" has driven 14 new membership conversions this month alone, generating $4,850 in attributed revenue. Consider leveraging her brand further — a "Whitney\'s Picks" content series or premium guided tier could capitalize on her popularity. One area to monitor: her Saturday morning class has lower attendance (6.2 avg), which may be a time-slot issue rather than a trainer issue.'
-
-const KPI_CARDS = [
-  {
-    label: 'Avg Attendance',
-    value: '9.2',
-    change: '+0.4',
-    changeType: 'up' as const,
-    icon: Users,
-  },
-  {
-    label: 'Bonus Hit Rate',
-    value: '83%',
-    change: '+5%',
-    changeType: 'up' as const,
-    icon: Trophy,
-  },
-  {
-    label: 'Revenue Attributed',
-    value: '$4,850',
-    change: '+12%',
-    changeType: 'up' as const,
-    icon: DollarSign,
-  },
-  {
-    label: 'Promo Conversions',
-    value: '14',
-    change: '+3',
-    changeType: 'up' as const,
-    icon: Tag,
-  },
-  {
-    label: 'Repeat Member Rate',
-    value: '78%',
-    change: '+2%',
-    changeType: 'up' as const,
-    icon: Repeat,
-  },
-]
-
-const MONTHLY_PERFORMANCE: MonthlyPerformance[] = [
-  { month: 'Oct', avgAttendance: 7.8, fillRate: 68 },
-  { month: 'Nov', avgAttendance: 8.2, fillRate: 72 },
-  { month: 'Dec', avgAttendance: 7.5, fillRate: 65 },
-  { month: 'Jan', avgAttendance: 8.6, fillRate: 76 },
-  { month: 'Feb', avgAttendance: 8.9, fillRate: 80 },
-  { month: 'Mar', avgAttendance: 9.2, fillRate: 85 },
-]
-
-const CLASS_BREAKDOWN: ClassBreakdown[] = [
-  { name: 'Guided Breathwork', dayTime: 'Wed 7–8pm', avgAttendance: 10.8, fillRate: 95, trend: 'up' },
-  { name: 'Guided Breathwork', dayTime: 'Mon 6–7pm', avgAttendance: 9.4, fillRate: 83, trend: 'up' },
-  { name: 'Open Sauna', dayTime: 'Tue 6–7pm', avgAttendance: 9.1, fillRate: 80, trend: 'flat' },
-  { name: 'Guided Breathwork', dayTime: 'Fri 7–8pm', avgAttendance: 8.6, fillRate: 76, trend: 'up' },
-  { name: 'Open Sauna', dayTime: 'Thu 5–6pm', avgAttendance: 8.2, fillRate: 72, trend: 'flat' },
-  { name: 'Open Sauna', dayTime: 'Sat 9–10am', avgAttendance: 6.2, fillRate: 55, trend: 'down' },
-]
-
-const HIGHLIGHTS = [
-  'Highest average attendance on the team (9.2 vs 6.8 team avg)',
-  'Wednesday 7pm Guided at 95% capacity for 4 consecutive weeks',
-  '14 promo code conversions this month — best on the team',
-  '78% of her attendees are repeat members (high loyalty)',
-]
-
-const GROWTH_AREAS = [
-  'Saturday morning class at 55% fill — consider time slot adjustment',
-  'Could expand into themed sessions to differentiate further',
-  'Social media content cadence could be more consistent',
-]
-
-const PAYROLL = {
-  basePay: 2400,
-  bonuses: 680,
-  promoCommission: 210,
+function getInitials(name: string): string {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -190,7 +112,81 @@ function PerfTooltip({ active, payload, label }: any) {
 
 // ─── Page Component ──────────────────────────────────────────
 export default function TrainerDetailPage() {
+  const params = useParams()
+  const trainerId = params?.id as string
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const [TRAINER, setTrainer] = useState({ id: '', name: '', avatar: '', role: 'Trainer', classesPerWeek: 0, totalMembersServed: 0 })
+  const [AI_NARRATIVE, setAiNarrative] = useState('')
+  const [KPI_CARDS, setKpiCards] = useState<any[]>([])
+  const [MONTHLY_PERFORMANCE, setMonthlyPerf] = useState<MonthlyPerformance[]>([])
+  const [CLASS_BREAKDOWN, setClassBreakdown] = useState<ClassBreakdown[]>([])
+  const [HIGHLIGHTS, setHighlights] = useState<string[]>([])
+  const [GROWTH_AREAS, setGrowthAreas] = useState<string[]>([])
+  const [PAYROLL, setPayroll] = useState({ basePay: 0, bonuses: 0, promoCommission: 0 })
+
+  useEffect(() => {
+    async function fetchTrainer() {
+      const supabase = createBrowserClient()
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', trainerId)
+        .eq('studio_id', STUDIO_ID)
+        .single()
+
+      if (profile) {
+        setTrainer({
+          id: profile.id,
+          name: profile.full_name ?? 'Unknown',
+          avatar: getInitials(profile.full_name ?? 'U'),
+          role: 'Trainer',
+          classesPerWeek: profile.classes_per_week ?? 0,
+          totalMembersServed: profile.total_members_served ?? 0,
+        })
+
+        setKpiCards([
+          { label: 'Avg Attendance', value: String(profile.avg_attendance ?? 0), change: '—', changeType: 'flat', icon: Users },
+          { label: 'Bonus Hit Rate', value: `${profile.bonus_hit_rate ?? 0}%`, change: '—', changeType: 'flat', icon: Trophy },
+          { label: 'Revenue Attributed', value: formatCurrency(profile.promo_revenue ?? 0), change: '—', changeType: 'flat', icon: DollarSign },
+          { label: 'Promo Conversions', value: String(profile.promo_redemptions ?? 0), change: '—', changeType: 'flat', icon: Tag },
+          { label: 'Repeat Member Rate', value: '—', change: '—', changeType: 'flat', icon: Repeat },
+        ])
+
+        setPayroll({
+          basePay: profile.ytd_gross ?? 0,
+          bonuses: profile.ytd_bonuses ?? 0,
+          promoCommission: 0,
+        })
+      }
+      setLoading(false)
+    }
+    if (trainerId) fetchTrainer()
+  }, [trainerId])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
+
+  if (!TRAINER.id) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] p-8">
+        <Link href="/analytics/trainers" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6">
+          <ArrowLeft className="h-4 w-4" />Back to Trainers
+        </Link>
+        <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center shadow-sm">
+          <Users className="mx-auto h-12 w-12 text-gray-300" />
+          <h3 className="mt-4 text-base font-semibold text-gray-900">Trainer not found</h3>
+          <p className="mt-1 text-sm text-gray-500">This trainer profile may have been removed.</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleRefresh = () => {
     setIsRefreshing(true)

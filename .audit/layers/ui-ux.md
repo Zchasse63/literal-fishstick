@@ -1,171 +1,518 @@
 # Layer Report: UI/UX
 
 **Agent:** ui-ux
-**Completed:** 2026-03-20
+**Completed:** 2026-03-22
 **Severity legend:** CRITICAL / HIGH / MEDIUM / LOW / INFO
 
 ---
 
 ## Executive Summary
 
-Meridian's frontend is a well-crafted, design-system-consistent admin dashboard built on React 19 and Next.js 16 App Router. The visual language is coherent: deep indigo primary, framer-motion spring animations, shadcn/ui component primitives, lucide-react icons, and a sidebar-plus-header layout. The UI is information-dense without feeling cluttered. Several significant UX issues exist: hardcoded user identities, mock data on production pages, missing dark mode implementation, no accessibility audit, and no responsive design for mobile admin use.
+Meridian's admin dashboard is visually polished and architecturally coherent. The design system is well-defined in `globals.css` with proper CSS custom properties, Inter is loaded globally, and shadcn/ui primitives handle the low-level component layer cleanly. The visual aesthetic (indigo primary, warm-gray surfaces, 2xl rounded cards, spring animations via framer-motion) is applied consistently across all pages.
+
+The audit uncovered no catastrophic layout breaks, but it did surface a cluster of HIGH-severity broken interactions — buttons that render correctly but have no `onClick` handler and therefore silently do nothing when clicked. These are the most urgent items to address because they create a broken product experience on first contact.
+
+The second major category is data integrity: a significant number of pages (Analytics, Operations, Corporate, Engagement, Marketing) display hardcoded mock data, including real business names (Tampa Bay Buccaneers, The Sauna Guys) and hardcoded staff names (Whitney Cooper, Jake Martinez) that will embarrass the product if shown to any user other than the original developer.
+
+Accessibility is the weakest area of the codebase. Across all admin pages, only one `aria-label` attribute exists. Labels are not associated to inputs via `htmlFor`/`id` pairs. There are no `focus-visible` styles on custom buttons. Keyboard navigation beyond basic tab order is unimplemented.
 
 ---
 
-## Component Hierarchy
+## 1. Broken Interactions
 
-### Layout Layer
+### HIGH — "Add Member" button has no `onClick` handler
 
-```
-AdminLayout (server-side route group)
-├── CommandPalette (global overlay, ⌘K)
-├── Sidebar
-│   ├── Logo mark
-│   ├── Search button (triggers CommandPalette)
-│   ├── NavItems (10 items with framer-motion active pill)
-│   └── Bottom section: dark mode toggle, user identity
-└── Header
-    ├── Breadcrumb
-    └── Header actions
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, line 496–499
 
-EmployeeLayout (separate route group)
-├── Sidebar (collapsible)
-│   ├── Logo + "Employee Portal" label
-│   ├── Main nav (5 items)
-│   ├── Trainer section (3 items)
-│   └── Switch to Admin link
-└── Header
-    ├── Clock in/out status badge
-    └── Notification bell
+```tsx
+<button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 ...">
+  <Plus className="h-4 w-4" />
+  Add Member
+</button>
 ```
 
-### Page-Level Components
+The button renders and accepts hover/focus states but clicking it does nothing. No modal state, no route navigation, no form sheet is triggered. The Command Palette routes `Add Member` to `/members?action=add-member` (command-palette.tsx line 49), but `members/page.tsx` never reads `useSearchParams`, so even that path is a dead end. This is the user-reported bug.
 
-| Module | Components Detected |
-|--------|---------------------|
-| Command Center | AI Briefing card, KPI metrics grid, Schedule Timeline, Activity Feed, Live Facility Map, AI Insight cards |
-| Members | Search + filter bar, Member card grid, Slide-over profile panel (4 tabs: Overview, History, Financials, Communications), AI health score |
-| Marketing | Campaign overview stats, Recent campaigns table with sparklines, Lead funnel chart, Automation overview |
-| Analytics | KPI grid with trend indicators, Area chart (recharts), Pie chart, Heatmap, AI Recommendations panel |
-| Employee Portal | Clock in/out button, Timesheet viewer, Pay stub display, Performance metrics |
-
-### UI Primitives (shadcn/ui components in `/components/ui/`)
-
-avatar, badge, button, calendar, card, chart, command, dialog, dropdown-menu, input, input-group, label, popover, progress, scroll-area, select, separator, sheet, skeleton, switch, table, tabs, textarea, tooltip
+**Fix:** Add a modal/sheet state variable, wire the button's `onClick` to open it, and read the `?action=add-member` param on mount to auto-open it when navigated from the command palette.
 
 ---
 
-## Design System Analysis
+### HIGH — "New Class" button has no `onClick` handler
 
-### Token Consistency
+**File:** `apps/web/src/app/(admin)/schedule/page.tsx`, line 559–562
 
-The design tokens from CLAUDE.md are consistently implemented:
-- `#4F46E5` indigo-600 — used in sidebar active states, logo, primary buttons
-- `#F59E0B` amber — used in warning/action badges
-- `#10B981` emerald — used for success states (clocked-in badge, active member)
-- `#F97316` coral/orange — used in cancellation icons
-- `#FAFAFA` near-white background — confirmed in employee layout
-- `#F5F5F4` warm gray — card backgrounds
+```tsx
+<button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 ...">
+  <Plus className="w-4 h-4" />
+  New Class
+</button>
+```
 
-**AI visual treatment:** `from-indigo-600 to-violet-500` gradient on employee portal logo, AI cards use `Sparkles` icon with indigo coloring. The gradient border treatment described in CLAUDE.md is not yet implemented on AI insight cards — they use border-based styles instead.
-
-### Typography
-
-Inter/SF Pro is the specified font stack. The implementation uses the system font stack via Tailwind defaults (`font-sans`). No explicit `@font-face` or Google Fonts import found, which means SF Pro is used on Apple devices (correct) but no specific Inter loading is configured for non-Apple.
-
-### Animation
-
-Framer Motion is used thoughtfully:
-- `layoutId="nav-pill"` creates a shared layout animation for the active sidebar indicator
-- `fadeInUp` variants are consistently defined per page with `opacity: 0, y: 6` → `opacity: 1, y: 0` at 0.25s
-- `AnimatePresence` used for panel transitions in members page
-- Spring physics: `type: 'spring', bounce: 0.2, duration: 0.4` — appropriate for nav transitions
+The schedule page's primary call-to-action renders with no handler. Similarly, the "Check In All", "Send Reminder", and "Edit Class" buttons inside the `ClassDetailPanel` component (lines 329–341) are all presentation-only with no `onClick`.
 
 ---
 
-## Component Issues
+### HIGH — "Quick Create" header button has no `onClick` handler
 
-### Hardcoded User Identity
+**File:** `apps/web/src/components/layout/header.tsx`, line 72–75
 
-**Admin sidebar:**
-```
-<p className="text-sm font-semibold text-gray-900 truncate">Zach M.</p>
-<p className="text-xs text-gray-500">Studio Owner</p>
-```
-
-**Employee sidebar:**
-```
-<p className="text-sm font-semibold text-gray-900 truncate">Whitney C.</p>
-<span>Trainer</span>
+```tsx
+<button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 ...">
+  <Plus className="w-4 h-4" />
+  <span className="hidden sm:block">Quick Create</span>
+</button>
 ```
 
-Both layouts display hardcoded names and roles. The `AuthContext` exists in `src/contexts/auth-context.tsx` but is not wired to the layout user displays.
-
-### Mock Data in Production Pages
-
-Marketing page (`/marketing/page.tsx`) contains `RECENT_CAMPAIGNS` mock data array defined inline as a TypeScript constant. Analytics page similarly contains extensive mock data for charts. These pages visually display data but do not fetch from the API, meaning admins see fabricated numbers in these modules.
-
-### Dark Mode Toggle
-
-Both sidebars have a "Light Mode"/"Dark Mode" toggle button. The admin sidebar renders `<Sun>` and "Light Mode" but the button has no `onClick` handler connected to a theme state. The employee sidebar has a proper `useState(darkMode)` and toggles a `dark` class on the root div, but only within the employee layout scope (not app-wide). Neither implementation uses `next-themes` or a proper CSS variable-based system.
-
-### Clock In/Out Header Widget
-
-The employee layout header has a `setClockedIn(!clockedIn)` toggle that uses local React state — it does not call `/api/clock`. This means the displayed clock status has no persistence.
-
-### Realtime vs Polling
-
-`use-realtime.ts` implements Supabase Realtime WebSocket subscriptions (not polling). However, the language detection file specifies "60s polling (Phase 1)." The `use-command-center-data.ts` hook likely uses polling. Both patterns exist. This inconsistency should be resolved before Phase 5.
+This button appears on every admin page in the fixed header. It is the most visible action in the entire UI and does nothing when clicked. The Bell (Notifications) button on line 66–69 is likewise clickable-styled with no handler.
 
 ---
 
-## Accessibility Assessment
+### HIGH — LogOut button in admin sidebar has no `onClick` handler
 
-**No dedicated accessibility audit was performed** (no axe-core, no WAVE tool output available). Observed concerns:
+**File:** `apps/web/src/components/layout/sidebar.tsx`, line 167–170
 
-- **Focus management:** The slide-over member profile panel does not visibly trap focus. When opened, keyboard users can tab to elements behind the overlay.
-- **Color contrast:** Indigo-50 text on white (`text-indigo-700 on bg-indigo-50`) — likely meets WCAG AA for normal text. Gray-500 text on white background may fail for smaller text sizes.
-- **ARIA:** No explicit `aria-label` or `role` attributes observed on interactive nav items or custom components. shadcn/ui components (Dialog, Sheet) include ARIA by default; custom elements do not.
-- **Keyboard nav:** The `CommandPalette` (⌘K) appears to use `cmdk` which provides keyboard navigation out of the box. Custom sidebar nav items use standard `<Link>` elements which are keyboard-accessible.
+```tsx
+<button className="text-gray-400 hover:text-gray-600">
+  <LogOut className="w-4 h-4" />
+</button>
+```
 
----
-
-## Responsive Design Assessment
-
-The admin layout has a fixed sidebar (`w-[240px]` or `w-[72px]` when collapsed) and a fixed header (`pt-16`). The main content area uses `max-w-7xl mx-auto` with `p-5 md:p-7`. No breakpoints below `md` are accounted for. On mobile viewports:
-- The sidebar overlaps the main content
-- No mobile hamburger menu or bottom navigation exists
-- The layout is not usable on screens below ~1024px
-
-This is acceptable for an admin dashboard intended for desktop use, but should be documented. The employee portal is more likely to be accessed on mobile (employees clock in/out from their phones), yet its layout has the same fixed sidebar constraint.
+`signOut` from Supabase Auth is never called. The `useAuth` context is imported and used for reading `profile`, but signing out requires an `onClick` that calls `supabase.auth.signOut()`. As a result, users cannot log out.
 
 ---
 
-## Findings
+### HIGH — "Save Account" button on Corporate New form has no `onClick`
 
-**HIGH — Mock data displayed as real data in Marketing and Analytics pages:**
-`/marketing/page.tsx` renders `RECENT_CAMPAIGNS` with hardcoded campaign names, open rates, and revenue attribution. `/analytics/page.tsx` contains extensive hardcoded KPI values and chart data. These pages are in production and show fabricated numbers to administrators, potentially leading to incorrect business decisions.
+**File:** `apps/web/src/app/(admin)/corporate/new/page.tsx`, line 68–71
 
-**HIGH — Clock in/out widget uses local state, not API:**
-The employee portal header's clock in/out badge updates `useState` only. No call to `/api/clock` is made. Employees who interact with the header badge are not actually clocking in or out in the database.
+The entire Corporate New Account form (company info, contact, billing, contract terms) is built with uncontrolled inputs that have no `name` attributes, no `<form>` wrapper, and no `onSubmit`. The "Save Account" button has no `onClick`. None of the field data can be collected or submitted.
 
-**MEDIUM — User identity hardcoded in both layout sidebars:**
-Neither layout reads from `AuthContext`. This must be resolved before any second user can log in, as every user would see "Zach M." and "Whitney C." as their identity.
+Additionally, all `<label>` elements in this form are not associated to their inputs — they have no `htmlFor` attribute, and the inputs have no `id` attribute (lines 91–190). Clicking a label does not focus its input.
 
-**MEDIUM — Dark mode toggle is non-functional in admin layout:**
-The admin sidebar's dark mode button has no `onClick` handler. Clicking it has no effect. The employee portal dark mode works locally but is not persisted to `localStorage` or applied app-wide.
+---
 
-**MEDIUM — No mobile layout for employee portal:**
-Employees are the most likely users to access Meridian from a mobile device (clock in, check schedule). The current fixed-sidebar layout does not adapt to mobile viewports.
+### HIGH — Day and Month calendar views are unimplemented stubs
 
-**LOW — AI gradient border treatment not implemented:**
-CLAUDE.md specifies "subtle indigo-to-violet gradient border on AI insight cards." Current implementation uses standard border-based styles. The visual differentiation for AI-generated content is incomplete.
+**File:** `apps/web/src/app/(admin)/schedule/page.tsx`, line 356
 
-**LOW — Sidebar shortcut key collision (corroborates project-structure finding):**
-Analytics and Segments both have `shortcut: '8'` in the nav items array. The `⌘8` shortcut will activate the first match (Analytics), making Segments unreachable by keyboard shortcut.
+The Schedule page displays a three-way toggle for Day / Week / Month views. The Week view is fully implemented. Clicking "Day" or "Month" updates the `viewMode` state but there is no conditional branch rendering a different layout — the week grid always renders. Users can click these buttons and see no change, with no indication the feature is unavailable.
 
-**INFO — framer-motion `layoutId` conflict in employee sidebar:**
-Both `trainerNav` and `mainNav` links in the employee layout use `layoutId="employee-nav-pill"`. When a trainer nav item is active, the pill may animate from the main nav incorrectly. Each section should have its own `layoutId`.
+---
+
+### MEDIUM — Command Palette quick actions produce dead URLs
+
+**File:** `apps/web/src/components/command-palette.tsx`, lines 48–53
+
+Quick actions route to `?action=add-member`, `?action=new-class`, `?action=record-payment`, etc. None of the target pages (`members/page.tsx`, `schedule/page.tsx`, `revenue/page.tsx`) read `useSearchParams` or handle these parameters. Selecting a quick action navigates to the correct page but no modal or action opens.
+
+---
+
+### MEDIUM — MoreHorizontal (context menu) button on member rows has no menu
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, line 656–660
+
+Each member row has an actions column with a `MoreHorizontal` button that calls `e.stopPropagation()` but opens no dropdown, context menu, or sheet.
+
+---
+
+### LOW — "Email" and "Call" buttons in member detail panel have no handlers
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, lines 741–748
+
+The Email and Call quick-action buttons in the member profile sidebar have no `onClick`. Neither opens a compose dialog, nor triggers a `mailto:` or `tel:` link.
+
+---
+
+### LOW — AI insight action buttons ("Send re-engagement", "View details") have no handlers
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, lines 859–862, 876–879
+
+The AI Predictive Insights panel renders contextual action buttons that look interactive (indigo text, ArrowUpRight icon, hover state) but have no `onClick`.
+
+---
+
+## 2. Error Handling in UI
+
+### MEDIUM — Schedule page error was previously broken; now correctly handled
+
+**File:** `apps/web/src/app/(admin)/schedule/page.tsx`, line 568
+
+The error display now correctly renders `{classesError.message}` rather than `{classesError}`. The `useQuery` hook (use-supabase.ts line 110) properly normalizes errors: `err instanceof Error ? err : new Error(String(err))`. This bug is resolved.
+
+---
+
+### MEDIUM — Segments page renders raw error string (safe but inconsistent)
+
+**File:** `apps/web/src/app/(admin)/segments/page.tsx`, lines 150, 195
+
+```tsx
+const [error, setError] = useState<string | null>(null)
+// ...
+setError(err instanceof Error ? err.message : 'Failed to load segments')
+// ...
+<p className="mt-1 text-xs text-gray-400">{error}</p>
+```
+
+This is technically correct (storing a string, not an Error object), but error handling is inconsistent across the codebase. The schedule page uses the `useQuery` hook which normalizes errors; the segments page fetches via `fetch()` and manages its own error string. The pattern should be standardized.
+
+---
+
+### MEDIUM — Members and Revenue pages silently swallow errors
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, lines 309–313; `apps/web/src/app/(admin)/revenue/page.tsx`
+
+When the members fetch fails, the code calls `console.error` and `setMembers([])`. No error banner or retry button is shown to the user — they see an empty table with "No members found matching your search." There is no way for the user to know a network error occurred vs. no members existing.
+
+---
+
+### INFO — Global `error.tsx` boundary is well-implemented
+
+**File:** `apps/web/src/app/error.tsx`
+
+The root error boundary correctly catches unhandled React errors, exposes dev-only stack traces inside a `<details>`, and provides a retry button. This is good.
+
+---
+
+## 3. Hardcoded Data and Strings
+
+### HIGH — Analytics page KPIs are hardcoded mock strings, not real data
+
+**File:** `apps/web/src/app/(admin)/analytics/page.tsx`, lines 88–93
+
+```tsx
+{ label: 'MRR', value: '$18,420', trend: 12.3, ... }
+{ label: 'ARPM', value: '$67.40', trend: 4.2, ... }
+{ label: 'Active Members', value: '273', trend: 8.1, ... }
+{ label: 'Avg Fill Rate', value: '71%', trend: 5.6, ... }
+{ label: 'Revenue MTD', value: '$24,850', trend: 9.7, ... }
+```
+
+These numbers will never change and do not reflect any real database query. The Analytics page is labeled Phase 3, so this is expected for now, but the values are specific enough to look real and will mislead users.
+
+---
+
+### HIGH — Corporate pages contain real business names as mock data
+
+**Files:** `apps/web/src/app/(admin)/corporate/page.tsx` (lines 63–84); `apps/web/src/app/(admin)/corporate/events/page.tsx` (lines 44–50); `apps/web/src/app/(admin)/corporate/[id]/page.tsx` (lines 44–53)
+
+Real business names appear as hardcoded mock data:
+- `'Tampa Bay Buccaneers'`
+- `'The Sauna Guys'`
+- `'USAA Tampa'`
+- Addresses: `'1 Buccaneer Pl, Tampa, FL 33607'`
+
+This is appropriate for a single-tenant demo but is a blocker for any SaaS or multi-tenant scenario and should be clearly marked.
+
+---
+
+### HIGH — Operations, Payroll, and Documents pages display hardcoded staff
+
+**Files:** `apps/web/src/app/(admin)/operations/page.tsx` (line 94+); `apps/web/src/app/(admin)/operations/payroll/page.tsx` (line 84); `apps/web/src/app/(admin)/operations/documents/page.tsx` (lines 58–155)
+
+Staff names `'Whitney Cooper'`, `'Jake Martinez'`, `'Elena Volkov'`, etc. are hardcoded in mock data arrays. The payroll page shows their exact hours, pay rates, and estimated net pay as static numbers.
+
+---
+
+### MEDIUM — Member profile sidebar shows hardcoded session preferences
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, lines 343–346
+
+```tsx
+preferredTime: '6:00 PM',
+preferredType: 'Open Sauna',
+guidedSessions: 0,
+avgDuration: '50 min',
+```
+
+Every member shows identical "Session Preferences" values because these fields are not in the database query and are hardcoded during the mapping step. The "Preferred Time" and "Preferred Type" appear credible enough to be mistaken for real data.
+
+---
+
+### MEDIUM — Members page pagination is a hardcoded stub
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, line 685
+
+```tsx
+<span className="text-xs text-gray-500">Page 1 of 1</span>
+```
+
+The footer shows "Showing N of M members · Page 1 of 1" with no next/previous buttons. The query is `LIMIT 50` with no offset. If a studio has more than 50 members, results are silently truncated.
+
+---
+
+### MEDIUM — Member "Next Billing" and "Payment Method" are hardcoded
+
+**Files:** `apps/web/src/app/(admin)/members/page.tsx` (lines 341–342); `apps/web/src/app/(admin)/members/[id]/page.tsx` (line 233)
+
+```tsx
+nextBilling: row.membership_status === 'paused' ? 'Paused' : 'N/A',
+paymentMethod: 'On file',
+```
+
+`nextBilling` always shows "N/A" for active members instead of pulling the actual Stripe billing anchor date. `paymentMethod` always shows "On file" regardless of what payment method Stripe has on record.
+
+---
+
+### MEDIUM — Visit Activity heatmap on member profile is randomized static data
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, lines 204–217
+
+```tsx
+const heatmapData = generateHeatmap()  // module-level, Math.random()
+```
+
+The heatmap is generated once at module initialization using `Math.random()`. Every member shows the same random pattern (seeded at page load). This can also cause a React hydration mismatch because server and client will generate different random values.
+
+---
+
+### LOW — Corporate New form has hardcoded initial tags
+
+**File:** `apps/web/src/app/(admin)/corporate/new/page.tsx`, line 27
+
+```tsx
+const [tags, setTags] = useState<string[]>(['enterprise', 'tampa'])
+```
+
+New corporate account forms pre-populate with `['enterprise', 'tampa']` as default tags, which are specific to The Sauna Guys' use case.
+
+---
+
+## 4. Typography Inconsistency
+
+### MEDIUM — Arbitrary font sizes bypass the type scale
+
+**Files:** All admin pages (585 instances of `text-[10px]`, 29 instances of `text-[28px]`, 19 instances of `text-[11px]`, 8 instances of `text-[9px]`, 2 instances of `text-[8px]`, 1 instance of `text-[42px]`)
+
+The Tailwind design system provides a clean type scale (`text-xs` = 12px, `text-sm` = 14px, `text-base` = 16px, etc.). The codebase instead uses arbitrary values for two primary patterns:
+
+1. `text-[10px]` — used for uppercase section labels (`MEMBER`, `TIME`, `MEMBERSHIP`, etc.). This is a consistent design choice but bypasses the design system token. Should be a custom utility class like `text-label`.
+2. `text-[28px]` — used for large metric values in stat cards (MRR, visit counts). Also consistent but arbitrary.
+3. `text-[11px]` — used inconsistently as a "between xs and sm" size in various detail panels.
+
+The pattern is visually consistent but makes global type scale changes impossible without grep-replacing hundreds of instances.
+
+---
+
+### LOW — `font-black` (weight 900) used for metric numbers; no design token defines this
+
+Metric values use `font-black` (tw weight 900) across stat cards. This is consistent but undocumented in the design system. The design guide should establish when `font-black` vs `font-bold` vs `font-semibold` is appropriate.
+
+---
+
+## 5. Spacing and Layout Consistency
+
+### HIGH — Many pages override the layout's padding with their own `min-h-screen` wrappers
+
+**Files:** 48 admin pages use `min-h-screen bg-[#FAFAFA]` at the page component root level
+
+The admin layout (`(admin)/layout.tsx`) already provides:
+- `pt-16` (header height)
+- `pl-[240px]` or `pl-[72px]` (sidebar width)
+- `p-5 md:p-7` inner padding
+- `max-w-7xl mx-auto` container
+
+Despite this, 48 page files add their own `min-h-screen bg-[#FAFAFA] p-6` or similar wrappers. This double-wraps the padding (the layout gives 5/7 units, the page adds 6 more) and creates inconsistent effective padding across pages. Pages in the `(admin)` group should not redeclare `min-h-screen` or `bg-[#FAFAFA]` — the layout already handles both.
+
+---
+
+### MEDIUM — Employee portal sidebar width is 220px; admin sidebar is 240px
+
+**Files:** `apps/web/src/app/(employee)/layout.tsx` (line 108, `w-[220px]`); `apps/web/src/components/layout/sidebar.tsx` (line 82, `w-[240px]`)
+
+The 20px difference is unlikely to be intentional. Both collapsed states differ too: employee is `w-16` (64px), admin is `w-[72px]`. These should be unified via CSS variables that are already defined: `--sidebar-width: 240px` and `--sidebar-collapsed: 72px` in `globals.css`.
+
+---
+
+### MEDIUM — Member detail panel stat cards use three different font size patterns
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`
+
+The profile sidebar uses three distinct stat card treatments:
+- Line 776: `text-[28px] font-black` for LTV / Visits / Avg Visits
+- Line 788: `text-lg font-bold` for Credits / Last Visit
+- Line 892: `text-sm font-semibold` for Membership Price
+
+These three visual weights create hierarchy but are inconsistent in their scale — they were chosen independently rather than from a defined card system.
+
+---
+
+## 6. Color System
+
+### MEDIUM — 51 instances of hardcoded hex colors in admin pages
+
+**Files:** Multiple admin pages use `bg-[#FAFAFA]`, `bg-[#0F0F11]`, etc.
+
+CSS custom properties `--background`, `--card`, `--color-surface` are defined in `globals.css` and the `@theme inline` block maps them to Tailwind utilities. Pages should use `bg-background` instead of `bg-[#FAFAFA]`. The `error.tsx` and `not-found.tsx` also hardcode `bg-[#FAFAFA]`.
+
+---
+
+### LOW — Dark mode toggle in sidebar toggles the class correctly, but page content does not respond
+
+**Files:** All admin pages
+
+The sidebar correctly adds/removes the `dark` class to `document.documentElement`. The CSS variables for dark mode are properly defined in `globals.css`. However, all page-level Tailwind classes use hardcoded light-mode values (`bg-white`, `border-gray-200`, `text-gray-900`) with no `dark:` variants. Only 0 instances of `dark:bg-*` or `dark:text-*` exist across all admin pages. Dark mode is visually defined in the token system but never applied in the component layer. The sidebar and header go dark (they use CSS variables via shadcn), but the main content area does not.
+
+---
+
+## 7. Accessibility
+
+### HIGH — Essentially no ARIA attributes across all admin pages
+
+**Files:** All admin pages (`apps/web/src/app/(admin)/`)
+
+Across all 45+ admin page files, only one `aria-label` attribute exists:
+
+```tsx
+// apps/web/src/app/(admin)/marketing/automations/page.tsx:235
+aria-label={active ? 'Deactivate automation' : 'Activate automation'}
+```
+
+All other interactive elements — navigation links, icon-only buttons, chart containers, modal close buttons, filter pills, tab controls — have no ARIA labels. Icon-only buttons (LogOut, X close, Bell, ChevronLeft/Right, MoreHorizontal) are completely opaque to screen readers.
+
+---
+
+### HIGH — Form labels are not associated with their inputs
+
+**File:** `apps/web/src/app/(admin)/corporate/new/page.tsx`, lines 91–190
+
+All form labels use bare `<label>` elements with no `htmlFor` attribute. All inputs have no `id` attribute. This means:
+- Clicking a label does not focus its input (broken for mouse users, not just screen readers)
+- Screen readers cannot announce which label belongs to which field
+
+---
+
+### MEDIUM — Custom interactive elements lack focus-visible styles
+
+**Files:** All admin pages
+
+Native `<button>` elements rely on the browser's default focus ring, which is often suppressed by `focus:outline-none` applied broadly (122 instances across admin pages). No `focus-visible:ring-2 focus-visible:ring-indigo-500` pattern is applied to custom buttons. Keyboard users cannot see which element is focused.
+
+The single exception is the shadcn `<Select>` in `settings/page.tsx` which uses `focus-visible:border-ring focus-visible:ring-3`.
+
+---
+
+### MEDIUM — No `tabIndex` management in custom interactive elements
+
+Interactive elements like the schedule's week navigation buttons, the member row table rows (which act as clickable items), and the class block cards in the schedule view are not in the natural tab order in a predictable way. Table rows with `onClick` are not reachable via keyboard.
+
+---
+
+### MEDIUM — Viewport meta tag is absent from root layout
+
+**File:** `apps/web/src/app/layout.tsx`
+
+Next.js does not automatically inject a viewport meta tag in App Router. The `<html>` element has `lang="en"` (good) but there is no `export const viewport` export or `<meta name="viewport">`. On mobile devices, the admin dashboard will render at desktop scale without pinch-to-zoom control.
+
+**Fix:** Add to `layout.tsx`:
+```tsx
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+```
+
+---
+
+### LOW — `alt` attributes are absent from all images (no images used)
+
+No `<img>` or `<Image>` tags exist in admin pages — all avatars use initials in colored `<div>` elements. This is fine and actually better for accessibility than placeholder images.
+
+---
+
+## 8. Responsive Design
+
+### MEDIUM — Admin pages are designed for 1280px+ and degrade gracefully only to ~768px
+
+The admin layout uses responsive breakpoints (`hidden md:table-cell`, `hidden lg:table-cell`, `sm:flex`) to collapse table columns on smaller screens. The member table hides Membership at `<768px` and Last Visit/LTV at `<1024px`. This is appropriate for a data-dense admin dashboard.
+
+However, the `max-w-7xl` container with `pl-[240px]` sidebar means the effective content width at 1280px is only ~900px. At 1024px it is only ~640px. At 768px the sidebar overlaps the content (the sidebar is `fixed` but the layout's padding is only responsive to the sidebar's pixel width, not viewport width).
+
+There is no mobile drawer/overlay pattern for the sidebar at small viewports. At widths below ~900px, the collapsed sidebar (72px) leaves the main content at ~700px wide, which is acceptable for tablets in landscape but cramped for most tablet-portrait and all phone viewports.
+
+---
+
+### LOW — The Schedule week grid has `min-w-[700px]` but no fallback for narrow viewports
+
+**File:** `apps/web/src/app/(admin)/schedule/page.tsx`, line 584
+
+The calendar table has `overflow-x-auto` wrapping correctly, so it scrolls horizontally on small screens. This is acceptable.
+
+---
+
+## 9. Loading States
+
+### INFO — Loading states are well-implemented across core pages
+
+All live-data pages implement loading states:
+- Schedule: `ScheduleSkeleton` (table-shaped Skeleton grid)
+- Members: `MemberRowSkeleton` (6 placeholder rows with animated pulse)
+- Command Center: `CommandCenterSkeleton` (matching card shapes)
+- Employee portal: `Loader2` spinner while data loads
+
+The `Skeleton` component from shadcn/ui (`components/ui/skeleton.tsx`) is used consistently. This is a strength of the codebase.
+
+---
+
+## 10. Empty States
+
+### LOW — Empty state on Members page text is ambiguous
+
+**File:** `apps/web/src/app/(admin)/members/page.tsx`, line 668–671
+
+When no members match search or filter, the table shows: "No members found matching your search." This message is shown even when no search is active and the filter tab is "All" — for example, when the database query fails and `setMembers([])` is called silently. The user cannot distinguish between "no results" and "error."
+
+---
+
+### LOW — Schedule page empty time slots show an invisible plus button
+
+**File:** `apps/web/src/app/(admin)/schedule/page.tsx`, lines 625–630
+
+Empty calendar cells contain a hidden `<button>` that appears on hover (`opacity-0 hover:opacity-100`). This button has no `onClick`. The hover affordance is promising but the interaction goes nowhere.
+
+---
+
+## 11. Performance Patterns
+
+### INFO — No code splitting or lazy loading used for heavy pages
+
+The Marketing Campaigns builder (`marketing/campaigns/new/page.tsx`, 1,337 lines) and the Automations builder (`marketing/automations/new/page.tsx`, 790 lines) are loaded eagerly. These pages import `@dnd-kit` and `reactflow` respectively. No `dynamic()` import or `React.lazy()` is used anywhere in the app. For a dashboard app this is acceptable (server-side rendering handles initial payload), but the drag-and-drop libraries add significant client bundle weight.
+
+---
+
+### INFO — `Math.random()` called at module level will cause React hydration mismatches
+
+**Files:** `apps/web/src/app/(admin)/members/page.tsx` (line 217); `apps/web/src/app/(admin)/analytics/reports/[id]/page.tsx` (lines 81–100)
+
+```tsx
+const heatmapData = generateHeatmap()  // module-level call
+const MOCK_ROWS = generateRows()        // module-level call
+```
+
+Module-level `Math.random()` executes during server-side rendering and again during client hydration, producing different values each time. React will log a hydration mismatch warning. These should be moved into `useEffect` or replaced with seeded/deterministic data.
+
+---
+
+### INFO — 60-second polling is active on all `useQuery` calls with `poll: true`
+
+**File:** `apps/web/src/hooks/use-supabase.ts`, lines 123–131
+
+Three hooks poll every 60 seconds by default: `useMembers`, `useClasses`, `useBookings`. The activity log also polls (line 274). This is the Phase 1 design decision and is acceptable, but it means every user session generates continuous database queries regardless of page activity.
+
+---
+
+## 12. Component Size and Splitting
+
+### MEDIUM — Several page files exceed 1,000 lines and contain multiple co-located sub-components
+
+| File | Lines | Issue |
+|------|-------|-------|
+| `marketing/campaigns/new/page.tsx` | 1,337 | Campaign builder with step wizard, preview, scheduling — should be split |
+| `revenue/page.tsx` | 1,295 | Overview, Memberships, and Transactions tabs in one file |
+| `operations/page.tsx` | 1,123 | Employee directory, schedule, payroll, and permissions in one file |
+| `members/page.tsx` | 1,152 | Directory + full profile panel with 4 tabs |
+| `analytics/page.tsx` | 874 | Multiple chart types, heatmap, AI recommendations |
+
+These files define multiple components (skeleton, card, panel, tab content) inline rather than extracting them. This is not a runtime problem but makes the files hard to maintain and test.
 
 ---
 
@@ -174,7 +521,18 @@ Both `trainerNav` and `mainNav` links in the employee layout use `layoutId="empl
 | Severity | Count | Items |
 |----------|-------|-------|
 | CRITICAL | 0 | — |
-| HIGH | 2 | Mock data on production pages, clock widget disconnected from API |
-| MEDIUM | 3 | Hardcoded user identity, broken dark mode, no mobile employee layout |
-| LOW | 2 | AI gradient treatment missing, shortcut collision |
-| INFO | 1 | framer-motion layoutId conflict |
+| HIGH | 8 | Add Member no onClick, New Class no onClick, Quick Create no onClick, LogOut no onClick, Corporate form not wired, Day/Month views stub, Analytics KPIs hardcoded, Corporate/Ops mock data with real names |
+| MEDIUM | 14 | Command palette dead params, member context menu, error handling inconsistency, dark mode non-responsive, ARIA absent, form labels unassociated, focus-visible missing, viewport meta absent, type scale arbitrary values, spacing double-wrap, sidebar width mismatch, member detail stat hierarchy, visit heatmap random data, pagination stub |
+| LOW | 9 | AI insight buttons no handler, email/call buttons no handler, member tags hardcoded, Next Billing hardcoded, Payment Method hardcoded, corporate default tags, empty state ambiguity, empty schedule cell button, dark mode class collisions |
+| INFO | 4 | No code splitting, hydration mismatches from Math.random, polling on all queries, global error boundary good |
+
+---
+
+## Component Tree Diagram
+
+See `.audit/diagrams/ui-ux.mmd`
+
+Color coding:
+- Green: well-structured, live data, production-ready
+- Yellow: functional but has notable issues (stubs, mixed data, no error UI)
+- Red: mock data, broken interactions, not production-ready

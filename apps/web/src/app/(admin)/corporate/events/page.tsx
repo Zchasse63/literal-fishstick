@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -39,19 +40,7 @@ interface CalendarEvent {
   status: EventStatus
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const EVENTS: CalendarEvent[] = [
-  { id: '1', name: 'Q1 Team Recovery', company: 'Tampa Bay Buccaneers', date: '2026-03-03', time: '2:00 PM', eventType: 'team_building', guests: 24, status: 'completed' },
-  { id: '2', name: 'Leadership Workshop', company: 'Raymond James Financial', date: '2026-03-07', time: '10:00 AM', eventType: 'workshop', guests: 12, status: 'completed' },
-  { id: '3', name: 'Birthday Celebration', company: 'Private - Sarah M.', date: '2026-03-10', time: '6:00 PM', eventType: 'birthday', guests: 18, status: 'paid' },
-  { id: '4', name: 'Employee Wellness Day', company: 'WellCare Health Plans', date: '2026-03-14', time: '9:00 AM', eventType: 'corporate', guests: 30, status: 'deposit_paid' },
-  { id: '5', name: 'Community Open House', company: 'The Sauna Guys', date: '2026-03-15', time: '11:00 AM', eventType: 'community', guests: 50, status: 'confirmed' },
-  { id: '6', name: 'Team Building Retreat', company: 'Tech Data Corp', date: '2026-03-20', time: '1:00 PM', eventType: 'team_building', guests: 20, status: 'confirmed' },
-  { id: '7', name: 'Spring Recovery Session', company: 'Tampa Bay Buccaneers', date: '2026-03-22', time: '3:00 PM', eventType: 'team_building', guests: 24, status: 'confirmed' },
-  { id: '8', name: 'VIP Client Event', company: 'Mosaic Company', date: '2026-03-25', time: '5:00 PM', eventType: 'corporate', guests: 15, status: 'quoted' },
-  { id: '9', name: 'Private Sauna Party', company: 'Private - Mike R.', date: '2026-03-28', time: '7:00 PM', eventType: 'private_party', guests: 10, status: 'inquiry' },
-  { id: '10', name: 'Mindfulness Workshop', company: 'BayCare Health System', date: '2026-03-31', time: '10:00 AM', eventType: 'workshop', guests: 16, status: 'quoted' },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ────────────────────────────────────────────────
 const eventTypeConfig: Record<EventType, { label: string; className: string; pillClass: string }> = {
@@ -95,26 +84,63 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function EventCalendarPage() {
+  const [allEvents, setAllEvents] = useState<CalendarEvent[]>([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<FilterType>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('month')
 
-  // March 2026
-  const year = 2026
-  const month = 2 // 0-indexed
-  const monthName = 'March 2026'
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadEvents() {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('event_date', { ascending: true })
+
+      if (cancelled) return
+
+      if (data) {
+        setAllEvents(data.map((e: any) => ({
+          id: e.id,
+          name: e.name || 'Unnamed Event',
+          company: e.company_name || '',
+          date: e.event_date ? e.event_date.split('T')[0] : '',
+          time: e.event_time || '',
+          eventType: (e.event_type || 'corporate') as EventType,
+          guests: e.guest_count ?? 0,
+          status: (e.status || 'inquiry') as EventStatus,
+        })))
+      }
+
+      setLoading(false)
+    }
+
+    loadEvents()
+    return () => { cancelled = true }
+  }, [])
+
+  // Current month
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const monthName = now.toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const daysInMonth = getDaysInMonth(year, month)
   const firstDay = getFirstDayOfMonth(year, month)
 
-  const filteredEvents = EVENTS.filter((e) => filter === 'all' || e.eventType === filter)
+  const filteredEvents = allEvents.filter((e) => filter === 'all' || e.eventType === filter)
 
   const getEventsForDay = (day: number) => {
-    const dateStr = `2026-03-${String(day).padStart(2, '0')}`
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     return filteredEvents.filter((e) => e.date === dateStr)
   }
 
   // Upcoming events sorted by date
+  const todayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const upcomingEvents = filteredEvents
-    .filter((e) => e.date >= '2026-03-20')
+    .filter((e) => e.date >= todayStr)
     .sort((a, b) => a.date.localeCompare(b.date))
 
   // Build calendar grid
@@ -215,7 +241,7 @@ export default function EventCalendarPage() {
             {Array.from({ length: rows * 7 }).map((_, i) => {
               const day = i - firstDay + 1
               const isValidDay = day >= 1 && day <= daysInMonth
-              const isToday = day === 20 // March 20, 2026
+              const isToday = day === now.getDate()
               const dayEvents = isValidDay ? getEventsForDay(day) : []
 
               return (

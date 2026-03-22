@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
   CalendarCheck,
   UserCheck,
@@ -22,70 +23,13 @@ import {
   Users,
 } from 'lucide-react'
 
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+
 const fadeInUp = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
 }
-
-// ─── Mock Data ──────────────────────────────────────────────
-
-const TODAY_KPIS = [
-  { label: 'Bookings', value: '47', trend: 12, icon: CalendarCheck },
-  { label: 'Check-ins', value: '38', trend: 8, icon: UserCheck },
-  { label: 'Walk-ins', value: '6', trend: -15, icon: Footprints },
-  { label: 'No-shows', value: '3', trend: -25, icon: AlertTriangle },
-  { label: 'Fill Rate', value: '78%', trend: 5, icon: Percent },
-]
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const HOURS = ['5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM']
-
-// Current week heatmap — today is Thursday (index 3)
-const WEEK_HEATMAP: number[][] = [
-  [25, 20, 15, 30, 0, 0, 0],
-  [40, 35, 30, 55, 0, 0, 0],
-  [60, 55, 50, 72, 0, 0, 0],
-  [75, 70, 65, 88, 0, 0, 0],
-  [90, 85, 80, 92, 0, 0, 0],
-  [95, 88, 85, 78, 0, 0, 0],
-  [85, 80, 75, 65, 0, 0, 0],
-  [70, 65, 60, 50, 0, 0, 0],
-]
-
-const TODAY_CLASSES = [
-  { time: '5:00 AM', name: 'Open Sauna', trainer: null, booked: 4, capacity: 12, checkedIn: 3, type: 'Open' },
-  { time: '6:00 AM', name: 'Open Sauna', trainer: null, booked: 7, capacity: 12, checkedIn: 6, type: 'Open' },
-  { time: '7:00 AM', name: 'Open Sauna', trainer: null, booked: 9, capacity: 12, checkedIn: 8, type: 'Open' },
-  { time: '8:00 AM', name: 'Guided Breathwork', trainer: 'Whitney Cooper', booked: 11, capacity: 12, checkedIn: 10, type: 'Guided' },
-  { time: '9:00 AM', name: 'Open Sauna', trainer: null, booked: 11, capacity: 12, checkedIn: 9, type: 'Open' },
-  { time: '10:00 AM', name: 'Open Sauna', trainer: null, booked: 8, capacity: 12, checkedIn: 0, type: 'Open' },
-  { time: '11:00 AM', name: 'Open Sauna', trainer: null, booked: 6, capacity: 12, checkedIn: 0, type: 'Open' },
-  { time: '12:00 PM', name: 'Guided Flow', trainer: 'Drennen Hall', booked: 8, capacity: 12, checkedIn: 0, type: 'Guided' },
-]
-
-const ACTIVITY_FEED = [
-  { id: 1, icon: UserCheck, text: 'Sarah Kim checked in for 9:00 AM Open Sauna', time: '2 min ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 2, icon: CreditCard, text: 'Mike Torres purchased Unlimited membership', time: '5 min ago', color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: 3, icon: CalendarCheck, text: 'Emma Davis booked 12:00 PM Guided Flow', time: '8 min ago', color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: 4, icon: UserCheck, text: 'James Park checked in for 9:00 AM Open Sauna', time: '10 min ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 5, icon: XCircle, text: 'Alex Chen cancelled 11:00 AM booking', time: '12 min ago', color: 'text-red-500', bg: 'bg-red-50' },
-  { id: 6, icon: UserPlus, text: 'New lead: Rachel Green (Instagram)', time: '15 min ago', color: 'text-violet-500', bg: 'bg-violet-50' },
-  { id: 7, icon: UserCheck, text: 'Whitney Cooper checked in for 8:00 AM Guided', time: '18 min ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 8, icon: CreditCard, text: 'Jen Lee purchased 10-Class Pack', time: '22 min ago', color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: 9, icon: CalendarCheck, text: 'David Wu booked 10:00 AM Open Sauna', time: '25 min ago', color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: 10, icon: UserCheck, text: 'Maria Santos checked in for 8:00 AM Guided', time: '28 min ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 11, icon: Footprints, text: 'Walk-in: Tom Harris (9:00 AM Open Sauna)', time: '30 min ago', color: 'text-amber-500', bg: 'bg-amber-50' },
-  { id: 12, icon: UserCheck, text: 'Lisa Wang checked in for 8:00 AM Guided', time: '32 min ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 13, icon: CalendarCheck, text: 'Chris Moore booked 11:00 AM Open Sauna', time: '35 min ago', color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: 14, icon: CreditCard, text: 'Amy Foster renewed Unlimited membership', time: '38 min ago', color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: 15, icon: UserCheck, text: 'Robert Kim checked in for 7:00 AM Open Sauna', time: '45 min ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 16, icon: XCircle, text: 'No-show: Jake Monroe for 7:00 AM', time: '50 min ago', color: 'text-red-500', bg: 'bg-red-50' },
-  { id: 17, icon: UserCheck, text: 'Nicole Brown checked in for 7:00 AM Open Sauna', time: '52 min ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 18, icon: CalendarCheck, text: 'Ben Wright booked 12:00 PM Guided Flow', time: '55 min ago', color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: 19, icon: Footprints, text: 'Walk-in: Sara Voss (6:00 AM Open Sauna)', time: '1 hr ago', color: 'text-amber-500', bg: 'bg-amber-50' },
-  { id: 20, icon: UserCheck, text: 'Mark Johnson checked in for 6:00 AM Open Sauna', time: '1 hr ago', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-]
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -115,10 +59,185 @@ function EmptyState({ icon: Icon, message }: { icon: typeof BarChart3; message: 
   )
 }
 
+function LoadingSkeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
+}
+
 // ─── Page Component ──────────────────────────────────────────
 
 export default function OperationsDashboardPage() {
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null)
+
+  // ─── Live data state ───────────────────────────────────────
+  const [todayKPIs, setTodayKPIs] = useState<{ label: string; value: string; trend: number; icon: typeof CalendarCheck }[]>([])
+  const [kpiLoading, setKpiLoading] = useState(true)
+  const [todayClasses, setTodayClasses] = useState<any[]>([])
+  const [classesLoading, setClassesLoading] = useState(true)
+  const [activityFeed, setActivityFeed] = useState<any[]>([])
+  const [activityLoading, setActivityLoading] = useState(true)
+  const [heatmapData, setHeatmapData] = useState<number[][]>([])
+  const [heatmapLoading, setHeatmapLoading] = useState(true)
+
+  const supabase = createBrowserClient()
+  const now = new Date()
+  const todayStr = now.toISOString().split('T')[0]!
+  const todayDayOfWeek = now.getDay() // 0=Sun, 1=Mon...
+  const todayIdx = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1 // Mon=0
+
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const HOURS = ['5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM']
+
+  // ─── Fetch Today's Classes + KPIs ──────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    async function fetchTodayData() {
+      // Get today's classes
+      const todayStart = `${todayStr}T00:00:00`
+      const todayEnd = `${todayStr}T23:59:59`
+
+      const { data: classes } = await supabase
+        .from('classes')
+        .select('*, class_types:class_type_id ( name, category )')
+        .eq('studio_id', STUDIO_ID)
+        .gte('starts_at', todayStart)
+        .lte('starts_at', todayEnd)
+        .order('starts_at', { ascending: true })
+
+      if (cancelled) return
+
+      const classRows = (classes ?? []).map((cls: any) => {
+        const startTime = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        return {
+          time: startTime,
+          name: cls.class_types?.name ?? cls.name ?? 'Class',
+          trainer: cls.trainer_name ?? null,
+          booked: cls.booked_count ?? 0,
+          capacity: cls.capacity ?? 12,
+          checkedIn: cls.checked_in_count ?? 0,
+          type: cls.class_types?.category === 'guided' ? 'Guided' : 'Open',
+        }
+      })
+      setTodayClasses(classRows)
+      setClassesLoading(false)
+
+      // Compute today KPIs from classes
+      const totalBooked = classRows.reduce((s: number, c: any) => s + c.booked, 0)
+      const totalCheckedIn = classRows.reduce((s: number, c: any) => s + c.checkedIn, 0)
+      const totalCapacity = classRows.reduce((s: number, c: any) => s + c.capacity, 0)
+      const fillRate = totalCapacity > 0 ? Math.round((totalBooked / totalCapacity) * 100) : 0
+
+      // Get today's bookings for walk-in + no-show counts
+      const { count: walkInCount } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('studio_id', STUDIO_ID)
+        .eq('booking_type', 'walk_in')
+        .gte('created_at', todayStart)
+        .lte('created_at', todayEnd)
+
+      const { count: noShowCount } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('studio_id', STUDIO_ID)
+        .eq('status', 'no_show')
+        .gte('created_at', todayStart)
+        .lte('created_at', todayEnd)
+
+      if (cancelled) return
+
+      setTodayKPIs([
+        { label: 'Bookings', value: String(totalBooked), trend: 0, icon: CalendarCheck },
+        { label: 'Check-ins', value: String(totalCheckedIn), trend: 0, icon: UserCheck },
+        { label: 'Walk-ins', value: String(walkInCount ?? 0), trend: 0, icon: Footprints },
+        { label: 'No-shows', value: String(noShowCount ?? 0), trend: 0, icon: AlertTriangle },
+        { label: 'Fill Rate', value: `${fillRate}%`, trend: 0, icon: Percent },
+      ])
+      setKpiLoading(false)
+    }
+    fetchTodayData()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Fetch Activity Feed ───────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    async function fetchActivity() {
+      const { data } = await supabase
+        .from('activity_log')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (cancelled) return
+
+      const ICON_MAP: Record<string, { icon: typeof UserCheck; color: string; bg: string }> = {
+        'check_in': { icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+        'booking.created': { icon: CalendarCheck, color: 'text-blue-500', bg: 'bg-blue-50' },
+        'booking.cancelled': { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
+        'payment': { icon: CreditCard, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+        'walk_in': { icon: Footprints, color: 'text-amber-500', bg: 'bg-amber-50' },
+        'member.created': { icon: UserPlus, color: 'text-violet-500', bg: 'bg-violet-50' },
+      }
+      const defaultStyle = { icon: CalendarCheck, color: 'text-gray-500', bg: 'bg-gray-50' }
+
+      const items = (data ?? []).map((entry: any) => {
+        const style = ICON_MAP[entry.action] ?? defaultStyle
+        const timeAgo = getTimeAgo(entry.created_at)
+        return {
+          id: entry.id,
+          icon: style.icon,
+          color: style.color,
+          bg: style.bg,
+          text: entry.actor_name
+            ? `${entry.actor_name}: ${entry.action?.replace(/_/g, ' ') ?? 'action'}`
+            : entry.action?.replace(/_/g, ' ') ?? 'Activity',
+          time: timeAgo,
+        }
+      })
+      setActivityFeed(items)
+      setActivityLoading(false)
+    }
+    fetchActivity()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Fetch Heatmap (this week) ─────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    // Get start of current week (Monday)
+    const mondayDate = new Date(now)
+    const dayOfWeek = mondayDate.getDay()
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    mondayDate.setDate(mondayDate.getDate() + diff)
+    const startStr = mondayDate.toISOString().split('T')[0]!
+    const sundayDate = new Date(mondayDate)
+    sundayDate.setDate(sundayDate.getDate() + 6)
+    const endStr = sundayDate.toISOString().split('T')[0]!
+
+    fetch(`/api/analytics/heatmap?start_date=${startStr}&end_date=${endStr}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.data) return
+        const grid: number[][] = Array.from({ length: 8 }, () => Array(7).fill(0))
+        for (const row of d.data) {
+          const hourIdx = (row.hour_of_day ?? 5) - 5
+          const dayIdx = (row.day_of_week ?? 1) - 1
+          if (hourIdx >= 0 && hourIdx < 8 && dayIdx >= 0 && dayIdx < 7) {
+            grid[hourIdx][dayIdx] = Math.round((row.avg_fill_rate ?? 0) * 100)
+          }
+        }
+        setHeatmapData(grid)
+      })
+      .catch(() => { setHeatmapData([]) })
+      .finally(() => { if (!cancelled) setHeatmapLoading(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
@@ -136,7 +255,7 @@ export default function OperationsDashboardPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Daily Operations</h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                Thursday, March 20, 2026 &middot; Real-time studio activity
+                {formattedDate} &middot; Real-time studio activity
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -152,43 +271,35 @@ export default function OperationsDashboardPage() {
           transition={{ ...fadeInUp.transition, delay: 0.03 }}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"
         >
-          {TODAY_KPIS.map((kpi) => {
-            const Icon = kpi.icon
-            const isNoShows = kpi.label === 'No-shows'
-            const isPositive = isNoShows ? kpi.trend < 0 : kpi.trend > 0
-            return (
-              <div
-                key={kpi.label}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    {kpi.label}
-                  </span>
-                  <Icon className="w-3.5 h-3.5 text-gray-300" />
-                </div>
-                <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none mb-1">
-                  {kpi.value}
-                </p>
-                <div className="flex items-center gap-1">
-                  {isPositive ? (
-                    <ArrowUpRight className="w-3 h-3 text-emerald-500" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3 text-red-500" />
-                  )}
-                  <span
-                    className={cn(
-                      'text-xs font-semibold tabular-nums',
-                      isPositive ? 'text-emerald-600' : 'text-red-600'
-                    )}
-                  >
-                    {Math.abs(kpi.trend)}%
-                  </span>
-                  <span className="text-[10px] text-gray-400">vs last Thu</span>
-                </div>
+          {kpiLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+                <LoadingSkeleton className="h-3 w-16 mb-2" />
+                <LoadingSkeleton className="h-8 w-14 mb-1" />
+                <LoadingSkeleton className="h-3 w-12" />
               </div>
-            )
-          })}
+            ))
+          ) : (
+            todayKPIs.map((kpi) => {
+              const Icon = kpi.icon
+              return (
+                <div
+                  key={kpi.label}
+                  className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      {kpi.label}
+                    </span>
+                    <Icon className="w-3.5 h-3.5 text-gray-300" />
+                  </div>
+                  <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none mb-1">
+                    {kpi.value}
+                  </p>
+                </div>
+              )
+            })
+          )}
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -203,7 +314,13 @@ export default function OperationsDashboardPage() {
               <p className="text-xs text-gray-400 mt-0.5">Fill rate by hour &middot; Today highlighted</p>
             </div>
 
-            {WEEK_HEATMAP.every((row) => row.every((v) => v === 0)) ? (
+            {heatmapLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : heatmapData.length === 0 || heatmapData.every((row) => row.every((v) => v === 0)) ? (
               <EmptyState icon={BarChart3} message="No attendance data this week" />
             ) : (
               <div className="overflow-x-auto">
@@ -216,11 +333,11 @@ export default function OperationsDashboardPage() {
                           key={day}
                           className={cn(
                             'text-[10px] font-bold uppercase tracking-widest pb-2 text-center',
-                            i === 3 ? 'text-indigo-600' : 'text-gray-400'
+                            i === todayIdx ? 'text-indigo-600' : 'text-gray-400'
                           )}
                         >
                           {day}
-                          {i === 3 && (
+                          {i === todayIdx && (
                             <span className="block text-[8px] text-indigo-400 font-medium normal-case tracking-normal">
                               Today
                             </span>
@@ -236,8 +353,8 @@ export default function OperationsDashboardPage() {
                           {hour}
                         </td>
                         {DAYS.map((day, colIdx) => {
-                          const val = WEEK_HEATMAP[rowIdx]?.[colIdx] ?? 0
-                          const isToday = colIdx === 3
+                          const val = heatmapData[rowIdx]?.[colIdx] ?? 0
+                          const isToday = colIdx === todayIdx
                           const isHovered = hoveredCell?.row === rowIdx && hoveredCell?.col === colIdx
                           return (
                             <td key={day} className="p-0.5">
@@ -293,11 +410,23 @@ export default function OperationsDashboardPage() {
               </div>
             </div>
 
-            {ACTIVITY_FEED.length === 0 ? (
+            {activityLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <LoadingSkeleton className="w-6 h-6 rounded-lg flex-shrink-0" />
+                    <div className="flex-1">
+                      <LoadingSkeleton className="h-3 w-full mb-1" />
+                      <LoadingSkeleton className="h-2 w-16" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : activityFeed.length === 0 ? (
               <EmptyState icon={Clock} message="No recent activity" />
             ) : (
               <div className="space-y-1 max-h-[440px] overflow-y-auto pr-1">
-                {ACTIVITY_FEED.map((item) => {
+                {activityFeed.map((item: any) => {
                   const Icon = item.icon
                   return (
                     <div key={item.id} className="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
@@ -334,7 +463,13 @@ export default function OperationsDashboardPage() {
               </Link>
             </div>
 
-            {TODAY_CLASSES.length === 0 ? (
+            {classesLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <LoadingSkeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : todayClasses.length === 0 ? (
               <EmptyState icon={CalendarCheck} message="No classes scheduled today" />
             ) : (
               <div className="overflow-x-auto">
@@ -351,8 +486,8 @@ export default function OperationsDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {TODAY_CLASSES.map((cls, i) => {
-                      const fillRate = Math.round((cls.booked / cls.capacity) * 100)
+                    {todayClasses.map((cls: any, i: number) => {
+                      const fillRate = cls.capacity > 0 ? Math.round((cls.booked / cls.capacity) * 100) : 0
                       const isPast = cls.checkedIn > 0
                       const isFull = cls.booked >= cls.capacity
                       return (
@@ -371,12 +506,12 @@ export default function OperationsDashboardPage() {
                               </span>
                             </div>
                           </td>
-                          <td className="py-3 text-sm text-gray-600">{cls.trainer ?? '—'}</td>
+                          <td className="py-3 text-sm text-gray-600">{cls.trainer ?? '\u2014'}</td>
                           <td className="py-3 text-sm font-semibold text-gray-900 text-center tabular-nums">
                             {cls.booked}/{cls.capacity}
                           </td>
                           <td className="py-3 text-sm font-semibold text-gray-900 text-center tabular-nums">
-                            {isPast ? cls.checkedIn : '—'}
+                            {isPast ? cls.checkedIn : '\u2014'}
                           </td>
                           <td className="py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
@@ -419,4 +554,19 @@ export default function OperationsDashboardPage() {
       </div>
     </div>
   )
+}
+
+// ─── Time Ago Helper ─────────────────────────────────────────
+
+function getTimeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diffMs = now - then
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${diffMin} min ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr} hr ago`
+  const diffDays = Math.floor(diffHr / 24)
+  return `${diffDays}d ago`
 }

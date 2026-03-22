@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -54,28 +55,7 @@ interface OrderHistoryItem {
   status: string
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const PRODUCTS_DB: Record<string, Product> = {
-  '1': { id: '1', name: 'Meridian Logo Tee — Black', description: 'Premium cotton blend tee featuring the Meridian logo. Soft-washed for comfort. Unisex fit.', category: 'apparel', priceInCents: 3500, compareAtPriceInCents: null, sku: 'APP-TEE-BLK-001', barcode: '850012345001', inventory: 24, lowStockThreshold: 5, weightOz: 6, active: true, images: [] },
-  '2': { id: '2', name: 'Meridian Logo Tee — White', description: 'Premium cotton blend tee featuring the Meridian logo in contrasting dark print. Unisex fit.', category: 'apparel', priceInCents: 3500, compareAtPriceInCents: null, sku: 'APP-TEE-WHT-001', barcode: '850012345002', inventory: 18, lowStockThreshold: 5, weightOz: 6, active: true, images: [] },
-  '3': { id: '3', name: 'Recovery Hoodie — Charcoal', description: 'Heavyweight fleece hoodie with kangaroo pocket. Perfect for post-session warmth. Relaxed fit.', category: 'apparel', priceInCents: 6500, compareAtPriceInCents: 7500, sku: 'APP-HOD-CHR-001', barcode: '850012345003', inventory: 12, lowStockThreshold: 3, weightOz: 18, active: true, images: [] },
-  '4': { id: '4', name: 'Sauna Session Shorts', description: 'Quick-dry athletic shorts designed for sauna sessions. Antimicrobial fabric, 7-inch inseam.', category: 'apparel', priceInCents: 4200, compareAtPriceInCents: null, sku: 'APP-SHR-BLK-001', barcode: '850012345004', inventory: 8, lowStockThreshold: 5, weightOz: 4, active: true, images: [] },
-  '5': { id: '5', name: 'Insulated Water Bottle — 32oz', description: 'Double-walled vacuum insulated stainless steel. Keeps cold 24hrs, hot 12hrs. BPA-free.', category: 'accessories', priceInCents: 2800, compareAtPriceInCents: null, sku: 'ACC-BTL-32-001', barcode: '850012345005', inventory: 31, lowStockThreshold: 10, weightOz: 12, active: true, images: [] },
-  '6': { id: '6', name: 'Meridian Sport Towel', description: 'Quick-dry microfiber sport towel with Meridian branding. 40x20 inches.', category: 'accessories', priceInCents: 1800, compareAtPriceInCents: null, sku: 'ACC-TWL-SPT-001', barcode: '850012345006', inventory: 45, lowStockThreshold: 10, weightOz: 5, active: true, images: [] },
-  '7': { id: '7', name: 'Eucalyptus Sauna Oil — 4oz', description: 'Pure eucalyptus essential oil blend for sauna aromatherapy. Lab-tested, therapeutic grade.', category: 'supplements', priceInCents: 2200, compareAtPriceInCents: null, sku: 'SUP-OIL-EUC-001', barcode: '850012345007', inventory: 6, lowStockThreshold: 5, weightOz: 5, active: true, images: [] },
-  '8': { id: '8', name: 'Cold Plunge Recovery Balm', description: 'Menthol and arnica recovery balm for post-cold plunge muscle relief. 2oz tin.', category: 'supplements', priceInCents: 1900, compareAtPriceInCents: 2400, sku: 'SUP-BLM-RCV-001', barcode: '850012345008', inventory: 2, lowStockThreshold: 5, weightOz: 3, active: true, images: [] },
-  '9': { id: '9', name: 'Breathwork Timer — Pro', description: 'Guided breathwork timer with customizable intervals and haptic feedback. USB-C charging.', category: 'equipment', priceInCents: 4900, compareAtPriceInCents: null, sku: 'EQP-TMR-PRO-001', barcode: '850012345009', inventory: 5, lowStockThreshold: 3, weightOz: 4, active: true, images: [] },
-  '10': { id: '10', name: 'Sauna Hat — Wool Felt', description: 'Traditional wool felt sauna hat for head protection. One size fits most.', category: 'accessories', priceInCents: 2400, compareAtPriceInCents: null, sku: 'ACC-HAT-WOL-001', barcode: '850012345010', inventory: 0, lowStockThreshold: 3, weightOz: 3, active: false, images: [] },
-  '11': { id: '11', name: 'Electrolyte Mix — 30 Pack', description: 'Sugar-free electrolyte powder packets. Essential hydration for hot/cold therapy sessions.', category: 'supplements', priceInCents: 3200, compareAtPriceInCents: null, sku: 'SUP-ELT-30P-001', barcode: '850012345011', inventory: 15, lowStockThreshold: 10, weightOz: 8, active: true, images: [] },
-  '12': { id: '12', name: 'Meridian Gym Bag', description: 'Durable canvas gym bag with shoe compartment and wet/dry separation. 35L capacity.', category: 'accessories', priceInCents: 5500, compareAtPriceInCents: null, sku: 'ACC-BAG-GYM-001', barcode: '850012345012', inventory: 9, lowStockThreshold: 5, weightOz: 24, active: true, images: [] },
-}
-
-const ORDER_HISTORY: OrderHistoryItem[] = [
-  { id: '1', orderId: '#MER-0012', customerName: 'Sarah Mitchell', date: 'Mar 18, 2026', quantity: 2, total: 7000, status: 'completed' },
-  { id: '2', orderId: '#MER-0009', customerName: 'Jake Torres', date: 'Mar 15, 2026', quantity: 1, total: 3500, status: 'completed' },
-  { id: '3', orderId: '#MER-0007', customerName: 'Emily Chen', date: 'Mar 12, 2026', quantity: 1, total: 3500, status: 'shipped' },
-  { id: '4', orderId: '#MER-0003', customerName: 'Michael Brown', date: 'Mar 8, 2026', quantity: 3, total: 10500, status: 'completed' },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ────────────────────────────────────────────────
 function formatCents(cents: number) {
@@ -92,19 +72,84 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 export default function ProductDetailPage() {
   const params = useParams()
   const productId = params.id as string
-  const product = PRODUCTS_DB[productId]
+  const [product, setProduct] = useState<Product | null>(null)
+  const [ORDER_HISTORY, setOrderHistory] = useState<OrderHistoryItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [name, setName] = useState(product?.name ?? '')
-  const [description, setDescription] = useState(product?.description ?? '')
-  const [category, setCategory] = useState(product?.category ?? 'apparel')
-  const [priceInCents, setPriceInCents] = useState(product?.priceInCents ?? 0)
-  const [compareAtPrice, setCompareAtPrice] = useState(product?.compareAtPriceInCents ?? 0)
-  const [inventory, setInventory] = useState(product?.inventory ?? 0)
-  const [lowStockThreshold, setLowStockThreshold] = useState(product?.lowStockThreshold ?? 5)
-  const [sku, setSku] = useState(product?.sku ?? '')
-  const [barcode, setBarcode] = useState(product?.barcode ?? '')
-  const [weightOz, setWeightOz] = useState(product?.weightOz ?? 0)
-  const [active, setActive] = useState(product?.active ?? true)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [category, setCategory] = useState('apparel')
+  const [priceInCents, setPriceInCents] = useState(0)
+  const [compareAtPrice, setCompareAtPrice] = useState(0)
+  const [inventory, setInventory] = useState(0)
+  const [lowStockThreshold, setLowStockThreshold] = useState(5)
+  const [sku, setSku] = useState('')
+  const [barcode, setBarcode] = useState('')
+  const [weightOz, setWeightOz] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadProduct() {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .eq('studio_id', STUDIO_ID)
+        .single()
+
+      if (cancelled) return
+
+      if (data) {
+        const p: Product = {
+          id: data.id,
+          name: data.name || '',
+          description: data.description || '',
+          category: data.category || 'apparel',
+          priceInCents: data.price_in_cents ?? 0,
+          compareAtPriceInCents: data.compare_at_price_in_cents || null,
+          sku: data.sku || '',
+          barcode: data.barcode || '',
+          inventory: data.inventory ?? 0,
+          lowStockThreshold: data.low_stock_threshold ?? 5,
+          weightOz: data.weight_oz ?? 0,
+          active: data.active ?? true,
+          images: data.images || [],
+        }
+        setProduct(p)
+        setName(p.name)
+        setDescription(p.description)
+        setCategory(p.category)
+        setPriceInCents(p.priceInCents)
+        setCompareAtPrice(p.compareAtPriceInCents ?? 0)
+        setInventory(p.inventory)
+        setLowStockThreshold(p.lowStockThreshold)
+        setSku(p.sku)
+        setBarcode(p.barcode)
+        setWeightOz(p.weightOz)
+      }
+
+      setLoading(false)
+    }
+
+    loadProduct()
+    return () => { cancelled = true }
+  }, [productId])
+  const [active, setActive] = useState(true)
+
+  // Update active when product loads
+  useEffect(() => {
+    if (product) setActive(product.active)
+  }, [product])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+      </div>
+    )
+  }
 
   if (!product) {
     return (
@@ -112,6 +157,7 @@ export default function ProductDetailPage() {
         <div className="text-center">
           <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
           <p className="text-lg font-bold text-gray-700">Product not found</p>
+          <p className="text-sm text-gray-400 mt-1">This product may have been deleted or does not exist.</p>
           <Link href="/revenue/products" className="text-sm text-indigo-600 hover:text-indigo-700 mt-2 inline-block">
             Back to Products
           </Link>

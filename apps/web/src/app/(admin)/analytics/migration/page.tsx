@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
   Database,
@@ -86,65 +87,16 @@ interface PilotMember {
   renewalPassed: boolean
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
-const INITIAL_DATA_TYPES: DataType[] = [
-  { id: 'members', name: 'Members', icon: Users, status: 'Completed', rowCount: 1103, validRows: 1098, invalidRows: 3, warnings: 2 },
-  { id: 'bookings', name: 'Bookings', icon: CalendarDays, status: 'Completed', rowCount: 1296, validRows: 1290, invalidRows: 4, warnings: 2 },
+const DEFAULT_DATA_TYPES: DataType[] = [
+  { id: 'members', name: 'Members', icon: Users, status: 'Not Started', rowCount: null },
+  { id: 'bookings', name: 'Bookings', icon: CalendarDays, status: 'Not Started', rowCount: null },
   { id: 'transactions', name: 'Transactions', icon: CreditCard, status: 'Not Started', rowCount: null },
   { id: 'classes', name: 'Classes', icon: Ticket, status: 'Not Started', rowCount: null },
   { id: 'credits', name: 'Credit Balances', icon: Wallet, status: 'Not Started', rowCount: null },
   { id: 'memberships', name: 'Memberships', icon: Crown, status: 'Not Started', rowCount: null },
-]
-
-const MIGRATION_JOBS: MigrationJob[] = [
-  {
-    id: 'job-1',
-    dataType: 'Members',
-    wave: 1,
-    status: 'Completed',
-    successRows: 1098,
-    errorRows: 3,
-    skipRows: 2,
-    startedAt: '2026-03-10 09:15',
-    completedAt: '2026-03-10 09:23',
-    canRollback: true,
-  },
-  {
-    id: 'job-2',
-    dataType: 'Bookings',
-    wave: 1,
-    status: 'Completed',
-    successRows: 1290,
-    errorRows: 4,
-    skipRows: 2,
-    startedAt: '2026-03-10 10:02',
-    completedAt: '2026-03-10 10:14',
-    canRollback: true,
-  },
-]
-
-const INITIAL_MEMBERS: MemberAssignment[] = [
-  { id: 'm-1', name: 'Sarah Chen', email: 'sarah.chen@gmail.com', glofoxRenewalDate: '2026-04-01', migrationStatus: 'Wave 2' },
-  { id: 'm-2', name: 'Marcus Johnson', email: 'marcus.j@outlook.com', glofoxRenewalDate: '2026-04-05', migrationStatus: 'Wave 2' },
-  { id: 'm-3', name: 'Elena Rodriguez', email: 'elena.r@yahoo.com', glofoxRenewalDate: '2026-03-28', migrationStatus: 'Wave 2' },
-  { id: 'm-4', name: 'David Park', email: 'dpark@gmail.com', glofoxRenewalDate: '2026-04-12', migrationStatus: 'Wave 2' },
-  { id: 'm-5', name: 'Jessica Williams', email: 'jwilliams@icloud.com', glofoxRenewalDate: '2026-04-08', migrationStatus: 'Wave 2' },
-  { id: 'm-6', name: 'Ryan Thompson', email: 'ryan.t@gmail.com', glofoxRenewalDate: '2026-04-15', migrationStatus: 'Unassigned' },
-  { id: 'm-7', name: 'Amanda Foster', email: 'afoster@outlook.com', glofoxRenewalDate: '2026-04-03', migrationStatus: 'Unassigned' },
-  { id: 'm-8', name: 'Tyler Brooks', email: 'tyler.b@gmail.com', glofoxRenewalDate: '2026-04-20', migrationStatus: 'Unassigned' },
-  { id: 'm-9', name: 'Nicole Chang', email: 'nchang@yahoo.com', glofoxRenewalDate: '2026-03-25', migrationStatus: 'Unassigned' },
-  { id: 'm-10', name: 'Brandon Lee', email: 'brandon.lee@gmail.com', glofoxRenewalDate: '2026-04-10', migrationStatus: 'Unassigned' },
-  { id: 'm-11', name: 'Megan Davis', email: 'mdavis@icloud.com', glofoxRenewalDate: '2026-04-18', migrationStatus: 'Unassigned' },
-  { id: 'm-12', name: 'Chris Martinez', email: 'cmartinez@gmail.com', glofoxRenewalDate: '2026-04-22', migrationStatus: 'Unassigned' },
-]
-
-const PILOT_MEMBERS: PilotMember[] = [
-  { id: 'p-1', name: 'Sarah Chen', glofoxRenewalDate: '2026-04-01', billingStatus: 'Not Started', renewalPassed: false },
-  { id: 'p-2', name: 'Marcus Johnson', glofoxRenewalDate: '2026-04-05', billingStatus: 'Not Started', renewalPassed: false },
-  { id: 'p-3', name: 'Elena Rodriguez', glofoxRenewalDate: '2026-03-28', billingStatus: 'Ready to Activate', renewalPassed: false },
-  { id: 'p-4', name: 'David Park', glofoxRenewalDate: '2026-04-12', billingStatus: 'Not Started', renewalPassed: false },
-  { id: 'p-5', name: 'Jessica Williams', glofoxRenewalDate: '2026-04-08', billingStatus: 'Not Started', renewalPassed: false },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -396,10 +348,53 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
 export default function MigrationAdminPage() {
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [memberSearch, setMemberSearch] = useState('')
-  const [members, setMembers] = useState<MemberAssignment[]>(INITIAL_MEMBERS)
+  const [members, setMembers] = useState<MemberAssignment[]>([])
   const [rollbackConfirm, setRollbackConfirm] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [migrationJobs, setMigrationJobs] = useState<MigrationJob[]>([])
+  const [dataTypes, setDataTypes] = useState<DataType[]>(DEFAULT_DATA_TYPES)
+  const [pilotMembers, setPilotMembers] = useState<PilotMember[]>([])
 
-  const currentWave: WaveStep = 1 // Wave 1 partially complete
+  useEffect(() => {
+    async function fetchMigrationData() {
+      const supabase = createBrowserClient()
+
+      // Fetch migration jobs
+      const { data: jobs } = await supabase
+        .from('migration_jobs')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (jobs && jobs.length > 0) {
+        setMigrationJobs(jobs.map((j: any) => ({
+          id: j.id,
+          dataType: j.data_type ?? '',
+          wave: j.wave ?? 1,
+          status: j.status ?? 'Completed',
+          successRows: j.success_rows ?? 0,
+          errorRows: j.error_rows ?? 0,
+          skipRows: j.skip_rows ?? 0,
+          startedAt: j.started_at ?? '',
+          completedAt: j.completed_at ?? '',
+          canRollback: j.can_rollback ?? false,
+        })))
+      }
+
+      setLoading(false)
+    }
+    fetchMigrationData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
+
+  const currentWave: WaveStep = 1
   const waveSteps = [
     { wave: 1 as WaveStep, label: 'Data Import', description: 'Import Glofox data into Meridian', complete: false },
     { wave: 2 as WaveStep, label: 'Internal Testing', description: 'Staff validates migrated data', complete: false },
@@ -506,7 +501,7 @@ export default function MigrationAdminPage() {
             Data Import
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {INITIAL_DATA_TYPES.map((dt) => {
+            {DEFAULT_DATA_TYPES.map((dt) => {
               const Icon = dt.icon
               const statusStyle = STATUS_STYLES[dt.status]
               const isExpanded = expandedCard === dt.id
@@ -576,7 +571,7 @@ export default function MigrationAdminPage() {
               <p className="text-xs text-gray-400 mt-0.5">Track all import operations</p>
             </div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              {MIGRATION_JOBS.length} Jobs
+              {migrationJobs.length} Jobs
             </span>
           </div>
 
@@ -592,7 +587,7 @@ export default function MigrationAdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {MIGRATION_JOBS.map((job) => (
+                {migrationJobs.map((job) => (
                   <tr key={job.id}>
                     <td className="py-3 pr-4">
                       <span className="text-sm font-medium text-gray-900">{job.dataType}</span>
@@ -832,7 +827,7 @@ export default function MigrationAdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {PILOT_MEMBERS.map((member) => {
+                {pilotMembers.map((member) => {
                   const billingStyle = BILLING_STATUS_STYLES[member.billingStatus]
                   const BillingIcon = billingStyle.icon
                   const isSafe = member.renewalPassed

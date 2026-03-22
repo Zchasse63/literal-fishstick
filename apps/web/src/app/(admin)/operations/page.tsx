@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
+  Loader2 as Spinner,
   Users,
   CalendarDays,
   DollarSign,
@@ -91,101 +93,10 @@ interface PayPeriod {
   rows: PayrollRow[]
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const EMPLOYEES: Employee[] = [
-  {
-    id: '1', name: 'Whitney Cooper', initials: 'WC', role: 'Trainer',
-    status: 'Active', employmentType: 'Part-Time', hireDate: 'Jan 15, 2025',
-    payRate: '$35/class', hoursThisPeriod: 18, clockStatus: 'out', clockedInSince: null,
-    email: 'whitney@thesaunaguys.com', phone: '(813) 555-0101',
-    classesLed: 42, avgAttendance: 8.3, bonusHitRate: 72, promoCode: 'WHITNEY10',
-    promoRedemptions: 14, promoRevenue: 2_100,
-    currentPeriodHours: 18, grossPayEstimate: 630, ytdGross: 8_820, ytdBonuses: 450,
-  },
-  {
-    id: '2', name: 'Drennen', initials: 'DR', role: 'Trainer',
-    status: 'Active', employmentType: 'Part-Time', hireDate: 'Mar 3, 2025',
-    payRate: '$35/class', hoursThisPeriod: 14, clockStatus: 'in', clockedInSince: '4:00 PM',
-    email: 'drennen@thesaunaguys.com', phone: '(813) 555-0102',
-    classesLed: 36, avgAttendance: 7.9, bonusHitRate: 64, promoCode: 'DRENNEN10',
-    promoRedemptions: 9, promoRevenue: 1_350,
-    currentPeriodHours: 14, grossPayEstimate: 490, ytdGross: 6_860, ytdBonuses: 280,
-  },
-  {
-    id: '3', name: 'Trent', initials: 'TR', role: 'Trainer',
-    status: 'Active', employmentType: 'Part-Time', hireDate: 'Feb 20, 2025',
-    payRate: '$35/class', hoursThisPeriod: 16, clockStatus: 'out', clockedInSince: null,
-    email: 'trent@thesaunaguys.com', phone: '(813) 555-0103',
-    classesLed: 38, avgAttendance: 8.1, bonusHitRate: 68, promoCode: 'TRENT10',
-    promoRedemptions: 11, promoRevenue: 1_650,
-    currentPeriodHours: 16, grossPayEstimate: 560, ytdGross: 7_840, ytdBonuses: 350,
-  },
-  {
-    id: '4', name: 'Tara Kim', initials: 'TK', role: 'Front Desk',
-    status: 'Active', employmentType: 'Full-Time', hireDate: 'Nov 8, 2024',
-    payRate: '$16/hr', hoursThisPeriod: 38, clockStatus: 'in', clockedInSince: '2:00 PM',
-    email: 'tara@thesaunaguys.com', phone: '(813) 555-0104',
-    currentPeriodHours: 38, grossPayEstimate: 608, ytdGross: 9_728, ytdBonuses: 0,
-  },
-  {
-    id: '5', name: 'Alex Park', initials: 'AP', role: 'Trainer',
-    status: 'On Leave', employmentType: 'Part-Time', hireDate: 'Apr 12, 2025',
-    payRate: '$35/class', hoursThisPeriod: 0, clockStatus: null, clockedInSince: null,
-    email: 'alex@thesaunaguys.com', phone: '(813) 555-0105',
-    classesLed: 22, avgAttendance: 7.4, bonusHitRate: 55, promoCode: 'ALEX10',
-    promoRedemptions: 5, promoRevenue: 750,
-    currentPeriodHours: 0, grossPayEstimate: 0, ytdGross: 3_850, ytdBonuses: 120,
-  },
-  {
-    id: '6', name: 'Zach M.', initials: 'ZM', role: 'Owner',
-    status: 'Active', employmentType: 'Full-Time', hireDate: 'Sep 1, 2024',
-    payRate: null, hoursThisPeriod: null, clockStatus: null, clockedInSince: null,
-    email: 'zach@thesaunaguys.com', phone: '(813) 555-0100',
-  },
-]
+// ─── Supabase ──────────────────────────────────────────────
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
-const PAY_PERIODS: PayPeriod[] = [
-  {
-    id: 'pp1', label: 'Current Period', range: 'Mar 1 – Mar 15, 2026',
-    rows: [
-      { employeeId: '1', name: 'Whitney Cooper', role: 'Trainer', regularHours: 18, overtime: 0, grossPay: 630, trainerBonuses: 75, promoCommissions: 42, total: 747, status: 'Pending Review' },
-      { employeeId: '2', name: 'Drennen', role: 'Trainer', regularHours: 14, overtime: 0, grossPay: 490, trainerBonuses: 50, promoCommissions: 27, total: 567, status: 'Pending Review' },
-      { employeeId: '3', name: 'Trent', role: 'Trainer', regularHours: 16, overtime: 0, grossPay: 560, trainerBonuses: 50, promoCommissions: 33, total: 643, status: 'Pending Review' },
-      { employeeId: '4', name: 'Tara Kim', role: 'Front Desk', regularHours: 38, overtime: 0, grossPay: 608, trainerBonuses: 0, promoCommissions: 0, total: 608, status: 'Pending Review' },
-    ],
-  },
-  {
-    id: 'pp2', label: 'Previous Period', range: 'Feb 15 – Feb 28, 2026',
-    rows: [
-      { employeeId: '1', name: 'Whitney Cooper', role: 'Trainer', regularHours: 20, overtime: 0, grossPay: 700, trainerBonuses: 100, promoCommissions: 56, total: 856, status: 'Approved' },
-      { employeeId: '2', name: 'Drennen', role: 'Trainer', regularHours: 16, overtime: 0, grossPay: 560, trainerBonuses: 50, promoCommissions: 27, total: 637, status: 'Approved' },
-      { employeeId: '3', name: 'Trent', role: 'Trainer', regularHours: 18, overtime: 0, grossPay: 630, trainerBonuses: 75, promoCommissions: 33, total: 738, status: 'Approved' },
-      { employeeId: '4', name: 'Tara Kim', role: 'Front Desk', regularHours: 40, overtime: 2, grossPay: 688, trainerBonuses: 0, promoCommissions: 0, total: 688, status: 'Approved' },
-    ],
-  },
-  {
-    id: 'pp3', label: '2 Periods Ago', range: 'Feb 1 – Feb 14, 2026',
-    rows: [
-      { employeeId: '1', name: 'Whitney Cooper', role: 'Trainer', regularHours: 22, overtime: 0, grossPay: 770, trainerBonuses: 100, promoCommissions: 63, total: 933, status: 'Approved' },
-      { employeeId: '2', name: 'Drennen', role: 'Trainer', regularHours: 14, overtime: 0, grossPay: 490, trainerBonuses: 25, promoCommissions: 21, total: 536, status: 'Approved' },
-      { employeeId: '3', name: 'Trent', role: 'Trainer', regularHours: 16, overtime: 0, grossPay: 560, trainerBonuses: 50, promoCommissions: 27, total: 637, status: 'Approved' },
-      { employeeId: '4', name: 'Tara Kim', role: 'Front Desk', regularHours: 40, overtime: 0, grossPay: 640, trainerBonuses: 0, promoCommissions: 0, total: 640, status: 'Approved' },
-      { employeeId: '5', name: 'Alex Park', role: 'Trainer', regularHours: 10, overtime: 0, grossPay: 350, trainerBonuses: 25, promoCommissions: 15, total: 390, status: 'Approved' },
-    ],
-  },
-  {
-    id: 'pp4', label: '3 Periods Ago', range: 'Jan 15 – Jan 31, 2026',
-    rows: [
-      { employeeId: '1', name: 'Whitney Cooper', role: 'Trainer', regularHours: 18, overtime: 0, grossPay: 630, trainerBonuses: 75, promoCommissions: 42, total: 747, status: 'Approved' },
-      { employeeId: '2', name: 'Drennen', role: 'Trainer', regularHours: 18, overtime: 0, grossPay: 630, trainerBonuses: 75, promoCommissions: 35, total: 740, status: 'Approved' },
-      { employeeId: '3', name: 'Trent', role: 'Trainer', regularHours: 20, overtime: 0, grossPay: 700, trainerBonuses: 100, promoCommissions: 42, total: 842, status: 'Approved' },
-      { employeeId: '4', name: 'Tara Kim', role: 'Front Desk', regularHours: 38, overtime: 0, grossPay: 608, trainerBonuses: 0, promoCommissions: 0, total: 608, status: 'Approved' },
-      { employeeId: '5', name: 'Alex Park', role: 'Trainer', regularHours: 12, overtime: 0, grossPay: 420, trainerBonuses: 50, promoCommissions: 21, total: 491, status: 'Approved' },
-    ],
-  },
-]
-
-// ─── Schedule Data ──────────────────────────────────────────
+// ─── Schedule Constants ──────────────────────────────────────────
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const SCHEDULE_TIMES = ['5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM']
 
@@ -196,31 +107,10 @@ interface ScheduleSlot {
   capacity: number
 }
 
-const TRAINER_SCHEDULE: Record<string, ScheduleSlot> = {
-  'Mon-5:00 PM': { type: 'open', booked: 11, capacity: 12 },
-  'Mon-6:00 PM': { type: 'guided', trainer: 'Trent', booked: 8, capacity: 12 },
-  'Mon-7:00 PM': { type: 'open', booked: 5, capacity: 12 },
-  'Mon-8:00 PM': { type: 'open', booked: 3, capacity: 12 },
-  'Tue-5:00 PM': { type: 'open', booked: 9, capacity: 12 },
-  'Tue-6:00 PM': { type: 'open', booked: 7, capacity: 12 },
-  'Tue-7:00 PM': { type: 'guided', trainer: 'Whitney Cooper', booked: 10, capacity: 12 },
-  'Wed-5:00 PM': { type: 'open', booked: 6, capacity: 12 },
-  'Wed-6:00 PM': { type: 'open', booked: 9, capacity: 12 },
-  'Wed-7:00 PM': { type: 'guided', trainer: 'Whitney Cooper', booked: 9, capacity: 12 },
-  'Wed-8:00 PM': { type: 'open', booked: 4, capacity: 12 },
-  'Thu-5:00 PM': { type: 'open', booked: 10, capacity: 12 },
-  'Thu-6:00 PM': { type: 'guided', trainer: 'Drennen', booked: 8, capacity: 12 },
-  'Thu-7:00 PM': { type: 'open', booked: 6, capacity: 12 },
-  'Fri-5:00 PM': { type: 'open', booked: 12, capacity: 12 },
-  'Fri-6:00 PM': { type: 'guided', trainer: 'Trent', booked: 11, capacity: 12 },
-  'Fri-7:00 PM': { type: 'open', booked: 7, capacity: 12 },
-  'Sat-5:00 PM': { type: 'open', booked: 8, capacity: 12 },
-  'Sat-6:00 PM': { type: 'guided', trainer: 'Drennen', booked: 9, capacity: 12 },
-  'Sun-5:00 PM': { type: 'open', booked: 5, capacity: 12 },
-  'Sun-6:00 PM': { type: 'open', booked: 4, capacity: 12 },
-}
+// Schedule data is computed from classes — empty until classes are scheduled
+const TRAINER_SCHEDULE: Record<string, ScheduleSlot> = {}
 
-// ─── Permissions Data ───────────────────────────────────────
+// ─── Permissions Data (static config, not from DB) ──────────
 interface PermissionRow {
   category: string
   permission: string
@@ -230,25 +120,20 @@ interface PermissionRow {
   receptionist: boolean
 }
 
-const PERMISSIONS: PermissionRow[] = [
-  // General
+const DEFAULT_PERMISSIONS: PermissionRow[] = [
   { category: 'General', permission: 'View Dashboard', owner: true, admin: true, trainer: true, receptionist: true },
   { category: 'General', permission: 'View Activity Feed', owner: true, admin: true, trainer: true, receptionist: true },
   { category: 'General', permission: 'Access Command Center', owner: true, admin: true, trainer: false, receptionist: false },
-  // Schedule
   { category: 'Schedule', permission: 'View Schedule', owner: true, admin: true, trainer: true, receptionist: true },
   { category: 'Schedule', permission: 'Create/Edit Classes', owner: true, admin: true, trainer: false, receptionist: false },
   { category: 'Schedule', permission: 'Check In Members', owner: true, admin: true, trainer: true, receptionist: true },
   { category: 'Schedule', permission: 'Manage Waitlists', owner: true, admin: true, trainer: false, receptionist: true },
-  // Revenue
   { category: 'Revenue', permission: 'View Revenue Metrics', owner: true, admin: true, trainer: false, receptionist: false },
   { category: 'Revenue', permission: 'Process Refunds', owner: true, admin: true, trainer: false, receptionist: false },
   { category: 'Revenue', permission: 'Manage Pricing', owner: true, admin: false, trainer: false, receptionist: false },
   { category: 'Revenue', permission: 'View Transactions', owner: true, admin: true, trainer: false, receptionist: true },
-  // Marketing
   { category: 'Marketing', permission: 'Create Campaigns', owner: true, admin: true, trainer: false, receptionist: false },
   { category: 'Marketing', permission: 'View Lead Pipeline', owner: true, admin: true, trainer: false, receptionist: false },
-  // Admin
   { category: 'Admin', permission: 'Manage Employees', owner: true, admin: true, trainer: false, receptionist: false },
   { category: 'Admin', permission: 'Edit Permissions', owner: true, admin: false, trainer: false, receptionist: false },
   { category: 'Admin', permission: 'System Settings', owner: true, admin: false, trainer: false, receptionist: false },
@@ -276,6 +161,11 @@ const MAIN_TABS: { id: MainTab; label: string; icon: typeof Users }[] = [
 
 const ROLE_FILTERS: RoleFilter[] = ['All', 'Trainers', 'Front Desk', 'Managers', 'Active', 'Inactive']
 
+// ─── Helper: build initials ────────────────────────────────
+function getInitials(name: string): string {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
 // ─── Component ──────────────────────────────────────────────
 export default function OperationsPage() {
   const [activeTab, setActiveTab] = useState<MainTab>('directory')
@@ -283,12 +173,103 @@ export default function OperationsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [detailTab, setDetailTab] = useState<DetailTab>('overview')
-  const [selectedPayPeriod, setSelectedPayPeriod] = useState(PAY_PERIODS[0].id)
   const [editPermissions, setEditPermissions] = useState(false)
-  const [permissions, setPermissions] = useState(PERMISSIONS)
+  const [permissions, setPermissions] = useState(DEFAULT_PERMISSIONS)
+
+  // ─── Live data ──────────────────────────────────────────
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [payPeriods, setPayPeriods] = useState<PayPeriod[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createBrowserClient()
+
+      // Fetch staff profiles
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+
+      if (profiles && profiles.length > 0) {
+        const mapped: Employee[] = profiles.map((p: any) => {
+          const roles: string[] = p.roles ?? []
+          const role: Role = roles.includes('owner') ? 'Owner'
+            : roles.includes('trainer') ? 'Trainer'
+            : roles.includes('front_desk') ? 'Front Desk'
+            : roles.includes('manager') ? 'Manager'
+            : 'Front Desk'
+          return {
+            id: p.id,
+            name: p.full_name ?? p.email ?? 'Unknown',
+            initials: getInitials(p.full_name ?? p.email ?? 'U'),
+            role,
+            status: (p.status === 'active' ? 'Active' : p.status === 'on_leave' ? 'On Leave' : 'Inactive') as Employee['status'],
+            employmentType: (p.employment_type ?? 'Part-Time') as EmploymentType,
+            hireDate: p.hire_date ? new Date(p.hire_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+            payRate: p.pay_rate ?? null,
+            hoursThisPeriod: p.hours_this_period ?? null,
+            clockStatus: p.clock_status === 'in' ? 'in' : p.clock_status === 'out' ? 'out' : null,
+            clockedInSince: p.clocked_in_since ? new Date(p.clocked_in_since).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
+            email: p.email ?? '',
+            phone: p.phone ?? '',
+            classesLed: p.classes_led,
+            avgAttendance: p.avg_attendance,
+            bonusHitRate: p.bonus_hit_rate,
+            promoCode: p.promo_code,
+            promoRedemptions: p.promo_redemptions,
+            promoRevenue: p.promo_revenue,
+            currentPeriodHours: p.current_period_hours,
+            grossPayEstimate: p.gross_pay_estimate,
+            ytdGross: p.ytd_gross,
+            ytdBonuses: p.ytd_bonuses,
+          }
+        })
+        setEmployees(mapped)
+      }
+
+      // Fetch payroll periods
+      const { data: ppData } = await supabase
+        .from('payroll_periods')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('start_date', { ascending: false })
+
+      if (ppData && ppData.length > 0) {
+        const mapped: PayPeriod[] = ppData.map((pp: any) => ({
+          id: pp.id,
+          label: pp.label ?? `${new Date(pp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(pp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          range: `${new Date(pp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(pp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          rows: (pp.line_items ?? []).map((li: any) => ({
+            employeeId: li.employee_id ?? '',
+            name: li.name ?? '',
+            role: li.role ?? 'Trainer',
+            regularHours: li.regular_hours ?? 0,
+            overtime: li.overtime ?? 0,
+            grossPay: li.gross_pay ?? 0,
+            trainerBonuses: li.trainer_bonuses ?? 0,
+            promoCommissions: li.promo_commissions ?? 0,
+            total: li.total ?? 0,
+            status: li.status ?? 'Pending Review',
+          })),
+        }))
+        setPayPeriods(mapped)
+      }
+
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  const [selectedPayPeriod, setSelectedPayPeriod] = useState<string>('')
+  useEffect(() => {
+    if (payPeriods.length > 0 && !selectedPayPeriod) {
+      setSelectedPayPeriod(payPeriods[0].id)
+    }
+  }, [payPeriods, selectedPayPeriod])
 
   const filteredEmployees = useMemo(() => {
-    return EMPLOYEES.filter(emp => {
+    return employees.filter(emp => {
       const matchSearch = emp.name.toLowerCase().includes(searchQuery.toLowerCase())
       if (!matchSearch) return false
       switch (roleFilter) {
@@ -300,9 +281,17 @@ export default function OperationsPage() {
         default: return true
       }
     })
-  }, [searchQuery, roleFilter])
+  }, [searchQuery, roleFilter, employees])
 
-  const currentPayPeriod = PAY_PERIODS.find(p => p.id === selectedPayPeriod) ?? PAY_PERIODS[0]
+  const currentPayPeriod = payPeriods.find(p => p.id === selectedPayPeriod) ?? payPeriods[0]
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Spinner className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   return (
     <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] p-6">
@@ -362,7 +351,7 @@ export default function OperationsPage() {
         {activeTab === 'payroll' && (
           <motion.div key="payroll" {...fadeInUp}>
             <PayrollTab
-              payPeriods={PAY_PERIODS}
+              payPeriods={payPeriods}
               selectedPeriod={selectedPayPeriod}
               setSelectedPeriod={setSelectedPayPeriod}
               currentPayPeriod={currentPayPeriod}

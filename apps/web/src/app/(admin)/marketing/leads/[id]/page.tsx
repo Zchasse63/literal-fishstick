@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -63,89 +64,9 @@ interface ScoreFactor {
   value: string
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const LEAD = {
-  id: 'l1',
-  firstName: 'Sarah',
-  lastName: 'Mitchell',
-  email: 'sarah.m@gmail.com',
-  phone: '(813) 555-0142',
-  source: 'website' as const,
-  score: 85,
-  status: 'trial' as const,
-  assignedTo: { name: 'Zach', initials: 'ZR' },
-  tags: ['hot', 'fitness-enthusiast', 'referred-by-connor'],
-  createdAt: 'Mar 5, 2026',
-  nextFollowUp: '2026-03-22',
-}
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
-const ACTIVITIES: Activity[] = [
-  {
-    id: 'a1',
-    type: 'trial_booked',
-    description: 'Booked trial class — Free Flow Open Sauna, Mar 21 at 6:00 PM',
-    timestamp: '1h ago',
-    performedBy: { name: 'Sarah Mitchell', initials: 'SM' },
-  },
-  {
-    id: 'a2',
-    type: 'email_opened',
-    description: 'Opened email: "Your trial class is confirmed"',
-    timestamp: '2h ago',
-  },
-  {
-    id: 'a3',
-    type: 'email_sent',
-    description: 'Sent trial confirmation email with class details and waiver link',
-    timestamp: '3h ago',
-    performedBy: { name: 'System', initials: 'SY' },
-  },
-  {
-    id: 'a4',
-    type: 'status_change',
-    description: 'Status changed from Contacted to Trial',
-    timestamp: '3h ago',
-    performedBy: { name: 'Zach', initials: 'ZR' },
-  },
-  {
-    id: 'a5',
-    type: 'call_logged',
-    description: 'Called to discuss membership options. Interested in unlimited plan. Will try a class first.',
-    timestamp: '1d ago',
-    performedBy: { name: 'Zach', initials: 'ZR' },
-  },
-  {
-    id: 'a6',
-    type: 'note_added',
-    description: 'Mentioned she does hot yoga 3x/week and is looking for recovery options. Friend Connor Murphy recommended us.',
-    timestamp: '2d ago',
-    performedBy: { name: 'Zach', initials: 'ZR' },
-  },
-  {
-    id: 'a7',
-    type: 'form_submitted',
-    description: 'Submitted inquiry form on website — interested in sauna + cold plunge benefits',
-    timestamp: '5d ago',
-    performedBy: { name: 'Sarah Mitchell', initials: 'SM' },
-  },
-  {
-    id: 'a8',
-    type: 'created',
-    description: 'Lead created from website form submission',
-    timestamp: 'Mar 5, 2026',
-    performedBy: { name: 'System', initials: 'SY' },
-  },
-]
-
-const SCORE_FACTORS: ScoreFactor[] = [
-  { label: 'Form submitted', impact: 'positive', value: '+20' },
-  { label: 'Email opened (2x)', impact: 'positive', value: '+15' },
-  { label: 'Trial booked', impact: 'positive', value: '+25' },
-  { label: 'Referral source', impact: 'positive', value: '+15' },
-  { label: 'Active engagement', impact: 'positive', value: '+10' },
-  { label: 'No purchase yet', impact: 'negative', value: '-5' },
-  { label: 'Base score', impact: 'neutral', value: '+5' },
-]
+const SCORE_FACTORS: ScoreFactor[] = []
 
 const ACTIVITY_ICONS: Record<ActivityType, typeof Star> = {
   created: UserPlus,
@@ -212,7 +133,7 @@ function ScoreGauge({ score }: { score: number }) {
 }
 
 // ─── Convert Panel ──────────────────────────────────────────
-function ConvertPanel({ lead, onClose }: { lead: typeof LEAD; onClose: () => void }) {
+function ConvertPanel({ lead, onClose }: { lead: any; onClose: () => void }) {
   const [membershipType, setMembershipType] = useState('unlimited')
 
   return (
@@ -289,15 +210,82 @@ function ConvertPanel({ lead, onClose }: { lead: typeof LEAD; onClose: () => voi
 
 // ─── Main Page ──────────────────────────────────────────────
 export default function LeadDetailPage() {
-  const [lead] = useState(LEAD)
-  const [activities] = useState(ACTIVITIES)
+  const [lead, setLead] = useState<any>(null)
+  const [activities] = useState<Activity[]>([])
+  const [loading, setLoading] = useState(true)
   const [newNote, setNewNote] = useState('')
-  const [tags, setTags] = useState(LEAD.tags)
+  const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [showConvert, setShowConvert] = useState(false)
-  const [status, setStatus] = useState(LEAD.status)
-  const [assigned, setAssigned] = useState(LEAD.assignedTo.name)
-  const [followUp, setFollowUp] = useState(LEAD.nextFollowUp)
+  const [status, setStatus] = useState('new')
+  const [assigned, setAssigned] = useState('')
+  const [followUp, setFollowUp] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+    const leadId = typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : ''
+
+    async function loadLead() {
+      const { data } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', leadId)
+        .eq('studio_id', STUDIO_ID)
+        .single()
+
+      if (cancelled) return
+
+      if (data) {
+        const l = {
+          id: data.id,
+          firstName: data.first_name || '',
+          lastName: data.last_name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          source: data.source || 'website',
+          score: data.score ?? 50,
+          status: data.status || 'new',
+          assignedTo: data.assigned_to_name ? { name: data.assigned_to_name, initials: data.assigned_to_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() } : { name: 'Unassigned', initials: '--' },
+          tags: data.tags || [],
+          createdAt: data.created_at ? new Date(data.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          nextFollowUp: data.next_follow_up || '',
+        }
+        setLead(l)
+        setTags(l.tags)
+        setStatus(l.status)
+        setAssigned(l.assignedTo.name)
+        setFollowUp(l.nextFollowUp)
+      }
+
+      setLoading(false)
+    }
+
+    loadLead()
+    return () => { cancelled = true }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!lead) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="text-center">
+          <UserPlus className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-gray-900 mb-1">Lead not found</h3>
+          <Link href="/marketing/leads" className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-indigo-600">
+            <ArrowLeft className="h-4 w-4" /> Back to Leads
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const currentStatusOption = STATUS_OPTIONS.find((s) => s.value === status)!
 

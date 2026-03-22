@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -65,87 +66,7 @@ const ROLE_COLORS: Record<AuthorRole, string> = {
   trainer: 'bg-amber-100 text-amber-700',
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const POSTS: Post[] = [
-  {
-    id: 'p1',
-    author: { name: 'Zach', initials: 'ZR', role: 'owner' },
-    type: 'announcement',
-    title: 'Extended Hours Starting April 1',
-    content:
-      'Big news! Starting April 1, we are extending our hours. New schedule: Mon-Fri 5 AM - 10 PM, Sat-Sun 7 AM - 9 PM. This means more open sauna time slots and more guided classes on weekday evenings. We heard your feedback about evening availability and we are delivering. Spread the word!',
-    likes: 42,
-    comments: 15,
-    status: 'published',
-    pinned: true,
-    createdAt: '2h ago',
-  },
-  {
-    id: 'p2',
-    author: { name: 'Whitney Cooper', initials: 'WC', role: 'trainer' },
-    type: 'class_promo',
-    title: 'Breathwork & Cold Exposure — Wednesday Special',
-    content:
-      'This Wednesday at 7 PM, join me for a guided breathwork session followed by progressive cold plunge training. We will work on extending cold exposure time using box breathing and the Wim Hof method. Whether you are a beginner or experienced, this class will push your limits. Only 10 spots — book now.',
-    imageUrl: '/images/breathwork-class.jpg',
-    likes: 31,
-    comments: 9,
-    status: 'published',
-    pinned: false,
-    createdAt: '6h ago',
-  },
-  {
-    id: 'p3',
-    author: { name: 'Zach', initials: 'ZR', role: 'owner' },
-    type: 'event',
-    title: 'Corporate Wellness Day — March 28',
-    content:
-      'We are hosting our first corporate wellness event on March 28. Companies can book private sessions for their teams including guided sauna, cold plunge coaching, and recovery education. If you know any businesses that might be interested, send them our way. Referral bonuses apply!',
-    likes: 18,
-    comments: 4,
-    status: 'published',
-    pinned: false,
-    createdAt: '1d ago',
-  },
-  {
-    id: 'p4',
-    author: { name: 'Whitney Cooper', initials: 'WC', role: 'trainer' },
-    type: 'tip',
-    title: '3 Tips for Your First Cold Plunge',
-    content:
-      '1. Start with just 30 seconds. There is no shame in short dips — consistency beats duration every time. 2. Focus on slow exhales. Your breath controls your nervous system response. 3. Do not clench your fists. Open hands, relaxed jaw. Your body follows your hands. See you at the plunge!',
-    likes: 56,
-    comments: 22,
-    status: 'published',
-    pinned: false,
-    createdAt: '2d ago',
-  },
-  {
-    id: 'p5',
-    author: { name: 'Zach', initials: 'ZR', role: 'owner' },
-    type: 'announcement',
-    content:
-      'Quick reminder: we have updated our cancellation policy. Please cancel at least 4 hours before your session to avoid any fees. This helps us manage capacity and ensure everyone gets a spot. Check the app for full policy details.',
-    likes: 8,
-    comments: 2,
-    status: 'published',
-    pinned: false,
-    createdAt: '4d ago',
-  },
-  {
-    id: 'p6',
-    author: { name: 'Zach', initials: 'ZR', role: 'owner' },
-    type: 'class_promo',
-    title: 'April Class Schedule Preview',
-    content:
-      'We are adding 3 new guided class times in April including a Saturday morning recovery flow and two more evening breathwork sessions. Full schedule dropping this Friday. Get ready to book fast — Whitney classes always fill up.',
-    likes: 0,
-    comments: 0,
-    status: 'draft',
-    pinned: false,
-    createdAt: '5d ago',
-  },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -297,9 +218,63 @@ function PostCard({
   )
 }
 
+function getRelativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return `${Math.floor(days / 7)}w ago`
+}
+
 // ─── Main Page ──────────────────────────────────────────────
 export default function ContentHubPage() {
-  const [posts, setPosts] = useState<Post[]>(POSTS)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadPosts() {
+      const { data } = await supabase
+        .from('content_posts')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (cancelled) return
+
+      if (data) {
+        setPosts(
+          data.map((p: any) => ({
+            id: p.id,
+            author: {
+              name: p.author_name || 'Unknown',
+              initials: (p.author_name || 'U').split(' ').map((n: string) => n[0]).join('').toUpperCase(),
+              role: (p.author_role || 'owner') as AuthorRole,
+            },
+            type: (p.post_type || 'announcement') as PostType,
+            title: p.title || undefined,
+            content: p.content || '',
+            imageUrl: p.image_url || undefined,
+            likes: p.likes_count ?? 0,
+            comments: p.comments_count ?? 0,
+            status: (p.status || 'draft') as PostStatus,
+            pinned: p.pinned ?? false,
+            createdAt: p.created_at ? getRelativeTime(p.created_at) : 'Just now',
+          }))
+        )
+      }
+
+      setLoading(false)
+    }
+
+    loadPosts()
+    return () => { cancelled = true }
+  }, [])
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [roleFilter, setRoleFilter] = useState<AuthorRole | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -53,76 +54,7 @@ interface Recipient {
   clickedAt: string | null
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const CAMPAIGN = {
-  id: '1',
-  name: 'Win-Back: 14-Day Inactive',
-  sentDate: 'March 14, 2026 at 9:00 AM',
-  channel: 'email' as const,
-  segment: 'Inactive 14+ Days',
-  abTestEnabled: true,
-}
-
-const METRICS = [
-  { label: 'Sent', value: 1247, pct: 100, icon: Send, color: 'text-gray-600', bg: 'bg-gray-50' },
-  { label: 'Delivered', value: 1219, pct: 97.8, icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { label: 'Opened', value: 652, pct: 53.5, icon: Eye, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Clicked', value: 155, pct: 12.7, icon: MousePointerClick, color: 'text-violet-600', bg: 'bg-violet-50' },
-  { label: 'Bounced', value: 28, pct: 2.2, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { label: 'Unsubscribed', value: 7, pct: 0.6, icon: UserMinus, color: 'text-red-600', bg: 'bg-red-50' },
-  { label: 'Converted', value: 43, pct: 3.5, icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-]
-
-const FUNNEL_DATA = [
-  { name: 'Sent', value: 1247, fill: '#9CA3AF' },
-  { name: 'Delivered', value: 1219, fill: '#3B82F6' },
-  { name: 'Opened', value: 652, fill: '#6366F1' },
-  { name: 'Clicked', value: 155, fill: '#8B5CF6' },
-  { name: 'Converted', value: 43, fill: '#10B981' },
-]
-
-const TOP_LINKS = [
-  { url: 'https://meridian.studio/book', label: 'Book Now CTA', clicks: 78, pct: 50.3 },
-  { url: 'https://meridian.studio/promo/comeback', label: 'Promo Landing Page', clicks: 34, pct: 21.9 },
-  { url: 'https://meridian.studio/schedule', label: 'View Schedule', clicks: 22, pct: 14.2 },
-  { url: 'https://meridian.studio/membership', label: 'Membership Page', clicks: 14, pct: 9.0 },
-  { url: 'https://meridian.studio/unsubscribe', label: 'Unsubscribe', clicks: 7, pct: 4.5 },
-]
-
-const AB_VARIANTS = {
-  a: {
-    name: 'Variant A — Urgency Subject',
-    subject: 'We miss you! Your spot is waiting...',
-    openRate: 53.5,
-    clickRate: 12.7,
-    conversions: 28,
-    revenue: 1240,
-  },
-  b: {
-    name: 'Variant B — Discount Subject',
-    subject: '15% off your next session — come back!',
-    openRate: 48.2,
-    clickRate: 10.3,
-    conversions: 15,
-    revenue: 680,
-  },
-}
-
-const RECIPIENTS: Recipient[] = [
-  { id: '1', name: 'Sarah Chen', email: 'sarah.chen@gmail.com', status: 'clicked', openedAt: 'Mar 14, 9:12 AM', clickedAt: 'Mar 14, 9:14 AM' },
-  { id: '2', name: 'Michael Torres', email: 'mtorres@outlook.com', status: 'opened', openedAt: 'Mar 14, 9:23 AM', clickedAt: null },
-  { id: '3', name: 'Emma Williams', email: 'emma.w@yahoo.com', status: 'clicked', openedAt: 'Mar 14, 9:45 AM', clickedAt: 'Mar 14, 9:47 AM' },
-  { id: '4', name: 'James Brown', email: 'jbrown@gmail.com', status: 'delivered', openedAt: null, clickedAt: null },
-  { id: '5', name: 'Olivia Martinez', email: 'olivia.m@gmail.com', status: 'bounced', openedAt: null, clickedAt: null },
-  { id: '6', name: 'David Kim', email: 'dkim@proton.me', status: 'opened', openedAt: 'Mar 14, 10:02 AM', clickedAt: null },
-  { id: '7', name: 'Sophia Anderson', email: 'sophia.a@icloud.com', status: 'clicked', openedAt: 'Mar 14, 10:15 AM', clickedAt: 'Mar 14, 10:18 AM' },
-  { id: '8', name: 'Liam Johnson', email: 'liam.j@gmail.com', status: 'unsubscribed', openedAt: 'Mar 14, 10:30 AM', clickedAt: null },
-  { id: '9', name: 'Ava Garcia', email: 'ava.g@hotmail.com', status: 'opened', openedAt: 'Mar 14, 11:05 AM', clickedAt: null },
-  { id: '10', name: 'Noah Wilson', email: 'noah.w@gmail.com', status: 'delivered', openedAt: null, clickedAt: null },
-  { id: '11', name: 'Isabella Davis', email: 'isabella.d@me.com', status: 'clicked', openedAt: 'Mar 14, 11:42 AM', clickedAt: 'Mar 14, 11:45 AM' },
-  { id: '12', name: 'Ethan Moore', email: 'ethan.m@gmail.com', status: 'opened', openedAt: 'Mar 14, 12:01 PM', clickedAt: null },
-]
-
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 const ITEMS_PER_PAGE = 6
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -196,10 +128,95 @@ function FunnelTooltip({ active, payload }: any) {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function CampaignReportPage() {
+  const [campaign, setCampaign] = useState<{ id: string; name: string; sentDate: string; channel: string; segment: string; abTestEnabled: boolean } | null>(null)
+  const [recipients, setRecipients] = useState<Recipient[]>([])
+  const [loading, setLoading] = useState(true)
   const [recipientSearch, setRecipientSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
-  const filteredRecipients = RECIPIENTS.filter(
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadData() {
+      const campaignId = typeof window !== 'undefined'
+        ? window.location.pathname.split('/').slice(-2)[0]
+        : ''
+
+      const [campaignRes, recipientsRes] = await Promise.all([
+        supabase
+          .from('campaigns')
+          .select('*')
+          .eq('id', campaignId)
+          .eq('studio_id', STUDIO_ID)
+          .single(),
+        supabase
+          .from('campaign_recipients')
+          .select('id, member_id, status, opened_at, clicked_at, members(first_name, last_name, email)')
+          .eq('campaign_id', campaignId)
+          .limit(100),
+      ])
+
+      if (cancelled) return
+
+      if (campaignRes.data) {
+        const c = campaignRes.data
+        setCampaign({
+          id: c.id,
+          name: c.name || 'Untitled Campaign',
+          sentDate: c.sent_at ? new Date(c.sent_at).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not sent yet',
+          channel: c.channel || 'email',
+          segment: c.segment_name || 'All Members',
+          abTestEnabled: c.ab_test_enabled || false,
+        })
+      }
+
+      if (recipientsRes.data) {
+        setRecipients(
+          recipientsRes.data.map((r: any) => ({
+            id: r.id,
+            name: r.members ? `${r.members.first_name || ''} ${r.members.last_name || ''}`.trim() : 'Unknown',
+            email: r.members?.email || '',
+            status: r.status || 'delivered',
+            openedAt: r.opened_at ? new Date(r.opened_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null,
+            clickedAt: r.clicked_at ? new Date(r.clicked_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null,
+          }))
+        )
+      }
+
+      setLoading(false)
+    }
+
+    loadData()
+    return () => { cancelled = true }
+  }, [])
+
+  // Compute metrics from recipients
+  const totalSent = recipients.length
+  const delivered = recipients.filter((r) => r.status !== 'bounced').length
+  const opened = recipients.filter((r) => ['opened', 'clicked'].includes(r.status)).length
+  const clicked = recipients.filter((r) => r.status === 'clicked').length
+  const bounced = recipients.filter((r) => r.status === 'bounced').length
+  const unsubscribed = recipients.filter((r) => r.status === 'unsubscribed').length
+  const pct = (v: number) => totalSent > 0 ? +((v / totalSent) * 100).toFixed(1) : 0
+
+  const METRICS = [
+    { label: 'Sent', value: totalSent, pct: 100, icon: Send, color: 'text-gray-600', bg: 'bg-gray-50' },
+    { label: 'Delivered', value: delivered, pct: pct(delivered), icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Opened', value: opened, pct: pct(opened), icon: Eye, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Clicked', value: clicked, pct: pct(clicked), icon: MousePointerClick, color: 'text-violet-600', bg: 'bg-violet-50' },
+    { label: 'Bounced', value: bounced, pct: pct(bounced), icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Unsubscribed', value: unsubscribed, pct: pct(unsubscribed), icon: UserMinus, color: 'text-red-600', bg: 'bg-red-50' },
+  ]
+
+  const FUNNEL_DATA = [
+    { name: 'Sent', value: totalSent, fill: '#9CA3AF' },
+    { name: 'Delivered', value: delivered, fill: '#3B82F6' },
+    { name: 'Opened', value: opened, fill: '#6366F1' },
+    { name: 'Clicked', value: clicked, fill: '#8B5CF6' },
+  ]
+
+  const filteredRecipients = recipients.filter(
     (r) =>
       r.name.toLowerCase().includes(recipientSearch.toLowerCase()) ||
       r.email.toLowerCase().includes(recipientSearch.toLowerCase())
@@ -228,16 +245,33 @@ export default function CampaignReportPage() {
       </Link>
 
       {/* Header */}
+      {loading ? (
+        <div className="py-16 text-center">
+          <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading report...</p>
+        </div>
+      ) : !campaign ? (
+        <div className="py-16 text-center">
+          <Mail className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-gray-900 mb-1">Campaign not found</h3>
+          <p className="text-sm text-gray-400">This campaign may have been deleted or does not exist.</p>
+          <Link href="/marketing/campaigns" className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+            <ArrowLeft className="h-4 w-4" /> Back to Campaigns
+          </Link>
+        </div>
+      ) : null}
+
+      {campaign && !loading && (<>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">{CAMPAIGN.name}</h1>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">{campaign.name}</h1>
           <div className="flex items-center gap-3 mt-1.5">
-            <p className="text-sm text-gray-500">Sent {CAMPAIGN.sentDate}</p>
+            <p className="text-sm text-gray-500">Sent {campaign.sentDate}</p>
             <div className="h-5 w-5 rounded bg-gray-100 flex items-center justify-center" title="Email">
               <Mail className="h-3 w-3 text-gray-500" />
             </div>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
-              {CAMPAIGN.segment}
+              {campaign.segment}
             </span>
           </div>
         </div>
@@ -303,34 +337,17 @@ export default function CampaignReportPage() {
           <p className="text-xs text-gray-400 mb-4">Top 5 clicked URLs</p>
 
           <div className="space-y-3">
-            {TOP_LINKS.map((link, i) => (
-              <div key={link.url} className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-300 tabular-nums w-5 text-right">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{link.label}</p>
-                  <p className="text-xs text-gray-400 truncate">{link.url}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900 tabular-nums">{link.clicks}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 tabular-nums">{link.pct}%</p>
-                </div>
-                <div className="w-24 shrink-0">
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${link.pct}%` }}
-                      transition={{ duration: 0.4, delay: i * 0.05 }}
-                      className="h-full rounded-full bg-indigo-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <MousePointerClick className="h-8 w-8 text-gray-300 mb-2" />
+              <p className="text-sm font-semibold text-gray-500">No click data yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">Click tracking data will appear once recipients interact with your email</p>
+            </div>
           </div>
         </motion.div>
       </div>
 
       {/* ─── AI Summary ──────────────────────────────────────── */}
+      {totalSent > 0 && (
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.2 }}
@@ -353,79 +370,15 @@ export default function CampaignReportPage() {
                 </span>
               </div>
               <p className="text-sm text-gray-600 leading-relaxed">
-                This campaign performed <span className="font-bold text-emerald-600">above average</span> compared to your last 10 campaigns.
-                The 53.5% open rate is <span className="font-bold text-gray-900">12 points above</span> your account average of 41%.
-                The &quot;urgency&quot; subject line (Variant A) outperformed the discount-based approach by 5.3 percentage points in open rate.
-                <span className="font-bold text-gray-900"> 43 members converted</span>, generating an estimated{' '}
-                <span className="font-bold text-emerald-600">$1,920 in attributed revenue</span>.
-                Recommendation: use urgency-driven subject lines for your inactive member segments, and consider sending follow-ups
-                to the 497 members who opened but did not click.
+                This campaign was sent to <span className="font-bold text-gray-900">{totalSent} recipients</span>.
+                {opened > 0 && <> The open rate was <span className="font-bold text-indigo-600">{pct(opened)}%</span>.</>}
+                {clicked > 0 && <> Click-through rate: <span className="font-bold text-violet-600">{pct(clicked)}%</span>.</>}
+                {bounced > 0 && <> {bounced} emails bounced ({pct(bounced)}%).</>}
               </p>
             </div>
           </div>
         </div>
       </motion.div>
-
-      {/* ─── A/B Test Comparison ──────────────────────────────── */}
-      {CAMPAIGN.abTestEnabled && (
-        <motion.div
-          {...fadeInUp}
-          transition={{ ...fadeInUp.transition, delay: 0.25 }}
-          className="mb-4"
-        >
-          <h3 className="text-base font-bold text-gray-900 mb-3">A/B Test Results</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {Object.entries(AB_VARIANTS).map(([key, variant]) => {
-              const isWinner = key === 'a'
-              return (
-                <div
-                  key={key}
-                  className={cn(
-                    'bg-white rounded-2xl border shadow-sm p-5 relative',
-                    isWinner ? 'border-emerald-200' : 'border-gray-200'
-                  )}
-                >
-                  {isWinner && (
-                    <div className="absolute -top-2.5 left-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white">
-                        <Trophy className="h-3 w-3" />
-                        Winner
-                      </span>
-                    </div>
-                  )}
-                  <h4 className="text-sm font-bold text-gray-900 mb-1">{variant.name}</h4>
-                  <p className="text-xs text-gray-400 mb-4 italic">&quot;{variant.subject}&quot;</p>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Open Rate</p>
-                      <p className="text-xl font-black text-gray-900 tabular-nums mt-0.5">{variant.openRate}%</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Click Rate</p>
-                      <p className="text-xl font-black text-gray-900 tabular-nums mt-0.5">{variant.clickRate}%</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Conversions</p>
-                      <p className="text-xl font-black text-gray-900 tabular-nums mt-0.5">{variant.conversions}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Revenue</p>
-                      <p className="text-xl font-black text-gray-900 tabular-nums mt-0.5">${variant.revenue.toLocaleString()}</p>
-                    </div>
-                  </div>
-
-                  {!isWinner && (
-                    <button className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
-                      <Trophy className="h-3.5 w-3.5" />
-                      Select as Winner
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </motion.div>
       )}
 
       {/* ─── Recipient Table ────────────────────────────────── */}
@@ -437,7 +390,7 @@ export default function CampaignReportPage() {
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
             <h3 className="text-base font-bold text-gray-900">Recipients</h3>
-            <p className="text-xs text-gray-400 mt-0.5">{RECIPIENTS.length} total recipients</p>
+            <p className="text-xs text-gray-400 mt-0.5">{recipients.length} total recipients</p>
           </div>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -544,6 +497,15 @@ export default function CampaignReportPage() {
           </div>
         )}
       </motion.div>
+      </>)}
+
+      {!loading && campaign && recipients.length === 0 && (
+        <div className="py-12 text-center bg-white rounded-2xl border border-gray-200 shadow-sm mt-4">
+          <Mail className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-gray-900 mb-1">No recipients yet</h3>
+          <p className="text-sm text-gray-400">This campaign has not been sent to any recipients yet.</p>
+        </div>
+      )}
     </motion.div>
   )
 }

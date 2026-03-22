@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
   Plus,
   Zap,
@@ -70,7 +71,9 @@ interface Automation {
   steps: number
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+
+// ─── Template Gallery (static — not from DB) ────────────────
 const TEMPLATES: Template[] = [
   {
     id: 'welcome',
@@ -114,44 +117,15 @@ const TEMPLATES: Template[] = [
   },
 ]
 
-const AUTOMATIONS: Automation[] = [
-  {
-    id: '1',
-    name: 'Welcome Sequence',
-    triggerType: 'signup',
-    triggerLabel: 'New Signup',
-    active: true,
-    enrolled: 312,
-    completed: 287,
-    conversionRate: 72,
-    lastTriggered: '2 hours ago',
-    steps: 4,
-  },
-  {
-    id: '2',
-    name: 'Win-Back: 14-Day Inactive',
-    triggerType: 'inactivity',
-    triggerLabel: 'Inactivity',
-    active: true,
-    enrolled: 47,
-    completed: 31,
-    conversionRate: 17,
-    lastTriggered: '45 min ago',
-    steps: 3,
-  },
-  {
-    id: '3',
-    name: 'Failed Payment Recovery',
-    triggerType: 'failed_payment',
-    triggerLabel: 'Failed Payment',
-    active: true,
-    enrolled: 12,
-    completed: 9,
-    conversionRate: 42,
-    lastTriggered: '6 hours ago',
-    steps: 5,
-  },
-]
+function getRelativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hours ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 const triggerBadgeConfig: Partial<Record<TriggerType, { label: string; className: string }>> = {
   signup: { label: 'New Signup', className: 'bg-indigo-50 text-indigo-700 border border-indigo-200' },
@@ -317,7 +291,47 @@ function EmptyState() {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function AutomationsPage() {
-  const hasAutomations = AUTOMATIONS.length > 0
+  const [automations, setAutomations] = useState<Automation[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadAutomations() {
+      const { data } = await supabase
+        .from('automation_flows')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (cancelled) return
+
+      if (data) {
+        setAutomations(
+          data.map((a: any) => ({
+            id: a.id,
+            name: a.name || 'Untitled Automation',
+            triggerType: (a.trigger_type || 'signup') as TriggerType,
+            triggerLabel: a.trigger_label || a.trigger_type || 'Trigger',
+            active: a.active ?? false,
+            enrolled: a.enrolled_count ?? 0,
+            completed: a.completed_count ?? 0,
+            conversionRate: a.conversion_rate ?? 0,
+            lastTriggered: a.last_triggered_at ? getRelativeTime(a.last_triggered_at) : 'Never',
+            steps: a.step_count ?? 0,
+          }))
+        )
+      }
+
+      setLoading(false)
+    }
+
+    loadAutomations()
+    return () => { cancelled = true }
+  }, [])
+
+  const hasAutomations = automations.length > 0
 
   return (
     <motion.div
@@ -360,9 +374,14 @@ export default function AutomationsPage() {
           <Zap className="h-4 w-4 text-emerald-600" />
           <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Active Automations</h2>
         </div>
-        {hasAutomations ? (
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 flex flex-col items-center justify-center text-center">
+            <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin mx-auto mb-3" />
+            <p className="text-sm text-gray-500">Loading automations...</p>
+          </div>
+        ) : hasAutomations ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {AUTOMATIONS.map((automation, i) => (
+            {automations.map((automation, i) => (
               <AutomationCard key={automation.id} automation={automation} delay={i * 0.05} />
             ))}
           </div>

@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
+  Loader2,
   Sparkles,
   Trophy,
   ChevronRight,
@@ -61,65 +63,11 @@ const COMPARE_METRICS: { value: CompareMetric; label: string }[] = [
 
 const BAR_COLORS = ['#4F46E5', '#6366F1', '#818CF8', '#A78BFA', '#C4B5FD']
 
-// ─── Mock Data ──────────────────────────────────────────────
-const COACH_NOTES = [
-  'Whitney Cooper continues to dominate with the highest avg attendance and bonus hit rate on the team.',
-  'Overall team attendance is trending up 6% compared to last month across all guided sessions.',
-  'Consider pairing newer trainers with Whitney for shadow sessions to improve the team average.',
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
-const TRAINERS: Trainer[] = [
-  {
-    id: 'whitney-cooper',
-    name: 'Whitney Cooper',
-    avatar: 'WC',
-    classesLed: 24,
-    avgAttendance: 9.2,
-    bonusHitRate: 83,
-    revenueAttributed: 4850,
-    promoConversions: 14,
-  },
-  {
-    id: 'drennen-hall',
-    name: 'Drennen Hall',
-    avatar: 'DH',
-    classesLed: 18,
-    avgAttendance: 8.1,
-    bonusHitRate: 67,
-    revenueAttributed: 3200,
-    promoConversions: 9,
-  },
-  {
-    id: 'trent-bailey',
-    name: 'Trent Bailey',
-    avatar: 'TB',
-    classesLed: 20,
-    avgAttendance: 7.4,
-    bonusHitRate: 55,
-    revenueAttributed: 2900,
-    promoConversions: 7,
-  },
-  {
-    id: 'maya-santos',
-    name: 'Maya Santos',
-    avatar: 'MS',
-    classesLed: 12,
-    avgAttendance: 7.8,
-    bonusHitRate: 58,
-    revenueAttributed: 2100,
-    promoConversions: 5,
-  },
-  {
-    id: 'jordan-reed',
-    name: 'Jordan Reed',
-    avatar: 'JR',
-    classesLed: 8,
-    avgAttendance: 6.5,
-    bonusHitRate: 38,
-    revenueAttributed: 1400,
-    promoConversions: 3,
-  },
-]
+function getInitials(name: string): string {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 function formatCurrency(value: number): string {
@@ -160,6 +108,48 @@ export default function TrainerPerformancePage() {
   const [compareMetric, setCompareMetric] = useState<CompareMetric>('avgAttendance')
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false)
   const [showMetricDropdown, setShowMetricDropdown] = useState(false)
+  const [TRAINERS, setTrainers] = useState<Trainer[]>([])
+  const [COACH_NOTES, setCoachNotes] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchTrainers() {
+      const supabase = createBrowserClient()
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('studio_id', STUDIO_ID)
+        .contains('roles', ['trainer'])
+
+      if (profiles && profiles.length > 0) {
+        const mapped: Trainer[] = profiles.map((p: any) => ({
+          id: p.id,
+          name: p.full_name ?? 'Unknown',
+          avatar: getInitials(p.full_name ?? 'U'),
+          classesLed: p.classes_led ?? 0,
+          avgAttendance: p.avg_attendance ?? 0,
+          bonusHitRate: p.bonus_hit_rate ?? 0,
+          revenueAttributed: p.promo_revenue ?? 0,
+          promoConversions: p.promo_redemptions ?? 0,
+        }))
+        mapped.sort((a, b) => b.avgAttendance - a.avgAttendance)
+        setTrainers(mapped)
+      }
+
+      // AI notes would be generated server-side; empty for now
+      setCoachNotes([])
+      setLoading(false)
+    }
+    fetchTrainers()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   const chartData = TRAINERS.map((t) => ({
     name: t.name.split(' ')[0],
@@ -223,12 +213,14 @@ export default function TrainerPerformancePage() {
             </span>
           </div>
           <div className="space-y-2">
-            {COACH_NOTES.map((note, i) => (
+            {COACH_NOTES.length > 0 ? COACH_NOTES.map((note, i) => (
               <p key={i} className="text-sm text-gray-700 leading-relaxed flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
                 {note}
               </p>
-            ))}
+            )) : (
+              <p className="text-sm text-gray-500 italic">AI coaching notes will appear here once trainers have class history.</p>
+            )}
           </div>
         </motion.div>
 

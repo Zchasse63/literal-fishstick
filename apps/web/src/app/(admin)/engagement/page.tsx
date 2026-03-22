@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
   Trophy,
   Medal,
@@ -20,6 +21,8 @@ import {
   Crown,
   Heart,
 } from 'lucide-react'
+
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 6 },
@@ -63,118 +66,25 @@ interface Challenge {
   status: 'active' | 'ongoing'
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const LEADERBOARD: LeaderboardMember[] = [
-  { rank: 1, name: 'Sarah Martinez', totalVisits: 187, currentStreak: 23, referrals: 7, ltv: 2840, badge: 'Legend' },
-  { rank: 2, name: 'Carlos Mendez', totalVisits: 164, currentStreak: 18, referrals: 5, ltv: 1890, badge: 'Elite' },
-  { rank: 3, name: 'Whitney Cooper', totalVisits: 152, currentStreak: 14, referrals: 4, ltv: 1540, badge: 'Elite' },
-  { rank: 4, name: 'James Kowalski', totalVisits: 143, currentStreak: 11, referrals: 3, ltv: 2610, badge: 'Pro' },
-  { rank: 5, name: 'Laura Gonzalez', totalVisits: 131, currentStreak: 9, referrals: 2, ltv: 2390, badge: 'Pro' },
-  { rank: 6, name: 'Grace Taylor', totalVisits: 118, currentStreak: 7, referrals: 4, ltv: 1780, badge: 'Pro' },
-  { rank: 7, name: 'Michael Park', totalVisits: 105, currentStreak: 5, referrals: 1, ltv: 2150, badge: 'Regular' },
-  { rank: 8, name: 'Anna Li', totalVisits: 97, currentStreak: 12, referrals: 2, ltv: 1980, badge: 'Regular' },
-  { rank: 9, name: 'Ethan Reeves', totalVisits: 89, currentStreak: 4, referrals: 3, ltv: 1150, badge: 'Regular' },
-  { rank: 10, name: 'Aiden Moore', totalVisits: 82, currentStreak: 6, referrals: 3, ltv: 1320, badge: 'Regular' },
-]
-
+// ─── Static data for achievements and challenges (config, not DB data) ───
 const ACHIEVEMENTS: Achievement[] = [
-  {
-    id: '100-sessions',
-    name: '100 Sessions',
-    icon: Trophy,
-    color: 'text-emerald-500',
-    iconBg: 'bg-emerald-100',
-    description: 'Reach 100 total visits',
-    criteria: 'Visit 100 times',
-    memberCount: 24,
-  },
-  {
-    id: 'streak-warrior',
-    name: 'Streak Warrior',
-    icon: Flame,
-    color: 'text-orange-500',
-    iconBg: 'bg-orange-100',
-    description: 'Maintain a 7-day streak',
-    criteria: '7-day visit streak',
-    memberCount: 41,
-  },
-  {
-    id: 'cold-plunge-pro',
-    name: 'Cold Plunge Pro',
-    icon: Snowflake,
-    color: 'text-teal-500',
-    iconBg: 'bg-teal-100',
-    description: 'Complete 50 cold plunges',
-    criteria: '50 cold plunge sessions',
-    memberCount: 18,
-  },
-  {
-    id: 'community-star',
-    name: 'Community Star',
-    icon: Star,
-    color: 'text-amber-500',
-    iconBg: 'bg-amber-100',
-    description: 'Be a top referrer',
-    criteria: 'Refer 3+ members',
-    memberCount: 18,
-  },
-  {
-    id: 'early-bird',
-    name: 'Early Bird',
-    icon: Sun,
-    color: 'text-indigo-600',
-    iconBg: 'bg-indigo-100',
-    description: 'Morning session regular',
-    criteria: '10 morning sessions',
-    memberCount: 56,
-  },
-  {
-    id: 'consistency-king',
-    name: 'Consistency King',
-    icon: CalendarCheck,
-    color: 'text-violet-500',
-    iconBg: 'bg-violet-100',
-    description: 'Unwavering commitment',
-    criteria: 'Visit every week for 3 months',
-    memberCount: 12,
-  },
+  { id: '100-sessions', name: '100 Sessions', icon: Trophy, color: 'text-emerald-500', iconBg: 'bg-emerald-100', description: 'Reach 100 total visits', criteria: 'Visit 100 times', memberCount: 0 },
+  { id: 'streak-warrior', name: 'Streak Warrior', icon: Flame, color: 'text-orange-500', iconBg: 'bg-orange-100', description: 'Maintain a 7-day streak', criteria: '7-day visit streak', memberCount: 0 },
+  { id: 'cold-plunge-pro', name: 'Cold Plunge Pro', icon: Snowflake, color: 'text-teal-500', iconBg: 'bg-teal-100', description: 'Complete 50 cold plunges', criteria: '50 cold plunge sessions', memberCount: 0 },
+  { id: 'community-star', name: 'Community Star', icon: Star, color: 'text-amber-500', iconBg: 'bg-amber-100', description: 'Be a top referrer', criteria: 'Refer 3+ members', memberCount: 0 },
+  { id: 'early-bird', name: 'Early Bird', icon: Sun, color: 'text-indigo-600', iconBg: 'bg-indigo-100', description: 'Morning session regular', criteria: '10 morning sessions', memberCount: 0 },
+  { id: 'consistency-king', name: 'Consistency King', icon: CalendarCheck, color: 'text-violet-500', iconBg: 'bg-violet-100', description: 'Unwavering commitment', criteria: 'Visit every week for 3 months', memberCount: 0 },
 ]
 
 const CHALLENGES: Challenge[] = [
-  {
-    id: 'march-madness',
-    name: 'March Madness',
-    description: 'Visit 15 times in March',
-    progress: 9,
-    total: 15,
-    participants: 234,
-    endDate: 'Mar 31',
-    reward: 'Exclusive March Madness badge + free guest pass',
-    status: 'active',
-  },
-  {
-    id: 'bring-a-friend',
-    name: 'Bring a Friend',
-    description: 'Refer 1 new member',
-    progress: 0,
-    total: 1,
-    participants: 67,
-    endDate: 'Ongoing',
-    reward: '$10 credit for each successful referral',
-    status: 'ongoing',
-  },
-  {
-    id: 'guided-explorer',
-    name: 'Guided Explorer',
-    description: 'Try 3 different guided classes',
-    progress: 1,
-    total: 3,
-    participants: 45,
-    endDate: 'Apr 15',
-    reward: 'Free guided session + Guided Explorer badge',
-    status: 'active',
-  },
+  { id: 'march-madness', name: 'March Madness', description: 'Visit 15 times in March', progress: 0, total: 15, participants: 0, endDate: 'Mar 31', reward: 'Exclusive March Madness badge + free guest pass', status: 'active' },
+  { id: 'bring-a-friend', name: 'Bring a Friend', description: 'Refer 1 new member', progress: 0, total: 1, participants: 0, endDate: 'Ongoing', reward: '$10 credit for each successful referral', status: 'ongoing' },
+  { id: 'guided-explorer', name: 'Guided Explorer', description: 'Try 3 different guided classes', progress: 0, total: 3, participants: 0, endDate: 'Apr 15', reward: 'Free guided session + Guided Explorer badge', status: 'active' },
 ]
+
+function LoadingSkeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
+}
 
 // ─── Rank Badge ──────────────────────────────────────────────
 function RankBadge({ rank }: { rank: number }) {
@@ -229,6 +139,22 @@ function MemberBadge({ badge }: { badge: string }) {
 // ─── Page Component ──────────────────────────────────────────
 export default function EngagementPage() {
   const [activeTab, setActiveTab] = useState<Tab>('leaderboard')
+  const [activeMemberCount, setActiveMemberCount] = useState<number | null>(null)
+  const supabase = createBrowserClient()
+
+  // Fetch active member count
+  useEffect(() => {
+    async function fetchCount() {
+      const { count } = await supabase
+        .from('memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('studio_id', STUDIO_ID)
+        .eq('status', 'active')
+      setActiveMemberCount(count ?? 0)
+    }
+    fetchCount()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'leaderboard', label: 'Leaderboard' },
@@ -250,7 +176,9 @@ export default function EngagementPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 shadow-sm">
               <Users className="h-4 w-4 text-gray-400" />
-              <span className="text-sm font-semibold text-gray-900">272</span>
+              <span className="text-sm font-semibold text-gray-900">
+                {activeMemberCount !== null ? activeMemberCount : '\u2014'}
+              </span>
               <span className="text-sm text-gray-500">active members</span>
             </div>
           </div>
@@ -287,6 +215,71 @@ export default function EngagementPage() {
 
 // ─── Leaderboard Tab ──────────────────────────────────────────
 function LeaderboardTab() {
+  const [leaderboard, setLeaderboard] = useState<LeaderboardMember[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createBrowserClient()
+
+  useEffect(() => {
+    async function fetchLeaderboard() {
+      // Query members ordered by total_visits descending
+      const { data } = await supabase
+        .from('memberships')
+        .select('*, profiles:member_id ( full_name )')
+        .eq('studio_id', STUDIO_ID)
+        .eq('status', 'active')
+        .order('total_visits', { ascending: false })
+        .limit(50)
+
+      const members: LeaderboardMember[] = (data ?? []).map((m: any, i: number) => {
+        const visits = m.total_visits ?? 0
+        let badge = 'Regular'
+        if (visits >= 150) badge = 'Legend'
+        else if (visits >= 100) badge = 'Elite'
+        else if (visits >= 50) badge = 'Pro'
+
+        return {
+          rank: i + 1,
+          name: m.profiles?.full_name ?? 'Unknown',
+          totalVisits: visits,
+          currentStreak: m.current_streak ?? 0,
+          referrals: m.referral_count ?? 0,
+          ltv: m.lifetime_value ?? 0,
+          badge,
+        }
+      })
+      setLeaderboard(members)
+      setLoading(false)
+    }
+    fetchLeaderboard()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
+        <div className="space-y-4">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <LoadingSkeleton className="w-8 h-8 rounded-full" />
+              <LoadingSkeleton className="w-9 h-9 rounded-full" />
+              <LoadingSkeleton className="h-4 w-32 flex-1" />
+              <LoadingSkeleton className="h-4 w-12" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (leaderboard.length === 0) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-12 text-center">
+        <Trophy className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+        <p className="text-sm text-gray-400">No leaderboard data yet</p>
+      </div>
+    )
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -306,7 +299,7 @@ function LeaderboardTab() {
         </div>
 
         {/* Table Rows */}
-        {LEADERBOARD.map((member, i) => (
+        {leaderboard.map((member, i) => (
           <motion.div
             key={member.rank}
             initial={{ opacity: 0, y: 6 }}
@@ -386,13 +379,6 @@ function AchievementsTab() {
                 Unlock Criteria
               </p>
               <p className="mt-0.5 text-xs font-medium text-gray-700">{achievement.criteria}</p>
-            </div>
-            <div className="mt-3 flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-gray-400" />
-              <p className="text-xs text-gray-500">
-                <span className="font-semibold text-gray-700">{achievement.memberCount}</span>{' '}
-                members earned
-              </p>
             </div>
           </motion.div>
         )

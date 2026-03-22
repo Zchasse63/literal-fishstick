@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -52,24 +53,7 @@ interface Order {
   trackingNumber?: string
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const ORDERS: Order[] = [
-  { id: '1', orderId: '#MER-0156', customerName: 'Sarah Mitchell', customerEmail: 'sarah@email.com', date: 'Mar 20, 2026', items: [{ name: 'Meridian Logo Tee — Black', quantity: 2, priceInCents: 3500 }, { name: 'Sport Towel', quantity: 1, priceInCents: 1800 }], totalInCents: 8800, fulfillmentType: 'pickup', status: 'pending' },
-  { id: '2', orderId: '#MER-0155', customerName: 'Jake Torres', customerEmail: 'jake@email.com', date: 'Mar 20, 2026', items: [{ name: 'Recovery Hoodie — Charcoal', quantity: 1, priceInCents: 6500 }], totalInCents: 6500, fulfillmentType: 'shipping', status: 'pending', shippingAddress: '123 Palm Ave, Tampa, FL 33602' },
-  { id: '3', orderId: '#MER-0154', customerName: 'Emily Chen', customerEmail: 'emily@email.com', date: 'Mar 19, 2026', items: [{ name: 'Insulated Water Bottle — 32oz', quantity: 1, priceInCents: 2800 }], totalInCents: 2800, fulfillmentType: 'pickup', status: 'ready_for_pickup' },
-  { id: '4', orderId: '#MER-0153', customerName: 'Michael Brown', customerEmail: 'michael@email.com', date: 'Mar 19, 2026', items: [{ name: 'Electrolyte Mix — 30 Pack', quantity: 2, priceInCents: 3200 }, { name: 'Eucalyptus Sauna Oil — 4oz', quantity: 1, priceInCents: 2200 }], totalInCents: 8600, fulfillmentType: 'shipping', status: 'shipped', shippingAddress: '456 Bay St, Tampa, FL 33606', trackingNumber: '9400111899223100012345' },
-  { id: '5', orderId: '#MER-0152', customerName: 'Lisa Park', customerEmail: 'lisa@email.com', date: 'Mar 18, 2026', items: [{ name: 'Meridian Gym Bag', quantity: 1, priceInCents: 5500 }], totalInCents: 5500, fulfillmentType: 'pickup', status: 'ready_for_pickup' },
-  { id: '6', orderId: '#MER-0151', customerName: 'David Kim', customerEmail: 'david@email.com', date: 'Mar 18, 2026', items: [{ name: 'Cold Plunge Recovery Balm', quantity: 3, priceInCents: 1900 }], totalInCents: 5700, fulfillmentType: 'pickup', status: 'pending' },
-  { id: '7', orderId: '#MER-0150', customerName: 'Anna Roberts', customerEmail: 'anna@email.com', date: 'Mar 17, 2026', items: [{ name: 'Sauna Session Shorts', quantity: 1, priceInCents: 4200 }, { name: 'Sport Towel', quantity: 2, priceInCents: 1800 }], totalInCents: 7800, fulfillmentType: 'shipping', status: 'delivered', shippingAddress: '789 Cypress Dr, Tampa, FL 33609', trackingNumber: '9400111899223100012346' },
-  { id: '8', orderId: '#MER-0149', customerName: 'Tom Wilson', customerEmail: 'tom@email.com', date: 'Mar 17, 2026', items: [{ name: 'Breathwork Timer — Pro', quantity: 1, priceInCents: 4900 }], totalInCents: 4900, fulfillmentType: 'pickup', status: 'completed' },
-  { id: '9', orderId: '#MER-0148', customerName: 'Rachel Green', customerEmail: 'rachel@email.com', date: 'Mar 16, 2026', items: [{ name: 'Meridian Logo Tee — White', quantity: 1, priceInCents: 3500 }], totalInCents: 3500, fulfillmentType: 'pickup', status: 'completed' },
-  { id: '10', orderId: '#MER-0147', customerName: 'Carlos Ruiz', customerEmail: 'carlos@email.com', date: 'Mar 16, 2026', items: [{ name: 'Recovery Hoodie — Charcoal', quantity: 1, priceInCents: 6500 }, { name: 'Sauna Hat — Wool Felt', quantity: 1, priceInCents: 2400 }], totalInCents: 8900, fulfillmentType: 'shipping', status: 'completed', shippingAddress: '321 Oak Ln, Tampa, FL 33611', trackingNumber: '9400111899223100012347' },
-  { id: '11', orderId: '#MER-0146', customerName: 'Megan Fox', customerEmail: 'megan@email.com', date: 'Mar 15, 2026', items: [{ name: 'Insulated Water Bottle — 32oz', quantity: 2, priceInCents: 2800 }], totalInCents: 5600, fulfillmentType: 'pickup', status: 'completed' },
-  { id: '12', orderId: '#MER-0145', customerName: 'Ryan Cooper', customerEmail: 'ryan@email.com', date: 'Mar 15, 2026', items: [{ name: 'Electrolyte Mix — 30 Pack', quantity: 1, priceInCents: 3200 }], totalInCents: 3200, fulfillmentType: 'pickup', status: 'pending' },
-  { id: '13', orderId: '#MER-0144', customerName: 'Jessica Lee', customerEmail: 'jessica@email.com', date: 'Mar 14, 2026', items: [{ name: 'Meridian Logo Tee — Black', quantity: 1, priceInCents: 3500 }, { name: 'Meridian Logo Tee — White', quantity: 1, priceInCents: 3500 }], totalInCents: 7000, fulfillmentType: 'shipping', status: 'shipped', shippingAddress: '567 Pine St, Tampa, FL 33604', trackingNumber: '9400111899223100012348' },
-  { id: '14', orderId: '#MER-0143', customerName: 'Brian Adams', customerEmail: 'brian@email.com', date: 'Mar 13, 2026', items: [{ name: 'Eucalyptus Sauna Oil — 4oz', quantity: 2, priceInCents: 2200 }], totalInCents: 4400, fulfillmentType: 'pickup', status: 'ready_for_pickup' },
-  { id: '15', orderId: '#MER-0142', customerName: 'Nicole Taylor', customerEmail: 'nicole@email.com', date: 'Mar 12, 2026', items: [{ name: 'Meridian Gym Bag', quantity: 1, priceInCents: 5500 }, { name: 'Sport Towel', quantity: 1, priceInCents: 1800 }], totalInCents: 7300, fulfillmentType: 'pickup', status: 'pending' },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -230,13 +214,55 @@ function ShippingLabelModal({
 
 // ─── Page ───────────────────────────────────────────────────
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
   const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentType | 'all'>('all')
   const [search, setSearch] = useState('')
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [shippingModalOrder, setShippingModalOrder] = useState<Order | null>(null)
 
-  const filtered = ORDERS.filter((o) => {
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadOrders() {
+      const { data } = await supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .eq('studio_id', STUDIO_ID)
+        .order('created_at', { ascending: false })
+
+      if (cancelled) return
+
+      if (data) {
+        setOrders(data.map((o: any) => ({
+          id: o.id,
+          orderId: o.order_number || `#${o.id.slice(0, 8)}`,
+          customerName: o.customer_name || 'Unknown',
+          customerEmail: o.customer_email || '',
+          date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          items: (o.order_items || []).map((item: any) => ({
+            name: item.product_name || item.name || 'Product',
+            quantity: item.quantity ?? 1,
+            priceInCents: item.price_in_cents ?? 0,
+          })),
+          totalInCents: o.total_in_cents ?? 0,
+          fulfillmentType: (o.fulfillment_type || 'pickup') as FulfillmentType,
+          status: (o.status || 'pending') as OrderStatus,
+          shippingAddress: o.shipping_address || undefined,
+          trackingNumber: o.tracking_number || undefined,
+        })))
+      }
+
+      setLoading(false)
+    }
+
+    loadOrders()
+    return () => { cancelled = true }
+  }, [])
+
+  const filtered = orders.filter((o) => {
     if (statusFilter !== 'all' && o.status !== statusFilter) return false
     if (fulfillmentFilter !== 'all' && o.fulfillmentType !== fulfillmentFilter) return false
     if (search) {
@@ -246,10 +272,10 @@ export default function OrdersPage() {
     return true
   })
 
-  const totalOrders = ORDERS.length
-  const pendingCount = ORDERS.filter((o) => o.status === 'pending').length
-  const readyCount = ORDERS.filter((o) => o.status === 'ready_for_pickup').length
-  const shippedCount = ORDERS.filter((o) => o.status === 'shipped').length
+  const totalOrders = orders.length
+  const pendingCount = orders.filter((o) => o.status === 'pending').length
+  const readyCount = orders.filter((o) => o.status === 'ready_for_pickup').length
+  const shippedCount = orders.filter((o) => o.status === 'shipped').length
 
   return (
     <motion.div

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -58,73 +59,13 @@ interface RecentCampaign {
   openHistory: number[]
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const RECENT_CAMPAIGNS: RecentCampaign[] = [
-  {
-    id: '1',
-    name: 'Win-Back: 14-Day Inactive',
-    status: 'active',
-    openRate: 52,
-    clickRate: 12.4,
-    revenueAttributed: 1240,
-    openHistory: [30, 42, 38, 52, 48, 52],
-  },
-  {
-    id: '2',
-    name: 'Guided Upsell — Whitney',
-    status: 'sent',
-    openRate: 44,
-    clickRate: 9.1,
-    revenueAttributed: 890,
-    openHistory: [20, 35, 44, 42, 44, 40],
-  },
-  {
-    id: '3',
-    name: 'New Member Welcome Series',
-    status: 'active',
-    openRate: 71,
-    clickRate: 18.2,
-    revenueAttributed: 2340,
-    openHistory: [55, 60, 65, 68, 71, 71],
-  },
-  {
-    id: '4',
-    name: 'Failed Payment Recovery',
-    status: 'active',
-    openRate: 67,
-    clickRate: 14.8,
-    revenueAttributed: 560,
-    openHistory: [50, 55, 60, 63, 67, 67],
-  },
-  {
-    id: '5',
-    name: 'June Promo: Bring a Friend',
-    status: 'scheduled',
-    openRate: 0,
-    clickRate: 0,
-    revenueAttributed: 0,
-    openHistory: [],
-  },
-]
-
-const FUNNEL_DATA = [
-  { name: 'New', value: 142, fill: '#6366F1' },
-  { name: 'Contacted', value: 98, fill: '#818CF8' },
-  { name: 'Trial', value: 47, fill: '#A5B4FC' },
-  { name: 'Converted', value: 23, fill: '#10B981' },
-]
-
-const UPCOMING_SCHEDULED = [
-  { id: '1', name: 'June Promo: Bring a Friend', date: 'Jun 1, 2026 at 9:00 AM', channel: 'email' as Channel },
-  { id: '2', name: 'Summer Solstice Event Blast', date: 'Jun 15, 2026 at 10:00 AM', channel: 'email' as Channel },
-  { id: '3', name: 'July 4th Special — Free Class', date: 'Jun 28, 2026 at 8:00 AM', channel: 'sms' as Channel },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const NAV_CARDS = [
-  { label: 'Campaigns', href: '/marketing/campaigns', icon: Megaphone, description: 'Email & SMS campaigns', count: '6 active' },
-  { label: 'Automations', href: '/marketing/automations', icon: GitBranch, description: 'Triggered workflows', count: '3 live' },
-  { label: 'Leads', href: '/marketing/leads', icon: Target, description: 'Lead pipeline & tracking', count: '142 open' },
-  { label: 'Content', href: '/marketing/content', icon: FileText, description: 'Templates & media', count: '24 assets' },
+  { label: 'Campaigns', href: '/marketing/campaigns', icon: Megaphone, description: 'Email & SMS campaigns' },
+  { label: 'Automations', href: '/marketing/automations', icon: GitBranch, description: 'Triggered workflows' },
+  { label: 'Leads', href: '/marketing/leads', icon: Target, description: 'Lead pipeline & tracking' },
+  { label: 'Content', href: '/marketing/content', icon: FileText, description: 'Templates & media' },
 ]
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -225,7 +166,7 @@ function NavCard({
   href: string
   icon: typeof Megaphone
   description: string
-  count: string
+  count?: string
   delay?: number
 }) {
   return (
@@ -257,32 +198,114 @@ function SkeletonPulse({ className }: { className?: string }) {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function MarketingPage() {
-  const [campaigns, setCampaigns] = useState<RecentCampaign[]>(RECENT_CAMPAIGNS)
-  const [leadCount, setLeadCount] = useState<number>(142)
+  const [campaigns, setCampaigns] = useState<RecentCampaign[]>([])
+  const [leadCounts, setLeadCounts] = useState<{ new: number; contacted: number; trial: number; converted: number }>({ new: 0, contacted: 0, trial: 0, converted: 0 })
+  const [automationCount, setAutomationCount] = useState(0)
+  const [scheduledCampaigns, setScheduledCampaigns] = useState<{ id: string; name: string; date: string; channel: Channel }[]>([])
+  const [navCounts, setNavCounts] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
+    const supabase = createBrowserClient()
 
-    Promise.all([
-      fetch('/api/campaigns?limit=5&status=sent')
-        .then((r) => r.json())
-        .then((d) => {
-          if (!cancelled && d.data) setCampaigns(d.data)
-        })
-        .catch(() => {}),
-      fetch('/api/leads?limit=1')
-        .then((r) => r.json())
-        .then((d) => {
-          if (!cancelled && typeof d.count === 'number') setLeadCount(d.count)
-        })
-        .catch(() => {}),
-    ]).finally(() => {
-      if (!cancelled) setLoading(false)
-    })
+    async function loadData() {
+      const [campaignsRes, leadsRes, automationsRes, scheduledRes, contentRes] = await Promise.all([
+        supabase
+          .from('campaigns')
+          .select('id, name, status, created_at')
+          .eq('studio_id', STUDIO_ID)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('leads')
+          .select('status')
+          .eq('studio_id', STUDIO_ID),
+        supabase
+          .from('automation_flows')
+          .select('id', { count: 'exact', head: true })
+          .eq('studio_id', STUDIO_ID)
+          .eq('active', true),
+        supabase
+          .from('campaigns')
+          .select('id, name, scheduled_at, channel')
+          .eq('studio_id', STUDIO_ID)
+          .eq('status', 'scheduled')
+          .order('scheduled_at', { ascending: true })
+          .limit(3),
+        supabase
+          .from('content_posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('studio_id', STUDIO_ID),
+      ])
 
+      if (cancelled) return
+
+      // Map campaigns
+      if (campaignsRes.data) {
+        setCampaigns(
+          campaignsRes.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            status: c.status || 'draft',
+            openRate: 0,
+            clickRate: 0,
+            revenueAttributed: 0,
+            openHistory: [],
+          }))
+        )
+      }
+
+      // Count leads by status
+      if (leadsRes.data) {
+        const counts = { new: 0, contacted: 0, trial: 0, converted: 0 }
+        leadsRes.data.forEach((l: any) => {
+          if (l.status in counts) counts[l.status as keyof typeof counts]++
+        })
+        setLeadCounts(counts)
+      }
+
+      setAutomationCount(automationsRes.count ?? 0)
+
+      // Scheduled campaigns
+      if (scheduledRes.data) {
+        setScheduledCampaigns(
+          scheduledRes.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            date: c.scheduled_at ? new Date(c.scheduled_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'TBD',
+            channel: (c.channel || 'email') as Channel,
+          }))
+        )
+      }
+
+      // Nav counts
+      const campaignActiveCount = campaignsRes.data?.filter((c: any) => c.status === 'active' || c.status === 'sending').length ?? 0
+      const totalLeads = leadsRes.data?.length ?? 0
+      const contentCount = contentRes.count ?? 0
+      setNavCounts({
+        Campaigns: campaignActiveCount > 0 ? `${campaignActiveCount} active` : '0 campaigns',
+        Automations: automationsRes.count ? `${automationsRes.count} live` : '0 flows',
+        Leads: totalLeads > 0 ? `${totalLeads} open` : '0 leads',
+        Content: contentCount > 0 ? `${contentCount} assets` : '0 posts',
+      })
+
+      setLoading(false)
+    }
+
+    loadData()
     return () => { cancelled = true }
   }, [])
+
+  const funnelData = useMemo(() => [
+    { name: 'New', value: leadCounts.new, fill: '#6366F1' },
+    { name: 'Contacted', value: leadCounts.contacted, fill: '#818CF8' },
+    { name: 'Trial', value: leadCounts.trial, fill: '#A5B4FC' },
+    { name: 'Converted', value: leadCounts.converted, fill: '#10B981' },
+  ], [leadCounts])
+
+  const totalLeads = leadCounts.new + leadCounts.contacted + leadCounts.trial + leadCounts.converted
+  const conversionRate = totalLeads > 0 ? ((leadCounts.converted / totalLeads) * 100).toFixed(1) : '0'
 
   return (
     <motion.div
@@ -302,16 +325,16 @@ export default function MarketingPage() {
       {/* ─── Quick Nav ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {NAV_CARDS.map((card, i) => (
-          <NavCard key={card.label} {...card} delay={i * 0.04} />
+          <NavCard key={card.label} {...card} count={navCounts[card.label] ?? '--'} delay={i * 0.04} />
         ))}
       </div>
 
       {/* ─── Metrics Row ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <MetricCard icon={Megaphone} label="Active Campaigns" value="6" change="+2 this week" delay={0} />
-        <MetricCard icon={Zap} label="Automation Enrollments" value="312" change="+18%" delay={0.05} />
-        <MetricCard icon={Users} label="Open Leads" value="142" change="+24 new" delay={0.1} />
-        <MetricCard icon={Send} label="Emails Sent This Month" value="4,218" change="+12.4%" delay={0.15} />
+        <MetricCard icon={Megaphone} label="Active Campaigns" value={navCounts['Campaigns']?.split(' ')[0] ?? '0'} change="--" delay={0} />
+        <MetricCard icon={Zap} label="Active Automations" value={String(automationCount)} change="--" delay={0.05} />
+        <MetricCard icon={Users} label="Open Leads" value={String(totalLeads)} change={leadCounts.new > 0 ? `+${leadCounts.new} new` : '--'} delay={0.1} />
+        <MetricCard icon={Send} label="Conversion Rate" value={`${conversionRate}%`} change="--" delay={0.15} />
       </div>
 
       {/* ─── Recent Campaigns + Lead Pipeline ──────────────── */}
@@ -359,6 +382,15 @@ export default function MarketingPage() {
                   <div className="w-20"><SkeletonPulse className="h-4 w-14 ml-auto" /></div>
                 </div>
               ))
+            ) : campaigns.length === 0 ? (
+              <div className="py-12 text-center">
+                <Megaphone className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-gray-500">No campaigns yet</p>
+                <p className="text-xs text-gray-400 mt-0.5">Create your first campaign to see results here</p>
+                <Link href="/marketing/campaigns/new" className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
+                  Create Campaign
+                </Link>
+              </div>
             ) : (
             campaigns.map((campaign) => (
               <Link
@@ -420,8 +452,8 @@ export default function MarketingPage() {
 
           {/* Horizontal funnel visualization */}
           <div className="space-y-3">
-            {FUNNEL_DATA.map((stage, i) => {
-              const maxVal = FUNNEL_DATA[0].value
+            {funnelData.map((stage, i) => {
+              const maxVal = Math.max(funnelData[0].value, 1)
               const widthPct = Math.max((stage.value / maxVal) * 100, 20)
               return (
                 <div key={stage.name} className="flex items-center gap-3">
@@ -444,10 +476,18 @@ export default function MarketingPage() {
             })}
           </div>
 
+          {totalLeads === 0 && (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <Target className="h-8 w-8 text-gray-300 mb-2" />
+              <p className="text-sm font-semibold text-gray-500">No leads yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">Add leads to see your conversion funnel</p>
+            </div>
+          )}
+
           {/* Conversion rate */}
           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Overall Conversion</p>
-            <p className="text-lg font-black text-gray-900 tabular-nums">16.2%</p>
+            <p className="text-lg font-black text-gray-900 tabular-nums">{conversionRate}%</p>
           </div>
         </motion.div>
       </div>
@@ -514,8 +554,8 @@ export default function MarketingPage() {
           </div>
 
           <div className="space-y-3">
-            {UPCOMING_SCHEDULED.map((item) => {
-              const ChannelIcon = channelIcon[item.channel]
+            {scheduledCampaigns.length > 0 ? scheduledCampaigns.map((item) => {
+              const ChannelIcon = channelIcon[item.channel] || Mail
               return (
                 <div
                   key={item.id}
@@ -535,7 +575,13 @@ export default function MarketingPage() {
                   </div>
                 </div>
               )
-            })}
+            }) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Calendar className="h-8 w-8 text-gray-300 mb-2" />
+                <p className="text-sm font-semibold text-gray-500">Nothing scheduled</p>
+                <p className="text-xs text-gray-400 mt-0.5">Schedule a campaign to see it here</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

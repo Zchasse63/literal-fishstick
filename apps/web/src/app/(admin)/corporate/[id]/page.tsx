@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -38,54 +39,7 @@ type EventStatus = 'confirmed' | 'deposit_paid' | 'completed' | 'inquiry'
 type EventType = 'team_building' | 'corporate' | 'workshop' | 'private_party'
 type InvoiceStatus = 'paid' | 'sent' | 'overdue' | 'draft'
 
-// ─── Mock Data ──────────────────────────────────────────────
-const COMPANY = {
-  id: '1',
-  name: 'Tampa Bay Buccaneers',
-  status: 'active' as const,
-  contact: 'Mike Chen',
-  email: 'mchen@buccaneers.com',
-  phone: '(813) 555-0142',
-  website: 'buccaneers.com',
-  industry: 'Professional Sports',
-  companySize: '500+',
-  billingEmail: 'ap@buccaneers.com',
-  address: '1 Buccaneer Pl, Tampa, FL 33607',
-  paymentTerms: 'Net 30',
-  contractStart: 'Jan 1, 2026',
-  contractEnd: 'Dec 31, 2026',
-  contractValue: 36000,
-  monthlyCredits: 30,
-  creditsRemaining: 18,
-  rolloverCap: 10,
-  autoRenew: true,
-  notes: 'Premium corporate partner. Interested in expanding to include player wellness programs. Contact prefers email communication. Annual review scheduled for November.',
-}
-
-const MEMBERS = [
-  { id: '1', name: 'Mike Chen', email: 'mchen@buccaneers.com', role: 'primary' as MemberRole, addedDate: 'Jan 1, 2026' },
-  { id: '2', name: 'Sarah Johnson', email: 'sjohnson@buccaneers.com', role: 'admin' as MemberRole, addedDate: 'Jan 5, 2026' },
-  { id: '3', name: 'Tom Brady Jr', email: 'tbrady@buccaneers.com', role: 'member' as MemberRole, addedDate: 'Jan 15, 2026' },
-  { id: '4', name: 'Jessica Miller', email: 'jmiller@buccaneers.com', role: 'member' as MemberRole, addedDate: 'Feb 1, 2026' },
-  { id: '5', name: 'Chris Williams', email: 'cwilliams@buccaneers.com', role: 'member' as MemberRole, addedDate: 'Feb 10, 2026' },
-  { id: '6', name: 'Amanda Davis', email: 'adavis@buccaneers.com', role: 'member' as MemberRole, addedDate: 'Feb 20, 2026' },
-  { id: '7', name: 'Ryan Thompson', email: 'rthompson@buccaneers.com', role: 'member' as MemberRole, addedDate: 'Mar 1, 2026' },
-]
-
-const EVENTS = [
-  { id: '1', name: 'Q1 Team Recovery', date: 'Jan 20, 2026', type: 'team_building' as EventType, guests: 22, status: 'completed' as EventStatus, total: 2200 },
-  { id: '2', name: 'Player Wellness Day', date: 'Feb 14, 2026', type: 'corporate' as EventType, guests: 15, status: 'completed' as EventStatus, total: 1500 },
-  { id: '3', name: 'Spring Training Recovery', date: 'Mar 22, 2026', type: 'team_building' as EventType, guests: 24, status: 'confirmed' as EventStatus, total: 2400 },
-  { id: '4', name: 'Coaches Workshop', date: 'Apr 10, 2026', type: 'workshop' as EventType, guests: 8, status: 'inquiry' as EventStatus, total: 1200 },
-]
-
-const INVOICES = [
-  { id: '1', number: 'INV-2026-041', date: 'Mar 1, 2026', amount: 3600, status: 'paid' as InvoiceStatus },
-  { id: '2', number: 'INV-2026-032', date: 'Feb 1, 2026', amount: 3600, status: 'paid' as InvoiceStatus },
-  { id: '3', number: 'INV-2026-018', date: 'Jan 1, 2026', amount: 3600, status: 'paid' as InvoiceStatus },
-  { id: '4', number: 'INV-2026-045', date: 'Mar 22, 2026', amount: 2400, status: 'sent' as InvoiceStatus },
-  { id: '5', number: 'INV-2026-050', date: 'Apr 1, 2026', amount: 3600, status: 'draft' as InvoiceStatus },
-]
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 // ─── Helpers ────────────────────────────────────────────────
 const statusConfig = {
@@ -132,8 +86,87 @@ const TABS: { value: Tab; label: string; icon: typeof FileText }[] = [
 // ─── Page ───────────────────────────────────────────────────
 export default function CompanyDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const creditsPercent = (COMPANY.creditsRemaining / COMPANY.monthlyCredits) * 100
-  const companyStatus = statusConfig[COMPANY.status]
+  const [COMPANY, setCOMPANY] = useState<any>(null)
+  const [MEMBERS, setMEMBERS] = useState<any[]>([])
+  const [EVENTS, setEVENTS] = useState<any[]>([])
+  const [INVOICES, setINVOICES] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+    const companyId = typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : ''
+
+    async function loadCompany() {
+      const { data } = await supabase
+        .from('company_accounts')
+        .select('*')
+        .eq('id', companyId)
+        .eq('studio_id', STUDIO_ID)
+        .single()
+
+      if (cancelled) return
+
+      if (data) {
+        setCOMPANY({
+          id: data.id,
+          name: data.name || 'Unnamed Company',
+          status: data.stage || 'prospect',
+          contact: data.contact_name || '',
+          email: data.contact_email || '',
+          phone: data.contact_phone || '',
+          website: data.website || '',
+          industry: data.industry || '',
+          companySize: data.company_size || '',
+          billingEmail: data.billing_email || '',
+          address: data.address || '',
+          paymentTerms: data.payment_terms || 'Net 30',
+          contractStart: data.contract_start ? new Date(data.contract_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          contractEnd: data.contract_end ? new Date(data.contract_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          contractValue: data.contract_value ?? 0,
+          monthlyCredits: data.credits_total ?? 1,
+          creditsRemaining: data.credits_remaining ?? 0,
+          rolloverCap: data.rollover_cap ?? 0,
+          autoRenew: data.auto_renew ?? false,
+          notes: data.notes || '',
+        })
+      }
+
+      setLoading(false)
+    }
+
+    loadCompany()
+    return () => { cancelled = true }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading company details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!COMPANY) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="text-center">
+          <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-gray-900 mb-1">Company not found</h3>
+          <p className="text-sm text-gray-400">This company may have been deleted.</p>
+          <Link href="/corporate" className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+            <ArrowLeft className="h-4 w-4" /> Back to Corporate
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const creditsPercent = COMPANY.monthlyCredits > 0 ? (COMPANY.creditsRemaining / COMPANY.monthlyCredits) * 100 : 0
+  const companyStatus = statusConfig[COMPANY.status as keyof typeof statusConfig]
 
   return (
     <motion.div
@@ -313,8 +346,8 @@ export default function CompanyDetailPage() {
                   <p className="text-sm text-gray-500 truncate">{member.email}</p>
                 </div>
                 <div className="w-20 flex justify-center">
-                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', memberRoleConfig[member.role].className)}>
-                    {memberRoleConfig[member.role].label}
+                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', memberRoleConfig[member.role as MemberRole].className)}>
+                    {memberRoleConfig[member.role as MemberRole].label}
                   </span>
                 </div>
                 <div className="w-28 text-right">
@@ -364,16 +397,16 @@ export default function CompanyDetailPage() {
                   <p className="text-sm text-gray-500">{event.date}</p>
                 </div>
                 <div className="w-24 flex justify-center">
-                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', eventTypeConfig[event.type].className)}>
-                    {eventTypeConfig[event.type].label}
+                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', eventTypeConfig[event.type as EventType].className)}>
+                    {eventTypeConfig[event.type as EventType].label}
                   </span>
                 </div>
                 <div className="w-16 text-center">
                   <p className="text-sm text-gray-700 tabular-nums">{event.guests}</p>
                 </div>
                 <div className="w-24 flex justify-center">
-                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', eventStatusConfig[event.status].className)}>
-                    {eventStatusConfig[event.status].label}
+                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', eventStatusConfig[event.status as EventStatus].className)}>
+                    {eventStatusConfig[event.status as EventStatus].label}
                   </span>
                 </div>
                 <div className="w-20 text-right">
@@ -420,8 +453,8 @@ export default function CompanyDetailPage() {
                   <p className="text-sm font-semibold text-gray-900 tabular-nums">${invoice.amount.toLocaleString()}</p>
                 </div>
                 <div className="w-20 flex justify-center">
-                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', invoiceStatusConfig[invoice.status].className)}>
-                    {invoiceStatusConfig[invoice.status].label}
+                  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', invoiceStatusConfig[invoice.status as InvoiceStatus].className)}>
+                    {invoiceStatusConfig[invoice.status as InvoiceStatus].label}
                   </span>
                 </div>
                 <div className="w-28 flex justify-end gap-1.5">

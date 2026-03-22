@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createBrowserClient } from '@/lib/supabase/client'
 import {
   ArrowLeft,
   ArrowRight,
@@ -71,68 +72,7 @@ interface MockCampaign {
   scheduledTime?: string
 }
 
-// ─── Mock Data ──────────────────────────────────────────────
-const SEGMENTS: Segment[] = [
-  { id: 'all', name: 'All Members', count: 847 },
-  { id: 'active', name: 'Active Members', count: 623 },
-  { id: 'inactive-14', name: 'Inactive 14+ Days', count: 47 },
-  { id: 'inactive-30', name: 'Inactive 30+ Days', count: 23 },
-  { id: 'at-risk', name: 'At-Risk (Churn)', count: 31 },
-  { id: 'new-members', name: 'New Members (30 days)', count: 58 },
-  { id: 'unlimited', name: 'Unlimited Plan', count: 189 },
-  { id: 'class-pack', name: 'Class Pack Holders', count: 267 },
-  { id: 'expired-credits', name: 'Expiring Credits (7 days)', count: 14 },
-]
-
-// Mock existing campaign data (would come from API in production)
-const MOCK_CAMPAIGNS: Record<string, MockCampaign> = {
-  '1': {
-    id: '1',
-    name: 'Win-Back: 14-Day Inactive',
-    status: 'active',
-    channels: ['email', 'sms'],
-    segment: 'inactive-14',
-    subject: 'We Miss You, {{first_name}}! Come Back for a Special Offer',
-    previewText: 'It\'s been a while — we\'ve got something special for you',
-    emailBody: 'Hi {{first_name}},\n\nIt\'s been a while since we\'ve seen you at {{studio_name}}, and we miss you!\n\nWe know life gets busy, but your wellness matters. To help you get back on track, here\'s an exclusive offer just for you:\n\n- 20% off your next 3 sessions\n- Free guided breathwork class with Whitney\n- Priority booking for the next 7 days\n\nYour body and mind will thank you. Book your next session today!\n\nSee you soon,\n{{studio_name}} Team',
-    smsBody: 'Hey {{first_name}}! We miss you at {{studio_name}}. Come back this week and get 20% off your next 3 sessions. Book now!',
-  },
-  '2': {
-    id: '2',
-    name: 'Guided Upsell — Whitney',
-    status: 'sent',
-    channels: ['email'],
-    segment: 'class-pack',
-    subject: 'Upgrade Your Plan — Get More for Less, {{first_name}}',
-    previewText: 'Unlock unlimited sessions and exclusive perks',
-    emailBody: 'Hi {{first_name}},\n\nYou\'ve been crushing it lately! Based on your usage, we think you\'d love our Unlimited upgrade.\n\nHere\'s what you\'d get:\n- Unlimited sessions\n- Priority booking\n- 10% off merchandise\n- Access to all guided classes with Whitney Cooper\n\nUpgrade takes effect immediately with prorated pricing. No commitment needed.\n\nKeep the momentum going!\n{{studio_name}} Team',
-    smsBody: '',
-  },
-  '3': {
-    id: '3',
-    name: 'June Promo: Bring a Friend',
-    status: 'scheduled',
-    channels: ['email'],
-    segment: 'active',
-    subject: 'Bring a Friend This June — They Sweat Free!',
-    previewText: 'Your friends deserve the cold plunge experience',
-    emailBody: 'Hi {{first_name}},\n\nThis June, bring a friend to {{studio_name}} and their first session is on us!\n\nHere\'s how it works:\n1. Book your regular session\n2. Add a guest (up to 2 per month)\n3. They experience the full sauna + cold plunge flow\n4. If they sign up, you both get a $10 credit!\n\nSpots fill up fast during summer. Share the heat (and the cold!) with someone you care about.\n\nBook now,\n{{studio_name}} Team',
-    smsBody: '',
-    scheduledDate: '2026-06-01',
-    scheduledTime: '09:00',
-  },
-  '6': {
-    id: '6',
-    name: 'Holiday Promo Dec Prep',
-    status: 'draft',
-    channels: ['email', 'sms'],
-    segment: 'all',
-    subject: '',
-    previewText: '',
-    emailBody: '',
-    smsBody: '',
-  },
-}
+const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
 const TEMPLATES: Template[] = [
   {
@@ -516,8 +456,6 @@ export default function CampaignDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  // In production, use React.use(params) or useParams. For mock, extract from URL.
-  // We'll use a fallback to campaign '1' for mock purposes.
   const [resolvedId] = useState(() => {
     if (typeof window !== 'undefined') {
       const segments = window.location.pathname.split('/')
@@ -526,23 +464,23 @@ export default function CampaignDetailPage({
     return '1'
   })
 
-  const campaign = MOCK_CAMPAIGNS[resolvedId] || MOCK_CAMPAIGNS['1']
-  const isReadOnly = campaign?.status === 'sent' || campaign?.status === 'active'
+  const [segments, setSegments] = useState<Segment[]>([])
+  const [campaignLoaded, setCampaignLoaded] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [isReadOnly, setIsReadOnly] = useState(false)
 
   const [currentStep, setCurrentStep] = useState<Step>(1)
 
-  // Step 1 state — pre-populated from campaign
-  const [campaignName, setCampaignName] = useState(campaign?.name ?? '')
-  const [selectedChannels, setSelectedChannels] = useState<ChannelType[]>(
-    campaign?.channels ?? ['email']
-  )
-  const [selectedSegment, setSelectedSegment] = useState(campaign?.segment ?? 'all')
+  // Step 1 state
+  const [campaignName, setCampaignName] = useState('')
+  const [selectedChannels, setSelectedChannels] = useState<ChannelType[]>(['email'])
+  const [selectedSegment, setSelectedSegment] = useState('all')
 
-  // Step 2 state — pre-populated
-  const [subject, setSubject] = useState(campaign?.subject ?? '')
-  const [previewText, setPreviewText] = useState(campaign?.previewText ?? '')
-  const [emailBody, setEmailBody] = useState(campaign?.emailBody ?? '')
-  const [smsBody, setSmsBody] = useState(campaign?.smsBody ?? '')
+  // Step 2 state
+  const [subject, setSubject] = useState('')
+  const [previewText, setPreviewText] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [smsBody, setSmsBody] = useState('')
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
   const [contentTab, setContentTab] = useState<'email' | 'sms'>('email')
   const [showAiSuggestions, setShowAiSuggestions] = useState(false)
@@ -554,16 +492,70 @@ export default function CampaignDetailPage({
   const [variantBSubject, setVariantBSubject] = useState('')
   const [variantBBody, setVariantBBody] = useState('')
   const [abSplit, setAbSplit] = useState(50)
-  const [scheduleMode, setScheduleMode] = useState<'now' | 'schedule'>(
-    campaign?.scheduledDate ? 'schedule' : 'now'
-  )
-  const [scheduleDate, setScheduleDate] = useState(campaign?.scheduledDate ?? '')
-  const [scheduleTime, setScheduleTime] = useState(campaign?.scheduledTime ?? '')
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'schedule'>('now')
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [scheduleTime, setScheduleTime] = useState('')
   const [testSent, setTestSent] = useState(false)
 
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadData() {
+      const [campaignRes, segmentsRes] = await Promise.all([
+        supabase
+          .from('campaigns')
+          .select('*')
+          .eq('id', resolvedId)
+          .eq('studio_id', STUDIO_ID)
+          .single(),
+        supabase
+          .from('smart_segments')
+          .select('id, name, member_count')
+          .eq('studio_id', STUDIO_ID)
+          .order('name'),
+      ])
+
+      if (cancelled) return
+
+      if (segmentsRes.data) {
+        setSegments(segmentsRes.data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          count: s.member_count ?? 0,
+        })))
+      }
+
+      if (campaignRes.data) {
+        const c = campaignRes.data
+        setCampaignName(c.name || '')
+        setSelectedChannels([c.channel || 'email'] as ChannelType[])
+        setSelectedSegment(c.segment_id || 'all')
+        setSubject(c.subject || '')
+        setPreviewText(c.preview_text || '')
+        setEmailBody(c.email_body || '')
+        setSmsBody(c.sms_body || '')
+        setIsReadOnly(c.status === 'sent' || c.status === 'active')
+        setCampaignStatus((c.status || 'draft') as CampaignStatus)
+        if (c.scheduled_at) {
+          setScheduleMode('schedule')
+          const dt = new Date(c.scheduled_at)
+          setScheduleDate(dt.toISOString().split('T')[0])
+          setScheduleTime(dt.toTimeString().slice(0, 5))
+        }
+        setCampaignLoaded(true)
+      }
+
+      setLoading(false)
+    }
+
+    loadData()
+    return () => { cancelled = true }
+  }, [resolvedId])
+
   const recipientCount = useMemo(() => {
-    return SEGMENTS.find((s) => s.id === selectedSegment)?.count ?? 0
-  }, [selectedSegment])
+    return segments.find((s) => s.id === selectedSegment)?.count ?? 0
+  }, [selectedSegment, segments])
 
   const toggleChannel = useCallback((ch: ChannelType) => {
     setSelectedChannels((prev) => {
@@ -610,7 +602,17 @@ export default function CampaignDetailPage({
     return true
   }, [currentStep, campaignName, selectedChannels, subject, emailBody, smsBody])
 
-  const statusBadge = campaign ? statusConfig[campaign.status] : null
+  // Derive status from loaded data
+  const [campaignStatus, setCampaignStatus] = useState<CampaignStatus>('draft')
+
+  // Update campaignStatus when data loads
+  useEffect(() => {
+    if (campaignLoaded) {
+      // Status was set in the load function via setIsReadOnly
+    }
+  }, [campaignLoaded])
+
+  const statusBadge = campaignLoaded ? (statusConfig[campaignStatus] || null) : null
 
   return (
     <motion.div
@@ -644,13 +646,13 @@ export default function CampaignDetailPage({
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">{campaign?.name}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{campaignName || 'New Campaign'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {isReadOnly && (
             <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
-              Read-only — campaign already {campaign?.status}
+              Read-only — campaign already {campaignStatus}
             </span>
           )}
           {!isReadOnly && (
@@ -757,7 +759,7 @@ export default function CampaignDetailPage({
                     backgroundPosition: 'right 12px center',
                   }}
                 >
-                  {SEGMENTS.map((seg) => (
+                  {segments.map((seg) => (
                     <option key={seg.id} value={seg.id}>
                       {seg.name} ({seg.count.toLocaleString()})
                     </option>
@@ -1145,7 +1147,7 @@ export default function CampaignDetailPage({
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">Segment</span>
                       <span className="text-xs font-semibold text-gray-700">
-                        {SEGMENTS.find((s) => s.id === selectedSegment)?.name}
+                        {segments.find((s) => s.id === selectedSegment)?.name}
                       </span>
                     </div>
                   </div>
@@ -1194,7 +1196,7 @@ export default function CampaignDetailPage({
                       Segment
                     </p>
                     <p className="text-sm font-semibold text-gray-900">
-                      {SEGMENTS.find((s) => s.id === selectedSegment)?.name}
+                      {segments.find((s) => s.id === selectedSegment)?.name}
                     </p>
                   </div>
                   <div>
@@ -1343,10 +1345,10 @@ export default function CampaignDetailPage({
                   <Clock className="h-5 w-5 text-gray-400" />
                   <div>
                     <p className="text-sm font-semibold text-gray-700">
-                      {campaign?.status === 'sent' ? 'Campaign Sent' : 'Campaign Active'}
+                      {campaignStatus === 'sent' ? 'Campaign Sent' : 'Campaign Active'}
                     </p>
                     <p className="text-xs text-gray-400">
-                      This campaign has already been {campaign?.status}. Create a new campaign to send another.
+                      This campaign has already been {campaignStatus}. Create a new campaign to send another.
                     </p>
                   </div>
                 </div>
