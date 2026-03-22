@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '*.supabase.co' },
     ],
   },
+  // Mark optional dependencies as external to prevent build failures
+  serverExternalPackages: ['@react-pdf/renderer'],
 };
 
 export default nextConfig;

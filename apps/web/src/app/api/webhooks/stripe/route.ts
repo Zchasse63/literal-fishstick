@@ -21,8 +21,9 @@ function getWebhookSupabase() {
  * Extract studio_id from Stripe object metadata.
  * Falls back to member lookup if not in metadata (backward compat).
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveStudioId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   metadata: Record<string, string> | null | undefined,
   memberId: string | undefined,
 ): Promise<string | null> {
@@ -38,7 +39,7 @@ async function resolveStudioId(
       .select('studio_id')
       .eq('id', memberId)
       .single()
-    return data?.studio_id ?? null
+    return (data as { studio_id: string } | null)?.studio_id ?? null
   }
 
   return null
@@ -250,8 +251,9 @@ export async function POST(request: NextRequest) {
 
 // ─── Helpers ──────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function logActivity(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   studioId: string,
   type: string,
   description: string,
