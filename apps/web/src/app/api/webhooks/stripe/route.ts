@@ -268,11 +268,13 @@ async function logActivity(
 }
 
 function generateGiftCardCode(): string {
+  // Use crypto.randomInt for cryptographically secure gift card codes (bearer tokens)
+  const { randomInt } = require('crypto')
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
   for (let i = 0; i < 12; i++) {
     if (i > 0 && i % 4 === 0) code += '-'
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
+    code += chars.charAt(randomInt(chars.length))
   }
   return code
 }

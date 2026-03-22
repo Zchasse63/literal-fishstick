@@ -163,7 +163,14 @@ export async function PUT(
     const studioId =
       authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
 
+    // Role check — only owner/manager can update members (prevents privilege escalation)
+    const callerRoles: string[] = authProfile?.roles ?? [];
+    if (!callerRoles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
+    // NOTE: 'roles' intentionally excluded — role changes require owner-only endpoint
     const allowedFields = [
       "full_name",
       "email",
@@ -173,7 +180,6 @@ export async function PUT(
       "credits_remaining",
       "notes",
       "exclude_from_analytics",
-      "roles",
     ];
 
     const updates: Record<string, unknown> = {};

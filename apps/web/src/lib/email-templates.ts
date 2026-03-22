@@ -53,7 +53,9 @@ export function resolveTemplate(
     }
   }
 
-  const template = Handlebars.compile(templateStr, { noEscape: true })
+  // HTML escaping enabled to prevent XSS via member-supplied names/values.
+  // Use {{{triple-braces}}} in templates for intentionally raw HTML (e.g., layout markup).
+  const template = Handlebars.compile(templateStr)
   return template(data)
 }
 
