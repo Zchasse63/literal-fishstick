@@ -68,8 +68,14 @@ export function Header({ breadcrumb, sidebarCollapsed, onToggleSidebar }: Header
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full" />
         </button>
 
-        {/* Quick Create */}
-        <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm">
+        {/* Quick Create — opens command palette */}
+        <button
+          onClick={() => {
+            // Dispatch Cmd+K keyboard shortcut to open the command palette
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm"
+        >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:block">Quick Create</span>
         </button>

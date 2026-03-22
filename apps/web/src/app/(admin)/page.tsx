@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAuth } from '@/contexts/auth-context'
 import {
   useCommandCenterData,
   formatEasternTime,
@@ -152,7 +153,7 @@ function AIBriefingCard({ insights }: { insights: AIInsight[] }) {
       <div className="bg-gradient-to-br from-indigo-500/[0.04] to-violet-500/[0.04] -m-6 p-6 rounded-2xl">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-5 h-5 text-indigo-600" />
-          <h2 className="text-lg font-bold text-gray-900">Good morning, Zach</h2>
+          <h2 className="text-lg font-bold text-gray-900">{greeting}, {firstName}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {insights.map((insight, i) => {
@@ -456,6 +457,11 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
 
 // ─── Command Center Page ─────────────────────────────────────
 export default function CommandCenter() {
+  const { profile } = useAuth()
+  const firstName = profile?.full_name?.split(' ')[0] || 'there'
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
   const {
     bookingsToday,
     currentSessionBooked,

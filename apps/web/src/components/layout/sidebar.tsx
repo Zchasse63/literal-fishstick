@@ -165,7 +165,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
           )}
           {!collapsed && (
-            <button className="text-gray-400 hover:text-gray-600">
+            <button
+              onClick={async () => {
+                const { createBrowserClient } = await import('@/lib/supabase/client')
+                const supabase = createBrowserClient()
+                await supabase.auth.signOut()
+                window.location.href = '/login'
+              }}
+              title="Sign out"
+              className="text-gray-400 hover:text-gray-600"
+            >
               <LogOut className="w-4 h-4" />
             </button>
           )}

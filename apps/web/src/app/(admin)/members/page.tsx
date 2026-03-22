@@ -136,19 +136,44 @@ function mapTier(tier: string | null): { membership: string; membershipType: Mem
   }
 }
 
-function mapStatus(dbStatus: string, joinDate: string, lastVisit: string | null): Member['status'] {
+function mapStatus(dbStatus: string, joinDate: string, lastVisit: string | null, creditsRemaining: number = 0): Member['status'] {
+  // Billing status takes precedence
   if (dbStatus === 'paused') return 'paused'
-  // "New" = joined in the last 30 days
-  const joinDt = new Date(joinDate)
+  if (dbStatus === 'cancelled') return 'at-risk'
+  if (dbStatus === 'past_due') return 'at-risk'
+
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  if (joinDt >= thirtyDaysAgo) return 'new'
-  // "At risk" = active but no visit in 30 days
-  if (dbStatus === 'active' && lastVisit) {
-    const lastDt = new Date(lastVisit)
-    if (lastDt < thirtyDaysAgo) return 'at-risk'
+  const ninetyDaysAgo = new Date()
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+
+  // "New" = joined in the last 30 days AND has active/none status
+  if (dbStatus === 'active' || dbStatus === 'none') {
+    const joinDt = new Date(joinDate)
+    if (joinDt >= thirtyDaysAgo) return 'new'
   }
-  if (dbStatus === 'active') return 'active'
+
+  // For "active" billing status, classify by engagement
+  if (dbStatus === 'active') {
+    // Never visited = at risk
+    if (!lastVisit) return 'at-risk'
+    const lastDt = new Date(lastVisit)
+    if (lastDt >= thirtyDaysAgo) return 'active'    // Visited in last 30 days
+    if (lastDt >= ninetyDaysAgo) return 'at-risk'    // 30-90 days ago
+    return 'at-risk'                                  // 90+ days = at risk
+  }
+
+  // "none" status — check if they have credits (credit-pack members)
+  if (dbStatus === 'none') {
+    if (creditsRemaining > 0) {
+      if (!lastVisit) return 'at-risk'
+      const lastDt = new Date(lastVisit)
+      if (lastDt >= thirtyDaysAgo) return 'active'
+      return 'at-risk'
+    }
+    return 'at-risk' // No plan, no credits
+  }
+
   return 'active'
 }
 
@@ -322,7 +347,7 @@ export default function MembersPage() {
         const fullName = profile.full_name || 'Unknown'
         const { firstName, lastName } = splitName(fullName)
         const tierInfo = mapTier(row.membership_tier)
-        const computedStatus = mapStatus(row.membership_status, row.join_date, row.last_visit)
+        const computedStatus = mapStatus(row.membership_status, row.join_date, row.last_visit, row.credits_remaining ?? 0)
 
         return {
           id: row.id,
@@ -383,13 +408,13 @@ export default function MembersPage() {
         supabase.from('members').select('id', { count: 'exact', head: true }).eq('studio_id', STUDIO_ID).gte('join_date', thirtyDaysAgoISO),
       ])
 
-      // For "at risk" we need to count active members with last_visit older than 30 days
+      // For "at risk" count active members with last_visit > 30 days ago OR never visited (null)
       const atRiskRes = await supabase
         .from('members')
         .select('id', { count: 'exact', head: true })
         .eq('studio_id', STUDIO_ID)
         .eq('membership_status', 'active')
-        .lt('last_visit', thirtyDaysAgo.toISOString())
+        .or(`last_visit.lt.${thirtyDaysAgo.toISOString()},last_visit.is.null`)
 
       setFilterCounts({
         All: allRes.count || 0,
