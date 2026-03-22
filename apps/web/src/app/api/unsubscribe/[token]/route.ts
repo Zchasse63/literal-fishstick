@@ -3,9 +3,12 @@ import { createServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
 // Require a real secret — no insecure fallback allowed
-const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET;
-if (!UNSUBSCRIBE_SECRET) {
-  console.error('CRITICAL: UNSUBSCRIBE_SECRET env var is not set. Unsubscribe verification will reject all tokens.');
+function getUnsubscribeSecret(): string {
+  const secret = process.env.UNSUBSCRIBE_SECRET;
+  if (!secret) {
+    throw new Error('UNSUBSCRIBE_SECRET env var is required');
+  }
+  return secret;
 }
 
 // Token format: `${memberId}:${studioId}:${timestamp}:${hmac}`
@@ -38,7 +41,7 @@ function parseToken(token: string): {
 function verifyHmac(memberId: string, studioId: string, timestamp: string, hmac: string): boolean {
   const payload = `${memberId}:${studioId}:${timestamp}`;
   const expected = crypto
-    .createHmac("sha256", UNSUBSCRIBE_SECRET)
+    .createHmac("sha256", getUnsubscribeSecret())
     .update(payload)
     .digest("hex");
 
