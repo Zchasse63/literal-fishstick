@@ -1,36 +1,60 @@
 graph TD
-    subgraph Internet["Public Internet"]
-        LEGIT[Authenticated Admin/Employee\nSupabase JWT session]
-        ANON[Unauthenticated Requests]
-        WEBHOOKS[External Webhooks\nStripe · Resend · Twilio · EasyPost]
+    subgraph Public["Public Internet (No Auth Required)"]
+        LEADS["/api/leads/capture\nRate limited 10/min/IP\nin-memory only"]:::yellow
+        UNSUB["/api/unsubscribe/:token\nHMAC verified\nno expiry check"]:::yellow
+        OPENAPI["/api/openapi\nFull API schema"]:::yellow
     end
 
-    subgraph NextJS["Next.js Server (no middleware.ts)"]
-        UNPROTECTED["Public Endpoints\n/api/leads/capture — no rate limit\n/api/openapi — schema exposed\n/api/unsubscribe/token"]
-        AUTHED["Auth-checked Endpoints\n~120 handlers\nper-handler getUser()"]
-        WH["Webhook Handlers\nStripe: HMAC verified\nResend: Svix verified\nTwilio: UNKNOWN\nEasyPost: UNKNOWN"]
+    subgraph Webhooks["Webhook Endpoints"]
+        STRIPE_WH["/api/webhooks/stripe\nStripe-Signature HMAC"]:::green
+        RESEND_WH["/api/webhooks/resend\nSvix verified"]:::green
+        TWILIO_WH["/api/webhooks/twilio\nOptional — skipped if no secret"]:::yellow
+        EASY_WH["/api/webhooks/easypost\nOptional — open if no secret"]:::red
+        INNGEST_WH["/api/inngest\nInngest signing key"]:::green
     end
 
-    subgraph DB["Database Layer"]
-        SUPA_AUTH[Supabase Auth\nJWT validation]
-        RLS["RLS Policies\nCRITICAL: app.studio_id\nsession var may not be set"]
-        POSTGRES[(PostgreSQL)]
+    subgraph Cron["Cron (x-cron-secret OR user auth)"]
+        WAITLIST["/api/cron/waitlist-promote\nGET mutates state"]:::yellow
+        SCHED["/api/campaigns/process-scheduled"]:::yellow
     end
 
-    LEGIT --> AUTHED
-    ANON --> UNPROTECTED
-    WEBHOOKS --> WH
+    subgraph AuthedAPI["Authenticated API (middleware.ts JWT gate)"]
+        MEMBERS_PUT["/api/members/:id PUT\nNO ROLE CHECK\nroles field writable"]:::red
+        ADMIN_ROUTES["Admin-only routes\nowner/manager check\nmembers GET/DELETE\npayroll, migration\ncampaigns, staff"]:::green
+        ANY_AUTHED["Auth-only routes\nno role check\nbookings, classes\ngeofence, segments"]:::yellow
+        AI_ROUTES["/api/ai/* (13 endpoints)\nowner/manager + rate limit\nin-memory limiter only"]:::yellow
+    end
 
-    AUTHED --> SUPA_AUTH
-    SUPA_AUTH --> RLS
-    RLS --> POSTGRES
+    subgraph Secrets["Credentials (ROTATE IMMEDIATELY)"]
+        SRK["SUPABASE_SERVICE_ROLE_KEY\nIn .env.local\nBypasses all RLS"]:::red
+        ANT["ANTHROPIC_API_KEY\nIn .env.local\nLive production key"]:::red
+        ANON["NEXT_PUBLIC anon key\nIn client bundle\nIntended"]:::green
+    end
 
-    WH --> POSTGRES
-    UNPROTECTED --> POSTGRES
+    subgraph DataLayer["Data Layer"]
+        SUPABASE_DB[("Supabase Postgres\nRLS on all tables\nstudio_id isolation")]:::green
+        SUPA_SVC[("Service Role Client\nRLS bypassed\nInngest only")]:::yellow
+    end
 
-    classDef critical fill:#fee2e2,stroke:#ef4444
-    classDef warning fill:#fef3c7,stroke:#f59e0b
+    subgraph External["External Services"]
+        STRIPE_API["Stripe API\nSecret key server-only"]:::green
+        ANTHROPIC["Anthropic API\nKey needs rotation"]:::red
+        RESEND["Resend API"]:::green
+    end
 
-    class RLS critical
-    class WH warning
-    class UNPROTECTED warning
+    Public --> SUPABASE_DB
+    Webhooks --> SUPABASE_DB
+    Cron --> SUPABASE_DB
+    ADMIN_ROUTES --> SUPABASE_DB
+    ANY_AUTHED --> SUPABASE_DB
+    MEMBERS_PUT --> SUPABASE_DB
+    AI_ROUTES --> ANTHROPIC
+    INNGEST_WH --> SUPA_SVC
+    SUPA_SVC --> SUPABASE_DB
+    STRIPE_WH --> SUPABASE_DB
+    ADMIN_ROUTES --> STRIPE_API
+    ADMIN_ROUTES --> RESEND
+
+    classDef green fill:#10B981,color:#fff,stroke:#059669
+    classDef yellow fill:#F59E0B,color:#fff,stroke:#D97706
+    classDef red fill:#EF4444,color:#fff,stroke:#DC2626

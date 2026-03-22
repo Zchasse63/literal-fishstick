@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
               studio_id: STUDIO_ID,
               variant,
               status: 'sent',
-              resend_id: result.id,
+              resend_message_id: result.id,
               message_id: result.messageId,
               sent_at: new Date().toISOString(),
             })
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
               studio_id: STUDIO_ID,
               campaign_id: campaignId,
               member_id: member.id,
-              resend_id: result.id,
+              resend_message_id: result.id,
               message_id: result.messageId,
               subject: resolvedSubject,
               status: 'sent',

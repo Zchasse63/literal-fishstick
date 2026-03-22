@@ -1,8 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { constructWebhookEvent } from '@/lib/stripe'
-import { createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!
+
+/**
+ * Service-role Supabase client for webhook handlers.
+ * Stripe webhooks are server-to-server calls with no user cookies,
+ * so we MUST use the service-role key to bypass RLS.
+ */
+function getWebhookSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  )
+}
+
+/**
+ * Extract studio_id from Stripe object metadata.
+ * Falls back to member lookup if not in metadata (backward compat).
+ */
+async function resolveStudioId(
+  supabase: ReturnType<typeof createClient>,
+  metadata: Record<string, string> | null | undefined,
+  memberId: string | undefined,
+): Promise<string | null> {
+  // Preferred: studio_id in metadata (set at Stripe object creation time)
+  if (metadata?.meridian_studio_id) {
+    return metadata.meridian_studio_id
+  }
+
+  // Fallback: look up studio_id from the member record
+  if (memberId) {
+    const { data } = await supabase
+      .from('members')
+      .select('studio_id')
+      .eq('id', memberId)
+      .single()
+    return data?.studio_id ?? null
+  }
+
+  return null
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -22,7 +62,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Webhook Error: ${message}` }, { status: 400 })
   }
 
-  const supabase = await createServerClient()
+  const supabase = getWebhookSupabase()
 
   try {
     switch (event.type) {
@@ -30,7 +70,9 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.created': {
         const subscription = event.data.object
         const memberId = subscription.metadata?.meridian_member_id
-        if (memberId) {
+        const studioId = await resolveStudioId(supabase, subscription.metadata, memberId)
+
+        if (memberId && studioId) {
           await supabase
             .from('members')
             .update({
@@ -38,15 +80,16 @@ export async function POST(request: NextRequest) {
               membership_status: 'active',
             })
             .eq('id', memberId)
+            .eq('studio_id', studioId)
 
           // Invalidate AI cache (churn/health predictions are now stale)
           await supabase
             .from('ai_cache')
             .delete()
             .eq('entity_id', memberId)
-            .eq('studio_id', '11111111-1111-1111-1111-111111111111')
+            .eq('studio_id', studioId)
 
-          await logActivity(supabase, 'subscription_created', {
+          await logActivity(supabase, studioId, 'membership_change', 'New subscription created', {
             member_id: memberId,
             subscription_id: subscription.id,
           })
@@ -57,19 +100,23 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object
         const memberId = subscription.metadata?.meridian_member_id
-        if (memberId) {
-          const status = subscription.cancel_at_period_end ? 'canceling' : 'active'
+        const studioId = await resolveStudioId(supabase, subscription.metadata, memberId)
+
+        if (memberId && studioId) {
+          // 'paused' = cancel at period end; 'active' = still active
+          const status = subscription.cancel_at_period_end ? 'paused' : 'active'
           await supabase
             .from('members')
             .update({ membership_status: status })
             .eq('id', memberId)
+            .eq('studio_id', studioId)
 
-          // Invalidate AI cache (churn/health predictions are now stale)
+          // Invalidate AI cache
           await supabase
             .from('ai_cache')
             .delete()
             .eq('entity_id', memberId)
-            .eq('studio_id', '11111111-1111-1111-1111-111111111111')
+            .eq('studio_id', studioId)
         }
         break
       }
@@ -77,20 +124,23 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object
         const memberId = subscription.metadata?.meridian_member_id
-        if (memberId) {
+        const studioId = await resolveStudioId(supabase, subscription.metadata, memberId)
+
+        if (memberId && studioId) {
           await supabase
             .from('members')
-            .update({ membership_status: 'expired' })
+            .update({ membership_status: 'cancelled' })
             .eq('id', memberId)
+            .eq('studio_id', studioId)
 
-          // Invalidate AI cache (churn/health predictions are now stale)
+          // Invalidate AI cache
           await supabase
             .from('ai_cache')
             .delete()
             .eq('entity_id', memberId)
-            .eq('studio_id', '11111111-1111-1111-1111-111111111111')
+            .eq('studio_id', studioId)
 
-          await logActivity(supabase, 'subscription_canceled', {
+          await logActivity(supabase, studioId, 'membership_change', 'Subscription cancelled', {
             member_id: memberId,
             subscription_id: subscription.id,
           })
@@ -102,20 +152,22 @@ export async function POST(request: NextRequest) {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object
         const memberId = invoice.metadata?.meridian_member_id
-        if (memberId && invoice.amount_paid) {
+        const studioId = await resolveStudioId(supabase, invoice.metadata, memberId)
+
+        if (memberId && studioId && invoice.amount_paid) {
           await supabase.from('transactions').insert({
-            studio_id: '11111111-1111-1111-1111-111111111111',
+            studio_id: studioId,
             member_id: memberId,
-            amount: invoice.amount_paid / 100,
-            type: 'payment',
+            amount: invoice.amount_paid, // Stripe amount is already in cents
+            type: 'membership',
             status: 'completed',
             stripe_payment_intent_id: (invoice as unknown as { payment_intent: string }).payment_intent,
             description: `Invoice ${invoice.number || invoice.id}`,
           })
 
-          await logActivity(supabase, 'payment_received', {
+          await logActivity(supabase, studioId, 'payment', 'Payment received', {
             member_id: memberId,
-            amount: invoice.amount_paid / 100,
+            amount: invoice.amount_paid,
           })
         }
         break
@@ -124,20 +176,21 @@ export async function POST(request: NextRequest) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object
         const memberId = invoice.metadata?.meridian_member_id
-        if (memberId) {
-          // Record failed payment for dunning
+        const studioId = await resolveStudioId(supabase, invoice.metadata, memberId)
+
+        if (memberId && studioId) {
           await supabase.from('transactions').insert({
-            studio_id: '11111111-1111-1111-1111-111111111111',
+            studio_id: studioId,
             member_id: memberId,
-            amount: (invoice.amount_due || 0) / 100,
-            type: 'payment',
+            amount: invoice.amount_due || 0, // cents
+            type: 'membership',
             status: 'failed',
             description: `Failed: Invoice ${invoice.number || invoice.id}`,
           })
 
-          await logActivity(supabase, 'payment_failed', {
+          await logActivity(supabase, studioId, 'failed_payment', 'Payment failed', {
             member_id: memberId,
-            amount: (invoice.amount_due || 0) / 100,
+            amount: invoice.amount_due || 0,
           })
         }
         break
@@ -148,29 +201,34 @@ export async function POST(request: NextRequest) {
         const session = event.data.object
         const memberId = session.metadata?.meridian_member_id
         const purchaseType = session.metadata?.purchase_type
+        const studioId = await resolveStudioId(supabase, session.metadata, memberId)
 
-        if (memberId && purchaseType === 'credit_pack') {
+        if (memberId && studioId && purchaseType === 'credit_pack') {
           const credits = parseInt(session.metadata?.credits || '0', 10)
           if (credits > 0) {
             await supabase.from('credit_packs').insert({
-              studio_id: '11111111-1111-1111-1111-111111111111',
+              studio_id: studioId,
               member_id: memberId,
-              total_credits: credits,
-              remaining_credits: credits,
+              credits_total: credits,
+              credits_remaining: credits,
+              pack_type: session.metadata?.pack_type || '8_pack',
+              purchased_at: new Date().toISOString(),
+              price_paid: session.amount_total || 0,
               expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
             })
           }
         }
 
-        if (memberId && purchaseType === 'gift_card') {
+        if (memberId && studioId && purchaseType === 'gift_card') {
           const amount = parseInt(session.metadata?.gift_amount || '0', 10)
           if (amount > 0) {
             await supabase.from('gift_cards').insert({
-              studio_id: '11111111-1111-1111-1111-111111111111',
-              purchased_by: memberId,
-              original_amount: amount,
-              current_balance: amount,
+              studio_id: studioId,
+              purchased_by_member_id: memberId,
+              amount,
+              balance: amount,
               code: generateGiftCardCode(),
+              is_active: true,
             })
           }
         }
@@ -192,12 +250,18 @@ export async function POST(request: NextRequest) {
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function logActivity(supabase: any, action: string, details: Record<string, unknown>) {
+async function logActivity(
+  supabase: ReturnType<typeof createClient>,
+  studioId: string,
+  type: string,
+  description: string,
+  metadata: Record<string, unknown>,
+) {
   await supabase.from('activity_log').insert({
-    studio_id: '11111111-1111-1111-1111-111111111111',
-    action,
-    details,
+    studio_id: studioId,
+    type,
+    description,
+    metadata,
   })
 }
 

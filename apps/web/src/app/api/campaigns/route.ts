@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
-
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
-const ALLOWED_ROLES = ['admin', 'manager']
+import { requireRole } from '@/lib/auth/require-role'
 
 /**
  * GET /api/campaigns
@@ -11,69 +8,36 @@ const ALLOWED_ROLES = ['admin', 'manager']
  * Query params: status, type, limit, offset, search
  */
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createServerClient()
+  const auth = await requireRole(['owner', 'manager'])
+  if (auth.error) return auth.error
+  const { supabase, studioId } = auth
 
-    // ─── Auth ──────────────────────────────────────────────────
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const { searchParams } = request.nextUrl
+  const status = searchParams.get('status')
+  const type = searchParams.get('type')
+  const search = searchParams.get('search')
+  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100)
+  const offset = parseInt(searchParams.get('offset') ?? '0', 10)
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('roles')
-      .eq('id', user.id)
-      .single()
+  let query = supabase
+    .from('campaigns')
+    .select('*', { count: 'exact' })
+    .eq('studio_id', studioId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
 
-    const roles: string[] = profile?.roles ?? []
-    if (!roles.some((r: string) => ALLOWED_ROLES.includes(r))) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions. Admin or manager role required.' },
-        { status: 403 }
-      )
-    }
+  if (status) query = query.eq('status', status)
+  if (type) query = query.eq('type', type)
+  if (search) query = query.or(`name.ilike.%${search}%,subject.ilike.%${search}%`)
 
-    // ─── Query Params ──────────────────────────────────────────
-    const { searchParams } = request.nextUrl
-    const status = searchParams.get('status')
-    const type = searchParams.get('type')
-    const search = searchParams.get('search')
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100)
-    const offset = parseInt(searchParams.get('offset') ?? '0', 10)
+  const { data, error, count } = await query
 
-    // ─── Build Query ───────────────────────────────────────────
-    let query = supabase
-      .from('campaigns')
-      .select('*', { count: 'exact' })
-      .eq('studio_id', STUDIO_ID)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (status) {
-      query = query.eq('status', status)
-    }
-
-    if (type) {
-      query = query.eq('type', type)
-    }
-
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,subject.ilike.%${search}%`)
-    }
-
-    const { data, error, count } = await query
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ data, count })
-  } catch (err) {
-    console.error('GET /api/campaigns error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  return NextResponse.json({ data, count })
 }
 
 /**
@@ -88,31 +52,11 @@ export async function GET(request: NextRequest) {
  * }
  */
 export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createServerClient()
+  const auth = await requireRole(['owner', 'manager'])
+  if (auth.error) return auth.error
+  const { user, supabase, studioId } = auth
 
-    // ─── Auth ──────────────────────────────────────────────────
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('roles')
-      .eq('id', user.id)
-      .single()
-
-    const roles: string[] = profile?.roles ?? []
-    if (!roles.some((r: string) => ALLOWED_ROLES.includes(r))) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions. Admin or manager role required.' },
-        { status: 403 }
-      )
-    }
-
-    // ─── Parse Body ────────────────────────────────────────────
-    const body = await request.json()
+  const body = await request.json()
     const {
       name,
       type,
@@ -173,7 +117,7 @@ export async function POST(request: NextRequest) {
     const { data: campaign, error: insertError } = await supabase
       .from('campaigns')
       .insert({
-        studio_id: STUDIO_ID,
+        studio_id: studioId,
         name,
         type,
         status: 'draft',
@@ -207,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     await supabase.from('activity_log').insert({
-      studio_id: STUDIO_ID,
+      studio_id: studioId,
       actor_id: user.id,
       action: 'campaign_created',
       entity_type: 'campaign',
@@ -216,8 +160,4 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ data: campaign }, { status: 201 })
-  } catch (err) {
-    console.error('POST /api/campaigns error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
 }

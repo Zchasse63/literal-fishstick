@@ -220,7 +220,7 @@ export const executeFlow = inngest.createFunction(
                 member_id: enrollment.member_id,
                 studio_id,
                 email: member.email,
-                resend_id: result.id,
+                resend_message_id: result.id,
                 message_id: result.messageId,
                 status: 'sent',
                 sent_at: new Date().toISOString(),
@@ -234,11 +234,11 @@ export const executeFlow = inngest.createFunction(
 
             await updateCooldown(enrollment.member_id, studio_id, 'email');
             await recordStepExecution(enrollment_id, currentStep, 'email', 'completed', {
-              resend_id: result.id,
+              resend_message_id: result.id,
               subject,
             });
 
-            return { sent: true, resend_id: result.id };
+            return { sent: true, resend_message_id: result.id };
           });
 
           currentStep++;
@@ -435,11 +435,27 @@ export const executeFlow = inngest.createFunction(
 
         // ── UPDATE FIELD ───────────────────────────────────────
         case 'update_field': {
+          // Allowlist of fields that automation flows can update.
+          // Prevents privilege escalation via roles/studio_id/email writes.
+          const ALLOWED_UPDATE_FIELDS = new Set([
+            'notes',
+            'membership_tier',
+          ]);
+
           await step.run(stepKey, async () => {
+            if (!ALLOWED_UPDATE_FIELDS.has(flowStep.field)) {
+              await recordStepExecution(enrollment_id, currentStep, 'update_field', 'skipped', {
+                field: flowStep.field,
+                reason: 'disallowed_field',
+              });
+              return;
+            }
+
             await db
               .from('profiles')
               .update({ [flowStep.field]: flowStep.value })
-              .eq('id', enrollment.member_id);
+              .eq('id', enrollment.member_id)
+              .eq('studio_id', studio_id);
 
             await recordStepExecution(enrollment_id, currentStep, 'update_field', 'completed', {
               field: flowStep.field,

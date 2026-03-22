@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,17 +65,14 @@ Return ONLY the JSON object. No markdown fences, no extra text.`;
 export async function predictChurn(
   input: ChurnInput
 ): Promise<ChurnPredictionResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedChurnPrediction(input);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 800,
       system: SYSTEM_PROMPT,
       messages: [
@@ -86,12 +83,7 @@ export async function predictChurn(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
-
-    // Strip markdown fences if present
-    const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = JSON.parse(jsonStr) as ChurnPredictionResult;
+    const parsed = parseAIJson<ChurnPredictionResult>(extractText(message));
 
     // Validate the response shape
     if (

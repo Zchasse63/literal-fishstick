@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -97,14 +97,12 @@ export async function generateWaitlistMessage(
   context: WaitlistMemberContext,
   messageType: WaitlistMessageType
 ): Promise<WaitlistMessageResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedMessage(context, messageType);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const userPrompt = [
       `Message type: ${messageType}`,
@@ -119,7 +117,7 @@ export async function generateWaitlistMessage(
     ].join("\n");
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 800,
       system: SYSTEM_PROMPT,
       messages: [
@@ -130,8 +128,7 @@ export async function generateWaitlistMessage(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
 
     // Parse JSON from response, stripping any markdown fences if present
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -157,21 +157,19 @@ function generateRulesBasedDraft(input: ReplyDraftInput): ReplyDraftResult {
 export async function generateReplyDraft(
   input: ReplyDraftInput
 ): Promise<ReplyDraftResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedDraft(input);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const memberContextBlock = input.member_context
       ? `\nMember context:\n- Membership: ${input.member_context.membership_type ?? "None"}\n- Visits in last 30 days: ${input.member_context.visits_last_30d}\n- Credits remaining: ${input.member_context.credits_remaining}`
       : "";
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 800,
       system: `You are drafting a reply on behalf of ${input.owner_name} at ${input.studio_name}. Match their voice: warm, professional, knowledgeable about fitness/wellness/sauna. The reply should feel personal, not automated. For complaints, acknowledge the concern and offer to discuss further. For questions about scheduling/pricing, provide helpful answers. Always end with an invitation to book or visit. Return JSON only with these exact keys: draft_reply (string, plain text), tone_analysis (one of: positive, neutral, negative, question, complaint), suggested_subject (string), requires_human_review (boolean — true for complaints, cancellation requests, or if you are unsure), confidence (number 0-100). No markdown fences.`,
       messages: [
@@ -182,8 +180,7 @@ export async function generateReplyDraft(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
 
     // Strip markdown fences if present
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();

@@ -242,7 +242,12 @@ describe("POST /api/bookings", () => {
   // -- Validation -----------------------------------------------------
 
   it("returns 400 when class_id is missing", async () => {
-    mockSupabase = buildSupabaseMock({}, { user: { id: TEST_USER_ID } });
+    mockSupabase = buildSupabaseMock(
+      {
+        profiles: { data: { studio_id: TEST_STUDIO_ID, roles: ["owner"] }, error: null },
+      },
+      { user: { id: TEST_USER_ID } }
+    );
 
     const res = await POST(
       makeRequest("/api/bookings", {
@@ -256,7 +261,12 @@ describe("POST /api/bookings", () => {
   });
 
   it("returns 400 when class_id is not a valid UUID", async () => {
-    mockSupabase = buildSupabaseMock({}, { user: { id: TEST_USER_ID } });
+    mockSupabase = buildSupabaseMock(
+      {
+        profiles: { data: { studio_id: TEST_STUDIO_ID, roles: ["owner"] }, error: null },
+      },
+      { user: { id: TEST_USER_ID } }
+    );
 
     const res = await POST(
       makeRequest("/api/bookings", {

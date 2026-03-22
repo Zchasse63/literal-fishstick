@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 export interface BriefingContext {
   today_classes: number;
@@ -27,17 +27,15 @@ export interface RecommendationContext {
 export async function generateBriefing(
   context: BriefingContext
 ): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedBriefing(context);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 500,
       system: `You are Meridian AI, the intelligent assistant for a fitness studio management platform. You provide concise, actionable daily briefings for studio owners. Be direct, data-driven, and highlight what needs attention. Use a confident but warm tone. Never use more than 3-4 bullet points. Format with bullet points using "•" characters.`,
       messages: [
@@ -48,7 +46,7 @@ export async function generateBriefing(
       ],
     });
 
-    return message.content[0].type === "text" ? message.content[0].text : "";
+    return extractText(message);
   } catch (error) {
     console.error("Anthropic API error, falling back to rules-based:", error);
     return generateRulesBasedBriefing(context);
@@ -62,14 +60,12 @@ export async function generateBriefing(
 export async function generateRecommendations(
   context: RecommendationContext
 ): Promise<string[]> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedRecommendations(context);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const systemPrompts: Record<string, string> = {
       scheduling:
@@ -83,7 +79,7 @@ export async function generateRecommendations(
     };
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 800,
       system: `${systemPrompts[context.type]} Return each recommendation as a separate line starting with a number and period (e.g. "1. "). Be specific and data-driven.`,
       messages: [
@@ -94,8 +90,7 @@ export async function generateRecommendations(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
     return text
       .split("\n")
       .filter((line) => /^\d+\./.test(line.trim()))
@@ -224,14 +219,12 @@ export interface CampaignCopyResult {
 export async function generateCampaignCopy(
   request: CampaignCopyRequest
 ): Promise<CampaignCopyResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedCampaignCopy(request);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const userPrompt = [
       `Campaign type: ${request.campaign_type}`,
@@ -251,7 +244,7 @@ export async function generateCampaignCopy(
       .join("\n");
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 1500,
       system:
         "You are Meridian AI, writing email campaign copy for a fitness/wellness studio (sauna & cold plunge). Write compelling, on-brand copy. Never generate deceptive, misleading, or clickbait subject lines. All suggestions must be honest and CAN-SPAM compliant. Include merge tags where appropriate (Handlebars syntax like {{first_name}}). Return JSON with fields: subject_line, preview_text, body_html, body_text, suggested_merge_tags. Return ONLY the JSON object, no markdown fences or extra text.",
@@ -263,8 +256,7 @@ export async function generateCampaignCopy(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
 
     // Parse JSON from response, stripping any markdown fences if present
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
@@ -421,17 +413,15 @@ export interface HealthScoreResult {
 export async function generateHealthScore(
   input: HealthScoreInput
 ): Promise<HealthScoreResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedHealthScore(input);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 600,
       system:
         "You are Meridian AI. Calculate a health score (0-100) for a fitness studio member based on their engagement data. Score meaning: 80-100 healthy, 60-79 watch, 40-59 at_risk, 0-39 critical. Provide a brief narrative explanation and recommended action. Return JSON only with keys: score (number), risk_level (string), narrative (string), top_factors (array of 3 strings), recommended_action (string). No markdown fences.",
@@ -443,8 +433,7 @@ export async function generateHealthScore(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
 
     // Strip markdown fences if present
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
@@ -807,7 +796,8 @@ export async function translateToSQL(
   // Try rules-based fallback first for common patterns (works without API key)
   const rulesResult = tryRulesBasedSQL(query, studio_id);
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     if (rulesResult) return rulesResult;
 
     return {
@@ -820,9 +810,6 @@ export async function translateToSQL(
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const prompt = NL_SEARCH_SYSTEM_PROMPT.replace(
       /\$STUDIO_ID/g,
@@ -830,7 +817,7 @@ export async function translateToSQL(
     );
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 1024,
       system: prompt,
       messages: [
@@ -969,17 +956,15 @@ export interface SubjectLineSuggestion {
 export async function suggestSubjectLines(
   context: SubjectLineContext
 ): Promise<SubjectLineSuggestion[]> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedSubjectLines(context);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 800,
       system:
         "You are Meridian AI, an email marketing assistant for a fitness/wellness studio (sauna & cold plunge). Generate exactly 5 email subject line suggestions. Never generate deceptive, misleading, or clickbait subject lines. All suggestions must be honest and CAN-SPAM compliant. Return a JSON array of 5 objects, each with: subject_line (string), estimated_open_rate_improvement (string like '+12%'), rationale (string). Return ONLY the JSON array, no markdown fences or extra text.",
@@ -991,8 +976,7 @@ export async function suggestSubjectLines(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
     const parsed = JSON.parse(jsonStr) as SubjectLineSuggestion[];
 
@@ -1088,17 +1072,15 @@ export interface LeadScoreResult {
 export async function scoreLead(
   leadData: LeadScoreInput
 ): Promise<LeadScoreResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedLeadScore(leadData);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 600,
       system:
         "You are Meridian AI. Score a lead (0-100) for a fitness/wellness studio based on their engagement data. Score meaning: 70-100 hot (ready to convert), 40-69 warm (engaged but needs nurturing), 0-39 cold (low engagement). Return JSON with: score (number 0-100), factors (array of strings explaining key scoring factors), recommended_action (string with specific next step), priority ('hot' | 'warm' | 'cold'). Return ONLY the JSON object, no markdown fences.",
@@ -1110,8 +1092,7 @@ export async function scoreLead(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
     const parsed = JSON.parse(jsonStr) as LeadScoreResult;
 
@@ -1242,17 +1223,15 @@ export interface SendTimeResult {
 export async function optimizeSendTime(
   memberData: SendTimeInput
 ): Promise<SendTimeResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedSendTime(memberData);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 400,
       system:
         "You are Meridian AI. Determine the optimal email send time for a fitness studio member based on their engagement patterns. Return JSON with: optimal_hour (number 0-23 in member's timezone), optimal_day (string day of week like 'Tuesday'), confidence ('high' | 'medium' | 'low'), rationale (brief explanation). Return ONLY the JSON object, no markdown fences.",
@@ -1264,8 +1243,7 @@ export async function optimizeSendTime(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
     const parsed = JSON.parse(jsonStr) as SendTimeResult;
 
@@ -1399,17 +1377,15 @@ export interface CampaignSummaryResult {
 export async function summarizeCampaign(
   data: CampaignSummaryInput
 ): Promise<CampaignSummaryResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedCampaignSummary(data);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 600,
       system:
         "You are Meridian AI. Summarize the performance of an email/SMS campaign for a fitness/wellness studio. Be data-driven and actionable. Return JSON with: summary (2-3 sentence overview), highlights (array of positive takeaways), concerns (array of issues to watch), recommendation (single actionable next step). Return ONLY the JSON object, no markdown fences.",
@@ -1421,8 +1397,7 @@ export async function summarizeCampaign(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
     const parsed = JSON.parse(jsonStr) as CampaignSummaryResult;
 
@@ -1573,17 +1548,15 @@ export interface AutomationRecommendation {
 export async function recommendAutomations(
   studioData: AutomationRecommendationInput
 ): Promise<AutomationRecommendation[]> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedAutomationRecommendations(studioData);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 800,
       system:
         "You are Meridian AI. Recommend marketing automations for a fitness/wellness studio based on their metrics and current automation setup. Prioritize automations that address the biggest gaps. Return a JSON array of objects with: name (string), trigger_type (string like 'event-based', 'time-based', 'threshold-based'), description (string), estimated_impact (string describing expected outcome), priority ('high' | 'medium' | 'low'). Return ONLY the JSON array, no markdown fences.",
@@ -1595,8 +1568,7 @@ export async function recommendAutomations(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
     const parsed = JSON.parse(jsonStr) as AutomationRecommendation[];
 

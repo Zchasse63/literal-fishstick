@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,14 +60,12 @@ Return ONLY the narrative string (plain text, no JSON wrapper, no markdown fence
 export async function generateReportNarrative(
   input: ReportNarrativeInput
 ): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return generateRulesBasedNarrative(input);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -81,8 +79,7 @@ export async function generateReportNarrative(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const text = extractText(message);
 
     const cleaned = text
       .replace(/^```(?:json)?\s*|\s*```$/g, "")

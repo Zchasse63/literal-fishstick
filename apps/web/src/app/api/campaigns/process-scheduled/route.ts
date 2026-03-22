@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
         .single()
 
       const roles: string[] = profile?.roles ?? []
-      if (!roles.some((r: string) => ['admin'].includes(r))) {
+      if (!roles.some((r: string) => ['owner', 'manager'].includes(r))) {
         return NextResponse.json(
-          { error: 'Insufficient permissions. Admin role required.' },
+          { error: 'Insufficient permissions. Owner or manager role required.' },
           { status: 403 }
         )
       }
@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
             studio_id: STUDIO_ID,
             variant,
             status: result.error ? 'failed' : 'sent',
-            resend_id: result.id ?? null,
+            resend_message_id: result.id ?? null,
             message_id: result.messageId ?? null,
             sent_at: result.error ? null : new Date().toISOString(),
             error_message: result.error ?? null,
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
             studio_id: STUDIO_ID,
             campaign_id: campaign.id,
             member_id: member.id,
-            resend_id: result.id,
+            resend_message_id: result.id,
             message_id: result.messageId,
             subject: resolvedSubject,
             status: result.error ? 'failed' : 'sent',

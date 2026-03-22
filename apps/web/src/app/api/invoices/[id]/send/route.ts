@@ -179,7 +179,7 @@ export async function POST(
       metadata: {
         invoice_number: invoice.invoice_number,
         sent_to: recipientEmail,
-        resend_id: result.id,
+        resend_message_id: result.id,
       },
     })
 

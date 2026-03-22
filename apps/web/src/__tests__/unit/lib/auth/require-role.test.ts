@@ -122,7 +122,8 @@ describe('requireRole', () => {
     const result = await requireRole(['owner'])
 
     expect(result.error).toBeNull()
-    expect(result.studioId).toBe('11111111-1111-1111-1111-111111111111')
+    // Falls back to DEFAULT_STUDIO_ID env var (set in test setup.ts)
+    expect(result.studioId).toBe('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
   })
 
   it('returns supabase client in the 401 (unauthenticated) case', async () => {

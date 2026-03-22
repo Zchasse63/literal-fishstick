@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
-const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET || "meridian-unsubscribe-secret";
+const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET;
+if (!UNSUBSCRIBE_SECRET) {
+  console.error('FATAL: UNSUBSCRIBE_SECRET env var is required');
+}
 
 // Token format: `${memberId}:${studioId}:${timestamp}:${hmac}`
 // HMAC payload: `${memberId}:${studioId}:${timestamp}`

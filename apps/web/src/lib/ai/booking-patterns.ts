@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,17 +92,14 @@ Be specific and data-driven. Reference class names, days, and times. Limit to 5-
 export async function analyzeBookingPatterns(
   input: BookingPatternInput
 ): Promise<BookingPatternResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropic = getAnthropicClient();
+  if (!anthropic) {
     return analyzeBookingPatternsRulesBased(input);
   }
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: AI_MODEL,
       max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [
@@ -113,12 +110,7 @@ export async function analyzeBookingPatterns(
       ],
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
-
-    // Strip markdown fences if present
-    const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-    const parsed = JSON.parse(jsonStr) as BookingPatternResult;
+    const parsed = parseAIJson<BookingPatternResult>(extractText(message));
 
     // Validate required fields
     if (
