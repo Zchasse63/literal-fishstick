@@ -147,7 +147,7 @@ function CommandCenterSkeleton() {
 }
 
 // ─── AI Briefing Card ────────────────────────────────────────
-function AIBriefingCard({ insights }: { insights: AIInsight[] }) {
+function AIBriefingCard({ insights, greeting, firstName }: { insights: AIInsight[]; greeting: string; firstName: string }) {
   return (
     <div className="ai-border rounded-2xl p-6">
       <div className="bg-gradient-to-br from-indigo-500/[0.04] to-violet-500/[0.04] -m-6 p-6 rounded-2xl">
@@ -483,7 +483,7 @@ export default function CommandCenter() {
   return (
     <motion.div {...fadeInUp} className="space-y-5">
       {/* AI Briefing */}
-      <AIBriefingCard insights={aiInsights} />
+      <AIBriefingCard insights={aiInsights} greeting={greeting} firstName={firstName} />
 
       {/* Metrics Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
