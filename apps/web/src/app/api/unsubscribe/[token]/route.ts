@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
-// Require a real secret — no insecure fallback
-const UNSUBSCRIBE_SECRET: string = process.env.UNSUBSCRIBE_SECRET ?? (() => {
-  console.error('WARNING: UNSUBSCRIBE_SECRET env var not set — unsubscribe tokens will fail verification');
-  return 'UNSET-UNSUBSCRIBE-SECRET-CHANGE-ME';
-})();
+// Require a real secret — no insecure fallback allowed
+const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET;
+if (!UNSUBSCRIBE_SECRET) {
+  console.error('CRITICAL: UNSUBSCRIBE_SECRET env var is not set. Unsubscribe verification will reject all tokens.');
+}
 
 // Token format: `${memberId}:${studioId}:${timestamp}:${hmac}`
 // HMAC payload: `${memberId}:${studioId}:${timestamp}`

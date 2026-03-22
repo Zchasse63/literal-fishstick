@@ -14,7 +14,7 @@ test.describe('Login Page', () => {
     expect(body!.toLowerCase()).toContain('meridian')
   })
 
-  test('email input and Send Magic Link button are visible', async ({ page }) => {
+  test('email input and sign-in button are visible', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
@@ -22,8 +22,8 @@ test.describe('Login Page', () => {
     const emailInput = page.locator('input[type="email"], input[name="email"], input[placeholder*="email" i]')
     await expect(emailInput.first()).toBeVisible({ timeout: 15000 })
 
-    // Magic link / sign in button should be visible
-    const submitButton = page.locator('button[type="submit"], button:has-text("Magic Link"), button:has-text("Sign In"), button:has-text("Send")')
+    // Sign in button should be visible
+    const submitButton = page.locator('button[type="submit"]')
     await expect(submitButton.first()).toBeVisible({ timeout: 15000 })
   })
 
@@ -38,7 +38,7 @@ test.describe('Login Page', () => {
     await emailInput.first().clear()
 
     // Submit button should be disabled or clicking it should not navigate away
-    const submitButton = page.locator('button[type="submit"], button:has-text("Magic Link"), button:has-text("Sign In"), button:has-text("Send")')
+    const submitButton = page.locator('button[type="submit"]')
     const btn = submitButton.first()
     await expect(btn).toBeVisible()
 
@@ -52,22 +52,26 @@ test.describe('Login Page', () => {
     }
   })
 
-  test('shows confirmation after submitting email', async ({ page }) => {
+  test('shows magic link confirmation after switching mode and submitting', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    const emailInput = page.locator('input[type="email"], input[name="email"], input[placeholder*="email" i]')
-    await expect(emailInput.first()).toBeVisible({ timeout: 15000 })
+    // Default mode is password — switch to magic link mode
+    const magicLinkToggle = page.locator('button:has-text("Magic Link")')
+    await expect(magicLinkToggle).toBeVisible({ timeout: 15000 })
+    await magicLinkToggle.click()
 
     // Fill in a test email
+    const emailInput = page.locator('input[type="email"]')
+    await expect(emailInput.first()).toBeVisible({ timeout: 15000 })
     await emailInput.first().fill('test-e2e-noreply@meridian.app')
 
-    // Click submit
-    const submitButton = page.locator('button[type="submit"], button:has-text("Magic Link"), button:has-text("Sign In"), button:has-text("Send")')
+    // Click Send Magic Link
+    const submitButton = page.locator('button[type="submit"]')
     await submitButton.first().click()
 
-    // Should show confirmation message (check email, magic link sent, etc.)
-    const confirmation = page.locator('text=/check your email|magic link|email sent|link sent|check your inbox/i')
+    // Should show confirmation message
+    const confirmation = page.locator('text=/check your email|magic link|link sent|check your inbox/i')
     await expect(confirmation.first()).toBeVisible({ timeout: 15000 })
   })
 })

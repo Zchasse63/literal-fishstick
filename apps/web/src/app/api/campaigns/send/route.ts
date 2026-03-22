@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { sendCampaignEmail } from '@/lib/resend'
 import { resolveTemplate, textToHtml, wrapEmailLayout } from '@/lib/email-templates'
+import { randomInt } from 'crypto'
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 const ALLOWED_ROLES = ['admin', 'manager']
@@ -245,7 +246,7 @@ export async function POST(request: NextRequest) {
 
           if (campaign?.ab_test_enabled) {
             const splitPct = campaign.ab_split_percentage ?? 50
-            variant = Math.random() * 100 < splitPct ? 'A' : 'B'
+            variant = randomInt(100) < splitPct ? 'A' : 'B'
             resolvedSubjectTemplate = variant === 'A'
               ? (campaign.variant_a_subject ?? subject)
               : (campaign.variant_b_subject ?? subject)
