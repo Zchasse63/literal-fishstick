@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { normalizePhone } from '@/lib/validation'
 
 const ALLOWED_ROLES = ['owner', 'manager']
 const BATCH_SIZE = 100
@@ -347,7 +348,7 @@ function mapRowToTable(
         email: (row['email'] ?? '').trim().toLowerCase(),
         first_name: row['first_name'] ?? row['firstname'] ?? '',
         last_name: row['last_name'] ?? row['lastname'] ?? '',
-        phone: row['phone'] ?? row['phone_number'] ?? null,
+        phone: normalizePhone(row['phone'] ?? row['phone_number']) ?? null,
         membership_status: row['status'] ?? 'active',
         join_date: normalizeDate(row['join_date'] ?? row['created_at'] ?? '') ?? new Date().toISOString().slice(0, 10),
         migration_job_id: migrationJobId,

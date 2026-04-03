@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { normalizePhone } from '@/lib/validation'
 
 /**
  * GET /api/settings
@@ -125,6 +126,10 @@ export async function PUT(request: NextRequest) {
       if (body[field] !== undefined) {
         updates[field] = body[field];
       }
+    }
+
+    if (updates.phone !== undefined) {
+      updates.phone = normalizePhone(updates.phone as string | null)
     }
 
     if (Object.keys(updates).length === 0) {

@@ -9,6 +9,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { createSMSProvider } from '@/lib/sms';
 import { rateLimit } from '@/lib/rate-limit';
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { normalizePhone } from '@/lib/validation'
 
 const STUDIO_ID = DEFAULT_STUDIO_ID;
 const ALLOWED_ROLES = ['owner', 'admin', 'manager'];
@@ -58,8 +59,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Normalize phone before validation
+  const normalizedTo = normalizePhone(to);
+  if (!normalizedTo) {
+    return NextResponse.json(
+      { error: 'Invalid phone number. Must be in E.164 format (e.g., +14155551234).' },
+      { status: 400 },
+    );
+  }
+
   // Basic E.164 validation
-  if (!/^\+[1-9]\d{1,14}$/.test(to)) {
+  if (!/^\+[1-9]\d{1,14}$/.test(normalizedTo)) {
     return NextResponse.json(
       { error: 'Invalid phone number. Must be in E.164 format (e.g., +14155551234).' },
       { status: 400 },
@@ -69,7 +79,7 @@ export async function POST(request: NextRequest) {
   // ── Send SMS ────────────────────────────────────────────────
   const sms = createSMSProvider();
   const result = await sms.sendSMS({
-    to,
+    to: normalizedTo,
     body: messageBody,
     studio_id: STUDIO_ID,
   });
@@ -88,7 +98,7 @@ export async function POST(request: NextRequest) {
     type: 'sms_sent',
     subject_type: 'sms',
     subject_id: result.provider_message_id,
-    metadata: { to, segments: result.segments },
+    metadata: { to: normalizedTo, segments: result.segments },
   });
 
   return NextResponse.json({

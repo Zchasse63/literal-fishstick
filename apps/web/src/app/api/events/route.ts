@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { validateBody, eventCreateSchema } from '@/lib/validation'
+import { validateBody, eventCreateSchema, normalizePhone } from '@/lib/validation'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const STUDIO_ID = DEFAULT_STUDIO_ID
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         company_id: company_id ?? null,
         contact_name: contact_name ?? null,
         contact_email: contact_email ?? null,
-        contact_phone: contact_phone ?? null,
+        contact_phone: normalizePhone(contact_phone) ?? null,
         status: 'inquiry',
         special_requests: special_requests ?? null,
         internal_notes: internal_notes ?? null,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { normalizePhone } from '@/lib/validation'
 
 const STUDIO_ID = DEFAULT_STUDIO_ID
 const ALLOWED_ROLES = ['owner', 'manager']
@@ -160,7 +161,7 @@ export async function POST(
       studio_id: studioId,
       guest_name: g.guest_name ?? null,
       guest_email: g.guest_email ?? null,
-      guest_phone: g.guest_phone ?? null,
+      guest_phone: normalizePhone(g.guest_phone) ?? null,
       member_id: g.member_id ?? null,
       rsvp_status: 'invited' as const,
       converted_to_member: false,

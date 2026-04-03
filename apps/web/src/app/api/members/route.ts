@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
+import { normalizePhone } from '@/lib/validation'
 
 /**
  * GET /api/members
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
     .insert({
       email,
       full_name,
-      phone: phone ?? null,
+      phone: normalizePhone(phone) ?? null,
       roles: roles ?? ["member"],
       studio_id: studioId,
       status: "active",

@@ -96,3 +96,35 @@ export const eventCreateSchema = z.object({
   assigned_staff: z.array(z.string()).optional(),
   resources_reserved: z.array(z.unknown()).optional(),
 });
+
+// ─── Phone Normalization ─────────────────────────────────────────────────────
+
+/**
+ * Normalize a phone number to E.164 format (+18135551234).
+ * US-only for Phase 1. Returns null for empty, unrecognizable, or non-US input.
+ */
+export function normalizePhone(input: string | null | undefined): string | null {
+  if (!input) return null
+  const trimmed = input.trim()
+  if (!trimmed) return null
+
+  const hasPlus = trimmed.startsWith('+')
+  const digits = trimmed.replace(/\D/g, '')
+
+  // Already E.164: +1 followed by exactly 10 digits
+  if (hasPlus && trimmed.startsWith('+1') && digits.length === 11) {
+    return `+${digits}`
+  }
+
+  // Non-US international number — cannot normalize in Phase 1
+  if (hasPlus && !trimmed.startsWith('+1')) return null
+
+  // Strip leading country code 1 if present
+  const normalized = digits.length === 11 && digits.startsWith('1')
+    ? digits.slice(1)
+    : digits
+
+  if (normalized.length !== 10) return null
+
+  return `+1${normalized}`
+}

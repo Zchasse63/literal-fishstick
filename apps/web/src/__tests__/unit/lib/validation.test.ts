@@ -4,6 +4,7 @@ import {
   bookingCreateSchema,
   corporateCreateSchema,
   eventCreateSchema,
+  normalizePhone,
 } from '@/lib/validation'
 
 // ─── validateBody ────────────────────────────────────────────
@@ -195,5 +196,57 @@ describe('eventCreateSchema', () => {
       contact_email: 'bob@corp.com',
     })
     expect(result.success).toBe(true)
+  })
+})
+
+// ─── normalizePhone ─────────────────────────────────────────
+
+describe('normalizePhone', () => {
+  it('normalizes (813) 555-1234 to E.164', () => {
+    expect(normalizePhone('(813) 555-1234')).toBe('+18135551234')
+  })
+
+  it('normalizes 813-555-1234 to E.164', () => {
+    expect(normalizePhone('813-555-1234')).toBe('+18135551234')
+  })
+
+  it('normalizes 813.555.1234 to E.164', () => {
+    expect(normalizePhone('813.555.1234')).toBe('+18135551234')
+  })
+
+  it('normalizes 10-digit 8135551234 to E.164', () => {
+    expect(normalizePhone('8135551234')).toBe('+18135551234')
+  })
+
+  it('normalizes 11-digit 18135551234 to E.164', () => {
+    expect(normalizePhone('18135551234')).toBe('+18135551234')
+  })
+
+  it('passes through already-valid E.164', () => {
+    expect(normalizePhone('+18135551234')).toBe('+18135551234')
+  })
+
+  it('returns null for UK number', () => {
+    expect(normalizePhone('+447911123456')).toBeNull()
+  })
+
+  it('returns null for 7-digit number', () => {
+    expect(normalizePhone('555-1234')).toBeNull()
+  })
+
+  it('returns null for empty string', () => {
+    expect(normalizePhone('')).toBeNull()
+  })
+
+  it('returns null for null', () => {
+    expect(normalizePhone(null)).toBeNull()
+  })
+
+  it('returns null for undefined', () => {
+    expect(normalizePhone(undefined)).toBeNull()
+  })
+
+  it('trims whitespace before normalizing', () => {
+    expect(normalizePhone('  (813) 555-1234  ')).toBe('+18135551234')
   })
 })

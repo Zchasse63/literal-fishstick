@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { normalizePhone } from '@/lib/validation'
 
 /**
  * POST /api/leads/capture
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       // Update fields if provided and different
       if (first_name) updates.first_name = first_name;
       if (last_name) updates.last_name = last_name;
-      if (phone) updates.phone = phone;
+      if (phone) updates.phone = normalizePhone(phone);
 
       await supabase
         .from("leads")
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
         first_name,
         last_name,
         email,
-        phone: phone ?? null,
+        phone: normalizePhone(phone) ?? null,
         source: source ?? "website",
         status: "new",
         score: 0,

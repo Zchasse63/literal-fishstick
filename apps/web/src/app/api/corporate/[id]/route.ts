@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { normalizePhone } from '@/lib/validation'
 
 const STUDIO_ID = DEFAULT_STUDIO_ID
 const ALLOWED_ROLES = ['owner', 'admin', 'manager']
@@ -182,6 +183,10 @@ export async function PUT(
       if (body[field] !== undefined) {
         updates[field] = body[field]
       }
+    }
+
+    if (updates.contact_phone !== undefined) {
+      updates.contact_phone = normalizePhone(updates.contact_phone as string | null)
     }
 
     if (Object.keys(updates).length === 0) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { normalizePhone } from '@/lib/validation'
 
 const ALLOWED_ROLES = ["owner", "admin", "manager"];
 
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
         first_name,
         last_name,
         email,
-        phone: phone ?? null,
+        phone: normalizePhone(phone) ?? null,
         source: source ?? "other",
         notes: notes ?? null,
         assigned_to: assigned_to ?? null,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { normalizePhone } from '@/lib/validation'
 
 /**
  * GET /api/staff
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
         .insert({
           email,
           full_name,
-          phone: phone ?? null,
+          phone: normalizePhone(phone) ?? null,
           roles: ["staff", role],
           studio_id: studioId,
           status: "active",
