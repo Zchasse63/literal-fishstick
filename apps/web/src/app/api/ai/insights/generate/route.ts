@@ -70,33 +70,33 @@ export async function POST() {
     const { data: dailyMetrics } = await supabase
       .from("daily_metrics")
       .select(
-        "date, total_bookings, total_check_ins, total_revenue, new_members, churned_members"
+        "metric_date, total_bookings, total_check_ins, revenue_total, new_members, churned_members"
       )
       .eq("studio_id", studioId)
-      .gte("date", periodStart)
-      .order("date", { ascending: true });
+      .gte("metric_date", periodStart)
+      .order("metric_date", { ascending: true });
 
-    // Revenue current period
+    // Revenue current period (daily_metrics stores in cents — convert to dollars)
     const revenueCurrent =
-      dailyMetrics?.reduce((sum, d) => sum + (d.total_revenue ?? 0), 0) ?? 0;
+      (dailyMetrics?.reduce((sum, d) => sum + (d.revenue_total ?? 0), 0) ?? 0) / 100;
     const newMembers30d =
       dailyMetrics?.reduce((sum, d) => sum + (d.new_members ?? 0), 0) ?? 0;
     const churnedMembers30d =
       dailyMetrics?.reduce((sum, d) => sum + (d.churned_members ?? 0), 0) ?? 0;
 
-    // Revenue previous 30-day window
+    // Revenue previous 30-day window (cents → dollars)
     const { data: prevMetrics } = await supabase
       .from("daily_metrics")
-      .select("total_revenue")
+      .select("revenue_total")
       .eq("studio_id", studioId)
-      .gte("date", previousPeriodStart)
-      .lt("date", periodStart);
+      .gte("metric_date", previousPeriodStart)
+      .lt("metric_date", periodStart);
 
     const revenuePrevious =
-      prevMetrics?.reduce(
-        (sum, d: { total_revenue: number }) => sum + (d.total_revenue ?? 0),
+      (prevMetrics?.reduce(
+        (sum, d: { revenue_total: number }) => sum + (d.revenue_total ?? 0),
         0
-      ) ?? 0;
+      ) ?? 0) / 100;
 
     // Revenue trend
     let revenueTrend: "increasing" | "stable" | "declining" = "stable";
@@ -109,7 +109,7 @@ export async function POST() {
 
     // Total active members
     const { count: totalActive } = await supabase
-      .from("profiles")
+      .from("members")
       .select("id", { count: "exact", head: true })
       .eq("studio_id", studioId)
       .eq("membership_status", "active");
@@ -179,10 +179,10 @@ export async function POST() {
       .eq("status", "failed");
 
     const outstandingPayments =
-      failedTransactions?.reduce(
+      (failedTransactions?.reduce(
         (sum, t: { amount: number }) => sum + (t.amount ?? 0),
         0
-      ) ?? 0;
+      ) ?? 0) / 100;
 
     // Merch revenue
     const { data: merchTransactions } = await supabase
@@ -195,10 +195,10 @@ export async function POST() {
       .lte("created_at", periodEnd + "T23:59:59");
 
     const merchRevenue =
-      merchTransactions?.reduce(
+      (merchTransactions?.reduce(
         (sum, t: { amount: number }) => sum + (t.amount ?? 0),
         0
-      ) ?? 0;
+      ) ?? 0) / 100;
 
     // Drop-in revenue
     const { data: dropInTransactions } = await supabase
@@ -211,10 +211,10 @@ export async function POST() {
       .lte("created_at", periodEnd + "T23:59:59");
 
     const dropInRevenue =
-      dropInTransactions?.reduce(
+      (dropInTransactions?.reduce(
         (sum, t: { amount: number }) => sum + (t.amount ?? 0),
         0
-      ) ?? 0;
+      ) ?? 0) / 100;
 
     // ─── Build Context ───────────────────────────────────────
     const context: StudioMetricsContext = {
@@ -294,8 +294,8 @@ export async function POST() {
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "ai_insights_generated",
-      entity_type: "ai_insights",
+      type: "ai_insights_generated",
+      subject_type: "ai_insights",
       metadata: {
         total_generated: generated.length,
         total_persisted: persisted.length,

@@ -105,10 +105,10 @@ export async function GET() {
 
       // Active members
       supabase
-        .from("profiles")
+        .from("members")
         .select("id", { count: "exact", head: true })
         .eq("studio_id", studioId)
-        .eq("status", "active"),
+        .eq("membership_status", "active"),
 
       // New members this week
       supabase
@@ -125,7 +125,7 @@ export async function GET() {
         .from("credit_packs")
         .select("id", { count: "exact", head: true })
         .eq("studio_id", studioId)
-        .gt("remaining", 0)
+        .gt("credits_remaining", 0)
         .gte("expires_at", new Date().toISOString())
         .lte(
           "expires_at",

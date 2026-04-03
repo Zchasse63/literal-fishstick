@@ -182,10 +182,10 @@ export async function GET() {
 
     // Total active members
     const { count: totalMembers } = await supabase
-      .from("profiles")
+      .from("members")
       .select("id", { count: "exact", head: true })
       .eq("studio_id", STUDIO_ID)
-      .eq("status", "active");
+      .eq("membership_status", "active");
 
     // Average daily bookings over the 90-day window
     const totalBookings = classesRaw.reduce(

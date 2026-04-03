@@ -257,9 +257,9 @@ export async function PUT(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: 'campaign_updated',
-      entity_type: 'campaign',
-      entity_id: id,
+      type: 'campaign_updated',
+      subject_type: 'campaign',
+      subject_id: id,
       metadata: updates,
     })
 
@@ -344,9 +344,9 @@ export async function DELETE(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: 'campaign_deleted',
-      entity_type: 'campaign',
-      entity_id: id,
+      type: 'campaign_deleted',
+      subject_type: 'campaign',
+      subject_id: id,
       metadata: { name: campaign.name, was_hard_delete: campaign.status === 'draft' || campaign.status === 'scheduled' },
     })
 

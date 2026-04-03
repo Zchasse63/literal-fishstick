@@ -28,8 +28,11 @@ import {
   Minus,
   PhoneCall,
   UserCheck,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // ─── Animation ──────────────────────────────────────────────
 const fadeInUp = {
@@ -66,7 +69,7 @@ interface ScoreFactor {
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 
-const SCORE_FACTORS: ScoreFactor[] = []
+// Score factors are loaded from API, not hardcoded
 
 const ACTIVITY_ICONS: Record<ActivityType, typeof Star> = {
   created: UserPlus,
@@ -133,9 +136,25 @@ function ScoreGauge({ score }: { score: number }) {
 }
 
 // ─── Convert Panel ──────────────────────────────────────────
-function ConvertPanel({ lead, onClose }: { lead: any; onClose: () => void }) {
-  const [membershipType, setMembershipType] = useState('unlimited')
-
+function ConvertPanel({
+  lead,
+  onClose,
+  converting,
+  convertError,
+  convertSuccess,
+  newMemberId,
+  onConfirm,
+  onViewMember,
+}: {
+  lead: any
+  onClose: () => void
+  converting: boolean
+  convertError: string | null
+  convertSuccess: boolean
+  newMemberId: string | null
+  onConfirm: () => void
+  onViewMember: () => void
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -151,65 +170,74 @@ function ConvertPanel({ lead, onClose }: { lead: any; onClose: () => void }) {
         </button>
       </div>
 
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">First Name</label>
-            <input
-              defaultValue={lead.firstName}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
+      {convertSuccess ? (
+        <div className="text-center py-4">
+          <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+          <p className="text-sm font-bold text-gray-900 mb-1">Conversion Complete</p>
+          <p className="text-xs text-gray-500 mb-4">{lead.firstName} {lead.lastName} is now a member.</p>
+          <button
+            onClick={onViewMember}
+            className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+          >
+            View Member Profile
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Lead info */}
+          <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 mb-3">
+            <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-700">
+              {(lead.firstName?.[0] || '?') + (lead.lastName?.[0] || '')}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{lead.firstName} {lead.lastName}</p>
+              <p className="text-xs text-gray-500">{lead.email}</p>
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Last Name</label>
-            <input
-              defaultValue={lead.lastName}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Email</label>
-          <input
-            defaultValue={lead.email}
-            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Phone</label>
-          <input
-            defaultValue={lead.phone}
-            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Membership Type</label>
-          <div className="relative mt-1">
-            <select
-              value={membershipType}
-              onChange={(e) => setMembershipType(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            >
-              <option value="unlimited">Unlimited ($149/mo)</option>
-              <option value="10-class">10-Class Pack ($120)</option>
-              <option value="6-class">6-Class Pack ($80)</option>
-              <option value="drop-in">Drop-in ($25)</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
-        </div>
-      </div>
 
-      <button className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors">
-        <UserCheck className="mr-2 inline h-4 w-4" />
-        Convert to Member
-      </button>
+          {/* What happens */}
+          <div className="bg-indigo-50 rounded-xl p-3 mb-3 space-y-1.5">
+            <p className="text-xs text-indigo-800">• A member account will be created with this lead&apos;s info</p>
+            <p className="text-xs text-indigo-800">• All lead activity history will be preserved</p>
+            <p className="text-xs text-indigo-800">• Lead status will be updated to Converted</p>
+          </div>
+
+          {convertError && (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3 mb-3 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{convertError}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={onConfirm}
+              disabled={converting}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            >
+              {converting ? (
+                <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              ) : (
+                <UserCheck className="h-4 w-4" />
+              )}
+              Confirm Conversion
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </motion.div>
   )
 }
 
 // ─── Main Page ──────────────────────────────────────────────
 export default function LeadDetailPage() {
+  const router = useRouter()
   const [lead, setLead] = useState<any>(null)
   const [activities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
@@ -220,6 +248,69 @@ export default function LeadDetailPage() {
   const [status, setStatus] = useState('new')
   const [assigned, setAssigned] = useState('')
   const [followUp, setFollowUp] = useState('')
+
+  // Score state
+  const [scoreFactors, setScoreFactors] = useState<ScoreFactor[]>([])
+  const [rescoring, setRescoring] = useState(false)
+  const [rescoreError, setRescoreError] = useState<string | null>(null)
+
+  // Convert state
+  const [converting, setConverting] = useState(false)
+  const [convertError, setConvertError] = useState<string | null>(null)
+  const [convertSuccess, setConvertSuccess] = useState(false)
+  const [newMemberId, setNewMemberId] = useState<string | null>(null)
+
+  async function handleConvert() {
+    if (!lead) return
+    setConverting(true)
+    setConvertError(null)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Conversion failed')
+      setNewMemberId(json.data.member_id)
+      setConvertSuccess(true)
+      setLead((prev: any) => ({ ...prev, status: 'converted' }))
+      setStatus('converted')
+    } catch (err: any) {
+      setConvertError(err.message)
+    } finally {
+      setConverting(false)
+    }
+  }
+
+  async function handleRescore() {
+    if (!lead) return
+    setRescoring(true)
+    setRescoreError(null)
+    try {
+      const res = await fetch('/api/leads/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Scoring failed')
+      if (json.data?.score !== undefined) {
+        setLead((prev: any) => ({ ...prev, score: json.data.score }))
+      }
+      if (json.data?.factors) {
+        setScoreFactors(json.data.factors.map((f: any) => ({
+          label: f.label || f.name,
+          impact: f.points > 0 ? 'positive' : f.points < 0 ? 'negative' : 'neutral',
+          value: (f.points > 0 ? '+' : '') + f.points,
+        })))
+      }
+    } catch (err: any) {
+      setRescoreError(err.message)
+    } finally {
+      setRescoring(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -422,29 +513,48 @@ export default function LeadDetailPage() {
           <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.15 }} className="space-y-4">
             {/* Score Breakdown */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Score Breakdown</h3>
-              <div className="space-y-2.5">
-                {SCORE_FACTORS.map((factor) => (
-                  <div key={factor.label} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {factor.impact === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
-                      {factor.impact === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
-                      {factor.impact === 'neutral' && <Minus className="h-3.5 w-3.5 text-gray-400" />}
-                      <span className="text-sm text-gray-700">{factor.label}</span>
-                    </div>
-                    <span
-                      className={cn(
-                        'text-xs font-bold tabular-nums',
-                        factor.impact === 'positive' && 'text-emerald-600',
-                        factor.impact === 'negative' && 'text-red-600',
-                        factor.impact === 'neutral' && 'text-gray-500'
-                      )}
-                    >
-                      {factor.value}
-                    </span>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Score Breakdown</h3>
+                <button
+                  onClick={handleRescore}
+                  disabled={rescoring}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {rescoring ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Rescore
+                </button>
               </div>
+              {rescoreError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 p-2.5 mb-3">
+                  <p className="text-xs text-red-700">{rescoreError}</p>
+                </div>
+              )}
+              {scoreFactors.length > 0 ? (
+                <div className="space-y-2.5">
+                  {scoreFactors.map((factor) => (
+                    <div key={factor.label} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {factor.impact === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
+                        {factor.impact === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
+                        {factor.impact === 'neutral' && <Minus className="h-3.5 w-3.5 text-gray-400" />}
+                        <span className="text-sm text-gray-700">{factor.label}</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'text-xs font-bold tabular-nums',
+                          factor.impact === 'positive' && 'text-emerald-600',
+                          factor.impact === 'negative' && 'text-red-600',
+                          factor.impact === 'neutral' && 'text-gray-500'
+                        )}
+                      >
+                        {factor.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">Click Rescore to generate score factors.</p>
+              )}
             </div>
 
             {/* Assignment */}
@@ -558,18 +668,36 @@ export default function LeadDetailPage() {
                 <Send className="h-4 w-4 text-indigo-500" />
                 Send Email
               </button>
-              <button
-                onClick={() => setShowConvert(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
-              >
-                <UserCheck className="h-4 w-4" />
-                Convert to Member
-              </button>
+              {status === 'converted' ? (
+                <div className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Converted to Member
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowConvert(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Convert to Member
+                </button>
+              )}
             </div>
 
             {/* Convert Panel */}
             <AnimatePresence>
-              {showConvert && <ConvertPanel lead={lead} onClose={() => setShowConvert(false)} />}
+              {showConvert && (
+                <ConvertPanel
+                  lead={lead}
+                  onClose={() => { setShowConvert(false); setConvertError(null); setConvertSuccess(false); setNewMemberId(null) }}
+                  converting={converting}
+                  convertError={convertError}
+                  convertSuccess={convertSuccess}
+                  newMemberId={newMemberId}
+                  onConfirm={handleConvert}
+                  onViewMember={() => newMemberId && router.push(`/members/${newMemberId}`)}
+                />
+              )}
             </AnimatePresence>
           </motion.div>
         </div>

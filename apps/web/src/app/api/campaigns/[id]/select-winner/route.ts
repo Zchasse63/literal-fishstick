@@ -111,9 +111,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: 'campaign_ab_winner_selected',
-      entity_type: 'campaign',
-      entity_id: id,
+      type: 'campaign_ab_winner_selected',
+      subject_type: 'campaign',
+      subject_id: id,
       metadata: { winner, winning_subject: winnerSubject },
     })
 

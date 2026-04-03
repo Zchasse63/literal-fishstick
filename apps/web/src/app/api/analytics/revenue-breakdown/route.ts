@@ -70,17 +70,18 @@ export async function GET(request: NextRequest) {
     const totals: Record<string, number> = {};
     let grandTotal = 0;
 
+    // daily_metrics stores revenue values in cents — convert to dollars
     for (const source of sources) {
       const key = `revenue_${source}` as keyof (typeof metrics)[number];
-      const sum = metrics.reduce(
+      const sumCents = metrics.reduce(
         (acc, row) => acc + ((row[key] as number) ?? 0),
         0
       );
-      totals[source] = Math.round(sum * 100) / 100;
-      grandTotal += sum;
+      totals[source] = Math.round(sumCents) / 100;
+      grandTotal += sumCents;
     }
 
-    grandTotal = Math.round(grandTotal * 100) / 100;
+    grandTotal = Math.round(grandTotal) / 100;
 
     // ─── Build breakdown with percentages ─────────────────────
     const breakdown = sources.map((source) => ({
@@ -95,14 +96,14 @@ export async function GET(request: NextRequest) {
     // ─── Daily time series ────────────────────────────────────
     const daily = metrics.map((row) => ({
       date: row.metric_date,
-      memberships: row.revenue_memberships ?? 0,
-      credit_packs: row.revenue_credit_packs ?? 0,
-      drop_ins: row.revenue_drop_ins ?? 0,
-      merch: row.revenue_merch ?? 0,
-      gift_cards: row.revenue_gift_cards ?? 0,
-      corporate: row.revenue_corporate ?? 0,
-      events: row.revenue_events ?? 0,
-      total: row.revenue_total ?? 0,
+      memberships: (row.revenue_memberships ?? 0) / 100,
+      credit_packs: (row.revenue_credit_packs ?? 0) / 100,
+      drop_ins: (row.revenue_drop_ins ?? 0) / 100,
+      merch: (row.revenue_merch ?? 0) / 100,
+      gift_cards: (row.revenue_gift_cards ?? 0) / 100,
+      corporate: (row.revenue_corporate ?? 0) / 100,
+      events: (row.revenue_events ?? 0) / 100,
+      total: (row.revenue_total ?? 0) / 100,
     }));
 
     return NextResponse.json({

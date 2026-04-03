@@ -217,9 +217,9 @@ export async function DELETE(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'pricing_simulation_deleted',
-      entity_type: 'pricing_simulation',
-      entity_id: id,
+      type: 'pricing_simulation_deleted',
+      subject_type: 'pricing_simulation',
+      subject_id: id,
       metadata: { name: simulation.name },
     })
 

@@ -17,6 +17,9 @@ import {
   Sparkles,
   Calendar,
   FileText,
+  Play,
+  Loader2,
+  CheckCircle2,
 } from 'lucide-react'
 
 const fadeInUp = {
@@ -73,6 +76,8 @@ export default function PricingSimulatorPage() {
   const [simulations, setSimulations] = useState<Simulation[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [applyLoading, setApplyLoading] = useState<string | null>(null)
+  const [applyConfirm, setApplyConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchSimulations() {
@@ -102,6 +107,19 @@ export default function PricingSimulatorPage() {
   const handleDelete = (id: string) => {
     setSimulations((prev) => prev.filter((s) => s.id !== id))
     setDeleteConfirm(null)
+  }
+
+  const handleApply = async (id: string) => {
+    setApplyLoading(id)
+    try {
+      const res = await fetch(`/api/pricing-simulator/${id}/apply`, { method: 'POST' })
+      if (res.ok) {
+        setSimulations(prev => prev.map(s => s.id === id ? { ...s, status: 'Applied' as SimulationStatus, appliedAt: new Date().toISOString().split('T')[0] } : s))
+      }
+    } catch {} finally {
+      setApplyLoading(null)
+      setApplyConfirm(null)
+    }
   }
 
   return (
@@ -279,6 +297,34 @@ export default function PricingSimulatorPage() {
                           <Copy className="w-3.5 h-3.5" />
                           Duplicate
                         </button>
+                        {sim.status === 'Analyzed' && (
+                          applyConfirm === sim.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleApply(sim.id)}
+                                disabled={applyLoading === sim.id}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {applyLoading === sim.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                Confirm Apply
+                              </button>
+                              <button
+                                onClick={() => setApplyConfirm(null)}
+                                className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setApplyConfirm(sim.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                            >
+                              <Play className="w-3.5 h-3.5" />
+                              Apply
+                            </button>
+                          )
+                        )}
                         {sim.status !== 'Applied' && (
                           <>
                             {deleteConfirm === sim.id ? (

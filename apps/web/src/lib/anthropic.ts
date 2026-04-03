@@ -642,20 +642,46 @@ export interface NLSearchResult {
 const SCHEMA_CONTEXT = `You have access to the following Postgres tables in a multi-tenant fitness studio platform. Every query MUST filter by studio_id.
 
 Tables:
-- profiles (id uuid, full_name text, email text, phone text, health_score int, health_risk_level text, studio_id uuid, status text, created_at timestamptz)
-- members (id uuid, profile_id uuid, studio_id uuid, membership_type text, status text, credits_remaining int, created_at timestamptz)
-- bookings (id uuid, member_id uuid, class_id uuid, studio_id uuid, status text, is_walk_in boolean, checked_in_at timestamptz, created_at timestamptz)
-- classes (id uuid, title text, starts_at timestamptz, ends_at timestamptz, capacity int, booked_count int, checked_in_count int, status text, studio_id uuid, created_at timestamptz)
-- transactions (id uuid, member_id uuid, studio_id uuid, amount numeric, type text, status text, created_at timestamptz)
+- profiles (id uuid, full_name text, email text, phone text, health_score int, health_risk_level text, studio_id uuid, date_of_birth date, is_active boolean, exclude_from_analytics boolean, glofox_id text, glofox_write_status text, created_at timestamptz)
+- members (id uuid, profile_id uuid, studio_id uuid, membership_tier text, membership_status text, membership_plan_id uuid, credits_remaining int, join_date date, last_visit timestamptz, total_visits int, lifetime_value int, glofox_id text, glofox_membership_id text, created_at timestamptz)
+- bookings (id uuid, member_id uuid, class_id uuid, studio_id uuid, status text, is_walk_in boolean, attended boolean, checked_in_at timestamptz, glofox_id text, glofox_write_status text, glofox_write_error text, created_at timestamptz)
+- classes (id uuid, title text, starts_at timestamptz, ends_at timestamptz, capacity int, booked_count int, checked_in_count int, status text, studio_id uuid, class_type_id uuid, program_id uuid, facility_id uuid, trainer_id uuid, glofox_id text, created_at timestamptz)
+- transactions (id uuid, member_id uuid, studio_id uuid, amount int, type text, status text, currency text, tax_amount int, discount_id text, promo_code text, glofox_id text, glofox_charge_id text, created_at timestamptz)
 - member_tags (id uuid, member_id uuid, tag text, metadata jsonb)
 - email_send_log (id uuid, recipient_email text, studio_id uuid, status text, opened_at timestamptz, clicked_at timestamptz, created_at timestamptz)
 - staff (id uuid, full_name text, role text, email text, studio_id uuid, created_at timestamptz)
+- programs (id uuid, studio_id uuid, name text, description text, glofox_id text, active boolean, created_at timestamptz)
+- facilities (id uuid, studio_id uuid, name text, description text, capacity int, glofox_id text, active boolean, created_at timestamptz)
+- integrations (id uuid, studio_id uuid, provider text, status text, config jsonb, created_at timestamptz)
+- tax_configurations (id uuid, studio_id uuid, name text, rate numeric, is_default boolean, active boolean, created_at timestamptz)
+- discounts (id uuid, studio_id uuid, name text, rate_type text, rate_value numeric, num_cycles int, glofox_id text, active boolean, created_at timestamptz)
+- trainers (id uuid, studio_id uuid, profile_id uuid, promo_code text, glofox_id text, created_at timestamptz)
+- trainer_bonuses (id uuid, trainer_id uuid, class_id uuid, studio_id uuid, check_in_count int, threshold int, status text, created_at timestamptz)
+- appointments (id uuid, studio_id uuid, member_id uuid, trainer_id uuid, title text, start_time timestamptz, end_time timestamptz, status text, price int, glofox_id text, created_at timestamptz)
+- lead_interactions (id uuid, studio_id uuid, lead_id uuid, type text, notes text, created_by uuid, created_at timestamptz)
+- glofox_sync_conflicts (id uuid, studio_id uuid, entity_type text, entity_id text, glofox_id text, conflict_type text, glofox_data jsonb, meridian_data jsonb, resolved boolean, created_at timestamptz)
 
 Important relationships:
 - bookings.member_id references members.id
 - bookings.class_id references classes.id
 - members.profile_id references profiles.id
-- transactions.member_id references members.id`;
+- transactions.member_id references members.id
+- classes.program_id references programs.id
+- classes.facility_id references facilities.id
+- classes.trainer_id references profiles.id (trainer role)
+- trainers.profile_id references profiles.id
+- trainer_bonuses.trainer_id references trainers.id
+- trainer_bonuses.class_id references classes.id
+- appointments.member_id references members.id
+- appointments.trainer_id references profiles.id
+- lead_interactions.lead_id references leads.id
+
+Notes:
+- Transaction amounts are stored in CENTS (divide by 100 for display)
+- Trainer bonuses are based on CHECK-INS (not bookings), trainer's own attendance doesn't count
+- discount_id and promo_code on transactions are mutually exclusive
+- glofox_write_status values: null (not applicable), 'pending', 'synced', 'failed'
+- Programs: 'Open Sauna', 'Guided Breathwork', 'Private Session'`;
 
 const NL_SEARCH_SYSTEM_PROMPT = `You are Meridian AI, a SQL query generator for a fitness studio management platform.
 
@@ -696,11 +722,11 @@ function tryRulesBasedSQL(
     const days = daysMatch ? parseInt(daysMatch[1], 10) : 30;
 
     return {
-      sql: `SELECT p.full_name, p.email, m.membership_type, m.status, m.credits_remaining
+      sql: `SELECT p.full_name, p.email, m.membership_tier, m.membership_status, m.credits_remaining
 FROM members m
 JOIN profiles p ON p.id = m.profile_id
 WHERE m.studio_id = '${studioId}'
-  AND m.status = 'active'
+  AND m.membership_status = 'active'
   AND m.id NOT IN (
     SELECT DISTINCT b.member_id FROM bookings b
     WHERE b.studio_id = '${studioId}'

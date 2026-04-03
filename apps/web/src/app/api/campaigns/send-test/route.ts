@@ -143,26 +143,26 @@ export async function POST(request: NextRequest) {
       // Fetch credits
       const { data: creditPacks } = await supabase
         .from('credit_packs')
-        .select('remaining_credits')
+        .select('credits_remaining')
         .eq('member_id', sampleMemberId)
-        .gt('remaining_credits', 0)
+        .gt('credits_remaining', 0)
 
       const totalCredits = (creditPacks ?? []).reduce(
-        (sum, p) => sum + p.remaining_credits,
+        (sum, p) => sum + p.credits_remaining,
         0
       )
       mergeData.credits_remaining = totalCredits
 
       // Fetch membership
       const { data: membership } = await supabase
-        .from('memberships')
-        .select('type')
-        .eq('member_id', sampleMemberId)
-        .eq('status', 'active')
+        .from('members')
+        .select('membership_tier')
+        .eq('profile_id', sampleMemberId)
+        .eq('membership_status', 'active')
         .maybeSingle()
 
       if (membership) {
-        mergeData.membership_name = membership.type
+        mergeData.membership_name = membership.membership_tier
       }
     }
   }

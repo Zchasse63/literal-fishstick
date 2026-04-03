@@ -1,176 +1,147 @@
 # SCRUTINY SUMMARY
-## Meridian Phase 4 — Corporate & Operations
-**Date:** 2026-03-20
-**Verdict:** MODIFY
-**Confidence:** High
+## Glofox API Migration to Meridian
+**Date:** 2026-03-31
+**Mode:** Deep (7 agents)
+**Complexity:** SIGNIFICANT
 
 ---
 
-## The One-Paragraph Summary
+## Overall Verdict: MODIFY
 
-Phase 4 is the right plan working on the right problems, but it's 20 weeks of work planned as 14, and it bundles two distinct product goals that belong in separate phases. The core operations work — corporate accounts, event management, employee payroll, merch shipping, and SMS — has clear ROI, solves active pain for The Sauna Guys, and builds genuine competitive moats that no fitness SaaS competitor currently offers. The SaaS onboarding wizard and Stripe Billing integration serve a customer who doesn't exist yet and should be deferred until a real pilot customer is ready to onboard. Additionally, five concrete pre-development problems must be fixed before Sprint 1: a schema table name conflict, a migration that will fail because geofencing already exists, a type mismatch on EmployeeDocument, a Stripe webhook routing risk, and five unresolved edge case policies. Fix these first, split SaaS onboarding into Phase 4B, and the remaining plan is solid.
+**The migration is the right move. Proceed — with specific fixes before Phase 2 begins.**
 
----
-
-## Verdict by Feature
-
-| Feature | Verdict | Why |
-|---|---|---|
-| Corporate Accounts + Invoicing | GO | Active pain, no competitor does this well, direct revenue impact |
-| Event Management | GO | Closes B2B loop, conversion tracking is unique differentiator |
-| Employee Payroll + Documents | GO | Closes Phase 1 mock data gap, genuine compliance and time savings |
-| Geofence Clock Enhancement | GO | Already ~70% implemented; finish the settings UI |
-| Merch + Shipping | GO | Low risk, fills operational gap |
-| SMS/Twilio | GO | 2–3 day drop-in, fulfills existing stub in Phase 2 |
-| API Keys + OpenAPI Docs | GO | Low complexity, right move for SaaS positioning |
-| SaaS Onboarding Wizard | DEFER | No real customer yet; will be rebuilt based on pilot feedback |
-| Stripe Billing for SaaS | DEFER | Depends on onboarding; premature without a paying customer |
-| Custom Dashboard Builder | DEFER | Low marginal value over Phase 3 dashboards; not urgent |
+The sync engine architecture is sound. The tooling choices are correct for this codebase. The value case is clear and the cost case is positive. Five concrete bugs in the plan's code samples and six unaddressed edge cases would cause rework if discovered mid-execution rather than now. The 8-week timeline works for the sync engine and admin/staff cutover. It does not work for a full member-facing cutover because the member portal prerequisite has no timeline.
 
 ---
 
-## Critical Problems to Fix Before Sprint 1
+## Verdict Score
 
-### 1. Schema Audit Required — Two Table Name Conflicts
-
-The Phase 4 migration targets `clock_entries` but the existing `/api/clock/route.ts` reads/writes to `time_entries`. These appear to be different names for the same table. The migration also proposes `CREATE TABLE geofence_locations` but the clock API already queries this table (it was built in Phase 1).
-
-**Action:** Run these two queries against live Supabase before any migration work:
-```sql
-SELECT table_name FROM information_schema.tables
-WHERE table_schema = 'public'
-AND table_name IN ('clock_entries', 'time_entries', 'geofence_locations');
-
-SELECT column_name FROM information_schema.columns
-WHERE table_name = 'geofence_locations';
-```
-
-Then correct the migration SQL to: (a) use the canonical clock table name, (b) remove CREATE TABLE geofence_locations, (c) add IF NOT EXISTS to all remaining CREATE TABLE statements.
-
-If these conflicts reach Sprint 3, payroll calculation will return empty data and the phase will need a mid-flight schema remediation.
-
-### 2. Type Mismatch on EmployeeDocument
-
-`packages/types/src/employees.ts` defines `DocumentStatus` as `'current' | 'expiring_soon' | 'expired' | 'missing'`. The Phase 4 database schema defines it as `'pending' | 'approved' | 'rejected' | 'expired'`. The type also lacks `'w9'` and `'direct_deposit'` document_type values.
-
-**Action:** Update `packages/types/src/employees.ts` before Sprint 3. Sprint 3 document API routes will produce TypeScript type errors or silent runtime mismatches if this isn't fixed first.
-
-### 3. Remove profiles.company_id Denormalization
-
-The plan proposes `ALTER TABLE profiles ADD COLUMN company_id UUID REFERENCES company_accounts(id)`. This breaks for members who belong to multiple companies. The `company_members` junction table already models the relationship correctly.
-
-**Action:** Remove the `profiles.company_id` migration entirely. Query company membership through `company_members`. This is one extra join with negligible performance impact.
-
-### 4. Stripe Webhook Routing Risk
-
-The plan adds `/api/webhooks/stripe-saas` alongside the existing `/api/webhooks/stripe`. If using the same Stripe account, both endpoints receive all events. A SaaS billing event hitting the member subscription handler (or vice versa) can produce incorrect state updates.
-
-**Action:** Route within the existing webhook handler using `metadata.subscription_type: 'saas' | 'member'` set at subscription creation time. Do not create a second webhook endpoint.
-
-### 5. Five Edge Case Policies Are Unresolved
-
-The following must be decided and documented in `edge-case-policies.md` before Sprint 1:
-
-- **EC-19: Corporate credit expiry** — do unused credits roll over or expire at month end? (Recommended: cap rollover at 2x monthly allocation)
-- **EC-20: Event/class conflict handling** — when an event overlaps with a scheduled class, who resolves it? (Recommended: surface warning at confirmation, admin acknowledges, manual class cancellation)
-- **EC-21: Payroll dispute workflow** — can an approved payroll period be reopened? (Recommended: yes, with admin override and audit log)
-- **EC-22: Duplicate event inquiry detection** — soft warning or hard block? (Recommended: soft warning with acknowledgement required)
-- **EC-23: Multi-company member billing** — if a member is in two company accounts, which billing applies? (Recommended: most recently added wins; surface conflict to admin)
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Technical Feasibility | 7/10 | Sync engine is buildable; 5 code bugs; rate limits unknown |
+| Scope Clarity | 6/10 | Monitoring dashboard unscoped; member portal gap unacknowledged |
+| User Value | 9/10 | Clear, high, unlocks multiple built-but-inert features |
+| Cost-Benefit | 8/10 | ROI positive; payment non-collection is the primary financial risk |
+| Architecture Fit | 8/10 | Clean fit into existing Inngest + Supabase patterns; RLS gap |
+| Edge Case Coverage | 5/10 | 8 unaddressed cases, 3 high-severity |
+| Strategic Alignment | 9/10 | Required for product roadmap; migration tooling is a competitive asset |
 
 ---
 
-## Scope Recommendation: Split Into Phase 4A and 4B
+## Must-Fix Before Phase 2 (Blocking)
 
-### Phase 4A (Build Now, 12–14 weeks)
+These 6 items will cause significant rework if not resolved before Phase 2 code is written:
 
-Corporate accounts, events, invoicing, employee payroll + documents, geofence settings UI, merch + shipping, SMS/Twilio, API keys, OpenAPI documentation, polish.
+### Fix 1: Validate Glofox API Rate Limits
+The sync schedule (bookings every 5 min = 288+ calls/day) was designed for freshness, not for any known rate limit. Obtain rate limit docs or run an empirical burst test in Phase 1. The frequencies may need to change.
 
-This delivers every feature that The Sauna Guys will use in the next 6 months.
+### Fix 2: Validate Pagination Contract
+The `fetchAll` function assumes `body.has_more` terminates pagination. If wrong, every sync returns only the first 100 records. 1,000 of 1,100 members silently missed. Verify in glofox-api-guide.md and test against a live endpoint.
 
-### Phase 4B (Build When First External Customer Exists, 6–8 weeks)
+### Fix 3: Fix 5 Code Bugs in the Plan
+- `pushMemberUpdate` name-splitting has a null-access risk and is semantically wrong (read first/last directly from schema)
+- `glofox_sync_state` table missing `UNIQUE(studio_id, entity_type)` constraint — upserts will fail
+- `sold_by_profile_id` FK will reject transactions from staff without Meridian profiles — make nullable
+- `fetchAll` URL construction drops the `/prod` base path for absolute path arguments — use string concatenation
+- Confirm `POST /Analytics/report` returns individual transaction rows with date filters (not aggregates)
 
-SaaS onboarding wizard, Stripe Billing for SaaS subscriptions, Glofox import tooling, custom dashboard builder.
+### Fix 4: Specify Outbound Sync Trigger Mechanism + Add Loop Guard
+"Event-driven, triggered by database changes" is not a specification. Confirm: application-level triggering (API routes call `inngest.send()` after writes). Add loop guard: skip outbound sync if `glofox_synced_at` updated within last 60 seconds (prevents Glofox → Meridian → Glofox infinite loop).
 
-**Why defer?** The SaaS onboarding wizard's primary design input should come from watching the first real customer onboard. Building it from assumptions produces a wizard that gets rebuilt. Wait for the pilot. The savings: 4–6 weeks of developer time redirected to higher-ROI Phase 4A work.
+### Fix 5: Build the Plan Code → Stripe Price ID Mapping
+Glofox plan codes (e.g., UNLIMITED_MONTHLY) must map to Stripe price IDs before cutover. This mapping is entirely absent from the plan. Without it, subscription migration is manual and error-prone.
 
----
+### Fix 6: Resolve the Member Portal Prerequisite
+The pre-cutover checklist requires member-facing features. Phase 5 (the member portal) has not started. Choose one:
+- **Option A (recommended):** Scope a minimum member surface (magic link auth + Stripe payment form + account page) as a parallel 2-week workstream, targeting Week 5 completion for payment collection
+- **Option B:** Define this as an admin-only cutover (Glofox member app stays active for members; Glofox subscription continues until Phase 5 launches)
 
-## Realistic Timeline
-
-| Sprint | Content | Realistic Duration |
-|---|---|---|
-| 1 | Corporate foundation + schema | 2.5 weeks |
-| 2 | Events + invoicing | 3 weeks |
-| 3 | Employee payroll + documents + geofence | 3 weeks |
-| 4 | Merch + shipping | 3 weeks |
-| 5 | SMS + API keys + OpenAPI | 2 weeks |
-| 6 | Polish + integration | 1.5 weeks |
-| **4A Total** | | **15 weeks** |
-
-The plan's 12–14 week estimate is ~20% optimistic for Phase 4A alone after accounting for schema audit, type fixes, edge case resolution, and real EasyPost integration complexity.
-
----
-
-## Technical Highlights to Address Per Sprint
-
-**Sprint 1 prep:**
-- Run schema audit before any migration work
-- Add IF NOT EXISTS to all migration CREATE TABLE statements
-- Update employees.ts types
-
-**Sprint 2:**
-- Implement event/class conflict warning at confirmation step
-- Lazy-load swagger-ui-react with dynamic import (bundle impact otherwise significant)
-
-**Sprint 3:**
-- Route payroll calculation through Inngest (not a synchronous API handler) — Netlify 10s timeout risk
-- Use @dnd-kit for dashboard builder instead of react-grid-layout
-
-**Sprint 4:**
-- Start with USPS-only EasyPost, add UPS/FedEx incrementally
-- Label voiding on order cancellation must call EasyPost void API within carrier window
-
-**Sprint 5:**
-- Replace next-swagger-doc with static openapi.yaml approach (next-swagger-doc is Pages Router only)
-- Write openapi.yaml manually or generate once — it's checkable into version control
+The plan cannot proceed to cutover without choosing.
 
 ---
 
-## Competitive Moats Being Built
+## Important But Not Blocking
 
-Phase 4A creates three genuine competitive advantages that no fitness SaaS competitor currently offers:
-
-1. **Corporate wellness CRM native to the studio platform** — not a spreadsheet workaround, not a Mindbody marketplace intermediary. Studio-owned relationship with company-level invoicing and credit allocation.
-
-2. **Trainer performance bonus calculation wired to payroll** — no competitor connects class check-in thresholds to payroll as a first-class automated feature.
-
-3. **Event conversion tracking** — did event guests become members? This closes the lead generation → member acquisition loop that makes events profitable beyond their immediate revenue.
-
----
-
-## What Would Change the Verdict to Full GO
-
-1. Complete the schema audit and confirm no conflicts
-2. Document the 5 edge case policies in edge-case-policies.md
-3. Confirm SaaS onboarding is formally moved to Phase 4B
-4. Confirm product variants are out of scope for Phase 4A
-
-If those four items are completed before Sprint 1 starts, the plan can proceed without further changes.
+| # | Issue | When to Address |
+|---|-------|----------------|
+| R1 | Add sync monitoring dashboard to Week 3 scope (needs to exist before parallel mode) | Phase 2 |
+| R2 | Check Glofox contract cancellation notice period | Week 1 |
+| R3 | Add credit pack sync to daily full-refresh job | Phase 2 |
+| R4 | Add RLS policies to all 3 new tables | Phase 1 |
+| R5 | Add Glofox event types to `MeridianEvents` type definition | Phase 2 |
+| R6 | Add `UNIQUE` index to `glofox_sync_state` before first upsert | Phase 1 |
+| R7 | Verify all ~10 Glofox staff have Meridian profile mappings | Phase 1 |
+| R8 | Reduce DNS TTL to 300 seconds 48 hours before cutover | Week 7 |
+| R9 | Keep `lib/glofox/` as a permanent reusable library (future SaaS migration tool) | Week 9 cleanup |
 
 ---
 
-## Full Reports
+## Edge Cases That Need Explicit Handling
 
-All detailed analysis is in `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/`:
-- `technical-feasibility.md` — schema conflicts, dependency issues, implementation risks
-- `scope-complexity.md` — sprint-by-sprint reality check, timeline reestimate
-- `user-value.md` — feature-by-feature value assessment, value delivery order
-- `cost-benefit.md` — ROI by feature, third-party service costs, budget recommendation
-- `architecture-impact.md` — DB denormalization concern, webhook routing, type system impact
-- `edge-cases.md` — 15 edge cases, 5 requiring decisions before Sprint 1
-- `competitive-context.md` — competitor gap analysis, market timing, moat assessment
+| Edge Case | Severity | Action |
+|-----------|----------|--------|
+| Members with billing dates within 7 days of cutover | High | Pull billing dates; coordinate manually to prevent double-charge |
+| Credit pack balances not synced from Glofox | High | Add to full-refresh; verify all active credit members before cutover |
+| New members created in Meridian during parallel mode have no glofox_id | Medium | Outbound new-member registration should call `POST /2.0/register` and store returned Glofox ID |
+| Glofox plan code → Stripe price ID mapping | High | See Fix 5 above |
+| Staff profiles without Meridian mapping cause FK failures | Medium | Verify in Phase 1; create missing mappings manually |
+| Class schedule in Glofox during parallel mode | Medium | Classes must be created in Meridian only; Glofox schedule diverges — communicate to staff |
 
-Supporting documents:
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/verdict.md`
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/planning/assumptions.md`
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/planning/scope-decomposition.md`
+---
+
+## Timeline Assessment
+
+| Week | Plan Says | Realistic Assessment |
+|------|-----------|---------------------|
+| 1 | Schema prep | Correct; add: rate limit testing, pagination validation, staff profile verification, CSV export |
+| 2–3 | Sync engine build | Correct; add: bug fixes, loop guard, Inngest event types, monitoring dashboard |
+| 4 | Shadow mode | Correct; extend if integrity issues found |
+| 5–6 | Parallel mode + payment collection | Correct; payment collection needs minimum member portal online; start collection 4 weeks before cutover (Week 3) |
+| 7–8 | Cutover | Correct; add DNS TTL prep at Week 7 start |
+| 9+ | Cleanup | Correct; retain lib/glofox/ module |
+
+**Revised total: 9–10 calendar weeks if minimum member surface is built in parallel. 8 weeks for admin-only cutover.**
+
+---
+
+## What the Plan Gets Right
+
+- Inngest is the right choice and fits the existing codebase perfectly
+- Incremental sync via modified-date filters is superior to snapshot-and-cutover
+- Per-field conflict resolution with Glofox-owns-financial-data rule is correct
+- Shadow mode before parallel mode is the right validation sequence
+- "Never delete from Glofox" policy enables clean rollback at any point
+- Supabase PITR + manual snapshot is the right data safety net
+- Sunday night cutover with tiered rollback plan is operationally sound
+- All schema changes are additive and non-destructive
+
+---
+
+## Key Assumptions to Validate
+
+| Assumption | Validation Method | Priority |
+|-----------|------------------|----------|
+| Glofox API rate limits allow 600+ calls/day | Request docs or burst test | Critical |
+| `has_more` pagination field exists in API responses | Check glofox-api-guide.md; test live | Critical |
+| API credentials obtainable | Contact Glofox account manager | Critical |
+| Analytics endpoint returns row-level transaction data | Test with API credentials | High |
+| All 229 tests currently pass | Run test suite now | High |
+| Stripe merchant account is fully verified | Check Stripe dashboard | High |
+| Supabase PITR is enabled | Check Supabase project settings | High |
+| Glofox contract has no 30-day notice requirement | Review contract | Medium |
+
+---
+
+## Files Generated
+
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/normalized-plan.md` — Normalized input plan
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/technical-feasibility.md` — Full technical analysis
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/scope-complexity.md` — Scope and timeline analysis
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/user-value.md` — Value delivery analysis
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/cost-benefit.md` — Financial analysis
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/architecture-impact.md` — Architecture analysis
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/edge-cases.md` — Edge case catalog
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/competitive-context.md` — Strategic context
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/verdict.md` — Detailed verdict
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/assumptions.md` — Assumption register
+- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/scope-decomposition.md` — Revised scope map

@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
 
   let query = supabase
-      .from("profiles")
-      .select("*, memberships(id, type, status, started_at, expires_at)", {
+      .from("members")
+      .select("*, profiles:profile_id ( id, full_name, email, phone, avatar_url )", {
         count: "exact",
       })
       .eq("studio_id", studioId)
@@ -29,11 +29,11 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     query = query.or(
-      `full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
+      `profiles.full_name.ilike.%${search}%,profiles.email.ilike.%${search}%,profiles.phone.ilike.%${search}%`
     );
   }
-  if (status) query = query.eq("status", status);
-  if (membershipType) query = query.eq("memberships.type", membershipType);
+  if (status) query = query.eq("membership_status", status);
+  if (membershipType) query = query.eq("membership_tier", membershipType);
 
   const { data, error, count } = await query;
 
@@ -105,9 +105,9 @@ export async function POST(request: NextRequest) {
   await supabase.from("activity_log").insert({
     studio_id: studioId,
     actor_id: user.id,
-    action: "member_created",
-    entity_type: "profile",
-    entity_id: member.id,
+    type: "member_created",
+    subject_type: "profile",
+    subject_id: member.id,
     metadata: { email, full_name },
   });
 

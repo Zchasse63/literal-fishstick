@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { inngest } from "@/lib/inngest/client";
 
 /**
  * POST /api/check-in
@@ -52,10 +53,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch the booking
+    // Fetch the booking with class + member glofox_id for write-back
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
-      .select("*, classes(id, trainer_id, start_time, end_time)")
+      .select("*, classes(id, trainer_id, start_time, end_time), members(glofox_id)")
       .eq("id", booking_id)
       .eq("studio_id", studioId)
       .single();
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: "checked_in",
         checked_in_at: new Date().toISOString(),
+        attended: true,
       })
       .eq("id", booking_id)
       .select()
@@ -103,9 +105,9 @@ export async function POST(request: NextRequest) {
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "member_checked_in",
-      entity_type: "booking",
-      entity_id: booking_id,
+      type: "member_checked_in",
+      subject_type: "booking",
+      subject_id: booking_id,
       metadata: {
         member_id: booking.member_id,
         class_id: booking.class_id,
@@ -165,9 +167,9 @@ export async function POST(request: NextRequest) {
           await supabase.from("activity_log").insert({
             studio_id: studioId,
             actor_id: user.id,
-            action: "trainer_bonus_triggered",
-            entity_type: "class",
-            entity_id: booking.class_id,
+            type: "trainer_bonus_triggered",
+            subject_type: "class",
+            subject_id: booking.class_id,
             metadata: {
               trainer_id: trainerId,
               check_in_count: checkInCount,
@@ -176,6 +178,22 @@ export async function POST(request: NextRequest) {
           });
         }
       }
+    }
+
+    // Fire async Glofox attendance write-back (fire-and-forget).
+    // Only attempted if this booking originated from Glofox (has a glofox_id).
+    // Supabase is already updated — Glofox failure must never block this response.
+    const memberGlofoxId = (booking.members as { glofox_id: string | null } | null)?.glofox_id;
+    if (booking.glofox_id && memberGlofoxId) {
+      void inngest.send({
+        name: 'glofox/mark-attendance',
+        data: {
+          booking_id,
+          glofox_booking_id: booking.glofox_id,
+          glofox_user_id: memberGlofoxId,
+          studio_id: studioId,
+        },
+      });
     }
 
     return NextResponse.json({

@@ -34,6 +34,17 @@ export const bookingCreateSchema = z.object({
   member_id: z.string().uuid(),
 });
 
+/** POST /api/checkout — transaction with optional discount/promo */
+export const checkoutSchema = z.object({
+  class_id: z.string().uuid(),
+  member_id: z.string().uuid(),
+  discount_id: z.string().optional(),
+  promo_code: z.string().optional(),
+}).refine(
+  (data) => !(data.discount_id && data.promo_code),
+  { message: "discount_id and promo_code are mutually exclusive", path: ["discount_id"] },
+);
+
 /** POST /api/corporate */
 export const corporateCreateSchema = z.object({
   name: z.string().min(1, 'Company name is required'),

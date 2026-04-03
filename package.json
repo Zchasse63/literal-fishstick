@@ -14,6 +14,7 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "turbo": "^2.8.20"
   },
   "packageManager": "npm@10.9.2",

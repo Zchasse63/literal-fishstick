@@ -6,7 +6,7 @@ export type CreditPackType = '8_pack' | '4_pack' | 'sampler'
 
 export interface Member {
   id: string
-  user_id: string
+  profile_id: string
   studio_id: string
   membership_tier: MembershipTier | null
   membership_status: MembershipStatus

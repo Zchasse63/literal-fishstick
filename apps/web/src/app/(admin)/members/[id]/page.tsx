@@ -34,6 +34,7 @@ const fadeInUp = {
 // ─── Types ──────────────────────────────────────────────────
 interface MemberProfile {
   id: string
+  profileId: string
   firstName: string
   lastName: string
   email: string
@@ -54,6 +55,12 @@ interface MemberProfile {
   notes: string | null
   guidedSessions: number
 }
+
+const PLAN_TIERS = [
+  { key: 'unlimited', label: 'Unlimited', price: '$225/mo', tier: 3 },
+  { key: '10_class', label: '10-Class Pack', price: '$180/mo', tier: 2 },
+  { key: '6_class', label: '6-Class Pack', price: '$120/mo', tier: 1 },
+] as const
 
 interface Booking {
   className: string
@@ -174,6 +181,133 @@ function ProfileSkeleton() {
   )
 }
 
+// ─── Email Preferences Panel ────────────────────────────────
+function EmailPreferencesPanel({ memberId }: { memberId: string }) {
+  const [prefs, setPrefs] = useState<Record<string, boolean> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/email-preferences/${memberId}`)
+      .then(r => r.json())
+      .then(json => { if (json.data) setPrefs(json.data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [memberId])
+
+  async function togglePref(key: string) {
+    if (!prefs) return
+    const updated = { ...prefs, [key]: !prefs[key] }
+    setPrefs(updated)
+    setSaving(true)
+    try {
+      await fetch(`/api/email-preferences/${memberId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: updated[key] }),
+      })
+    } catch {} finally { setSaving(false) }
+  }
+
+  if (loading) return null
+
+  const prefItems = [
+    { key: 'marketing_email', label: 'Marketing Emails' },
+    { key: 'booking_confirmations', label: 'Booking Confirmations' },
+    { key: 'booking_reminders', label: 'Booking Reminders' },
+    { key: 'membership_updates', label: 'Membership Updates' },
+    { key: 'promotions', label: 'Promotions' },
+    { key: 'newsletter', label: 'Newsletter' },
+  ]
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Email Preferences</h3>
+        {saving && <Loader2 className="h-3 w-3 text-gray-300 animate-spin" />}
+      </div>
+      <div className="space-y-2">
+        {prefItems.map(item => (
+          <label key={item.key} className="flex items-center justify-between cursor-pointer group">
+            <span className="text-xs text-gray-700">{item.label}</span>
+            <button
+              onClick={() => togglePref(item.key)}
+              className={cn(
+                'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+                prefs?.[item.key] ? 'bg-indigo-600' : 'bg-gray-200'
+              )}
+            >
+              <span className={cn(
+                'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm',
+                prefs?.[item.key] ? 'translate-x-4' : 'translate-x-0.5'
+              )} />
+            </button>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── SMS Compose Panel ──────────────────────────────────────
+function SMSComposePanel({ phone }: { phone: string }) {
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  async function handleSend() {
+    if (!message.trim() || !phone) return
+    setSending(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/sms/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phone, body: message }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Send failed')
+      setResult({ type: 'success', text: 'SMS sent successfully' })
+      setMessage('')
+    } catch (err: any) {
+      setResult({ type: 'error', text: err.message })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (!phone) return null
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Send SMS</h3>
+      {result && (
+        <div className={cn(
+          'rounded-lg p-2 text-xs mb-2',
+          result.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+        )}>
+          {result.text}
+        </div>
+      )}
+      <textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Type your message..."
+        rows={2}
+        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+      />
+      <button
+        onClick={handleSend}
+        disabled={sending || !message.trim()}
+        className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+      >
+        {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+        Send SMS
+      </button>
+    </div>
+  )
+}
+
 // ─── Page ───────────────────────────────────────────────────
 export default function MemberProfilePage({
   params,
@@ -188,13 +322,16 @@ export default function MemberProfilePage({
   const [tags, setTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'financials'>('overview')
+  const [planActionLoading, setPlanActionLoading] = useState(false)
+  const [planActionMsg, setPlanActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [confirmPlan, setConfirmPlan] = useState<{ key: string; label: string; direction: 'upgrade' | 'downgrade' } | null>(null)
 
   const fetchMember = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('members')
         .select(`
-          id, membership_tier, membership_status, credits_remaining, total_visits,
+          id, profile_id, membership_tier, membership_status, credits_remaining, total_visits,
           join_date, notes, last_visit, lifetime_value,
           profiles!inner ( full_name, email, phone, avatar_url )
         `)
@@ -214,6 +351,7 @@ export default function MemberProfilePage({
 
       setMember({
         id: data.id,
+        profileId: data.profile_id,
         firstName: parts[0] || fullName,
         lastName: parts.length >= 2 ? parts.slice(1).join(' ') : '',
         email: profile.email || '',
@@ -451,6 +589,12 @@ export default function MemberProfilePage({
             </div>
           </div>
 
+          {/* Email Preferences */}
+          <EmailPreferencesPanel memberId={member.id} />
+
+          {/* SMS Compose */}
+          <SMSComposePanel phone={member.phone} />
+
           {/* Notes */}
           {member.notes && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
@@ -516,6 +660,103 @@ export default function MemberProfilePage({
                       </div>
                     </div>
                   </div>
+
+                  {/* Plan Actions */}
+                  {member.membershipType !== 'credit-pack' && (() => {
+                    const currentTier = PLAN_TIERS.find(p => p.key === member.membershipType.replace('-', '_'))?.tier ?? 0
+                    const upgrades = PLAN_TIERS.filter(p => p.tier > currentTier)
+                    const downgrades = PLAN_TIERS.filter(p => p.tier < currentTier)
+
+                    return (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Change Plan</h3>
+
+                        {planActionMsg && (
+                          <div className={cn(
+                            'rounded-xl p-3 text-sm mb-3',
+                            planActionMsg.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-red-50 border border-red-200 text-red-700'
+                          )}>
+                            {planActionMsg.text}
+                          </div>
+                        )}
+
+                        {confirmPlan ? (
+                          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                            <p className="text-sm font-semibold text-gray-900 mb-1">
+                              {confirmPlan.direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} to {confirmPlan.label}?
+                            </p>
+                            <p className="text-xs text-gray-500 mb-3">
+                              {confirmPlan.direction === 'upgrade'
+                                ? 'Immediate with Stripe proration — member will be charged the difference today.'
+                                : 'Takes effect at next billing cycle — member keeps current plan until then.'}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                disabled={planActionLoading}
+                                onClick={async () => {
+                                  setPlanActionLoading(true)
+                                  setPlanActionMsg(null)
+                                  try {
+                                    const endpoint = confirmPlan.direction === 'upgrade' ? 'upgrade' : 'downgrade'
+                                    const res = await fetch(`/api/members/${member.profileId}/${endpoint}`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ new_plan: confirmPlan.key }),
+                                    })
+                                    const json = await res.json()
+                                    if (!res.ok) throw new Error(json.error || 'Failed')
+                                    setPlanActionMsg({ type: 'success', text: `Plan ${confirmPlan.direction === 'upgrade' ? 'upgraded' : 'downgrade scheduled'} successfully.` })
+                                    setConfirmPlan(null)
+                                    fetchMember()
+                                  } catch (err: any) {
+                                    setPlanActionMsg({ type: 'error', text: err.message })
+                                  } finally {
+                                    setPlanActionLoading(false)
+                                  }
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                              >
+                                {planActionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setConfirmPlan(null)}
+                                className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {upgrades.map(p => (
+                              <button
+                                key={p.key}
+                                onClick={() => setConfirmPlan({ key: p.key, label: p.label, direction: 'upgrade' })}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
+                              >
+                                <TrendingUp className="h-3 w-3" />
+                                Upgrade to {p.label}
+                              </button>
+                            ))}
+                            {downgrades.map(p => (
+                              <button
+                                key={p.key}
+                                onClick={() => setConfirmPlan({ key: p.key, label: p.label, direction: 'downgrade' })}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors"
+                              >
+                                <TrendingDown className="h-3 w-3" />
+                                Downgrade to {p.label}
+                              </button>
+                            ))}
+                            {upgrades.length === 0 && downgrades.length === 0 && (
+                              <p className="text-xs text-gray-400">No plan changes available</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   {/* Recent Bookings */}
                   <div>

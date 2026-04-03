@@ -110,9 +110,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'migration_import_rolled_back',
-      entity_type: 'migration_job',
-      entity_id: id,
+      type: 'migration_import_rolled_back',
+      subject_type: 'migration_job',
+      subject_id: id,
       metadata: {
         data_type: job.data_type,
         total_deleted: totalDeleted,

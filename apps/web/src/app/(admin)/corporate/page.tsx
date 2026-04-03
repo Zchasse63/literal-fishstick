@@ -94,18 +94,29 @@ const invoiceStatusConfig: Record<InvoiceStatus, { label: string; className: str
 }
 
 // ─── Components ─────────────────────────────────────────────
+interface DashboardMetrics {
+  companies_by_status: Record<string, number>
+  total_companies: number
+  total_contract_value: number
+  credits: { monthly_allocated: number; remaining: number; used: number }
+  upcoming_events_count: number
+  overdue_invoices: { count: number; total_outstanding: number }
+}
+
 function MetricCard({
   label,
   value,
-  change,
+  subtitle,
   icon: Icon,
   delay = 0,
+  subtitleColor,
 }: {
   label: string
   value: string
-  change: string
+  subtitle: string
   icon: typeof Briefcase
   delay?: number
+  subtitleColor?: string
 }) {
   return (
     <motion.div
@@ -121,12 +132,20 @@ function MetricCard({
       </div>
       <div className="flex items-end justify-between">
         <p className="text-[28px] font-black text-gray-900 tabular-nums leading-none">{value}</p>
-        <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-          <ArrowUpRight className="h-3 w-3" />
-          {change}
+        <span className={cn('text-xs font-semibold', subtitleColor || 'text-gray-400')}>
+          {subtitle}
         </span>
       </div>
     </motion.div>
+  )
+}
+
+function MetricSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3 animate-pulse">
+      <div className="h-3 w-24 bg-gray-100 rounded" />
+      <div className="h-8 w-16 bg-gray-100 rounded" />
+    </div>
   )
 }
 
@@ -178,6 +197,7 @@ export default function CorporatePage() {
   const [events, setEvents] = useState<UpcomingEvent[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
+  const [dashMetrics, setDashMetrics] = useState<DashboardMetrics | null>(null)
   const pipelineStages: PipelineStage[] = ['prospect', 'active', 'paused', 'churned']
 
   useEffect(() => {
@@ -185,13 +205,16 @@ export default function CorporatePage() {
     const supabase = createBrowserClient()
 
     async function loadData() {
-      const [companiesRes, eventsRes, invoicesRes] = await Promise.all([
+      const [companiesRes, eventsRes, invoicesRes, dashRes] = await Promise.all([
         supabase.from('company_accounts').select('*').eq('studio_id', STUDIO_ID).order('name'),
         supabase.from('events').select('*').eq('studio_id', STUDIO_ID).order('event_date', { ascending: true }).limit(5),
         supabase.from('corporate_invoices').select('*').eq('studio_id', STUDIO_ID).order('created_at', { ascending: false }).limit(5),
+        fetch('/api/corporate/dashboard').then(r => r.json()).catch(() => ({ data: null })),
       ])
 
       if (cancelled) return
+
+      if (dashRes?.data) setDashMetrics(dashRes.data)
 
       if (companiesRes.data) {
         setCompanies(companiesRes.data.map((c: any) => ({
@@ -258,10 +281,46 @@ export default function CorporatePage() {
 
       {/* ─── Metrics Row ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <MetricCard icon={Building2} label="Active Companies" value={String(companies.filter(c => c.stage === 'active').length)} change="--" delay={0} />
-        <MetricCard icon={DollarSign} label="Total Contract Value" value={`$${companies.reduce((sum, c) => sum + c.contractValue, 0).toLocaleString()}`} change="--" delay={0.05} />
-        <MetricCard icon={CreditCard} label="Credits Remaining" value={String(companies.reduce((sum, c) => sum + c.creditsRemaining, 0))} change="--" delay={0.1} />
-        <MetricCard icon={AlertTriangle} label="Overdue Invoices" value={String(invoices.filter(i => i.status === 'overdue').length)} change={invoices.filter(i => i.status === 'overdue').length > 0 ? `$${invoices.filter(i => i.status === 'overdue').reduce((s, i) => s + i.amount, 0).toLocaleString()} outstanding` : '--'} delay={0.15} />
+        {!dashMetrics ? (
+          <>
+            <MetricSkeleton />
+            <MetricSkeleton />
+            <MetricSkeleton />
+            <MetricSkeleton />
+          </>
+        ) : (
+          <>
+            <MetricCard
+              icon={Building2}
+              label="Active Companies"
+              value={String(dashMetrics.companies_by_status?.active ?? 0)}
+              subtitle={`${dashMetrics.total_companies ?? 0} total`}
+              delay={0}
+            />
+            <MetricCard
+              icon={DollarSign}
+              label="Contract Value"
+              value={`$${(dashMetrics.total_contract_value ?? 0).toLocaleString()}`}
+              subtitle="Per year"
+              delay={0.05}
+            />
+            <MetricCard
+              icon={CreditCard}
+              label="Credits Remaining"
+              value={String(dashMetrics.credits?.remaining ?? 0)}
+              subtitle={`of ${dashMetrics.credits?.monthly_allocated ?? 0} allocated`}
+              delay={0.1}
+            />
+            <MetricCard
+              icon={AlertTriangle}
+              label="Overdue Invoices"
+              value={String(dashMetrics.overdue_invoices?.count ?? 0)}
+              subtitle={(dashMetrics.overdue_invoices?.count ?? 0) > 0 ? `$${(dashMetrics.overdue_invoices.total_outstanding ?? 0).toLocaleString()} outstanding` : 'None'}
+              subtitleColor={(dashMetrics.overdue_invoices?.count ?? 0) > 0 ? 'text-amber-600' : 'text-gray-400'}
+              delay={0.15}
+            />
+          </>
+        )}
       </div>
 
       {/* ─── Pipeline View ──────────────────────────────────── */}

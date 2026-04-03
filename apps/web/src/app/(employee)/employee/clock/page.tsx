@@ -90,27 +90,62 @@ export default function EmployeeClockPage() {
         .from('clock_entries')
         .select('*')
         .eq('studio_id', STUDIO_ID)
-        .gte('created_at', todayStart.toISOString())
-        .order('created_at', { ascending: true })
+        .gte('clock_in', todayStart.toISOString())
+        .order('clock_in', { ascending: true })
 
       if (clockEntries && clockEntries.length > 0) {
-        const mapped: ClockEntry[] = clockEntries.map((e: any) => ({
-          id: e.id,
-          type: e.type ?? 'clock-in',
-          time: e.created_at ? new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—',
-          distance: e.distance ?? 0,
-          withinRadius: e.within_radius ?? true,
-        }))
+        // Build timeline entries from clock_entries rows (each row has clock_in/clock_out/break_start/break_end timestamps)
+        const mapped: ClockEntry[] = []
+        for (const e of clockEntries) {
+          const dist = e.distance_from_studio ?? 0
+          if (e.clock_in) {
+            mapped.push({
+              id: `${e.id}-in`,
+              type: 'clock-in',
+              time: new Date(e.clock_in).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+              distance: dist,
+              withinRadius: e.geofence_verified_in ?? true,
+            })
+          }
+          if (e.break_start) {
+            mapped.push({
+              id: `${e.id}-bs`,
+              type: 'break-start',
+              time: new Date(e.break_start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+              distance: dist,
+              withinRadius: true,
+            })
+          }
+          if (e.break_end) {
+            mapped.push({
+              id: `${e.id}-be`,
+              type: 'break-end',
+              time: new Date(e.break_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+              distance: dist,
+              withinRadius: true,
+            })
+          }
+          if (e.clock_out) {
+            mapped.push({
+              id: `${e.id}-out`,
+              type: 'clock-out',
+              time: new Date(e.clock_out).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+              distance: dist,
+              withinRadius: e.geofence_verified_out ?? true,
+            })
+          }
+        }
         setEntries(mapped)
 
-        // Determine current status from last entry
+        // Determine current status from the latest clock entry row
         const lastEntry = clockEntries[clockEntries.length - 1]
-        if (lastEntry.type === 'clock-in' || lastEntry.type === 'break-end') {
-          setClockStatus('clocked-in')
-          setClockedInSince(new Date(lastEntry.created_at))
-        } else if (lastEntry.type === 'break-start') {
-          setClockStatus('on-break')
-          setClockedInSince(new Date(clockEntries.find((e: any) => e.type === 'clock-in')?.created_at ?? lastEntry.created_at))
+        if (!lastEntry.clock_out) {
+          if (lastEntry.break_start && !lastEntry.break_end) {
+            setClockStatus('on-break')
+          } else {
+            setClockStatus('clocked-in')
+          }
+          setClockedInSince(new Date(lastEntry.clock_in))
         } else {
           setClockStatus('clocked-out')
         }
@@ -119,14 +154,14 @@ export default function EmployeeClockPage() {
       // Fetch geofence
       const { data: geo } = await supabase
         .from('geofence_locations')
-        .select('radius')
+        .select('radius_meters')
         .eq('studio_id', STUDIO_ID)
         .eq('is_active', true)
         .limit(1)
         .single()
 
       if (geo) {
-        setGeoRadius(geo.radius ?? 150)
+        setGeoRadius(geo.radius_meters ?? 150)
       }
 
       setLoading(false)

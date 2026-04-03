@@ -77,8 +77,8 @@ export const cronTrainerMetrics = inngest.createFunction(
         .from('classes')
         .select('id, trainer_id, checked_in_count, capacity, status')
         .eq('studio_id', STUDIO_ID)
-        .gte('date', monthStart)
-        .lt('date', monthEnd)
+        .gte('starts_at', `${monthStart}T00:00:00.000Z`)
+        .lt('starts_at', `${monthEnd}T00:00:00.000Z`)
         .in('status', ['completed', 'in_progress']);
 
       if (error) {

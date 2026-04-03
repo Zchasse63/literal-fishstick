@@ -72,19 +72,27 @@ async function buildChurnInput(
     now.getTime() + 7 * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  // Fetch member profile
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
+  // Fetch member with joined profile
+  const { data: memberRow, error: memberError } = await supabase
+    .from("members")
     .select(
-      "id, full_name, membership_type, membership_status, join_date, created_at"
+      "id, membership_tier, membership_status, join_date, created_at, profiles:profile_id ( full_name )"
     )
     .eq("id", memberId)
     .eq("studio_id", STUDIO_ID)
     .single();
 
-  if (profileError || !profile) {
+  if (memberError || !memberRow) {
     return null;
   }
+
+  const profile = {
+    full_name: (memberRow.profiles as any)?.full_name ?? "Unknown Member",
+    membership_type: memberRow.membership_tier,
+    membership_status: memberRow.membership_status,
+    join_date: memberRow.join_date,
+    created_at: memberRow.created_at,
+  };
 
   // Run all aggregate queries in parallel
   const [

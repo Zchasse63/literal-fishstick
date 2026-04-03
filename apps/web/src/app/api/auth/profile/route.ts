@@ -75,9 +75,9 @@ export async function POST() {
     await supabase.from("activity_log").insert({
       studio_id: defaultStudioId,
       actor_id: user.id,
-      action: "profile_created",
-      entity_type: "profile",
-      entity_id: newProfile.id,
+      type: "profile_created",
+      subject_type: "profile",
+      subject_id: newProfile.id,
       metadata: {
         email: user.email,
         roles: ["member"],

@@ -129,36 +129,85 @@ export default function TrainerDetailPage() {
   useEffect(() => {
     async function fetchTrainer() {
       const supabase = createBrowserClient()
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
+
+      // Fetch trainer record joined with profile for name
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('*, profiles:profile_id ( full_name )')
         .eq('id', trainerId)
         .eq('studio_id', STUDIO_ID)
         .single()
 
-      if (profile) {
+      if (trainer) {
+        const profile = trainer.profiles as any
+
+        // Fetch latest metric snapshot for this trainer
+        const { data: snapshots } = await supabase
+          .from('trainer_metric_snapshots')
+          .select('*')
+          .eq('trainer_id', trainerId)
+          .eq('studio_id', STUDIO_ID)
+          .order('period_end', { ascending: false })
+          .limit(6)
+
+        const latestSnap = snapshots?.[0] ?? null
+        const totalClasses = latestSnap?.total_classes ?? trainer.total_classes_led ?? 0
+        const avgAtt = latestSnap?.avg_attendance ?? 0
+        const bonusThresholdClasses = latestSnap?.classes_above_bonus_threshold ?? 0
+        const bonusHitRate = totalClasses > 0 ? Math.round((bonusThresholdClasses / totalClasses) * 100) : 0
+        const uniqueMembers = latestSnap?.unique_members_served ?? 0
+        const repeatRate = latestSnap?.repeat_member_rate ?? 0
+
         setTrainer({
-          id: profile.id,
-          name: profile.full_name ?? 'Unknown',
-          avatar: getInitials(profile.full_name ?? 'U'),
+          id: trainer.id,
+          name: profile?.full_name ?? 'Unknown',
+          avatar: getInitials(profile?.full_name ?? 'U'),
           role: 'Trainer',
-          classesPerWeek: profile.classes_per_week ?? 0,
-          totalMembersServed: profile.total_members_served ?? 0,
+          classesPerWeek: totalClasses > 0 ? Math.round(totalClasses / 4) : 0,
+          totalMembersServed: uniqueMembers,
         })
 
         setKpiCards([
-          { label: 'Avg Attendance', value: String(profile.avg_attendance ?? 0), change: '—', changeType: 'flat', icon: Users },
-          { label: 'Bonus Hit Rate', value: `${profile.bonus_hit_rate ?? 0}%`, change: '—', changeType: 'flat', icon: Trophy },
-          { label: 'Revenue Attributed', value: formatCurrency(profile.promo_revenue ?? 0), change: '—', changeType: 'flat', icon: DollarSign },
-          { label: 'Promo Conversions', value: String(profile.promo_redemptions ?? 0), change: '—', changeType: 'flat', icon: Tag },
-          { label: 'Repeat Member Rate', value: '—', change: '—', changeType: 'flat', icon: Repeat },
+          { label: 'Avg Attendance', value: String(Math.round(avgAtt * 10) / 10), change: '—', changeType: 'flat', icon: Users },
+          { label: 'Bonus Hit Rate', value: `${bonusHitRate}%`, change: '—', changeType: 'flat', icon: Trophy },
+          { label: 'Revenue Attributed', value: formatCurrency(latestSnap?.revenue_attributed ?? 0), change: '—', changeType: 'flat', icon: DollarSign },
+          { label: 'Promo Conversions', value: String(latestSnap?.promo_code_conversions ?? 0), change: '—', changeType: 'flat', icon: Tag },
+          { label: 'Repeat Member Rate', value: repeatRate > 0 ? `${Math.round(repeatRate * 100)}%` : '—', change: '—', changeType: 'flat', icon: Repeat },
         ])
 
         setPayroll({
-          basePay: profile.ytd_gross ?? 0,
-          bonuses: profile.ytd_bonuses ?? 0,
-          promoCommission: 0,
+          basePay: latestSnap?.base_pay ?? 0,
+          bonuses: latestSnap?.bonus_pay ?? 0,
+          promoCommission: latestSnap?.promo_commission ?? 0,
         })
+
+        // AI narrative and highlights from latest snapshot
+        if (latestSnap?.ai_narrative) {
+          setAiNarrative(latestSnap.ai_narrative)
+        }
+        if (latestSnap?.ai_highlights && Array.isArray(latestSnap.ai_highlights)) {
+          setHighlights(latestSnap.ai_highlights)
+        }
+        if (latestSnap?.ai_growth_areas && Array.isArray(latestSnap.ai_growth_areas)) {
+          setGrowthAreas(latestSnap.ai_growth_areas)
+        }
+
+        // Build monthly performance from snapshots
+        if (snapshots && snapshots.length > 0) {
+          const monthly: MonthlyPerformance[] = snapshots
+            .slice()
+            .reverse()
+            .map((s: any) => {
+              const periodStart = new Date(s.period_start)
+              const monthLabel = periodStart.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+              return {
+                month: monthLabel,
+                avgAttendance: Math.round((s.avg_attendance ?? 0) * 10) / 10,
+                fillRate: Math.round((s.avg_capacity_utilization ?? 0) * 100),
+              }
+            })
+          setMonthlyPerf(monthly)
+        }
       }
       setLoading(false)
     }

@@ -121,6 +121,50 @@ export type MeridianEvents = {
   'invoice/sent': {
     data: { invoice_id: string; company_id: string; studio_id: string };
   };
+
+  // Glofox data sync
+  'glofox/sync-manual': {
+    data: { studio_id: string; entity_types?: string[] };
+  };
+  'glofox/backfill': {
+    data: { studio_id: string };
+  };
+
+  // Glofox write-back
+  'glofox/create-booking': {
+    data: {
+      /** Meridian bookings.id (UUID) */
+      booking_id: string;
+      /** Glofox event/class _id */
+      glofox_event_id: string;
+      /** Glofox user _id of the member */
+      glofox_user_id: string;
+      /** Meridian studio UUID */
+      studio_id: string;
+    };
+  };
+  'glofox/cancel-booking': {
+    data: {
+      /** Meridian bookings.id (UUID) */
+      booking_id: string;
+      /** bookings.glofox_id — the Glofox booking _id */
+      glofox_booking_id: string;
+      /** Meridian studio UUID */
+      studio_id: string;
+    };
+  };
+  'glofox/mark-attendance': {
+    data: {
+      /** Meridian bookings.id (UUID) */
+      booking_id: string;
+      /** bookings.glofox_id — the 24-char MongoDB ObjectID */
+      glofox_booking_id: string;
+      /** The Glofox user._id of the member */
+      glofox_user_id: string;
+      /** Meridian studio UUID */
+      studio_id: string;
+    };
+  };
 };
 
 // ---------------------------------------------------------------------------

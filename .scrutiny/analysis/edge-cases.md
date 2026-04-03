@@ -1,181 +1,131 @@
-# Edge Cases Analysis — Phase 4: Corporate & Operations
-
+# Edge Cases Analysis
 **Agent:** edge-cases
-**Plan:** Meridian Phase 4
-**Complexity Class:** SIGNIFICANT
-**Date:** 2026-03-20
+**Plan:** Glofox API Migration to Meridian
+**Complexity:** SIGNIFICANT
+**Date:** 2026-03-31
 
 ---
 
 ## Agent Verdict
-
-**MODIFY**
-
-The plan is well-structured but leaves several high-probability edge cases completely unaddressed. Three of them (event/class conflicts, payroll clock entry disputes, corporate credit expiry) will create operational incidents within the first month of use if not decided before development begins. The existing `edge-case-policies.md` established an excellent precedent for pre-deciding these. Phase 4 needs its own edge case policy decisions.
+**MODIFY** — The plan addresses happy-path sync scenarios well but has meaningful gaps in failure handling. Several edge cases that will definitely occur in a live migration are either unaddressed or inadequately handled: members who exist in one system but not the other, records modified in both systems within the same sync window, Glofox API partial failures, and the billing cycle edge case at cutover. These are not theoretical — they will happen. The plan needs explicit handling for each.
 
 ---
 
-## High-Probability Edge Cases (Decide Before Sprint 1)
+## Edge Cases the Plan Addresses
 
-### EC-1: Event Booking Conflicts with Regular Classes
+**Concurrent booking race conditions:** The plan inherits the atomic insert policy from the CLAUDE.md edge case decisions. Meridian uses atomic inserts for booking races — this carries through to the sync engine's outbound booking creation.
 
-**Scenario:** An event is confirmed for Saturday 5–7pm. A regular "Open Sauna" class is already on the schedule for Saturday 5–6pm. The sauna has 12-person capacity. Both the event guests and class members show up.
+**Inbound update vs. new insert:** The `syncMembersInbound` function correctly distinguishes between existing records (update) and new records (insert) using `glofox_id` lookup. This is the right pattern.
 
-**The plan does not address this.** Events have a `resources_reserved` JSONB field, but there is no join to the existing bookings/schedule system to detect conflicts at inquiry or confirmation time.
+**Conflict detection:** The `glofox_sync_conflicts` table and per-field resolution rules handle the case of concurrent modification in both systems.
 
-**Required decision:**
-- Does the studio pause regular classes during a private event? (Most likely yes for a venue this size)
-- Does the system automatically block the class slot when an event is confirmed, or must the admin manually manage this?
-- What happens to existing bookings for that class slot when the event is confirmed?
+**Rollback capability:** Supabase PITR + "never delete from Glofox" policy provides a genuine rollback path.
 
-**Recommended policy:** When an event transitions to "confirmed" status, the system should check for overlapping class slots (using start_time + setup_time_minutes and end_time + cleanup_time_minutes). If conflicts exist, surface a warning before confirmation and offer to cancel/move conflicting classes. The admin must explicitly acknowledge. Auto-cancellation without notification would be a serious operational failure.
+**Idempotency:** Inbound sync is inherently idempotent (upsert on glofox_id). Outbound sync stores the resulting Glofox ID back to the Meridian record to prevent duplicates.
 
 ---
 
-### EC-2: Corporate Credit Expiry and Rollover
+## Unaddressed Edge Cases
 
-**Scenario:** A company has `monthly_credit_allocation = 50` and `credits_remaining = 30` at the end of the billing month. The Inngest job fires `corporate-credits-refresh`. Do the remaining 30 credits roll over or reset to 50?
+### Edge Case 1: Members in Meridian With No Glofox ID
 
-**The plan does not specify rollover policy.**
+After the one-time CSV import, there may be Meridian member records that have no `glofox_id` mapping (e.g., members who were created directly in Meridian, test accounts, or import gaps). The inbound sync skips these (correctly — it only processes Glofox records). But the outbound sync's `pushMemberUpdate` function returns early with `if (!member?.glofox_id) return` — silently dropping the update.
 
-**The stakes:** If credits expire without notice, the company contact will complain. If credits roll over indefinitely, the studio has an uncapped liability (a company could accumulate 600 credits/year and redeem them all at once during the busiest month).
+This is correct behavior during transition (Glofox-unmapped members shouldn't push updates to Glofox). But post-cutover, if any member created in Meridian during parallel mode has no `glofox_id`, their data will never have been synced to Glofox, and their booking history in Glofox will be incomplete.
 
-**Required decision:** Choose one:
-- Option A: Credits reset to allocation amount on refresh (no rollover). Unused credits expire. Must notify the company 7 days before refresh.
-- Option B: Credits roll over, capped at 2x monthly allocation. Prevents unlimited accumulation while allowing short-term carryover.
-- Option C: Credits roll over without cap. Most member-friendly, highest liability risk.
+**Scenario:** Staff creates a new member in Meridian during parallel mode → member books a class in Meridian → outbound sync fires → `glofox_id` is null → sync skipped → Glofox booking not created → Glofox's attendance records for that class are incomplete → trainer bonus threshold calculation in Glofox is wrong.
 
-**Recommended policy:** Option B (capped rollover at 2x). Notify company admins 7 days before refresh of pending expiry. This matches industry norms for corporate wellness programs.
+**Recommended handling:** New member registrations in Meridian during parallel mode should trigger a `POST /2.0/register` call to Glofox and store the resulting Glofox user ID back to `profiles.glofox_id`. The plan includes the `sync-member-outbound` function but does not specify that new member creation (not just profile updates) should trigger it.
 
----
+### Edge Case 2: Records Modified in Both Systems Within One Sync Window
 
-### EC-3: Payroll Period with Disputed Clock Entries
+The conflict detection assumes last-modified wins for profile fields. But "last modified" depends on comparing timestamps across two systems with potentially different clock synchronization. If Meridian's server clock and Glofox's clock differ by more than a few seconds (not uncommon across cloud providers), the "last modified" comparison may produce wrong results.
 
-**Scenario:** The payroll calculation for a period includes clock entries that are manually edited (the `manually_edited` flag exists in ClockEntry). An employee disputes their total hours. The payroll period is already approved.
+More critically: if the same field (e.g., phone number) is updated in both systems within the same 10-minute sync window, the outcome is: Glofox's value gets pulled in by inbound sync, overwrites Meridian's value, then outbound sync fires and pushes Meridian's now-stale value back to Glofox. The result is that the Glofox update wins even though the Meridian update may have been more recent.
 
-**Questions not addressed:**
-- Can a payroll period be reopened after approval? If yes, what is the approval workflow?
-- Who can dispute hours — only the employee via the portal, or also the admin?
-- How does a dispute affect payroll export — is the export blocked pending resolution?
+**Recommended handling:** Store the Meridian-side `updated_at` at the time of each sync. When running conflict detection, compare `record.updated_at` vs. `glofox_member.modified_at` using a tolerance window (e.g., if within 60 seconds, flag as a conflict requiring manual review rather than applying last-modified). This is defensive but prevents silent data corruption.
 
-**Required decision:**
-- Payroll periods should be lockable but reopenable with explicit admin override and audit log entry
-- Employees should be able to flag specific clock entries for review from the employee portal
-- Disputed entries should not block export but should be flagged in the CSV/PDF output with a "pending review" annotation
+### Edge Case 3: Glofox API Returns Partial Results Mid-Pagination
 
----
+If the Glofox API times out, returns a 5xx error, or returns an empty page mid-pagination, the `fetchAll` function will either throw (and abort the sync) or return partial results (if error handling catches at a page level). The current implementation throws on non-OK responses, which means the entire sync run fails.
 
-### EC-4: Duplicate Event Inquiry (Same Company, Same Date)
+This is acceptable for ad-hoc calls but problematic for large entity types. If the bookings endpoint times out on page 8 of 15 during the 5-minute sync cycle, the sync engine logs an error and the next run will re-attempt from `last_sync_at` — but the next run won't know that pages 1–7 were already processed. If the sync increments `last_sync_at` only on successful completion, pages 1–7 will be re-synced next time (harmless due to upsert). But if `last_sync_at` is updated incrementally as pages are processed, an aborted mid-run could leave a gap.
 
-**Scenario:** A corporate client submits an event inquiry via email AND their account manager submits one on their behalf in the system, resulting in two "inquiry" status events for the same company on the same date.
+The code updates `last_sync_at` to `new Date().toISOString()` only after processing all records, which means the next run will re-process all records since the original `last_sync_at`. This is safe but may cause unnecessary reprocessing of up to 10 minutes of records during recovery.
 
-**The plan has no duplicate detection.** The events table has no unique constraint on (studio_id, company_id, start_time).
+**No change needed** — the current approach is correct. But this should be explicitly documented as the intended behavior, not left implicit.
 
-**Required decision:** Add a soft duplicate warning (not a hard block) when creating an event with the same company_id and overlapping time range as an existing non-cancelled event. Admin must acknowledge before proceeding.
+### Edge Case 4: Billing Cycle Boundary at Cutover
 
----
+The cutover happens "Sunday night at 22:00." But member billing cycles are individual (they started on different days). Some members will have billing dates that fall Monday or Tuesday — within 48 hours of cutover.
 
-### EC-5: Member Linked to Multiple Corporate Accounts
+The plan says: "Create Stripe Subscription (set to start on their next billing date)." This is correct — Stripe subscriptions start on the next billing date, so there is no double-charge. But it creates a gap scenario:
 
-**Scenario:** A member is an employee of Company A (which has a corporate wellness contract) and later joins Company B (a second corporate client). The `company_members` junction allows this. But `profiles.company_id` (proposed FK) only allows one. Additionally, if Company A pays for the member's membership and Company B also tries to cover them, whose billing should apply?
+- Member's billing date: Monday (Day 1 post-cutover)
+- Stripe subscription created on Saturday (Day -1): starts Monday
+- Glofox processes final charge on Sunday night (before freeze) or not at all
+- If Glofox processes a charge on Sunday and Stripe starts Monday: member may be charged twice in 2 days
 
-**This is a real scenario for studios with multiple corporate clients.**
+**Recommended handling:** Before the cutover freeze, pull all member billing dates from Glofox. For any member whose next billing date is within 7 days of cutover, coordinate manually: either skip the final Glofox charge and start Stripe one cycle earlier, or ensure Stripe subscription starts after the Glofox charge date.
 
-**Required decision:**
-- Remove `profiles.company_id` FK (already recommended in architecture-impact)
-- Use `company_members` as the source of truth for all company ↔ member relationships
-- When a member has multiple active corporate memberships, apply the most recently added one for billing purposes (or surface a conflict to the admin)
+### Edge Case 5: Credit Pack Members at Cutover
 
----
+The plan states: "Members with credits/packs: no change needed (credits are in Meridian DB)." But are they? If the one-time CSV import was incomplete (27 fields missing), credit pack balances and expiry dates may not have been imported. The sync engine will pull credit pack data from Glofox via `GET /2.0/credits` per member — but this is a per-member endpoint, not a bulk endpoint, meaning enriching credits for all 1,100 members requires 1,100 individual API calls.
 
-### EC-6: Invoice Sent to Wrong Billing Email
+The plan does not include credit pack enrichment as part of the inbound sync schedule. If credits are not synced before cutover, members with remaining credits will have incorrect balances in Meridian.
 
-**Scenario:** An admin updates a company's billing email after an invoice has already been sent. The company claims they never received it. The invoice status is "sent" but `viewed_at` is NULL.
+**Recommended handling:** Add a `sync-credits-inbound` function or include credits in the full refresh daily job. Verify credit balances for all active members match before cutover sign-off.
 
-**Required decision:**
-- Add a "Resend invoice" action that triggers a new email to the current billing_email and updates `sent_at`
-- Log each send attempt (not just the first) with timestamp and recipient email
-- The "viewed" tracking (via email open/click pixel) should be noted as unreliable — many email clients block tracking pixels
+### Edge Case 6: Staff Accounts Without Meridian Profiles
 
----
+The plan syncs staff from Glofox (`GET /2.0/staff`), and transactions include a `sold_by` field referencing staff. If staff in Glofox do not have corresponding profiles in Meridian (or if staff were not included in the original CSV import), the `sold_by_profile_id` FK insertion will fail.
 
-## Medium-Probability Edge Cases
+The plan notes Glofox has ~10 staff. But the dual-role issue documented in CLAUDE.md (trainers who are also members, owners who have personal memberships) suggests the staff records in Glofox may not map cleanly to Meridian's profile records. Some Glofox staff may not have Meridian profiles at all.
 
-### EC-7: EasyPost Label Purchased for Cancelled Order
+**Recommended handling:** Before Phase 2, manually verify all Glofox staff IDs have corresponding Meridian profiles. For any without mappings, create profiles and establish the glofox_id link manually. This should be a Phase 1 task, not a Phase 2 discovery.
 
-**Scenario:** A shipping label is purchased (EasyPost charges the account) and then the customer requests a cancellation. EasyPost allows label voiding within a window (varies by carrier: USPS allows void within 28 days, UPS within 14 days).
+### Edge Case 7: Deleted Records in Glofox
 
-**Required decision:** Order cancellation flow must check for existing purchased shipping labels and automatically attempt to void them via the EasyPost API. If the void window has passed, alert the admin. Log the refund status.
+The plan's inbound sync handles creates and updates. It does not handle deletes. If a booking is cancelled in Glofox (status changes to "cancelled"), the incremental sync will pull the updated booking and update Meridian's status — this is handled. But if a member record is archived or deleted in Glofox, the `utc_modified_start_date` filter may or may not include it depending on how Glofox handles deleted record visibility in its API.
 
----
+If Glofox hard-deletes records, they will simply stop appearing in sync results. Meridian will have a record for a member that no longer exists in Glofox, creating a phantom. The daily full reconciliation should detect count discrepancies, but the plan does not specify what action to take when a Meridian record has a `glofox_id` that no longer appears in Glofox's member list.
 
-### EC-8: Employee Clocks In at Studio A, Out at Studio B (Multi-Location Future)
+**Recommended handling:** The daily full reconciliation should include a step: for all Meridian members with `glofox_id IS NOT NULL`, verify the Glofox ID still exists in the Glofox member list. Members missing from Glofox should be flagged for manual review, not automatically deleted.
 
-**Scenario:** In future multi-location scenarios, an employee clocks in at location A (verified via geofence) and clocks out at location B (also verified, different geofence). The `geofence_location_id` references a single location per clock action. Hours are calculated correctly, but the location report shows a split shift.
+### Edge Case 8: Membership Plan Mismatch After Cutover
 
-**This is a future-state concern but the schema should handle it now.** The `clock_entries` table has a single `geofence_location_id` column. A `geofence_clock_out_location_id` column would properly capture split-location shifts.
+Glofox membership plans (read-only in API) will not exist in Meridian post-cutover. The `glofox_plan_code` column stores the Glofox-internal plan identifier. After cutover, when creating new subscriptions or upgrades, Meridian uses Stripe products/prices — which are different entities.
 
-**Recommended decision:** Add `geofence_clock_out_location_id UUID REFERENCES geofence_locations(id)` to the clock entries migration. Cost: one extra column. Saves a schema migration later.
+The mapping between Glofox plan codes and Stripe price IDs must be established before cutover. If a member's `glofox_plan_code` = "UNLIMITED_MONTHLY" and the corresponding Stripe price ID is `price_xyz123`, that mapping needs to be explicit in the codebase. The plan does not include this mapping step.
+
+**Recommended handling:** Create a `membership_plan_mapping` or `plan_catalog` table that maps Glofox plan codes to Stripe price IDs during the transition period. This should be established in Phase 1 or Phase 2, not discovered at cutover.
 
 ---
 
-### EC-9: Payroll Calculation During Active Clock-In
+## Edge Cases in the Rollback Plan
 
-**Scenario:** An admin runs the payroll calculation for a period while an employee is still clocked in (their period's clock_out is NULL). The calculation window ends mid-shift.
+### Rollback Edge Case: Bookings Created in Meridian During Cutover Window
 
-**Required decision:** Payroll calculation should only include clock entries where `clock_out IS NOT NULL`. Open shifts should be flagged in the payroll output as "open shift — requires manual review." Do not auto-close open clock entries during payroll calculation.
+The rollback plan for "within 1 hour" says: "Run reverse sync (Meridian → Glofox for any new bookings)." But outbound booking sync requires a valid `glofox_id` on the class being booked. If any classes were created in Meridian (not synced from Glofox) and have no Glofox equivalent, bookings for those classes cannot be synced to Glofox on rollback.
 
----
+The mitigation: no new classes should be created in Meridian during the cutover window. This should be an explicit constraint in the cutover runbook.
 
-### EC-10: Corporate Member's Membership Lapses While Event Is Scheduled
+### Rollback Edge Case: Members Who Logged Into Meridian During Cutover
 
-**Scenario:** A corporate client has 20 employees as linked members. The company's contract lapses (status → 'churned'). 5 of those employees have bookings for classes next week. 3 of them are registered as guests for a confirmed event next month.
-
-**Required decision:**
-- On contract status change to 'churned', the system should NOT auto-cancel member bookings or event registrations. These were made in good faith.
-- The company_members.is_active flag should be set to false, preventing new bookings under corporate billing.
-- Admin should receive a notification listing active bookings for corporate members that will need to be reconciled.
+If rollback happens after some members have authenticated with Meridian (magic link) but Glofox is reverted to primary, those members will receive password/login prompts from the old system they no longer expect. This creates member confusion but is manageable with proactive communication.
 
 ---
 
-### EC-11: Onboarding Studio Provisioning Failure (Partial State)
+## Summary of Edge Cases by Severity
 
-**Scenario:** The `/api/onboarding/studio` provisioning route creates the `studios` record, the `saas_subscriptions` record, and is partway through creating the first admin profile when a network timeout occurs. The studio now exists in the database with no admin user.
-
-**Required decision:**
-- The provisioning route must be idempotent: if called again with the same email/studio name, it should resume from the last completed step rather than creating a duplicate.
-- Use the `onboarding_progress` table to track which steps completed.
-- The studio record + subscription can be created in one transaction. The admin profile creation is a second step that references the completed studio.
-- Add a recovery flow: if a studio has no active admin user after 24 hours, send a re-invite email.
-
----
-
-### EC-12: Geofence Verification — Employee GPS Spoofing
-
-**Scenario:** An employee uses a GPS spoofing app to fake their location and clock in remotely.
-
-**Decision context:** Browser Geolocation API has no reliable anti-spoofing. This is a known limitation of web-based geofencing. The plan correctly uses geofence as "verification" (flag as verified/unverified) rather than "enforcement" (block clock-in entirely). This is the right tradeoff.
-
-**Recommendation:** Document explicitly that geofence verification is a deterrent and audit tool, not an absolute security control. The admin visibility into unverified clock-ins and the distance_from_studio field serve as sufficient deterrents for a small studio context. Do not over-engineer anti-spoofing for Phase 4.
-
----
-
-## Low-Probability Edge Cases (Acknowledge and Accept)
-
-**EC-13: Twilio number porting mid-campaign** — If The Sauna Guys changes their Twilio phone number, active opt-in records reference the old number. The SMS opt-in system must store the phone number that received the opt-in, not just a boolean. (Flagged for the Twilio implementation sprint.)
-
-**EC-14: EasyPost rate returned in non-USD currency** — For international rate shopping (if ever enabled), rate amounts are carrier-specific. Ensure all rate comparisons use `rate.rate` in the same `rate.currency`.
-
-**EC-15: Invoice tax_rate changes after invoice is sent** — The tax_rate on a corporate invoice should be locked at send time and not affected by later changes to the studio's tax settings. The JSONB line_items approach already handles this correctly by storing amounts at point of invoice creation.
-
----
-
-## Edge Case Policy Decisions Required Before Sprint 1
-
-1. **Corporate credit expiry policy** (EC-2) — rollover cap amount and notification timing
-2. **Event/class conflict handling** (EC-1) — who resolves conflicts and how
-3. **Payroll dispute workflow** (EC-3) — can approved periods be reopened?
-4. **Duplicate event inquiry handling** (EC-4) — soft warning vs hard block
-5. **Multi-company member billing** (EC-5) — which company's billing applies?
-
-These should be added to `edge-case-policies.md` as Phase 4 decisions (EC-19 through EC-23).
+| Edge Case | Probability | Severity | Addressed? |
+|-----------|------------|----------|------------|
+| Members without glofox_id receiving no outbound sync | High | Medium | No |
+| Concurrent modification within sync window | Medium | Medium | Partial |
+| Billing cycle collision at cutover | Medium | High | No |
+| Credit pack data not synced | Medium | High | No |
+| Staff without Meridian profiles causing FK failures | High | Medium | No |
+| Glofox hard-deleted records creating phantoms | Low | Low | No |
+| Plan code → Stripe price ID mapping missing | High | High | No |
+| API partial failure mid-pagination | Medium | Low | Implicit only |
+| DNS propagation lag causing partial traffic split | Low | Medium | Not mentioned |

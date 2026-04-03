@@ -200,9 +200,9 @@ export async function PUT(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "automation_updated",
-      entity_type: "automation_flow",
-      entity_id: id,
+      type: "automation_updated",
+      subject_type: "automation_flow",
+      subject_id: id,
       metadata: { updated_fields: Object.keys(updates), new_version: updates.version },
     });
 
@@ -298,9 +298,9 @@ export async function DELETE(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "automation_deleted",
-      entity_type: "automation_flow",
-      entity_id: id,
+      type: "automation_deleted",
+      subject_type: "automation_flow",
+      subject_id: id,
       metadata: {},
     });
 

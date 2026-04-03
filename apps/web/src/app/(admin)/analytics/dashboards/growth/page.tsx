@@ -188,27 +188,27 @@ export default function GrowthDashboardPage() {
   useEffect(() => {
     let cancelled = false
     async function fetchAtRisk() {
-      // Get members with oldest last_visit_at, active membership
+      // Get members with oldest last_visit, active membership
       const { data: members } = await supabase
-        .from('memberships')
-        .select('*, profiles:member_id ( full_name, email )')
+        .from('members')
+        .select('*, profiles:profile_id ( full_name, email )')
         .eq('studio_id', STUDIO_ID)
-        .eq('status', 'active')
-        .order('last_visit_at', { ascending: true, nullsFirst: true })
+        .eq('membership_status', 'active')
+        .order('last_visit', { ascending: true, nullsFirst: true })
         .limit(10)
 
       if (cancelled) return
 
       const atRisk: AtRiskMember[] = (members ?? []).map((m: any) => {
-        const lastVisit = m.last_visit_at ? getTimeAgo(m.last_visit_at) : 'Never'
-        const daysSince = m.last_visit_at
-          ? Math.floor((Date.now() - new Date(m.last_visit_at).getTime()) / 86400000)
+        const lastVisit = m.last_visit ? getTimeAgo(m.last_visit) : 'Never'
+        const daysSince = m.last_visit
+          ? Math.floor((Date.now() - new Date(m.last_visit).getTime()) / 86400000)
           : 999
         // Simple risk score based on inactivity days
         const riskScore = Math.min(99, Math.round(50 + daysSince * 2))
         return {
           name: m.profiles?.full_name ?? 'Unknown',
-          membership: m.plan_name ?? m.type ?? 'Membership',
+          membership: m.membership_tier ?? m.plan_code ?? 'Membership',
           lastVisit,
           riskScore,
           trend: daysSince > 14 ? 'inactive' : 'declining',

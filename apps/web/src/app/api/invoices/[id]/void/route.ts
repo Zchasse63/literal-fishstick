@@ -79,9 +79,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'invoice_voided',
-      entity_type: 'corporate_invoice',
-      entity_id: id,
+      type: 'invoice_voided',
+      subject_type: 'corporate_invoice',
+      subject_id: id,
       metadata: {
         invoice_number: invoice.invoice_number,
         previous_status: invoice.status,

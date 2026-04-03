@@ -215,26 +215,26 @@ export async function POST(request: NextRequest) {
 
         // Fetch membership + credits for merge tags
         const { data: memberships } = await supabase
-          .from('memberships')
-          .select('member_id, type, status')
-          .in('member_id', eligibleIds)
-          .eq('status', 'active')
+          .from('members')
+          .select('profile_id, membership_tier, membership_status')
+          .in('profile_id', eligibleIds)
+          .eq('membership_status', 'active')
 
         const { data: creditPacks } = await supabase
           .from('credit_packs')
-          .select('member_id, remaining_credits')
-          .in('member_id', eligibleIds)
-          .gt('remaining_credits', 0)
+          .select('member_id, credits_remaining')
+          .in('member_id', (memberships ?? []).map((m: { profile_id: string }) => m.profile_id))
+          .gt('credits_remaining', 0)
 
         // Build lookup maps
         const membershipMap = new Map(
-          (memberships ?? []).map((m: { member_id: string; type: string; status: string }) => [m.member_id, m])
+          (memberships ?? []).map((m: { profile_id: string; membership_tier: string; membership_status: string }) => [m.profile_id, m])
         )
         const creditsMap = new Map<string, number>()
         for (const pack of creditPacks ?? []) {
           creditsMap.set(
             pack.member_id,
-            (creditsMap.get(pack.member_id) ?? 0) + pack.remaining_credits
+            (creditsMap.get(pack.member_id) ?? 0) + pack.credits_remaining
           )
         }
 
@@ -258,14 +258,14 @@ export async function POST(request: NextRequest) {
           const nameParts = (member.full_name ?? '').split(' ')
           const firstName = nameParts[0] ?? ''
           const lastName = nameParts.slice(1).join(' ')
-          const membership = membershipMap.get(member.id) as { member_id: string; type: string; status: string } | undefined
+          const membership = membershipMap.get(member.id) as { profile_id: string; membership_tier: string; membership_status: string } | undefined
           const credits = creditsMap.get(member.id) ?? 0
 
           const mergeData = {
             first_name: firstName,
             last_name: lastName,
             credits_remaining: credits,
-            membership_name: membership?.type ?? 'No active membership',
+            membership_name: membership?.membership_tier ?? 'No active membership',
             total_visits: 0,
             campaign_name: campaign?.name ?? campaignId,
           }
@@ -370,9 +370,9 @@ export async function POST(request: NextRequest) {
       await supabase.from('activity_log').insert({
         studio_id: STUDIO_ID,
         actor_id: user.id,
-        action: 'campaign_sent',
-        entity_type: 'campaign',
-        entity_id: campaignId,
+        type: 'campaign_sent',
+        subject_type: 'campaign',
+        subject_id: campaignId,
         metadata: { sent, failed, skippedPrefs, skippedAlreadySent, total, status: finalStatus },
       })
 

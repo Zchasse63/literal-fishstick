@@ -153,7 +153,7 @@ export interface MemberWithProfile extends Member {
  */
 export function useMembers(): UseQueryResult<MemberWithProfile> {
   return useQuery<MemberWithProfile>('members', {
-    select: '*, profiles:user_id ( * )',
+    select: '*, profiles:profile_id ( * )',
     filters: [
       { column: 'studio_id', operator: 'eq', value: DEFAULT_STUDIO_ID },
     ],
@@ -169,7 +169,7 @@ export function useMembers(): UseQueryResult<MemberWithProfile> {
  */
 export function useClasses(
   dateRange?: { from: string; to: string },
-): UseQueryResult<ClassInstance & { class_types: Record<string, unknown> | null }> {
+): UseQueryResult<ClassInstance & { class_types: Record<string, unknown> | null; trainer: { full_name: string } | null }> {
   const filters: UseQueryFilter[] = [
     { column: 'studio_id', operator: 'eq', value: DEFAULT_STUDIO_ID },
   ]
@@ -181,8 +181,8 @@ export function useClasses(
     )
   }
 
-  return useQuery<ClassInstance & { class_types: Record<string, unknown> | null }>('classes', {
-    select: '*, class_types:class_type_id ( * )',
+  return useQuery<ClassInstance & { class_types: Record<string, unknown> | null; trainer: { full_name: string } | null }>('classes', {
+    select: '*, class_types:class_type_id ( * ), trainer:profiles!classes_trainer_id_fkey ( full_name )',
     filters,
     orderBy: { column: 'starts_at', ascending: true },
     poll: true,
@@ -230,15 +230,21 @@ export function useMembershipPlans(): UseQueryResult<MembershipPlan> {
 export interface StudioSettings {
   id: string
   studio_id: string
-  name: string
-  timezone: string
-  currency: string
-  cancellation_window_hours: number
-  late_cancel_penalty_enabled: boolean
-  walk_in_enabled: boolean
-  waitlist_enabled: boolean
-  waitlist_offer_window_minutes: number
-  bonus_threshold_default: number
+  late_cancel_window_minutes: number
+  strike_window_days: number
+  strike_penalties: Record<string, unknown> | null
+  strike_system_enabled: boolean
+  unlimited_members_warning_only: boolean
+  credit_grace_period_days: number
+  waitlist_claim_window_minutes: number
+  inventory_hold_minutes: number
+  checkout_lock_minutes: number
+  pilot_discount_rate: number | null
+  member_discount_rate: number | null
+  private_event_base_rate: number | null
+  waiver_text: string | null
+  created_at: string
+  updated_at: string
   [key: string]: unknown
 }
 
@@ -260,18 +266,19 @@ export function useStudioSettings(): UseQueryResult<StudioSettings> {
 export interface ActivityLogEntry {
   id: string
   studio_id: string
+  type: string
   actor_id: string | null
-  actor_name: string | null
-  action: string
-  entity_type: string
-  entity_id: string | null
+  subject_id: string | null
+  subject_type: string
+  description: string
   metadata: Record<string, unknown> | null
   created_at: string
+  actor_profile?: { full_name: string } | null
 }
 
 export function useActivityLog(limit = 50): UseQueryResult<ActivityLogEntry> {
   return useQuery<ActivityLogEntry>('activity_log', {
-    select: '*',
+    select: '*, actor_profile:profiles!activity_log_actor_id_fkey ( full_name )',
     filters: [
       { column: 'studio_id', operator: 'eq', value: DEFAULT_STUDIO_ID },
     ],

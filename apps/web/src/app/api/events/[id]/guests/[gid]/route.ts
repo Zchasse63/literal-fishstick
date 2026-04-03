@@ -103,9 +103,9 @@ export async function PUT(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'event_guest_updated',
-      entity_type: 'event_guest',
-      entity_id: gid,
+      type: 'event_guest_updated',
+      subject_type: 'event_guest',
+      subject_id: gid,
       metadata: { event_id: id, ...updates },
     })
 

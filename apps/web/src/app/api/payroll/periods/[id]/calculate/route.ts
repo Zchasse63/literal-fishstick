@@ -281,9 +281,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'payroll_calculated',
-      entity_type: 'payroll_period',
-      entity_id: id,
+      type: 'payroll_calculated',
+      subject_type: 'payroll_period',
+      subject_id: id,
       metadata: {
         employee_count: lineItems.length,
         total_gross: lineItems.reduce((sum, li) => sum + li.gross_pay, 0),

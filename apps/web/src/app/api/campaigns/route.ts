@@ -153,9 +153,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'campaign_created',
-      entity_type: 'campaign',
-      entity_id: campaign.id,
+      type: 'campaign_created',
+      subject_type: 'campaign',
+      subject_id: campaign.id,
       metadata: { name, type },
     })
 

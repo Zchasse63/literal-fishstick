@@ -304,9 +304,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'migration_import_completed',
-      entity_type: 'migration_job',
-      entity_id: job.id,
+      type: 'migration_import_completed',
+      subject_type: 'migration_job',
+      subject_id: job.id,
       metadata: {
         data_type,
         wave: wave ?? 1,

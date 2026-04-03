@@ -202,9 +202,9 @@ export async function POST(request: NextRequest) {
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "staff_created",
-      entity_type: "staff",
-      entity_id: staffRecord.id,
+      type: "staff_created",
+      subject_type: "staff",
+      subject_id: staffRecord.id,
       metadata: { email, full_name, role },
     });
 

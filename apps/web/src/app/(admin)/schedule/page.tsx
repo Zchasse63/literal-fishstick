@@ -16,6 +16,8 @@ import {
   UserCheck,
   Send,
   Edit3,
+  Receipt,
+  Loader2,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -136,17 +138,28 @@ function isToday(dateISO: string): boolean {
 
 // ─── Transform DB class to UI ClassBlock ────────────────────
 function classInstanceToBlock(cls: ClassInstance & { class_types: Record<string, unknown> | null }): ClassBlock {
+  // Derive time and date from starts_at (ISO timestamptz)
+  const startsAt = new Date(cls.starts_at)
+  const hours = startsAt.getHours()
+  const minutes = startsAt.getMinutes().toString().padStart(2, '0')
+  const time24 = `${hours}:${minutes}`
+
+  // Derive class type from joined class_types record
+  const classTypeName = ((cls.class_types as Record<string, unknown> | null)?.name as string ?? 'open').toLowerCase()
+  const blockType: 'open' | 'guided' | 'private' = classTypeName.includes('guided') ? 'guided'
+    : classTypeName.includes('private') ? 'private' : 'open'
+
   return {
     id: cls.id,
-    time: formatTime24to12(cls.start_time),
-    type: classTypeToBlockType(cls.class_type),
-    name: cls.name,
+    time: formatTime24to12(time24),
+    type: blockType,
+    name: cls.title,
     trainer: cls.trainer_name ?? undefined,
     booked: cls.booked_count,
     capacity: cls.capacity,
     checkedIn: cls.checked_in_count,
     attendees: [], // loaded on click
-    date: cls.date,
+    date: cls.starts_at.split('T')[0],
   }
 }
 
@@ -191,6 +204,116 @@ function ScheduleSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-3 w-24" />
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Price Breakdown Panel ─────────────────────────────────
+interface PriceBreakdownData {
+  subtotal: number
+  discount_amount: number
+  discount_name: string | null
+  member_discount_applied: boolean
+  member_discount_amount: number
+  tax_rate: number
+  tax_name: string | null
+  tax_amount: number
+  total: number
+  currency: string
+}
+
+function PriceBreakdownPanel({
+  classId,
+  memberId,
+  discountId,
+  promoCode,
+}: {
+  classId: string
+  memberId: string
+  discountId?: string
+  promoCode?: string
+}) {
+  const [breakdown, setBreakdown] = useState<PriceBreakdownData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!classId || !memberId) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    const params = new URLSearchParams({ class_id: classId, member_id: memberId })
+    if (promoCode) params.set('promo_code', promoCode)
+    else if (discountId) params.set('discount_id', discountId)
+
+    fetch(`/api/pricing?${params}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return
+        if (json.error) {
+          setError(json.error)
+        } else {
+          setBreakdown(json.data)
+        }
+      })
+      .catch(() => !cancelled && setError('Failed to load pricing'))
+      .finally(() => !cancelled && setLoading(false))
+
+    return () => { cancelled = true }
+  }, [classId, memberId, discountId, promoCode])
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-3 text-sm text-gray-400">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Loading pricing...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+    )
+  }
+
+  if (!breakdown) return null
+
+  const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Receipt className="h-3.5 w-3.5 text-gray-400" />
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Price Breakdown</p>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-600">Subtotal</span>
+        <span className="font-semibold text-gray-900 tabular-nums">{fmt(breakdown.subtotal)}</span>
+      </div>
+      {breakdown.discount_amount > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-emerald-600">Discount{breakdown.discount_name ? ` (${breakdown.discount_name})` : ''}</span>
+          <span className="font-semibold text-emerald-600 tabular-nums">-{fmt(breakdown.discount_amount)}</span>
+        </div>
+      )}
+      {breakdown.member_discount_applied && breakdown.member_discount_amount > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-emerald-600">Member Discount (10%)</span>
+          <span className="font-semibold text-emerald-600 tabular-nums">-{fmt(breakdown.member_discount_amount)}</span>
+        </div>
+      )}
+      {breakdown.tax_amount > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">{breakdown.tax_name || 'Tax'} ({(breakdown.tax_rate * 100).toFixed(2)}%)</span>
+          <span className="font-semibold text-gray-900 tabular-nums">{fmt(breakdown.tax_amount)}</span>
+        </div>
+      )}
+      <div className="flex justify-between text-sm pt-1.5 border-t border-gray-100">
+        <span className="font-bold text-gray-900">Total</span>
+        <span className="font-black text-gray-900 tabular-nums">{fmt(breakdown.total)}</span>
       </div>
     </div>
   )
@@ -278,6 +401,13 @@ function ClassDetailPanel({
           />
         </div>
       </div>
+
+      {/* Pricing */}
+      {cls.id && (
+        <div className="pt-2 border-t border-gray-100">
+          <PriceBreakdownPanel classId={cls.id} memberId="" />
+        </div>
+      )}
 
       {/* Attendees */}
       {loadingAttendees ? (
@@ -423,8 +553,8 @@ export default function SchedulePage() {
             is_guest,
             checked_in_at,
             members!inner (
-              user_id,
-              profiles:user_id (
+              profile_id,
+              profiles:profile_id (
                 full_name,
                 email
               )

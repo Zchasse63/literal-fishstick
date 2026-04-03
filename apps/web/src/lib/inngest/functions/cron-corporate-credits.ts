@@ -89,9 +89,9 @@ export const cronCorporateCredits = inngest.createFunction(
           await db.from('activity_log').insert({
             studio_id: STUDIO_ID,
             actor_id: null, // system action
-            action: 'corporate_credits_refreshed',
-            entity_type: 'company_account',
-            entity_id: company.id,
+            type: 'corporate_credits_refreshed',
+            subject_type: 'company_account',
+            subject_id: company.id,
             metadata: {
               company_name: company.company_name,
               previous_balance: currentCredits,

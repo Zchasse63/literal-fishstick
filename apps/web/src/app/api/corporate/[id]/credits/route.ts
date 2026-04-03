@@ -96,9 +96,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: amount >= 0 ? 'corporate.credits_allocated' : 'corporate.credits_deducted',
-      entity_type: 'company_account',
-      entity_id: id,
+      type: amount >= 0 ? 'corporate.credits_allocated' : 'corporate.credits_deducted',
+      subject_type: 'company_account',
+      subject_id: id,
       metadata: {
         company_name: company.name,
         amount,

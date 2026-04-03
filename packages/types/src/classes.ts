@@ -23,26 +23,24 @@ export interface ClassTemplate {
 export interface ClassInstance {
   id: string
   studio_id: string
-  template_id: string | null
-  name: string
-  class_type: ClassType
-  date: string // YYYY-MM-DD
-  start_time: string // HH:MM
-  end_time: string // HH:MM
-  duration_minutes: number
+  location_id: string | null
+  class_type_id: string | null
+  trainer_id: string | null
+  title: string
+  starts_at: string // ISO timestamptz
+  ends_at: string // ISO timestamptz
   capacity: number
   booked_count: number
   checked_in_count: number
-  trainer_id: string | null
-  trainer_name: string | null
   status: ClassStatus
   notes: string | null
-  cancelled_at: string | null
-  cancelled_reason: string | null
-  bonus_threshold: number // default 7
-  bonus_earned: boolean
+  is_recurring: boolean
+  recurrence_rule: string | null
+  glofox_id: string | null
   created_at: string
   updated_at: string
+  // Joined fields (not in DB, populated via select joins)
+  trainer_name?: string | null
 }
 
 export interface Equipment {

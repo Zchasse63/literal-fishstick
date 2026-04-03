@@ -528,9 +528,9 @@ describe("POST /api/bookings", () => {
     expect(activityLogPayload).toMatchObject({
       studio_id: TEST_STUDIO_ID,
       actor_id: TEST_USER_ID,
-      action: "booking_created",
-      entity_type: "booking",
-      entity_id: TEST_BOOKING_ID,
+      type: "booking_created",
+      subject_type: "booking",
+      subject_id: TEST_BOOKING_ID,
       metadata: { class_id: TEST_CLASS_ID, member_id: TEST_MEMBER_ID },
     });
   });

@@ -89,10 +89,10 @@ export async function GET(request: NextRequest) {
 
       // Active member count for ARPM
       const { count: activeMembers } = await supabase
-        .from("profiles")
+        .from("members")
         .select("id", { count: "exact", head: true })
         .eq("studio_id", studioId)
-        .eq("status", "active");
+        .eq("membership_status", "active");
 
       metrics.active_members = activeMembers ?? 0;
       metrics.arpm =
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
         .from("credit_packs")
         .select("id", { count: "exact", head: true })
         .eq("studio_id", studioId)
-        .gt("remaining", 0)
+        .gt("credits_remaining", 0)
         .gte("expires_at", new Date().toISOString())
         .lte(
           "expires_at",
@@ -118,10 +118,10 @@ export async function GET(request: NextRequest) {
     if (type === "retention" || type === "general") {
       // At-risk members
       const { count: activeMembers } = await supabase
-        .from("profiles")
+        .from("members")
         .select("id", { count: "exact", head: true })
         .eq("studio_id", studioId)
-        .eq("status", "active");
+        .eq("membership_status", "active");
 
       const { count: recentlyActive } = await supabase
         .from("bookings")

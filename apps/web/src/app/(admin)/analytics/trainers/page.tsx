@@ -115,23 +115,50 @@ export default function TrainerPerformancePage() {
   useEffect(() => {
     async function fetchTrainers() {
       const supabase = createBrowserClient()
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('studio_id', STUDIO_ID)
-        .contains('roles', ['trainer'])
 
-      if (profiles && profiles.length > 0) {
-        const mapped: Trainer[] = profiles.map((p: any) => ({
-          id: p.id,
-          name: p.full_name ?? 'Unknown',
-          avatar: getInitials(p.full_name ?? 'U'),
-          classesLed: p.classes_led ?? 0,
-          avgAttendance: p.avg_attendance ?? 0,
-          bonusHitRate: p.bonus_hit_rate ?? 0,
-          revenueAttributed: p.promo_revenue ?? 0,
-          promoConversions: p.promo_redemptions ?? 0,
-        }))
+      // Query trainers joined with profiles for name, and get the latest metric snapshot
+      const { data: trainers } = await supabase
+        .from('trainers')
+        .select('id, profile_id, total_classes_led, total_bonus_earned, total_commission_earned, promo_code, profiles:profile_id ( full_name )')
+        .eq('studio_id', STUDIO_ID)
+
+      if (trainers && trainers.length > 0) {
+        // Fetch the most recent metric snapshot for each trainer
+        const trainerIds = trainers.map((t: any) => t.id)
+        const { data: snapshots } = await supabase
+          .from('trainer_metric_snapshots')
+          .select('trainer_id, total_classes, avg_attendance, avg_capacity_utilization, classes_above_bonus_threshold, promo_code_conversions, revenue_attributed')
+          .in('trainer_id', trainerIds)
+          .eq('studio_id', STUDIO_ID)
+          .order('period_end', { ascending: false })
+
+        // Build a map of trainer_id -> latest snapshot
+        const snapshotMap: Record<string, any> = {}
+        for (const s of (snapshots || [])) {
+          if (!snapshotMap[s.trainer_id]) {
+            snapshotMap[s.trainer_id] = s
+          }
+        }
+
+        const mapped: Trainer[] = trainers.map((t: any) => {
+          const profile = t.profiles as any
+          const snap = snapshotMap[t.id]
+          const totalClasses = snap?.total_classes ?? t.total_classes_led ?? 0
+          const avgAtt = snap?.avg_attendance ?? 0
+          const bonusThresholdClasses = snap?.classes_above_bonus_threshold ?? 0
+          const bonusHitRate = totalClasses > 0 ? Math.round((bonusThresholdClasses / totalClasses) * 100) : 0
+
+          return {
+            id: t.id,
+            name: profile?.full_name ?? 'Unknown',
+            avatar: getInitials(profile?.full_name ?? 'U'),
+            classesLed: totalClasses,
+            avgAttendance: Math.round(avgAtt * 10) / 10,
+            bonusHitRate,
+            revenueAttributed: snap?.revenue_attributed ?? 0,
+            promoConversions: snap?.promo_code_conversions ?? 0,
+          }
+        })
         mapped.sort((a, b) => b.avgAttendance - a.avgAttendance)
         setTrainers(mapped)
       }

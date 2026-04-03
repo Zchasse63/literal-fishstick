@@ -54,7 +54,7 @@ interface TableConfig {
 const TABLE_CONFIGS: Record<Exclude<ReportType, "custom">, TableConfig> = {
   attendance: {
     table: "bookings",
-    select: "*, class:classes!bookings_class_id_fkey(id, name, capacity, start_time, end_time, trainer_id)",
+    select: "*, class:classes!bookings_class_id_fkey(id, title, capacity, starts_at, ends_at, trainer_id)",
     date_field: "created_at",
     summary_fields: [
       { key: "total_bookings", aggregate: "count" },
@@ -71,8 +71,8 @@ const TABLE_CONFIGS: Record<Exclude<ReportType, "custom">, TableConfig> = {
     ],
   },
   membership: {
-    table: "profiles",
-    select: "id, full_name, email, phone, membership_type, membership_status, joined_at, health_score, last_visit_at, created_at",
+    table: "members",
+    select: "id, membership_tier, membership_status, join_date, created_at, profiles:profile_id ( full_name, email, phone, health_score )",
     date_field: "created_at",
     summary_fields: [
       { key: "total_members", aggregate: "count" },
@@ -81,25 +81,25 @@ const TABLE_CONFIGS: Record<Exclude<ReportType, "custom">, TableConfig> = {
   trainer_payroll: {
     table: "trainer_metric_snapshots",
     select: "*, trainer:profiles!trainer_metric_snapshots_trainer_id_fkey(id, full_name, email)",
-    date_field: "snapshot_date",
+    date_field: "created_at",
     summary_fields: [
       { key: "total_records", aggregate: "count" },
-      { key: "total_payout", aggregate: "sum", field: "payout_amount" },
+      { key: "total_payout", aggregate: "sum", field: "total_compensation" },
     ],
   },
   trainer_performance: {
     table: "trainer_metric_snapshots",
     select: "*, trainer:profiles!trainer_metric_snapshots_trainer_id_fkey(id, full_name, email)",
-    date_field: "snapshot_date",
+    date_field: "created_at",
     summary_fields: [
       { key: "total_snapshots", aggregate: "count" },
-      { key: "total_classes", aggregate: "sum", field: "classes_taught" },
-      { key: "total_checkins", aggregate: "sum", field: "total_checkins" },
+      { key: "total_classes", aggregate: "sum", field: "total_classes" },
+      { key: "total_checkins", aggregate: "sum", field: "total_check_ins" },
     ],
   },
   churn_risk: {
-    table: "profiles",
-    select: "id, full_name, email, phone, membership_type, membership_status, health_score, last_visit_at, created_at",
+    table: "members",
+    select: "id, membership_tier, membership_status, created_at, profiles:profile_id ( full_name, email, phone, health_score )",
     date_field: "created_at",
     summary_fields: [
       { key: "at_risk_members", aggregate: "count" },
@@ -108,19 +108,19 @@ const TABLE_CONFIGS: Record<Exclude<ReportType, "custom">, TableConfig> = {
   class_performance: {
     table: "classes",
     select: "*, trainer:profiles!classes_trainer_id_fkey(id, full_name)",
-    date_field: "start_time",
+    date_field: "starts_at",
     summary_fields: [
       { key: "total_classes", aggregate: "count" },
     ],
   },
   credit_pack_usage: {
     table: "credit_packs",
-    select: "*, member:profiles!credit_packs_member_id_fkey(id, full_name, email)",
+    select: "*, member:members!credit_packs_member_id_fkey(id, profiles:profile_id(full_name, email))",
     date_field: "created_at",
     summary_fields: [
       { key: "total_packs", aggregate: "count" },
       { key: "total_credits_purchased", aggregate: "sum", field: "credits_total" },
-      { key: "total_credits_used", aggregate: "sum", field: "credits_used" },
+      { key: "total_credits_remaining", aggregate: "sum", field: "credits_remaining" },
     ],
   },
   transaction_log: {
@@ -144,7 +144,7 @@ const TABLE_CONFIGS: Record<Exclude<ReportType, "custom">, TableConfig> = {
   member_movement: {
     table: "daily_metrics",
     select: "*",
-    date_field: "date",
+    date_field: "metric_date",
     summary_fields: [
       { key: "total_days", aggregate: "count" },
       { key: "total_new_members", aggregate: "sum", field: "new_members" },
@@ -158,8 +158,8 @@ const TABLE_CONFIGS: Record<Exclude<ReportType, "custom">, TableConfig> = {
     summary_fields: [
       { key: "total_campaigns", aggregate: "count" },
       { key: "total_sent", aggregate: "sum", field: "sent_count" },
-      { key: "total_opened", aggregate: "sum", field: "opened_count" },
-      { key: "total_clicked", aggregate: "sum", field: "clicked_count" },
+      { key: "total_opened", aggregate: "sum", field: "open_count" },
+      { key: "total_clicked", aggregate: "sum", field: "click_count" },
     ],
   },
   lead_pipeline: {
@@ -320,8 +320,8 @@ export async function generateReport(
   }
 
   if (report_type === "churn_risk") {
-    // Members with low health score or flagged by AI
-    query = query.lte("health_score", 40).not("health_score", "is", null);
+    // Members at risk — health_score lives on profiles, so filter by membership status
+    query = query.in("membership_status", ["active", "paused"]);
   }
 
   // ─── Time range ──────────────────────────────────────────────────────

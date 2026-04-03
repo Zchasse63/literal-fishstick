@@ -1,129 +1,144 @@
-# User Value Analysis — Phase 4: Corporate & Operations
-
+# User Value Analysis
 **Agent:** user-value
-**Plan:** Meridian Phase 4
-**Complexity Class:** SIGNIFICANT
-**Date:** 2026-03-20
+**Plan:** Glofox API Migration to Meridian
+**Complexity:** SIGNIFICANT
+**Date:** 2026-03-31
 
 ---
 
 ## Agent Verdict
-
-**MODIFY**
-
-The core of Phase 4 — corporate accounts, event management, employee payroll, and merch shipping — delivers high value to The Sauna Guys and solves real operational pain they cannot address with Glofox today. The SaaS onboarding and custom dashboard builder, however, solve a speculative future customer problem rather than the primary user's immediate needs. These should be deferred. The plan should be prioritized in value-delivery order, not feature-bundling order.
+**GO** — This migration delivers concrete, high-value outcomes for the studio operator (Zach / The Sauna Guys) and is a necessary prerequisite for Meridian to function as the operating system the product is designed to be. The value is not speculative — it directly removes active operational pain, enables features that are currently blocked, and eliminates a recurring subscription cost. The member experience impact is neutral-to-positive if executed cleanly, or moderately negative if the payment migration is mishandled.
 
 ---
 
-## User Populations
+## Primary Value Delivered
 
-**Primary user: Studio owner/admin (The Sauna Guys)**
-The Sauna Guys operates in Tampa with a growing corporate wellness clientele (from the business model docs). They currently have no structured way to manage company accounts, track invoices, or handle event logistics within Glofox.
+### Value 1: Meridian Becomes Operationally Real
 
-**Secondary user: Studio employees/trainers**
-Currently limited to the Phase 1/2/3 employee portal features. The payroll and document management features directly serve them.
+Currently, Meridian is a management dashboard connected to stale, incomplete data (one-time CSV import, 27 fields missing). Staff still lives in Glofox for actual operations. The sync engine transforms Meridian from a reporting dashboard into the actual system of record.
 
-**Tertiary user: Future SaaS customers (other fitness studios)**
-The SaaS onboarding and multi-tenant features serve this audience. This user does not exist yet.
+This is not incremental improvement — it is the enabling condition for every Phase 2, Phase 3, and Phase 4 feature to actually function. Marketing campaigns require accurate consent fields (being added). Churn prediction requires birthday and membership expiry data (being added). The trainer bonus system requires check-ins tracked in Meridian (currently tracked only in Glofox).
 
----
+**Impact: High. This unlocks the entire product.**
 
-## Value Assessment by Feature Area
+### Value 2: 27 Missing Fields Become Available
 
-### Corporate Accounts & Invoicing — HIGH VALUE
+The data enrichment in Phase 1 populates:
+- Birthdays → birthday automation flows (already built in Inngest with `member/birthday` event)
+- Consent fields → legal compliance for email/SMS campaigns (required for Phase 2)
+- Membership expiry dates → accurate churn prediction (Phase 3 AI features)
+- Address data → shipping infrastructure, demographics
+- Emergency contacts → liability/safety (valuable for wellness studio context)
+- Late cancellation / no-show flags → strike system enforcement (already policy-decided)
+- `is_first_booking` → first-time member welcome flows
 
-The Sauna Guys explicitly has corporate wellness clients. Without Phase 4, managing these accounts requires:
-- Tracking company contacts in a separate spreadsheet or CRM
-- Manually invoicing (Word/Google Docs → PDF → email)
-- No visibility into contract value, credit usage, or member linkage
-- No event history tied to the company
+Several of these directly enable features that are already built but cannot fire without the data. The birthday automation event type already exists in the Inngest client. The churn prediction hook (`use-churn-prediction.ts`) already exists. The data is the last blocker.
 
-Phase 4 provides a structured pipeline view, automated invoicing, and credit allocation. The value is immediate and addresses a known operational gap. The B2B invoice PDF, net-30/60 payment terms, and Stripe payment link are all features a boutique studio with corporate clients genuinely needs.
+**Impact: High. Unlocks built features that are currently inert.**
 
-**User pain solved:** "We don't have a way to track who owes us what from our corporate clients."
+### Value 3: Eliminates Glofox Subscription Cost
 
-### Event Management — HIGH VALUE
+Glofox pricing for fitness studios is typically $110–$150/month for a studio of this size, rising to $200+ at scale. Eliminating this subscription after cutover generates direct savings of $1,320–$2,400/year, plus removes Glofox's payment processing markup (typically 0.5–1% on top of card processing fees).
 
-Birthday parties, corporate wellness sessions, and private events are revenue streams that fitness studios routinely manage through email chains and spreadsheets. The inquiry → quoted → confirmed → invoiced flow maps exactly to how event sales actually work. The guest list with RSVP tracking and conversion attribution (did the guest become a member?) is a genuinely differentiated feature — no competitor does this with native conversion tracking.
+On $30–50k/month in membership revenue, even a 0.5% payment processing reduction saves $150–$250/month. Combined with the subscription cost, total annual savings are roughly $3,000–$5,000/year.
 
-The event calendar integration with the existing schedule (so events block regular class slots) is critical for operations. This is called out in the edge cases section.
+**Impact: Medium. Meaningful but not transformative at current scale.**
 
-**User pain solved:** "We're juggling event logistics in email and missing follow-up on leads."
+### Value 4: Removes Glofox's Operational Constraints
 
-### Employee Payroll + Documents — HIGH VALUE for Staff, HIGH VALUE for Owner
+The CLAUDE.md explicitly documents pain points that Glofox imposes and Meridian is designed to solve. Several of these are blocked until Meridian is the operational system:
+- Self-service membership upgrades (Glofox blocks this — requires contacting studio)
+- Dual-role accounts (trainers who are also members cannot have one email in Glofox)
+- Trainer promo code attribution (not supported in Glofox)
+- "Exclude from analytics" flag for comped members (not supported in Glofox)
+- Proration on upgrades (Glofox explicitly does not support this)
 
-The payroll calculation engine (clock entries + class bonuses + promo commissions → gross pay export) closes the loop on Phase 1's payroll tab, which shows mock data. The trainer bonus threshold feature (already defined in the business model: check-ins > threshold = bonus) is business logic that currently requires manual calculation by the owner. Automating this removes error risk and owner time.
+None of these can be fixed while Glofox remains the system of record. The migration is a precondition for delivering the differentiated product.
 
-Employee document management (W4/W9 collection, W2/1099 storage) addresses a compliance need that every studio has but no fitness SaaS platform handles well. Trainers resent chasing down paper forms. This feature saves time for both the admin and the employee.
-
-**User pain solved:** "Payroll takes me 2 hours every two weeks to calculate manually" and "We still have paper W4s in a drawer."
-
-### Geofence Clock-In Enforcement — MEDIUM-HIGH VALUE
-
-Clock in/out geofencing prevents employees from punching in from home or while stuck in traffic. For a small studio where every labor dollar matters, this is a meaningful control. The plan's graceful fallback (allow clock-in without geofence verification, flag as unverified) is the right approach — it prevents the system from blocking an employee who has a GPS glitch, while still giving the admin visibility.
-
-The UI enhancement (showing distance from studio, verification badge) adds transparency that employees will appreciate rather than resent, if framed correctly.
-
-**User pain solved:** "I can't tell if people are actually at the studio when they clock in."
-
-### Merch & Shipping — MEDIUM VALUE
-
-In-studio pickup exists from Phase 1. Shipping expands the merch channel to online orders from members who aren't coming in. For a boutique sauna studio in Tampa, the shipping volume is likely modest (merch is secondary revenue). However, the administrative overhead of managing orders without a UI is real — staff currently have no way to see pending orders, mark them as fulfilled, or generate shipping labels.
-
-The EasyPost integration is technically solid and appropriately scoped (rate shopping, label generation, tracking). For a small operation, USPS-only would actually cover 90% of use cases, and the plan appropriately suggests starting there.
-
-**User pain solved:** "We sell merch but don't have a way to manage who's ordered what."
-
-### SMS via Twilio — MEDIUM VALUE
-
-SMS is already factored into Phase 2 campaign builder and automation flows (they just no-op through the stub). Enabling Twilio fulfills existing functionality that members are expecting. Class reminders, booking confirmations, and waitlist notifications via SMS have high open rates compared to email. This is a straightforward value add.
-
-**User pain solved:** "We can't send texts to members even though the campaign builder has an SMS option."
-
-### SaaS Onboarding Wizard — LOW-TO-MEDIUM VALUE (Right Now)
-
-The Sauna Guys does not need a SaaS onboarding wizard. This feature serves a future customer who doesn't exist yet. Building it now means:
-- 4–6 weeks of developer time solving a problem that has no current user
-- Scope assumptions about what "other studios" need may be wrong
-- The import step (Glofox migration) is underspecified
-
-Value is real — but premature for this phase. The right time to build SaaS onboarding is when the first pilot customer (a second studio) is ready to onboard. That customer's feedback should shape the wizard flow.
-
-**Honest assessment:** Building SaaS onboarding based on assumptions about what a hypothetical second studio needs is a classic premature SaaS optimization. Wait until you have a real customer to tell you what the wizard should actually do.
-
-### Custom Dashboard Builder — LOW VALUE (Right Now)
-
-The custom dashboard builder was deferred from Phase 3, suggesting it wasn't urgent then either. Building a drag-and-drop widget dashboard requires: widget type definitions, data source bindings, layout persistence per user, and a non-trivial UI. The existing analytics dashboards from Phase 3 already provide fixed but comprehensive views. The marginal value of customization over a well-designed fixed layout is low for a studio with one primary admin user.
-
-**Honest assessment:** This is a feature that sounds valuable in a product spec but rarely moves the needle in day-to-day usage for a studio of this size. Defer to Phase 5 or later.
-
-### API Documentation — HIGH VALUE for SaaS, LOW Value for The Sauna Guys
-
-The Sauna Guys will never use the public API directly. The API documentation value is entirely about SaaS attractiveness to developer-friendly customers. It's the right move for a SaaS product, but its urgency depends on when real customers arrive.
+**Impact: High. Removes known friction points for both operators and members.**
 
 ---
 
-## Value Delivery Order
+## User Impact By Stakeholder
 
-If scope must be cut, this is the order to deliver:
+### Studio Owner (Zach)
 
-| Priority | Feature | Why |
-|---|---|---|
-| 1 | Employee payroll + documents | Closes the loop on Phase 1, ongoing operational pain |
-| 2 | Corporate accounts | Active revenue stream, current manual pain |
-| 3 | Event management | Active revenue stream, current manual pain |
-| 4 | SMS/Twilio | Fulfills existing stub, improves member communication |
-| 5 | Merch admin UI + shipping | Removes operational friction |
-| 6 | API keys + OpenAPI docs | Prerequisite for SaaS positioning |
-| 7 | SaaS onboarding | Defer until first real customer |
-| 8 | Custom dashboard builder | Defer indefinitely |
+**Gains:**
+- Single system for all operations (no context-switching between Glofox and Meridian)
+- Full data visibility — AI insights, churn prediction, marketing automation all become real
+- Cost reduction on subscription and payment processing
+- Product becomes SaaS-ready (direct value if future customers adopt Meridian)
+
+**Risks:**
+- If cutover is botched, operational disruption during the studio's actual business hours
+- Payment migration failure causes member billing failures that require manual remediation
+
+**Net value: Very high, contingent on clean execution.**
+
+### Studio Staff (Trainers, Front Desk)
+
+**Gains:**
+- Single system to use instead of split workflow
+- Check-in flow in Meridian (already built: QR check-in, kiosk)
+- Trainer dashboard shows their own class metrics natively
+
+**Risks:**
+- Training period requires learning new workflows
+- During parallel mode, confusion about which system is "correct" for any given action
+- Class creation is Glofox-only during transition (no write endpoint), requiring staff to use Glofox for schedule management until cutover
+
+**Net value: Positive post-training, friction during transition.**
+
+### Members (~1,100)
+
+**Gains:**
+- Eventually: self-service membership upgrades, better booking experience, wellness journey tracking
+- Eventually: magic link auth (no password to remember)
+
+**Risks (this migration specifically):**
+- Required to re-enter payment details before cutover — friction, and risk of non-compliance
+- If cutover timing is bad (mid-billing-cycle failure), members may experience failed charges or booking errors
+- If rollback is needed, members experience system unavailability and confusion
+
+**The member experience during this migration is primarily negative in the short term** — they are asked to do extra work (re-enter payment methods) with limited benefit visible to them until the full member-facing portal launches (Phase 5).
+
+**Net value: Neutral to slightly negative during migration, positive post-Phase 5.**
 
 ---
 
-## Risks to User Value
+## Value Realization Timeline
 
-**Payroll calculation accuracy risk:** If the payroll engine has bugs (e.g., wrong overtime threshold, missed bonus class), the studio owner will lose trust in the feature and revert to manual calculation. The calculation logic must be surfaced transparently (show the breakdown: X hours regular, Y hours OT, Z bonus-eligible classes) so the admin can spot-check the numbers. Black-box total is not acceptable for payroll.
+```
+Week 1: Schema enriched — birthday/consent/expiry data available immediately
+Week 2-3: Sync engine built — live data starts flowing
+Week 4: Shadow mode — data validation (no user-visible change)
+Week 5-6: Parallel mode — staff begins using Meridian natively
+Week 7-8: Cutover — Meridian is primary; Glofox subscription cancellation begins
+Week 9+: Full value — AI features fire, campaigns use real data, processing cost reduced
+Month 3+: Member-facing value — when Phase 5 portal launches
+```
 
-**Invoice PDF quality risk:** The corporate invoice PDF is a customer-facing document. If it looks unprofessional (wrong formatting, truncated addresses, missing logo), it reflects badly on The Sauna Guys. PDF generation requires design attention, not just data correctness.
+The core business value (single operational system, AI features activated) is realized at cutover. Member-facing improvements are deferred to Phase 5 launch. The two timelines are decoupled.
 
-**Event conflict risk:** If an event is booked in a slot that already has a regular class (or vice versa), and the system doesn't prevent it, the studio will double-book their facility. This is the highest operational risk in the plan (detailed in edge-cases report).
+---
+
+## Risk to Value Delivery
+
+### Highest risk to value: Payment migration non-collection
+
+If 20–30% of members don't re-enter payment methods, the first post-cutover billing run generates failures. This:
+- Creates immediate manual work for staff
+- Damages member trust if charges fail unexpectedly
+- May cause members to cancel rather than re-enroll
+
+Mitigation: proactive communication, sufficient lead time (4 weeks, not 2), multiple reminder touchpoints via email (Resend campaigns are already built), clear explanation of why re-entry is needed.
+
+### Second highest risk to value: Staff training insufficient
+
+If staff are not fluent in Meridian's booking and check-in flows before cutover, operational quality drops. The plan gives 2 weeks of parallel mode for training. For a studio with ~10 staff and a relatively simple operational workflow, this is likely sufficient — but it should not be abbreviated.
+
+---
+
+## Summary
+
+The migration delivers clear, measurable value to the studio owner and is a necessary prerequisite for the entire product roadmap. The member impact during migration is a managed friction point, not a value problem. The plan correctly identifies this as infrastructure work, not a feature. The value case is solid.

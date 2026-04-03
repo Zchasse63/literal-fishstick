@@ -124,9 +124,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: 'campaign_scheduled',
-      entity_type: 'campaign',
-      entity_id: id,
+      type: 'campaign_scheduled',
+      subject_type: 'campaign',
+      subject_id: id,
       metadata: { scheduled_at: scheduledDate.toISOString() },
     })
 

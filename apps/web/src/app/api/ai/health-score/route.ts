@@ -34,19 +34,27 @@ async function buildHealthScoreInput(
     now.getTime() + 7 * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  // Fetch member profile
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
+  // Fetch member with joined profile
+  const { data: memberRow, error: memberError } = await supabase
+    .from("members")
     .select(
-      "id, full_name, membership_type, membership_status, join_date, created_at"
+      "id, membership_tier, membership_status, join_date, created_at, profiles:profile_id ( full_name )"
     )
     .eq("id", memberId)
     .eq("studio_id", STUDIO_ID)
     .single();
 
-  if (profileError || !profile) {
+  if (memberError || !memberRow) {
     return null;
   }
+
+  const profile = {
+    full_name: (memberRow.profiles as any)?.full_name ?? "Unknown Member",
+    membership_type: memberRow.membership_tier,
+    membership_status: memberRow.membership_status,
+    join_date: memberRow.join_date,
+    created_at: memberRow.created_at,
+  };
 
   // Run all aggregate queries in parallel
   const [
@@ -101,10 +109,10 @@ async function buildHealthScoreInput(
     // Credits remaining
     supabase
       .from("credit_packs")
-      .select("remaining")
+      .select("credits_remaining")
       .eq("studio_id", STUDIO_ID)
       .eq("member_id", memberId)
-      .gt("remaining", 0),
+      .gt("credits_remaining", 0),
 
     // Credits expiring within 7 days
     supabase
@@ -112,7 +120,7 @@ async function buildHealthScoreInput(
       .select("id", { count: "exact", head: true })
       .eq("studio_id", STUDIO_ID)
       .eq("member_id", memberId)
-      .gt("remaining", 0)
+      .gt("credits_remaining", 0)
       .gte("expires_at", now.toISOString())
       .lte("expires_at", sevenDaysFromNow),
 
@@ -171,7 +179,7 @@ async function buildHealthScoreInput(
   // Credits remaining
   const creditsRemaining =
     creditsResult.data?.reduce(
-      (sum: number, c: { remaining: number }) => sum + (c.remaining ?? 0),
+      (sum: number, c: { credits_remaining: number }) => sum + (c.credits_remaining ?? 0),
       0
     ) ?? 0;
 
@@ -357,10 +365,10 @@ export async function GET() {
 
     // Get all active members
     const { data: activeMembers, error: membersError } = await supabase
-      .from("profiles")
+      .from("members")
       .select("id")
       .eq("studio_id", STUDIO_ID)
-      .eq("status", "active")
+      .eq("membership_status", "active")
       .limit(200); // upper bound safety
 
     if (membersError || !activeMembers) {

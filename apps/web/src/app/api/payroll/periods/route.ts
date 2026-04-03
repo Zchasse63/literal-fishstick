@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'payroll_period_created',
-      entity_type: 'payroll_period',
-      entity_id: period.id,
+      type: 'payroll_period_created',
+      subject_type: 'payroll_period',
+      subject_id: period.id,
       metadata: { period_start, period_end, pay_date },
     })
 

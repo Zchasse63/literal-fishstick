@@ -41,17 +41,24 @@ async function buildIntakeData(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   memberId: string
 ): Promise<{ data: IntakeData | null; error?: string }> {
-  // Fetch member profile
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, full_name, membership_type, join_date, created_at")
+  // Fetch member with joined profile
+  const { data: memberRow, error: memberError } = await supabase
+    .from("members")
+    .select("id, membership_tier, join_date, created_at, profiles:profile_id ( full_name )")
     .eq("id", memberId)
     .eq("studio_id", STUDIO_ID)
     .single();
 
-  if (profileError || !profile) {
+  if (memberError || !memberRow) {
     return { data: null, error: "Member not found" };
   }
+
+  const profile = {
+    full_name: (memberRow.profiles as any)?.full_name ?? "Unknown Member",
+    membership_type: memberRow.membership_tier,
+    join_date: memberRow.join_date,
+    created_at: memberRow.created_at,
+  };
 
   const joinDate = profile.join_date ?? profile.created_at;
   if (!joinDate) {
@@ -396,8 +403,8 @@ export async function GET() {
 
     // Find members who joined 14-21 days ago
     const { data: candidates, error: candidatesError } = await supabase
-      .from("profiles")
-      .select("id, full_name, join_date, created_at")
+      .from("members")
+      .select("id, join_date, created_at")
       .eq("studio_id", STUDIO_ID)
       .gte("join_date", twentyOneDaysAgo)
       .lte("join_date", fourteenDaysAgo)

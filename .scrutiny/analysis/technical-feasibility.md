@@ -1,104 +1,183 @@
-# Technical Feasibility Analysis — Phase 4: Corporate & Operations
-
+# Technical Feasibility Analysis
 **Agent:** technical-feasibility
-**Plan:** Meridian Phase 4
-**Complexity Class:** SIGNIFICANT
-**Date:** 2026-03-20
+**Plan:** Glofox API Migration to Meridian
+**Complexity:** SIGNIFICANT
+**Date:** 2026-03-31
 
 ---
 
 ## Agent Verdict
-
-**MODIFY**
-
-The plan is technically executable by a competent solo developer, but contains five concrete implementation problems that will cause build failures, schema conflicts, or production incidents if not corrected before development begins. None are individual blockers, but collectively they represent 2–3 weeks of unplanned rework if discovered mid-sprint. The schema must be audited against the live Supabase database before the migration is finalized.
+**MODIFY** — The sync engine architecture is technically sound and the tooling choices are correct. However, five concrete bugs and under-specifications exist in the plan's code-level detail, unknown API rate limits represent a genuine schedule risk, and the cutover's pre-condition requiring member-facing features (Phase 5) is a dependency that does not have a timeline. These issues must be resolved before Phase 2 begins, not discovered mid-build.
 
 ---
 
-## Confidence Level
+## What Works Well
 
-High — based on direct inspection of existing route handlers, type definitions, and the proposed migration SQL.
+**Inngest is the right orchestration choice.** The project already runs 12 Inngest functions in production. The pattern is established, retry behavior is solved, and observability is already wired. Adding 8 Glofox sync functions is additive, not architectural.
+
+**Polling-only inbound sync is correct given Glofox constraints.** No webhooks exist on the Glofox side. Using `utc_modified_start_date` / `utc_modified_end_date` filters for incremental sync is the only viable approach. The daily 3am full reconciliation as a safety net is good defensive engineering.
+
+**Per-field conflict resolution is pragmatic.** Coarse ownership rules (Glofox owns financial fields during transition, Meridian always owns AI/segment fields) avoid distributed consensus complexity. The `glofox_sync_conflicts` audit table is correct.
+
+**Schema migrations are safe.** All 27 new columns are nullable or have explicit defaults. The plan correctly gates on running all 229 existing tests after migration. No destructive changes proposed.
+
+**Rollback plan has real structure.** 1-hour / 24-hour / fix-forward tiers are realistic. Supabase PITR as the data safety net is correct. "Never delete from Glofox" is the right policy.
 
 ---
 
-## Findings
+## Critical Issues
 
-### CRITICAL: Geofencing Is Already Implemented — Migration Will Fail
+### Issue 1: Rate Limits Unknown — This Is a Schedule Risk, Not Just a Mitigation Item
 
-Direct inspection of `/api/clock/route.ts` shows the geofence_locations table already exists and is actively queried. The existing clock API performs Haversine distance calculation, queries `geofence_locations` (latitude, longitude, radius_meters, is_active), sets `geofence_verified_in`/`geofence_verified_out` on clock entries, and stores lat/lng coordinates on clock records. The `ClockEntry` type in `packages/types/src/employees.ts` already has `geofence_verified_in`, `geofence_verified_out`, `latitude_in`, `longitude_in` fields confirming the types were written expecting this to exist.
+The plan lists Glofox API rate limiting as Medium likelihood / High impact and proposes "exponential backoff, batch requests, cache responses" as mitigation. This treatment is too casual.
 
-The Phase 4 migration runs `CREATE TABLE geofence_locations` without `IF NOT EXISTS`. This will throw "relation already exists" and abort the transaction. The plan must remove this CREATE TABLE entirely, or wrap it in a `DO $$ BEGIN IF NOT EXISTS... END $$` block.
+The proposed sync schedule implies a minimum of:
+- Bookings every 5 min: 288+ requests/day (plus pagination)
+- Members every 10 min: 144+ requests/day (plus pagination — 11 pages at 100/page for 1,100 members)
+- Events every 15 min: 96+ requests/day
+- Transactions every 30 min: 48+ requests/day
+- Full refresh daily: ~30–50 additional requests across all entity types
 
-Additionally, the plan's Sprint 3 framing ("Geofence API + settings UI") implies building geofencing from scratch. The actual remaining work is: (a) a settings UI to configure geofence zones, and (b) verifying the existing clock API is wired correctly. Sprint 3 is likely 1 week shorter than estimated.
+Total: approximately 600–700+ API calls per day before accounting for outbound writes. If Glofox enforces even a conservative 100 req/hour rate limit, the booking sync alone runs at risk. Many SaaS APIs enforce per-minute limits (e.g., 30 req/min) that would make 5-minute polling unsustainable.
 
-### CRITICAL: Table Name Discrepancy — clock_entries vs time_entries
+**The sync frequencies in the plan were chosen for data freshness, not based on any rate limit knowledge.** They need to be validated against actual limits before Phase 2 begins. If limits are tight, the booking sync may need to move to 15 or 30 minutes.
 
-The Phase 4 migration targets `clock_entries`:
-```sql
-ALTER TABLE clock_entries ADD COLUMN IF NOT EXISTS geofence_verified BOOLEAN DEFAULT FALSE;
-ALTER TABLE clock_entries ADD COLUMN IF NOT EXISTS geofence_location_id UUID REFERENCES geofence_locations(id);
+**Recommended action:** Obtain rate limit documentation from Glofox before designing the sync schedule. If undocumented, run a burst test in Phase 1 to determine practical limits empirically.
+
+### Issue 2: Pagination Contract Is Assumed, Not Verified
+
+The `GlofoxClient.fetchAll()` implementation terminates pagination based on:
+
+```typescript
+hasMore = body.has_more ?? false
 ```
 
-The existing `/api/clock/route.ts` reads/writes to a table called `time_entries` with columns `clock_in`, `clock_out`, `clock_in_lat`, `clock_in_lng`, `clock_out_lat`, `clock_out_lng`, `hours_worked`. The `ClockEntry` type in the types package uses the name `ClockEntry` but its fields (`geofence_verified_in`, not `geofence_verified`) suggest it was written against a third schema version.
+The `?? false` default means: if the field is absent in the response, assume no more pages exist. If Glofox uses a different pagination signal — `total_count` + page math, a `next_cursor`, a `Link` header, or `page >= last_page` — this code silently returns only page 1. With 1,100 members at 100/page, that means 10 pages would exist and 1,000 members would be missed on every incremental sync.
 
-The payroll calculation engine in Sprint 3 joins clock data to compute hours. If it queries `clock_entries` but the data lives in `time_entries`, it will return zero rows and produce incorrect payroll. This must be resolved before Sprint 3 begins.
+The Glofox API spans at least 5 version namespaces (2.0, 2.1, 2.2, 2.3, v3.0, Analytics). Different endpoints may use different pagination patterns across these versions. The `fetchAll` implementation needs to be validated against the actual response schema for each major endpoint, not assumed.
 
-**Required action:** Run `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('clock_entries', 'time_entries')` against the live Supabase instance and canonicalize the name throughout the plan and types.
+**Recommended action:** Verify pagination contract in glofox-api-guide.md for each entity type. Write the pagination response as an explicit TypeScript type. Test `fetchAll` against a live endpoint with a known record count to confirm it retrieves all pages.
 
-### HIGH: EmployeeDocument Type/Status Mismatch
+### Issue 3: Outbound Sync Triggering Mechanism Is Unspecified — Loop Risk
 
-`packages/types/src/employees.ts` defines DocumentStatus as `'current' | 'expiring_soon' | 'expired' | 'missing'` but the Phase 4 schema defines status CHECK as `('pending', 'approved', 'rejected', 'expired')`. The type also lacks `'w9'` and `'direct_deposit'` document_type values that appear in the new schema.
+The plan describes outbound sync as "event-driven, triggered by database changes" but never defines the mechanism. This is a core architectural decision that must be made before building.
 
-When Phase 4 document API routes read rows from the new `employee_documents` table and the frontend maps them to the existing TypeScript type, two of the four possible status values ('pending', 'approved', 'rejected') are not in the type definition. UI components handling document status will need to handle unknown values or will display incorrect states. TypeScript compilation will not catch this if responses are typed as generic Supabase query results.
+In this codebase, the likely correct approach is **application-level triggering**: API routes that write to members or bookings also call `inngest.send()`. This is consistent with how existing Inngest events fire (e.g., `member/signup` triggered in the signup flow). But the plan leaves it unspecified.
 
-**Required action:** Update `packages/types/src/employees.ts` before Sprint 3 begins. Add the new status enum values and the missing document types.
+More critically: the plan does not include loop-prevention logic. The sync loop risk is:
 
-### MEDIUM: Dual Stripe Webhook Handlers — Event Routing Risk
+1. Glofox updates a booking → inbound sync pulls it → updates Meridian booking record
+2. Meridian booking record change triggers outbound sync → pushes update to Glofox
+3. Glofox's `updated_at` changes → next inbound sync window picks it up again
+4. Repeat indefinitely
 
-The plan introduces `/api/webhooks/stripe-saas` alongside the existing `/api/webhooks/stripe`. If both use the same Stripe account (implied by env var naming — only separate price IDs, no separate account), Stripe fires all account events to all registered webhook endpoints. A `customer.subscription.updated` event from a SaaS billing action will hit both handlers.
+Every sync cycle would generate both inbound and outbound API calls for records that were originally changed in Glofox. Prevention requires: when an inbound sync update writes to the database, mark the record with `glofox_synced_at = now()` and in the outbound trigger, skip records updated within the last N seconds from an inbound sync source.
 
-The existing handler guards on `subscription.metadata?.meridian_member_id`. SaaS subscriptions won't have this field, so events will be silently skipped — acceptable. However, the reverse (SaaS handler receiving member subscription events) needs the same guard. If the SaaS webhook handler routes on `event.type` without also checking `metadata.subscription_type`, it could incorrectly interpret a member subscription renewal as a SaaS plan change.
+**Recommended action:** Specify the outbound triggering mechanism explicitly. Add a `sync_source` field or use the `glofox_synced_at` timestamp as a loop guard in all outbound sync functions.
 
-**Required action:** Add `metadata.subscription_type: 'saas'` to all SaaS Stripe subscriptions at creation time. Guard the SaaS webhook handler to only process events where `metadata.subscription_type === 'saas'`.
+### Issue 4: Pre-Cutover Checklist Has an Unsatisfied Dependency With No Timeline
 
-### MEDIUM: next-swagger-doc Incompatibility with Next.js 16 App Router
+Phase 4 pre-cutover checklist (Section 4.1) includes:
 
-`next-swagger-doc` uses JSDoc annotations on Pages Router API routes (`/pages/api/*`) and `getStaticProps` to generate the spec. This project is pure App Router. Using `next-swagger-doc` would require creating at least one Pages Router API route, introducing a hybrid routing setup into an otherwise clean App Router codebase.
+> "All member-facing features ready (booking portal, app)"
 
-**Recommended fix:** Write a static `openapi.yaml` manually or generate it programmatically once, serve it from `GET /api/docs/spec`, and render it with `swagger-ui-react` at `/docs/api`. This is simpler, avoids the Pages Router contamination, and produces a spec that is checkable into version control and diffable.
+Per CLAUDE.md, Phase 5 (Web Booking Portal, iOS Member App, React Native) has not started and is the final phase of the product roadmap. Phase 5 is a multi-month development effort. The migration plan treats this as a checklist item without acknowledging it has no timeline or scope.
 
-### MEDIUM: react-grid-layout / @hello-pangea/dnd vs Existing @dnd-kit
+If member-facing features are not ready, Meridian cannot be the sole operational system — members cannot book, pay, or manage accounts. The plan has two viable paths it does not choose between:
 
-The project already has `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` installed. Adding `react-grid-layout` introduces a second drag-and-drop system. The plan's own risk register flags react-grid-layout React 19 compatibility as "medium likelihood." @dnd-kit already supports React 19. @dnd-kit/sortable with CSS grid can implement a dashboard builder without a new dependency.
+**Option A (Deferred cutover):** Admin/staff operations move to Meridian; Glofox stays alive for member-facing access. The sync engine remains active longer, Glofox subscription is not cancelled, but internal operations benefit immediately.
 
-**Recommended fix:** Use @dnd-kit for the custom dashboard builder. Remove `react-grid-layout` from the planned dependencies.
+**Option B (Member portal first):** Build a minimal member-facing booking portal before cutover. This is a scope addition the plan does not budget for.
 
-### LOW: Payroll Calculation Should Route Through Inngest
+The 8-week timeline as written is implicitly based on Option A (admin cutover only) but the cutover checklist requires Option B. This contradiction is the plan's largest structural flaw.
 
-`POST /api/payroll/periods/[id]/calculate` needs to aggregate all clock entries for the period, join class data for trainer bonuses, join promo conversions for commissions, and write payroll line items. Netlify serverless functions default to a 10-second timeout. For a studio with 10+ employees over a 2-week period, this could process hundreds of rows with multiple joins and may approach the limit under load.
+### Issue 5: Payment Migration Underestimates Member Non-Collection Rate
 
-**Recommended fix:** The endpoint should enqueue an Inngest job and return a job ID. The frontend polls for completion. This pattern is already established in the codebase.
+"Collect payment method (card) via Meridian member portal" requires:
+1. A member-facing portal (doesn't exist yet)
+2. Members to take action proactively
+3. Successful email delivery and engagement
 
-### LOW: EasyPost SDK Node.js Version
+Industry benchmarks for payment method migration campaigns: 60–80% success within a 2-week window under good conditions. At 80% success with 1,100 members, approximately 220 members would not have Stripe payment methods by cutover. The plan's fallback — "manually process via Glofox for that member while debugging" — does not scale to 220 simultaneous failures on the first post-cutover billing run.
 
-`@easypost/api` v7 requires Node.js 18+. Netlify's default is 18.x but this should be confirmed in `netlify.toml` before Sprint 4.
+A staged rollout (migrate 10% of members, validate, then proceed) is not mentioned. A dunning/retry flow for failed payment collection is not mentioned.
 
 ---
 
-## What Is Technically Sound
+## Code-Level Bugs
 
-The overall architecture is solid. The incremental approach (schema first, then API routes, then UI) is correct. The SMS factory pattern is a well-designed abstraction — TwilioProvider will be a 50-line drop-in. The corporate invoice JSONB line_items approach is pragmatic and appropriate for Supabase. API key SHA-256 hashing with prefix display is the correct security pattern. Inngest cron jobs for payroll reminder, invoice overdue, and contract expiry are well-scoped.
+### Bug 1: Name-splitting produces wrong results and has a null-access risk
+
+In `pushMemberUpdate`:
+```typescript
+first_name: member.full_name?.split(' ')[0],
+last_name: member.full_name?.split(' ').slice(1).join(' '),
+```
+
+The `?.` operator short-circuits the `.split()` call if `full_name` is null/undefined — but the array index access `[0]` and `.slice()` still execute on `undefined` in JavaScript, producing `undefined`. This will silently send `first_name: undefined` to Glofox, which may clear the field or throw a 400.
+
+Name splitting is also semantically wrong for: single-name profiles, prefixed names ("Dr. Jane Smith"), members whose full_name is stored as "LastName, FirstName". If profiles have separate `first_name` / `last_name` columns (common schema pattern), those should be read directly.
+
+### Bug 2: Missing UNIQUE constraint on glofox_sync_state
+
+The inbound sync upsert specifies:
+```typescript
+{ onConflict: 'studio_id,entity_type' }
+```
+
+But the `glofox_sync_state` table DDL does not include:
+```sql
+UNIQUE(studio_id, entity_type)
+```
+
+Without this constraint, the Supabase upsert will fail with a constraint violation error on every sync run after the first. This needs to be added to the migration.
+
+### Bug 3: sold_by_profile_id FK will fail for non-Meridian staff
+
+The transactions table adds:
+```sql
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS sold_by_profile_id uuid REFERENCES profiles(id);
+```
+
+The value being mapped is a Glofox-internal staff ID. Glofox staff who do not have corresponding Meridian profiles will cause FK constraint failures during transaction sync. Given the plan notes ~10 staff members in Glofox, and some staff may not have been imported, this will produce sync errors on a non-trivial fraction of transactions.
+
+Either make this nullable with explicit null-on-no-match logic, or store as `text` and do FK resolution separately.
+
+### Bug 4: Analytics/report endpoint may not support incremental sync
+
+The transactions sync relies on `POST /Analytics/report`. This is a reporting endpoint, not a CRUD endpoint. Reporting APIs frequently:
+- Require date ranges (not modified-since timestamps)
+- Return aggregated data rather than individual transaction records
+- Have lower rate limits than CRUD endpoints
+- Not support the same pagination patterns as other endpoints
+
+The plan assumes this endpoint works like other Glofox endpoints. If it returns only aggregated totals rather than individual transaction rows, the transaction sync design needs to be completely reconceived.
+
+### Bug 5: fetchAll constructs URLs incorrectly for absolute paths
+
+```typescript
+const url = new URL(path, this.baseUrl)
+```
+
+If `path` starts with `/` (e.g., `/2.0/members`), the `new URL(path, base)` constructor treats it as an absolute path and discards `baseUrl`'s path component. For `baseUrl = 'https://gf-api.aws.glofox.com/prod'`, a `path` of `/2.0/members` would produce `https://gf-api.aws.glofox.com/2.0/members` — dropping the `/prod` prefix and resulting in 404s.
+
+The path should either always be relative (no leading slash) or the URL construction should use string concatenation: `${this.baseUrl}${path}`.
 
 ---
 
-## Pre-Development Checklist
+## Technical Feasibility Summary
 
-- [ ] Run schema audit: verify exact table names for clock/geofence tables in live Supabase
-- [ ] Add IF NOT EXISTS to all CREATE TABLE statements in migration
-- [ ] Remove CREATE TABLE geofence_locations (already exists)
-- [ ] Update packages/types/src/employees.ts with Phase 4 schema values
-- [ ] Add subscription_type metadata guard to both Stripe webhook handlers
-- [ ] Replace next-swagger-doc with static OpenAPI YAML approach
-- [ ] Replace react-grid-layout with @dnd-kit for dashboard builder
-- [ ] Route payroll calculation through Inngest
-- [ ] Confirm Node.js version in netlify.toml
+| Component | Feasibility | Confidence |
+|-----------|-------------|------------|
+| Schema migrations | High | High |
+| GlofoxClient HTTP layer | High | Medium (pending pagination validation) |
+| Inbound sync cron jobs | High | Medium (pending rate limit validation) |
+| Outbound sync event-driven | Medium | Low (trigger mechanism unspecified, loop risk) |
+| Conflict resolution logic | High | High |
+| Shadow / parallel mode operations | High | High |
+| Payment migration | Low-Medium | Low (no member portal exists) |
+| DNS cutover | High | High |
+| Rollback plan | High | High |
+| 8-week timeline | Low | Low (Phase 5 dependency is unsatisfied) |
+
+**Overall technical verdict: The sync engine is buildable. The 8-week cutover timeline is not achievable as written.**

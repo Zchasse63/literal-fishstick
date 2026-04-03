@@ -156,9 +156,9 @@ export async function PUT(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'invoice_updated',
-      entity_type: 'corporate_invoice',
-      entity_id: id,
+      type: 'invoice_updated',
+      subject_type: 'corporate_invoice',
+      subject_id: id,
       metadata: { invoice_number: existing.invoice_number, ...updates },
     })
 

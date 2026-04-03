@@ -59,13 +59,13 @@ export async function POST(
       );
     }
 
-    // Fetch current member with active membership
+    // Fetch current member record
     const { data: member, error: memberError } = await supabase
-      .from("profiles")
-      .select("*, memberships(id, type, status, stripe_subscription_id, expires_at)")
-      .eq("id", memberId)
+      .from("members")
+      .select("id, profile_id, membership_tier, membership_status, stripe_subscription_id, notes")
+      .eq("profile_id", memberId)
       .eq("studio_id", studioId)
-      .single();
+      .maybeSingle();
 
     if (memberError || !member) {
       return NextResponse.json(
@@ -74,13 +74,7 @@ export async function POST(
       );
     }
 
-    const currentMembership = Array.isArray(member.memberships)
-      ? member.memberships.find(
-          (m: { status: string }) => m.status === "active"
-        )
-      : null;
-
-    const oldPlan = currentMembership?.type ?? "none";
+    const oldPlan = member.membership_tier ?? "none";
 
     if (oldPlan === new_plan) {
       return NextResponse.json(
@@ -98,19 +92,18 @@ export async function POST(
     //   billing_cycle_anchor: 'unchanged',
     // });
 
-    // Store pending downgrade in membership metadata
-    if (currentMembership) {
-      await supabase
-        .from("memberships")
-        .update({
-          pending_downgrade: new_plan,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", currentMembership.id)
-        .eq("studio_id", studioId);
-    }
+    // Store pending downgrade in notes (pending_downgrade field does not exist)
+    const pendingNote = `Pending downgrade to ${new_plan} at next billing cycle`;
+    await supabase
+      .from("members")
+      .update({
+        notes: member.notes ? `${member.notes}\n${pendingNote}` : pendingNote,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", member.id)
+      .eq("studio_id", studioId);
 
-    const stripeNote = currentMembership?.stripe_subscription_id
+    const stripeNote = member.stripe_subscription_id
       ? "Stripe subscription scheduled for downgrade at next billing cycle"
       : "No Stripe subscription — downgrade recorded locally";
 
@@ -118,9 +111,9 @@ export async function POST(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "membership_downgrade_scheduled",
-      entity_type: "profile",
-      entity_id: memberId,
+      type: "membership_downgrade_scheduled",
+      subject_type: "profile",
+      subject_id: memberId,
       metadata: {
         old_plan: oldPlan,
         new_plan,

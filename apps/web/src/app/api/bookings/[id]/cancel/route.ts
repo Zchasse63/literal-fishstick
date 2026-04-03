@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { inngest } from "@/lib/inngest/client";
 
 /**
  * POST /api/bookings/[id]/cancel
@@ -49,7 +50,7 @@ export async function POST(
       );
     }
 
-    // Fetch the booking with its class start time
+    // Fetch the booking with its class start time (include glofox_id for write-back)
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select("*, classes(start_time)")
@@ -158,9 +159,9 @@ export async function POST(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: isLateCancellation ? "booking_late_cancelled" : "booking_cancelled",
-      entity_type: "booking",
-      entity_id: bookingId,
+      type: isLateCancellation ? "booking_late_cancelled" : "booking_cancelled",
+      subject_type: "booking",
+      subject_id: bookingId,
       metadata: {
         reason,
         is_late_cancel: isLateCancellation,
@@ -169,6 +170,19 @@ export async function POST(
         penalty_amount: penaltyAmount,
       },
     });
+
+    // Fire async Glofox cancel write-back (fire-and-forget).
+    // Only attempted if this booking has a Glofox ID (was synced from Glofox).
+    if (booking.glofox_id) {
+      void inngest.send({
+        name: "glofox/cancel-booking",
+        data: {
+          booking_id: bookingId,
+          glofox_booking_id: booking.glofox_id,
+          studio_id: studioId,
+        },
+      });
+    }
 
     return NextResponse.json({
       data: updatedBooking,

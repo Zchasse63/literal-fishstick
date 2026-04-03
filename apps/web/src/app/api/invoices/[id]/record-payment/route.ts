@@ -113,9 +113,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'invoice_payment_recorded',
-      entity_type: 'corporate_invoice',
-      entity_id: id,
+      type: 'invoice_payment_recorded',
+      subject_type: 'corporate_invoice',
+      subject_id: id,
       metadata: {
         invoice_number: invoice.invoice_number,
         amount,

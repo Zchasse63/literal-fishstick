@@ -224,9 +224,9 @@ export async function PUT(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "email_preferences_updated",
-      entity_type: "email_preferences",
-      entity_id: memberId,
+      type: "email_preferences_updated",
+      subject_type: "email_preferences",
+      subject_id: memberId,
       metadata: updates,
     });
 

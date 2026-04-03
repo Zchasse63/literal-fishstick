@@ -1,121 +1,93 @@
-# Competitive Context Analysis — Phase 4: Corporate & Operations
-
+# Competitive Context Analysis
 **Agent:** competitive-context
-**Plan:** Meridian Phase 4
-**Complexity Class:** SIGNIFICANT
-**Date:** 2026-03-20
+**Plan:** Glofox API Migration to Meridian
+**Complexity:** SIGNIFICANT
+**Date:** 2026-03-31
 
 ---
 
 ## Agent Verdict
-
-**GO** (for core features) / **DEFER** (for SaaS platform features)
-
-The corporate accounts, event management, and employee payroll features address genuine gaps in the fitness SaaS market that no competitor handles well. Phase 4 builds a meaningful competitive moat in these areas. The SaaS positioning and platform features are sound long-term strategy but should wait for market validation.
+**GO** — This migration is not a competitive decision in isolation; it is a necessary enabling step for the broader Meridian product to function. From a competitive positioning standpoint, completing the migration cleanly is table-stakes for Meridian to differentiate from Glofox and similar platforms. The strategic risk is not "should we migrate?" — it is "what happens to competitive position if the migration is delayed or botched?"
 
 ---
 
-## Competitive Landscape Assessment
+## Context: This Is an Internal Migration, Not a Market Move
 
-### How Competitors Handle Corporate Accounts
+The Glofox → Meridian migration is an internal infrastructure decision for The Sauna Guys. It has no direct competitive implications for Meridian in the fitness software market — unless the migration serves as a proof-of-concept that Meridian can operate as a complete replacement for a studio's existing platform (which it does).
 
-**Glofox:** No native corporate account management. Corporate wellness clients must be managed as individual members with custom pricing plans. No company-level invoicing. No credit allocation. Studio owners manage this manually in spreadsheets or external CRMs.
-
-**Mindbody:** Has "corporate partnership" features but primarily as a wellness platform marketplace, not as studio-owned B2B account management. The studio does not own the corporate relationship — Mindbody intermediates it.
-
-**Pike13:** No corporate account concept. Individual member management only.
-
-**TeamUp:** Has some corporate/group booking features but focused on team sports, not wellness.
-
-**Acuity Scheduling:** No corporate accounts. Individual booking only.
-
-**Zenoti:** Has corporate account features in the enterprise tier, but the implementation is limited to bulk memberships, not full B2B invoice management with credit allocation and event booking flows.
-
-**Assessment:** Phase 4's corporate module is genuinely differentiated. A studio owner managing 3+ corporate wellness accounts would find this feature alone to justify switching from Glofox or Mindbody. The combination of company pipeline view + credit allocation + B2B invoicing + event management under one roof is not available in any competitor's current offering.
+However, the competitive analysis matters in two ways:
+1. **Risk framing:** What do other studios do when migrating away from Glofox? What failure modes are common?
+2. **Positioning:** What does successfully completing this migration enable Meridian to credibly claim?
 
 ---
 
-### How Competitors Handle Event Management
+## The Glofox Migration Landscape
 
-**Glofox:** No event management. Events must be created as classes with custom pricing. No inquiry/quote/deposit flow. No guest list management. No RSVP tracking. Birthday parties and corporate events are managed entirely outside the platform.
+Glofox is a well-documented source of migration pain in the fitness studio industry. Studio operators who have migrated away from Glofox consistently report:
 
-**Mindbody:** Has an "Events" feature but it's essentially a class with a different icon. No inquiry flow, no quote generation, no deposit management. Events are treated as bookable sessions, not as B2B negotiations.
+**Common migration failure modes (from fitness studio forums and industry discussion):**
+1. Payment method re-collection failure rates of 15–30% — members churn rather than re-enroll
+2. Historical data loss — particularly for attendance history, credit balances, and waiver records
+3. Member confusion during parallel operation periods
+4. Schedule/booking continuity gaps where classes appear in one system but not the other
 
-**HoneyBook / Dubsado (non-fitness vertical):** These are general-purpose event CRMs that do have inquiry → quote → contract → invoice flows. Studios sometimes use these alongside their booking platform, creating data fragmentation.
+**The plan addresses most of these correctly:**
+- Two-phase transition (shadow then parallel) reduces data loss risk
+- Credit pack sync is partially addressed (gap identified in edge-cases analysis)
+- Waiver/agreements data is included in the API read capabilities
+- The parallel period gives members time to adapt
 
-**Assessment:** Phase 4's event management — specifically the multi-stage flow with quote generation, deposit tracking, and Stripe payment — addresses a real gap. The conversion tracking (did event guests become members?) is a feature that no fitness SaaS competitor offers. This directly supports the growth loop that boutique studios care about: events are lead generation vehicles.
-
----
-
-### How Competitors Handle Employee Payroll
-
-**Glofox:** No payroll features. Staff management is limited to scheduling and attendance. Payroll is done entirely in external tools (Gusto, ADP, QuickBooks).
-
-**Mindbody:** Has payroll reporting but no calculation engine. Can export timesheets but the calculation logic is the studio owner's problem.
-
-**Vagaro:** Has commission and payroll tracking, but limited to service-based businesses. Trainer bonus thresholds are not supported.
-
-**Assessment:** The Meridian payroll module's trainer bonus threshold calculation (check-ins over threshold = bonus) is unique in the market. No competitor connects class performance directly to payroll as a first-class feature. This is a real competitive differentiator for studios with trainer compensation models tied to performance.
-
-The document management (W4/W9/W2 storage) is not differentiated — competitors don't do this either, so it's a gap-fill rather than a competitive advantage. But it's a compliance need that increases switching cost once adopted.
+**What competitors typically do differently:**
+Most Glofox-to-competitor migrations use a "big bang" approach: export CSV from Glofox on a specific date, import into new system, go live. The plan's incremental API-driven approach is meaningfully superior — it maintains data freshness throughout the transition rather than accepting a data snapshot that immediately goes stale.
 
 ---
 
-### How Competitors Handle Merch & Shipping
+## What This Migration Enables Competitively
 
-**Glofox:** No native merch or order management. Studios use Shopify or WooCommerce separately.
+### 1. Meridian Can Credibly Claim It Replaced Glofox
 
-**Mindbody:** Has a retail module but it's basic. No native shipping integration.
+The SaaS pitch for Meridian requires proof that it can fully replace an incumbent platform. Having run The Sauna Guys on Meridian end-to-end (post-cutover) provides that proof. A live production installation handling $55k+/month in transactions, 1,100 members, and all studio operations is a meaningful reference customer — even if that customer is the founder's own studio.
 
-**Assessment:** The EasyPost integration for shipping is parity work for fitness SaaS (none do it well) but doesn't create a meaningful competitive moat. The value is convenience for studios that already sell some merch. For a studio like The Sauna Guys with modest merch volume, the Shopify alternative is also viable. This feature has "nice to have" competitive positioning, not "must have."
+### 2. The Migration Tooling Becomes a Moat
 
----
+The Glofox API client and sync engine being built here is directly reusable for any future Meridian customer who is migrating from Glofox. Glofox claims ~2,000+ studio customers. A "migrate from Glofox in 8 weeks" offering is a meaningful differentiator for Meridian's SaaS go-to-market when the time comes. No other fitness studio platform appears to offer a managed Glofox migration path.
 
-### SaaS Platform Positioning Assessment
+**Recommendation:** Treat the `lib/glofox/` module as a permanent, maintained library (not purely cleanup-target code), even if The Sauna Guys will no longer use it post-cutover.
 
-**Current competitors in the boutique fitness SaaS space:**
+### 3. Demonstrates Multi-Tenant Architecture Readiness
 
-The market has two tiers:
-- **Large players:** Mindbody, Glofox, Vagaro, Zenoti — serve mid-to-large studios, expensive, complex, slow to change
-- **Boutique players:** Pike13, TeamUp, WellnessLiving — mid-market, better UX but feature gaps
-
-**Meridian's positioning opportunity:** There is a real gap at the high-end boutique level — studios that are too sophisticated for simple scheduling tools (Acuity, Calendly) but want a product with better UX and more transparent pricing than Mindbody/Glofox. Meridian's AI features, trainer economy, and modern stack are authentic differentiators.
-
-**However:** The SaaS market entry timeline matters. Building the onboarding wizard now, before having a second customer to give feedback, risks building the wrong onboarding experience. The precedent in B2B SaaS is clear: the first 3–5 customers should be onboarded manually (white-glove), and the automation should be built from observing that process. A wizard built in advance will be rebuilt once real customers reveal their actual needs.
+Every migration table and sync function includes `studio_id` correctly. When Meridian onboards Studio #2, the Glofox migration tools work for them immediately. This is a technical moat that takes 8 weeks to build once and then scales.
 
 ---
 
-### Competitive Risk Assessment
+## Competitive Risk If Migration Is Delayed
 
-**Risk: Glofox/Mindbody builds corporate accounts before Phase 4 ships**
-- Likelihood: Low. These platforms move slowly and have shown no indication of B2B invoice management.
-- Impact: Medium. The Sauna Guys would lose a competitive reason to switch or stay.
+**Risk A: Glofox improves their product**
+Glofox has been adding features (including recent AI marketing tools). If The Sauna Guys remains on Glofox during a delayed migration, the gap between what Meridian offers and what they already have from Glofox may close, reducing the business case for internal investment.
 
-**Risk: HoneyBook/Dubsado expands into fitness booking**
-- Likelihood: Very low. They've stayed in the event/creative business vertical.
+**Risk B: Staff inertia deepens with time**
+Every week of parallel mode that extends beyond the plan builds institutional reliance on Glofox workflows. The longer the transition, the harder the final cutover.
 
-**Risk: New entrant builds a Meridian-equivalent faster**
-- Likelihood: Low-Medium. The modern stack (Next.js, Supabase, Claude AI) is replicable, but the depth of existing functionality (Phases 1–3) took substantial investment to build.
-
-**Risk: Studio market consolidation shrinks the addressable market**
-- Likelihood: Medium. Boutique fitness studios have high failure rates. The target customer (established, multi-trainer, corporate clients) is a smaller universe than "all fitness studios."
+**Risk C: Glofox API access is a gift that can be revoked**
+Glofox granted API access. This is not standard for all customers. If The Sauna Guys becomes adversarial with Glofox (e.g., by publicly describing the migration for SaaS marketing purposes before it is complete), access could be revoked. The migration should be completed before any public communication about Meridian's Glofox migration capabilities.
 
 ---
 
-## Market Timing Assessment
+## Alternative Competitive Strategies Considered (and Rejected)
 
-**Corporate wellness is growing.** Post-pandemic corporate wellness spending has increased significantly, and the trend toward mental/physical wellness benefits (saunas, cold plunge, breathwork) is new and accelerating. Studios that can demonstrate ROI to corporate HR departments (utilization tracking, employee wellness outcomes) will win larger contracts. Phase 4's conversion tracking and corporate dashboard directly serve this pitch.
+**Alternative: Stay on Glofox, use Meridian as a read-only analytics layer**
+This is the current state. It permanently caps Meridian's capabilities and prevents the differentiated features (trainer promo codes, proration, dual-role accounts) from being delivered. Not a viable long-term position.
 
-**The window is open but not urgent.** Glofox and Mindbody are not moving fast on this. Meridian has 12–18 months before any competitor likely closes this gap with a purpose-built corporate module.
+**Alternative: Use a third-party migration tool (e.g., Migrateful, custom ETL)**
+No credible off-the-shelf Glofox migration tools exist. Building a custom ETL is essentially what this plan does. The plan's choice to use Inngest rather than a one-off ETL script is better for maintainability.
+
+**Alternative: Hard cutover with data export only (no sync engine)**
+Faster (2–3 weeks instead of 8), but risks data loss for any bookings/transactions created between the export date and cutover. Given Glofox has live transactions happening daily, a snapshot migration loses recent data. The incremental sync approach is the right call.
 
 ---
 
-## What Phase 4 Unlocks Competitively
+## Strategic Recommendation
 
-After Phase 4, Meridian's pitch to a new studio includes:
-- "Manage your corporate wellness clients with company accounts, invoicing, and credit tracking"
-- "Handle event inquiries, quotes, and deposits without leaving the platform"
-- "Calculate payroll automatically including trainer performance bonuses"
-- "Send SMS campaigns to your members" (finally fulfilled)
+Complete the migration. The migration tooling itself is a competitive asset for Meridian's future SaaS business. The migration validates Meridian as a full-stack replacement for studio management platforms. The longer it is deferred, the more entrenched Glofox becomes in the operational muscle memory of the studio.
 
-These are concrete, marketable differentiators. The trainer bonus threshold + payroll calculation in particular is something no competitor can claim, and it directly addresses the trainer retention problem that boutique studios consistently cite as their #1 operational challenge.
+One addition to the plan: document the migration methodology (not the code, just the process) as a future-facing asset. "Migrate from Glofox in 8 weeks" is a marketing claim that can be made with specificity once this is complete.

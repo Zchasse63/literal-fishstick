@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { validateBody, bookingCreateSchema } from "@/lib/validation";
+import { inngest } from "@/lib/inngest/client";
 
 /**
  * GET /api/bookings
@@ -54,10 +55,10 @@ export async function POST(request: NextRequest) {
   if (validationError) return validationError;
   const { class_id, member_id } = validated;
 
-  // Fetch the class to check capacity
+  // Fetch the class to check capacity (include glofox_id for write-back)
   const { data: classData, error: classError } = await supabase
     .from("classes")
-    .select("id, capacity, studio_id")
+    .select("id, capacity, studio_id, glofox_id")
     .eq("id", class_id)
     .eq("studio_id", studioId)
     .single();
@@ -122,11 +123,40 @@ export async function POST(request: NextRequest) {
   await supabase.from("activity_log").insert({
     studio_id: studioId,
     actor_id: user.id,
-    action: "booking_created",
-    entity_type: "booking",
-    entity_id: booking.id,
+    type: "booking_created",
+    subject_type: "booking",
+    subject_id: booking.id,
     metadata: { class_id, member_id },
   });
+
+  // Fire async Glofox booking write-back (fire-and-forget).
+  // Only attempted if this class originated from Glofox AND member has a Glofox profile.
+  if (classData.glofox_id) {
+    const { data: memberProfile } = await supabase
+      .from("members")
+      .select("glofox_id")
+      .eq("id", member_id)
+      .single();
+
+    const memberGlofoxId = memberProfile?.glofox_id;
+    if (memberGlofoxId) {
+      // Mark write-back as pending before firing
+      await supabase
+        .from("bookings")
+        .update({ glofox_write_status: "pending" })
+        .eq("id", booking.id);
+
+      void inngest.send({
+        name: "glofox/create-booking",
+        data: {
+          booking_id: booking.id,
+          glofox_event_id: classData.glofox_id,
+          glofox_user_id: memberGlofoxId,
+          studio_id: studioId,
+        },
+      });
+    }
+  }
 
   return NextResponse.json({ data: booking }, { status: 201 });
 }

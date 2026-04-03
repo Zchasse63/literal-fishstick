@@ -96,9 +96,9 @@ export async function POST(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "automation_deactivated",
-      entity_type: "automation_flow",
-      entity_id: id,
+      type: "automation_deactivated",
+      subject_type: "automation_flow",
+      subject_id: id,
       metadata: { paused_enrollments: pausedCount ?? 0 },
     });
 

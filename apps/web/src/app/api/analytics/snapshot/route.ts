@@ -115,26 +115,26 @@ export async function POST(request: NextRequest) {
 
         // Count active members as of that date
         const { count: activeMembers } = await supabase
-          .from("memberships")
+          .from("members")
           .select("id", { count: "exact", head: true })
           .eq("studio_id", studioId)
-          .eq("status", "active")
-          .lte("started_at", dayEnd);
+          .eq("membership_status", "active")
+          .lte("join_date", dayEnd);
 
         // New members that day (joined)
         const { count: newMembers } = await supabase
-          .from("memberships")
+          .from("members")
           .select("id", { count: "exact", head: true })
           .eq("studio_id", studioId)
-          .gte("started_at", dayStart)
-          .lte("started_at", dayEnd);
+          .gte("join_date", dayStart)
+          .lte("join_date", dayEnd);
 
         // Churned members that day (cancelled/expired)
         const { count: churnedMembers } = await supabase
-          .from("memberships")
+          .from("members")
           .select("id", { count: "exact", head: true })
           .eq("studio_id", studioId)
-          .in("status", ["cancelled", "expired"])
+          .in("membership_status", ["cancelled", "expired"])
           .gte("updated_at", dayStart)
           .lte("updated_at", dayEnd);
 
@@ -184,24 +184,18 @@ export async function POST(request: NextRequest) {
           totalCapacity > 0 ? totalBookings / totalCapacity : 0;
 
         // MRR estimate: sum of active recurring membership prices
+        // members table has plan_price; recurring members have membership_tier like 'unlimited', etc.
         const { data: activeSubs } = await supabase
-          .from("memberships")
-          .select("price")
+          .from("members")
+          .select("plan_price")
           .eq("studio_id", studioId)
-          .eq("status", "active")
-          .eq("recurring", true)
-          .lte("started_at", dayEnd);
+          .eq("membership_status", "active")
+          .lte("join_date", dayEnd);
 
         const mrr = (activeSubs ?? []).reduce(
-          (sum, m) => sum + (m.price ?? 0),
+          (sum, m) => sum + ((m as any).plan_price ?? 0),
           0
         );
-
-        // Churn rate: churned / (active at start of period)
-        const churnRate =
-          (activeMembers ?? 0) > 0
-            ? (churnedMembers ?? 0) / (activeMembers ?? 1)
-            : 0;
 
         // ─── Upsert into daily_metrics ────────────────────────
         const { error: upsertError } = await supabase
@@ -214,8 +208,7 @@ export async function POST(request: NextRequest) {
               new_members: newMembers ?? 0,
               churned_members: churnedMembers ?? 0,
               mrr: Math.round(mrr * 100) / 100,
-              churn_rate: Math.round(churnRate * 10000) / 10000,
-              avg_fill_rate: Math.round(avgFillRate * 10000) / 10000,
+              avg_class_fill_rate: Math.round(avgFillRate * 10000) / 10000,
               total_bookings: totalBookings,
               total_capacity: totalCapacity,
               revenue_total: Math.round(revenueTotal * 100) / 100,
@@ -233,8 +226,6 @@ export async function POST(request: NextRequest) {
                 Math.round((revenueByType["corporate"] ?? 0) * 100) / 100,
               revenue_events:
                 Math.round((revenueByType["event"] ?? 0) * 100) / 100,
-              snapshot_by: user.id,
-              snapshot_at: new Date().toISOString(),
             },
             { onConflict: "studio_id,metric_date" }
           );
@@ -258,8 +249,8 @@ export async function POST(request: NextRequest) {
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "metrics_snapshot",
-      entity_type: "daily_metrics",
+      type: "metrics_snapshot",
+      subject_type: "daily_metrics",
       metadata: {
         dates_requested: dates.length,
         dates_succeeded: results.filter((r) => r.status === "ok").length,

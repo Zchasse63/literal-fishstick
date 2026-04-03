@@ -252,7 +252,7 @@ async function findQualifyingMembers(
         .from('profiles')
         .select('id')
         .eq('studio_id', STUDIO_ID)
-        .like('birthday', pattern);
+        .like('date_of_birth', pattern);
 
       return (data ?? []).map((r) => r.id);
     }

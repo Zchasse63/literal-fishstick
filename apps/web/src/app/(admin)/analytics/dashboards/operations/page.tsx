@@ -109,7 +109,7 @@ export default function OperationsDashboardPage() {
         const startTime = new Date(cls.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
         return {
           time: startTime,
-          name: cls.class_types?.name ?? cls.name ?? 'Class',
+          name: cls.class_types?.name ?? cls.title ?? 'Class',
           trainer: cls.trainer_name ?? null,
           booked: cls.booked_count ?? 0,
           capacity: cls.capacity ?? 12,

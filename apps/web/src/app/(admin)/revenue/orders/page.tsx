@@ -20,6 +20,7 @@ import {
   X,
   ArrowUpRight,
   CalendarDays,
+  Loader2,
 } from 'lucide-react'
 
 // ─── Animation ──────────────────────────────────────────────
@@ -221,6 +222,36 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('')
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [shippingModalOrder, setShippingModalOrder] = useState<Order | null>(null)
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
+
+  async function updateOrderStatus(orderId: string, newStatus: OrderStatus, trackingNumber?: string) {
+    setActionLoading(prev => ({ ...prev, [orderId]: true }))
+    try {
+      const body: any = { status: newStatus }
+      if (trackingNumber) body.tracking_number = trackingNumber
+
+      const res = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error || 'Update failed') }
+
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, ...(trackingNumber ? { trackingNumber } : {}) } : o))
+    } catch (err) {
+      console.error('Order status update failed:', err)
+    } finally {
+      setActionLoading(prev => ({ ...prev, [orderId]: false }))
+    }
+  }
+
+  async function handleShipOrder(orderId: string) {
+    const res = await fetch(`/api/orders/${orderId}/ship`, { method: 'POST' })
+    if (res.ok) {
+      const json = await res.json()
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' as OrderStatus, trackingNumber: json.data?.tracking_number } : o))
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -434,28 +465,43 @@ export default function OrdersPage() {
                     </span>
                   </div>
                   <div className="w-28 text-right flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    {order.status === 'pending' && (
-                      <button className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors">
-                        Mark Ready
-                      </button>
-                    )}
-                    {order.status === 'ready_for_pickup' && order.fulfillmentType === 'pickup' && (
-                      <button className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors">
-                        Complete
-                      </button>
-                    )}
-                    {(order.status === 'pending' || order.status === 'processing') && order.fulfillmentType === 'shipping' && (
-                      <button
-                        onClick={() => setShippingModalOrder(order)}
-                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors"
-                      >
-                        Ship
-                      </button>
-                    )}
-                    {order.status === 'shipped' && (
-                      <button className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors">
-                        Delivered
-                      </button>
+                    {actionLoading[order.id] ? (
+                      <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
+                    ) : (
+                      <>
+                        {order.status === 'pending' && (
+                          <button
+                            onClick={() => updateOrderStatus(order.id, order.fulfillmentType === 'pickup' ? 'ready_for_pickup' : 'processing')}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors"
+                          >
+                            Mark Ready
+                          </button>
+                        )}
+                        {order.status === 'ready_for_pickup' && order.fulfillmentType === 'pickup' && (
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'completed')}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                          >
+                            Complete
+                          </button>
+                        )}
+                        {(order.status === 'pending' || order.status === 'processing') && order.fulfillmentType === 'shipping' && (
+                          <button
+                            onClick={() => setShippingModalOrder(order)}
+                            className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors"
+                          >
+                            Ship
+                          </button>
+                        )}
+                        {order.status === 'shipped' && (
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'delivered')}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                          >
+                            Delivered
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

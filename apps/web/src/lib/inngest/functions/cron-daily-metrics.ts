@@ -91,7 +91,8 @@ export const cronDailyMetrics = inngest.createFunction(
           .from('classes')
           .select('id, status, capacity, checked_in_count')
           .eq('studio_id', STUDIO_ID)
-          .eq('date', date);
+          .gte('starts_at', dayStart)
+          .lte('starts_at', dayEnd);
 
         const classRows = classes ?? [];
         const classesHeld = classRows.filter((c) => c.status === 'completed' || c.status === 'in_progress').length;
@@ -115,86 +116,104 @@ export const cronDailyMetrics = inngest.createFunction(
         // --- Revenue metrics ---
         const { data: transactions } = await db
           .from('transactions')
-          .select('id, amount, payment_type, status, refund_amount')
+          .select('id, amount, type, status')
           .eq('studio_id', STUDIO_ID)
           .eq('status', 'completed')
           .gte('created_at', dayStart)
           .lte('created_at', dayEnd);
 
         const txRows = transactions ?? [];
-        const totalRevenue = txRows.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        const membershipRevenue = txRows
-          .filter((t) => t.payment_type === 'membership')
+        const revenueTotal = txRows.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+        const revenueMemberships = txRows
+          .filter((t) => t.type === 'membership')
           .reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        const creditPackRevenue = txRows
-          .filter((t) => t.payment_type === 'credit_pack')
+        const revenueCreditPacks = txRows
+          .filter((t) => t.type === 'credit_pack')
           .reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        const dropInRevenue = txRows
-          .filter((t) => t.payment_type === 'drop_in')
+        const revenueDropIns = txRows
+          .filter((t) => t.type === 'drop_in')
           .reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        const merchRevenue = txRows
-          .filter((t) => t.payment_type === 'merch')
+        const revenueMerch = txRows
+          .filter((t) => t.type === 'merch' || t.type === 'merchandise')
           .reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        const giftCardRevenue = txRows
-          .filter((t) => t.payment_type === 'gift_card')
+        const revenueGiftCards = txRows
+          .filter((t) => t.type === 'gift_card')
           .reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        const eventRevenue = txRows
-          .filter((t) => t.payment_type === 'event')
+        const revenueCorporate = txRows
+          .filter((t) => t.type === 'corporate')
+          .reduce((sum, t) => sum + (t.amount ?? 0), 0);
+        const revenueEvents = txRows
+          .filter((t) => t.type === 'event')
           .reduce((sum, t) => sum + (t.amount ?? 0), 0);
 
-        // Refunds (look at all statuses for refund amounts)
+        // Refunds
         const { data: refunds } = await db
           .from('transactions')
-          .select('refund_amount')
+          .select('amount')
           .eq('studio_id', STUDIO_ID)
           .in('status', ['refunded', 'partially_refunded'])
-          .gte('updated_at', dayStart)
-          .lte('updated_at', dayEnd);
+          .gte('created_at', dayStart)
+          .lte('created_at', dayEnd);
 
-        const refundTotal = (refunds ?? []).reduce((sum, r) => sum + (r.refund_amount ?? 0), 0);
+        const refundsTotal = (refunds ?? []).reduce((sum, r) => sum + (r.amount ?? 0), 0);
 
         // --- Member metrics ---
-        const { count: newMembers } = await db
+        const [
+          { count: newMembers },
+          { count: churnedMembers },
+          { count: activeMembers },
+          { count: pausedMembers },
+        ] = await Promise.all([
+          db.from('members').select('*', { count: 'exact', head: true })
+            .eq('studio_id', STUDIO_ID).gte('created_at', dayStart).lte('created_at', dayEnd),
+          db.from('members').select('*', { count: 'exact', head: true })
+            .eq('studio_id', STUDIO_ID).eq('membership_status', 'cancelled').gte('updated_at', dayStart).lte('updated_at', dayEnd),
+          db.from('members').select('*', { count: 'exact', head: true })
+            .eq('studio_id', STUDIO_ID).eq('membership_status', 'active'),
+          db.from('members').select('*', { count: 'exact', head: true })
+            .eq('studio_id', STUDIO_ID).eq('membership_status', 'paused'),
+        ]);
+
+        // At-risk: members with health_score <= 40
+        const { count: atRiskMembers } = await db
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('studio_id', STUDIO_ID)
+          .not('health_score', 'is', null)
+          .lte('health_score', 40);
+
+        // MRR: sum of plan_price for all active recurring members
+        const { data: mrrData } = await db
           .from('members')
-          .select('*', { count: 'exact', head: true })
+          .select('plan_price')
           .eq('studio_id', STUDIO_ID)
-          .gte('created_at', dayStart)
-          .lte('created_at', dayEnd);
+          .eq('membership_status', 'active')
+          .not('plan_price', 'is', null);
 
-        const { count: churnedMembers } = await db
-          .from('members')
-          .select('*', { count: 'exact', head: true })
+        const mrr = (mrrData ?? []).reduce((sum, m) => sum + ((m.plan_price as number) ?? 0), 0);
+        const activeMemberCount = activeMembers ?? 0;
+        const arpm = activeMemberCount > 0 ? Math.round((mrr / activeMemberCount) * 100) / 100 : 0;
+
+        // Total capacity for all classes held
+        const totalCapacity = classRows
+          .filter((c) => c.status === 'completed' || c.status === 'in_progress')
+          .reduce((sum, c) => sum + (c.capacity ?? 12), 0);
+
+        // Trainer metrics: classes with a trainer assigned
+        const { data: trainerClasses } = await db
+          .from('classes')
+          .select('id, trainer_id, checked_in_count')
           .eq('studio_id', STUDIO_ID)
-          .eq('membership_status', 'cancelled')
-          .gte('updated_at', dayStart)
-          .lte('updated_at', dayEnd);
+          .gte('starts_at', dayStart)
+          .lte('starts_at', dayEnd)
+          .not('trainer_id', 'is', null)
+          .in('status', ['completed', 'in_progress']);
 
-        const { count: activeMembers } = await db
-          .from('members')
-          .select('*', { count: 'exact', head: true })
-          .eq('studio_id', STUDIO_ID)
-          .eq('membership_status', 'active');
+        const trainerClassRows = trainerClasses ?? [];
+        const trainerClassesLed = trainerClassRows.length;
 
-        const { count: totalMembers } = await db
-          .from('members')
-          .select('*', { count: 'exact', head: true })
-          .eq('studio_id', STUDIO_ID);
-
-        // --- Lead metrics ---
-        const { count: newLeads } = await db
-          .from('leads')
-          .select('*', { count: 'exact', head: true })
-          .eq('studio_id', STUDIO_ID)
-          .gte('created_at', dayStart)
-          .lte('created_at', dayEnd);
-
-        const { count: leadsConverted } = await db
-          .from('leads')
-          .select('*', { count: 'exact', head: true })
-          .eq('studio_id', STUDIO_ID)
-          .eq('status', 'converted')
-          .gte('converted_at', dayStart)
-          .lte('converted_at', dayEnd);
+        // Bonus classes: classes where checked_in_count >= 7 (default threshold)
+        const trainerBonusClasses = trainerClassRows.filter((c) => (c.checked_in_count ?? 0) >= 7).length;
 
         // --- Upsert into daily_metrics ---
         const now = new Date().toISOString();
@@ -202,33 +221,39 @@ export const cronDailyMetrics = inngest.createFunction(
           {
             studio_id: STUDIO_ID,
             metric_date: date,
+            // Booking metrics
             total_bookings: totalBookings,
             total_check_ins: totalCheckIns,
             total_no_shows: totalNoShows,
-            total_cancellations: totalCancellations,
             total_late_cancellations: totalLateCancellations,
             total_walk_ins: totalWalkIns,
-            unique_members_booked: uniqueMembersBooked,
-            avg_class_utilization: Math.round(avgClassUtilization * 100) / 100,
-            total_revenue: totalRevenue,
-            membership_revenue: membershipRevenue,
-            credit_pack_revenue: creditPackRevenue,
-            drop_in_revenue: dropInRevenue,
-            merch_revenue: merchRevenue,
-            gift_card_revenue: giftCardRevenue,
-            event_revenue: eventRevenue,
-            refund_total: refundTotal,
+            unique_members_visited: uniqueMembersBooked,
+            // Class metrics
+            classes_held: classesHeld,
+            total_capacity: totalCapacity,
+            avg_class_fill_rate: Math.round(avgClassUtilization * 100) / 100,
+            // Revenue metrics
+            revenue_total: revenueTotal,
+            revenue_memberships: revenueMemberships,
+            revenue_credit_packs: revenueCreditPacks,
+            revenue_drop_ins: revenueDropIns,
+            revenue_merch: revenueMerch,
+            revenue_gift_cards: revenueGiftCards,
+            revenue_corporate: revenueCorporate,
+            revenue_events: revenueEvents,
+            refunds_total: refundsTotal,
+            // Member metrics
             new_members: newMembers ?? 0,
             churned_members: churnedMembers ?? 0,
-            active_members: activeMembers ?? 0,
-            total_members: totalMembers ?? 0,
-            classes_held: classesHeld,
-            classes_cancelled: classesCancelled,
-            avg_attendance: Math.round(avgAttendance * 100) / 100,
-            new_leads: newLeads ?? 0,
-            leads_converted: leadsConverted ?? 0,
+            active_members: activeMemberCount,
+            paused_members: pausedMembers ?? 0,
+            at_risk_members: atRiskMembers ?? 0,
+            mrr: mrr,
+            arpm: arpm,
+            // Trainer metrics
+            trainer_classes_led: trainerClassesLed,
+            trainer_bonus_classes: trainerBonusClasses,
             created_at: now,
-            updated_at: now,
           },
           { onConflict: 'studio_id,metric_date' },
         );

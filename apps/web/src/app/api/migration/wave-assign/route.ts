@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       })
       .eq('studio_id', studioId)
       .in('id', member_ids)
-      .select('id, email, first_name, last_name, migration_wave')
+      .select('id, email, full_name, migration_wave')
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
@@ -79,9 +79,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'migration_wave_assigned',
-      entity_type: 'migration',
-      entity_id: studioId,
+      type: 'migration_wave_assigned',
+      subject_type: 'migration',
+      subject_id: studioId,
       metadata: {
         wave,
         member_count: updatedCount,

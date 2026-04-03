@@ -157,9 +157,9 @@ async function handleEvent(event: {
     await supabase.from('activity_log').insert({
       studio_id: label.studio_id,
       actor_id: null,
-      action: 'order_delivered',
-      entity_type: 'order',
-      entity_id: label.order_id,
+      type: 'order_delivered',
+      subject_type: 'order',
+      subject_id: label.order_id,
       metadata: {
         tracking_number: tracker.tracking_code,
         source: 'easypost_webhook',

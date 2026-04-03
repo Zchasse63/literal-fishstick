@@ -111,7 +111,7 @@ export const executeFlow = inngest.createFunction(
     const member = await step.run('load-member', async () => {
       const { data, error } = await db
         .from('profiles')
-        .select('id, email, first_name, last_name, phone, timezone')
+        .select('id, email, full_name, phone, timezone')
         .eq('id', enrollment.member_id)
         .single();
 
@@ -125,19 +125,24 @@ export const executeFlow = inngest.createFunction(
     const memberDetails = await step.run('load-member-details', async () => {
       const { data: memberRow } = await db
         .from('members')
-        .select('membership_type, membership_status, credits_remaining, total_visits')
-        .eq('id', enrollment.member_id)
+        .select('membership_tier, membership_status, credits_remaining, total_visits')
+        .eq('profile_id', enrollment.member_id)
         .eq('studio_id', studio_id)
         .single();
 
       return memberRow ?? {};
     });
 
+    // Derive first/last name from full_name for merge tags
+    const nameParts = (member.full_name ?? '').split(' ');
+    const firstName = nameParts[0] ?? '';
+    const lastName = nameParts.slice(1).join(' ') ?? '';
+
     // Merge tag data
     const mergeData: Record<string, string | number | undefined> = {
-      first_name: member.first_name,
-      last_name: member.last_name,
-      membership_name: (memberDetails as Record<string, unknown>)?.membership_type as string | undefined,
+      first_name: firstName,
+      last_name: lastName,
+      membership_name: (memberDetails as Record<string, unknown>)?.membership_tier as string | undefined,
       credits_remaining: (memberDetails as Record<string, unknown>)?.credits_remaining as number | undefined,
       total_visits: (memberDetails as Record<string, unknown>)?.total_visits as number | undefined,
     };
@@ -327,12 +332,12 @@ export const executeFlow = inngest.createFunction(
                 const targetType = flowStep.config?.membership_type as string;
                 const { data: memberRow } = await db
                   .from('members')
-                  .select('membership_type')
-                  .eq('id', enrollment.member_id)
+                  .select('membership_tier')
+                  .eq('profile_id', enrollment.member_id)
                   .eq('studio_id', studio_id)
                   .single();
 
-                conditionMet = memberRow?.membership_type === targetType;
+                conditionMet = memberRow?.membership_tier === targetType;
                 break;
               }
               default:

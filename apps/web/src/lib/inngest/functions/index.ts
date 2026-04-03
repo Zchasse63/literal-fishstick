@@ -19,6 +19,16 @@ import { cronInvoiceOverdue } from './cron-invoice-overdue';
 import { cronContractExpiry } from './cron-contract-expiry';
 import { cronCorporateCredits } from './cron-corporate-credits';
 
+// Glofox Sync Engine
+import { glofoxSyncHourly } from './glofox-sync-hourly';
+import { glofoxBackfill } from './glofox-backfill';
+import { glofoxSyncManual } from './glofox-sync-manual';
+
+// Glofox Write-back
+import { glofoxMarkAttendance } from './glofox-mark-attendance';
+import { glofoxCreateBooking } from './glofox-create-booking';
+import { glofoxCancelBooking } from './glofox-cancel-booking';
+
 export const functions = [
   executeFlow,
   evaluateTriggers,
@@ -33,4 +43,12 @@ export const functions = [
   cronInvoiceOverdue,
   cronContractExpiry,
   cronCorporateCredits,
+  // Glofox Sync
+  glofoxSyncHourly,
+  glofoxBackfill,
+  glofoxSyncManual,
+  // Glofox Write-back
+  glofoxMarkAttendance,
+  glofoxCreateBooking,
+  glofoxCancelBooking,
 ];

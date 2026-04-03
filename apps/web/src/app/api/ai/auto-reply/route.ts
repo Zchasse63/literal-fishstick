@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     const { data: member } = await supabase
       .from("members")
       .select(
-        "id, membership_type, credits_remaining, profiles:user_id ( full_name, email )"
+        "id, membership_tier, credits_remaining, profiles:profile_id ( full_name, email )"
       )
       .eq("id", reply.member_id)
       .eq("studio_id", STUDIO_ID)
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
       reply_body: reply.body_text ?? "",
       member_context: member
         ? {
-            membership_type: member.membership_type ?? null,
+            membership_type: member.membership_tier ?? null,
             visits_last_30d: visitsLast30d,
             credits_remaining: member.credits_remaining ?? 0,
           }

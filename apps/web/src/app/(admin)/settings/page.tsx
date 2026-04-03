@@ -39,6 +39,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card'
+import DataSyncButton from '@/components/glofox/DataSyncButton'
 
 // Animation variants
 const fadeInUp = {
@@ -729,6 +730,22 @@ function IntegrationsTab() {
           <FieldRow label="Real-time">
             <span className="text-sm text-gray-600">60-second polling (Phase 1)</span>
           </FieldRow>
+        </CardContent>
+      </Card>
+
+      {/* Glofox Data Sync */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plug className="w-4 h-4 text-indigo-600" />
+            Glofox Data Sync
+          </CardTitle>
+          <CardDescription>
+            Sync member, booking, and class data from Glofox. Hourly auto-sync is active.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataSyncButton />
         </CardContent>
       </Card>
 

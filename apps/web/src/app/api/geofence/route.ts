@@ -148,9 +148,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'geofence_created',
-      entity_type: 'geofence_location',
-      entity_id: geofence.id,
+      type: 'geofence_created',
+      subject_type: 'geofence_location',
+      subject_id: geofence.id,
       metadata: { name, latitude, longitude, radius_meters },
     })
 

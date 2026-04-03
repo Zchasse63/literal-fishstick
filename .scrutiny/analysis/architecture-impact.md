@@ -1,187 +1,134 @@
-# Architecture Impact Analysis — Phase 4: Corporate & Operations
-
+# Architecture Impact Analysis
 **Agent:** architecture-impact
-**Plan:** Meridian Phase 4
-**Complexity Class:** SIGNIFICANT
-**Date:** 2026-03-20
+**Plan:** Glofox API Migration to Meridian
+**Complexity:** SIGNIFICANT
+**Date:** 2026-03-31
 
 ---
 
 ## Agent Verdict
-
-**MODIFY**
-
-Phase 4 is architecturally additive — it extends the existing patterns rather than replacing them. The core Supabase/Next.js/Inngest foundation handles the new load well. However, there are three architectural decisions that will compound into technical debt if not addressed now: (1) the `profiles.company_id` FK denormalization, (2) the dual Stripe webhook routing problem, and (3) the SaaS multi-tenancy model conflict. These are resolvable without major restructuring, but require explicit decisions before Sprint 1.
+**MODIFY** — The migration introduces 8 new Inngest functions, 3 new tables, 27 new columns, and a new external API client — all of which fit cleanly into the existing architecture. However, two architectural decisions are deferred or unspecified in ways that create ongoing technical debt: the outbound sync trigger mechanism is not defined (creating inconsistency risk), and the `glofox_*` columns/tables become permanent schema artifacts even after Glofox is deprecated. The post-cutover cleanup plan is adequate but needs to be treated as a first-class obligation, not an afterthought.
 
 ---
 
-## Impact on Existing Architecture
+## Architectural Fit Assessment
 
-### Database Layer
+### Inngest Function Pattern — Clean Fit
 
-**New tables: 13.** These are additive with no changes to existing tables except:
-1. `ALTER TABLE clock_entries` — adds geofence columns (see technical-feasibility for the table name conflict)
-2. `ALTER TABLE orders` — adds fulfillment_type, shipping_address, shipping_cost, tracking_number, shipped_at, delivered_at
-3. `ALTER TABLE profiles ADD COLUMN company_id UUID REFERENCES company_accounts(id)` — this is a denormalization concern (addressed below)
+The codebase already runs 12 Inngest functions across marketing, analytics, and operations domains. The proposed 8 Glofox sync functions (5 inbound cron, 3 outbound event-driven) follow the same pattern:
 
-**RLS pattern consistency:** All new tables follow the existing `studio_id = current_setting('app.studio_id')::uuid` RLS pattern. This is correct and consistent. No RLS regressions expected.
-
-**Index coverage:** The proposed indexes are appropriate. The composite indexes on (studio_id, status), (studio_id, start_time) correctly follow query patterns. No gaps identified.
-
----
-
-### CONCERN: profiles.company_id Denormalization
-
-The plan proposes:
-```sql
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES company_accounts(id);
+```
+lib/inngest/functions/
+  cron-daily-metrics.ts        ← existing
+  cron-trainer-metrics.ts      ← existing
+  glofox-sync-members-inbound.ts  ← new
+  glofox-sync-bookings-inbound.ts ← new
+  glofox-sync-outbound-member.ts  ← new
+  ...
 ```
 
-This assumes each profile belongs to at most one company. But:
-1. A member could be an employee of multiple companies that both use the same studio
-2. A member could change employers, invalidating the FK while the membership continues
-3. The `company_members` junction table already captures the company ↔ member relationship properly
+These register in `functions/index.ts` and serve through the existing `/api/inngest/route.ts` endpoint. Zero new infrastructure required. The pattern is established, the retry/observability model is proven.
 
-Adding `company_id` directly to `profiles` duplicates the relationship that `company_members` is designed to hold, creates an inconsistency risk (the two can diverge), and breaks the multi-company assumption.
+**Architectural impact: Low. Clean additive fit.**
 
-**Recommended fix:** Remove the `profiles.company_id` migration. Query company membership through the `company_members` join table. The company detail page should load members via `SELECT * FROM company_members WHERE company_id = $1`. This is one extra join, which is trivially fast with the existing indexes.
+### External API Client Layer — New Pattern, Well-Isolated
+
+The `GlofoxClient` class is the first external third-party API client in the codebase that isn't a vetted SDK (Stripe, Anthropic, Supabase, Resend all use official SDKs). It lives at `lib/glofox/client.ts` and is temporary by design (deprecated at cutover).
+
+The isolation is appropriate. Nothing in the application should depend on `GlofoxClient` outside the sync functions and the Inngest handlers. If this boundary is respected, removal at cutover is clean.
+
+**Risk:** If the client is used in API routes or UI components to power real-time features during parallel mode (e.g., "show me Glofox's live booking count"), it creates entanglement that complicates cleanup.
+
+**Recommendation:** Establish an explicit rule: `GlofoxClient` is only importable from `lib/inngest/functions/glofox-*` and `lib/glofox/sync/*`. Enforce with ESLint if feasible.
+
+**Architectural impact: Low. Cleanly isolated temporary client.**
+
+### Database Schema — Permanent Artifacts
+
+The 27 new columns and 3 new tables have two categories:
+
+**Category A: Permanent data (should stay after cutover)**
+- `birth_date`, `address_*`, `emergency_contact`, `consent_*` on profiles
+- `membership_expiry_date`, `membership_start_date`, `auto_renewal` on members
+- `is_late_cancellation`, `is_from_waitlist`, `is_first_booking` on bookings
+- `waitlist_count`, `description`, `image_url` on classes
+- All `lead_interactions` table data
+
+These fields have intrinsic value to Meridian's data model independent of Glofox. They should be populated from Glofox during the transition and remain populated by Meridian operations afterward.
+
+**Category B: Glofox-specific identifiers (cleanup target)**
+- All `glofox_id` columns (7 tables)
+- All `glofox_synced_at` columns (4 tables)
+- `glofox_plan_code`, `glofox_membership_id`, `glofox_program_id`, `glofox_provider_id`, `glofox_paid`, `glofox_lead_status`, `glofox_sources` (scattered across tables)
+- `glofox_sync_state` table
+- `glofox_sync_conflicts` table
+
+The plan correctly states "keep `glofox_id` columns for historical reference" in Phase 5 cleanup. This is the right call for `glofox_id` (for audit trail of which Glofox record a Meridian record came from). However, the other `glofox_*` fields in the application tables have less justification for permanent retention:
+- `glofox_plan_code` in members: plan codes are Glofox-internal identifiers, meaningless after cutover
+- `glofox_provider_id` in transactions: redundant once Stripe is the processor
+- `glofox_paid` in transactions: boolean field whose only meaning was "was this paid in Glofox's system"
+
+Leaving these fields indefinitely creates schema noise and could confuse future developers. The cleanup plan should explicitly decide which `glofox_*` fields are archived vs. dropped.
+
+**Architectural impact: Low-Medium. New columns are safe but create cleanup obligations.**
+
+### Multi-Tenancy Compliance
+
+All new tables include `studio_id NOT NULL REFERENCES studios(id)` — this is correct and consistent with the codebase's RLS pattern. The `lead_interactions` table has `studio_id` and a cascade delete from `leads`. Row-level security policies need to be added to the three new tables (`glofox_sync_state`, `glofox_sync_conflicts`, `lead_interactions`). The plan does not mention RLS policies for these tables.
+
+For a single-studio deployment (The Sauna Guys), this is not immediately a problem. But if Meridian becomes multi-tenant SaaS, `glofox_sync_state` and `glofox_sync_conflicts` without RLS policies would expose sync metadata across tenants.
+
+**Recommended action:** Add RLS policies to all three new tables at the same time as the migration. Standard pattern: `studio_id = current_setting('app.studio_id')::uuid`.
+
+### TypeScript Type System Impact
+
+The plan adds 27 new columns. The shared `@meridian/types` package (visible in `apps/web/package.json` as a dependency) presumably contains database type definitions. These need to be updated to reflect the new schema. If types are generated from Supabase (common with `supabase gen types typescript`), regenerating after migration will include the new columns automatically. If types are hand-maintained, they need explicit updates.
+
+The plan does not mention type updates. This is a small but real gap — missing types on new columns means TypeScript will treat them as unknown/any in the codebase until updated.
 
 ---
 
-### API Layer
+## Sync Engine Architecture — Deeper Analysis
 
-**67 new routes in the App Router.** The existing 109 routes span 22 categories. Adding 67 more (a 61% increase) in well-separated route directories follows the established pattern cleanly. No naming conflicts identified with existing routes.
+### The Inngest Event Model Needs Glofox-Specific Events
 
-**New route categories that don't conflict with existing ones:**
-- `/api/corporate/*` — new
-- `/api/events/*` — new
-- `/api/invoices/*` — new (existing `/api/revenue/` handles member invoices; this handles corporate invoices — they should remain separate)
-- `/api/payroll/*` — new (extending the existing `/api/clock/` functionality)
-- `/api/geofence/*` — new admin management routes (existing clock API already handles verification)
-- `/api/products/*` — new (merch; the DB exists, routes don't)
-- `/api/orders/*` — new
-- `/api/shipping/*` — new
-- `/api/onboarding/*` — new
-- `/api/subscription/*` — new
-- `/api/api-keys/*` — new
-- `/api/sms/*` — new
-- `/api/webhooks/easypost` — new; extends existing `/api/webhooks/` pattern
-- `/api/webhooks/twilio` — new
-- `/api/webhooks/stripe-saas` — new (see concern below)
+The existing `MeridianEvents` type in `lib/inngest/client.ts` does not include Glofox sync events. For outbound sync to be event-driven, new event types are needed:
 
----
-
-### CONCERN: Dual Stripe Webhook Handlers
-
-The existing `/api/webhooks/stripe/route.ts` handles member subscription events. The plan adds `/api/webhooks/stripe-saas/route.ts` for SaaS billing events. Both handlers will receive ALL events from the Stripe account if registered separately.
-
-**Architecture options:**
-
-Option A (Recommended): Single webhook endpoint with routing logic
 ```typescript
-// /api/webhooks/stripe/route.ts
-switch(event.type) {
-  case 'customer.subscription.updated':
-    if (event.data.object.metadata.subscription_type === 'saas') {
-      return handleSaasSubscriptionUpdate(event, supabase)
-    }
-    return handleMemberSubscriptionUpdate(event, supabase)
-}
+'glofox/sync_member': { data: { member_id: string; studio_id: string } };
+'glofox/sync_booking': { data: { booking_id: string; studio_id: string } };
+'glofox/sync_attendance': { data: { booking_id: string; studio_id: string } };
 ```
-Add `metadata.subscription_type: 'saas' | 'member'` at subscription creation time. Keeps one Stripe webhook endpoint. The existing handler already pattern-matches on metadata.
 
-Option B: Separate Stripe accounts
-Use a completely separate Stripe account for SaaS billing. Cleaner isolation, but doubles Stripe dashboard management overhead. Overkill for the current scale.
+Without typed events, the Inngest functions will use untyped `any` payloads, losing type safety. The plan's code samples show `inngest.send()` without showing the event type definitions.
 
-Option C: Separate webhook endpoints with metadata guards (the plan's approach)
-Works if implemented correctly with metadata guards, but requires two Stripe webhook registrations and creates operational complexity.
+### The Admin Supabase Client
 
-**Recommendation:** Option A. Minimal change to existing code, uses established Stripe metadata pattern already in the codebase.
+The inbound sync code calls `getAdminClient()` — this implies a service-role Supabase client that bypasses RLS. This is the correct choice for background sync functions (which run server-side, outside user request context). The plan should clarify that sync functions use the service role key, not the anon key, and that the service role key must be available in the Inngest/Next.js environment on Netlify.
 
----
+### Implications for 60-Second Polling Architecture
 
-### SaaS Multi-Tenancy Architecture Concern
-
-The plan introduces `saas_subscriptions` and `onboarding_progress` tables tied to `studio_id`. This correctly extends the existing multi-tenant model. However, there's a bootstrapping problem:
-
-**Who creates the studio record before onboarding begins?**
-
-The existing RLS model requires a `studio_id` on every table. The onboarding flow needs to:
-1. Create the `studios` record first (requires a super-admin context, bypassing RLS)
-2. Create the `saas_subscriptions` record
-3. Set up initial `onboarding_progress`
-4. Create the first admin `profiles` record linked to the new studio
-5. Set `app.studio_id` in the JWT/session for the new admin
-
-Steps 1–3 must run in a service-role context (bypassing RLS), while steps 4–5 transition to the user-role context. This is a non-trivial transaction that the plan's `POST /api/onboarding/studio` must implement carefully. A partial failure here leaves orphaned records.
-
-**Recommended approach:** Use a Supabase service-role client for the studio provisioning API route. Wrap the multi-step creation in an explicit Postgres transaction. Return an error that rolls back fully if any step fails.
+CLAUDE.md states the current architecture uses 60-second polling for real-time data (WebSocket-ready Phase 2). The sync engine introduces a new polling layer at 5–30 minute intervals that is entirely separate from the UI polling. These are different in purpose (background sync vs. UI refresh) and should not conflict. However, during shadow mode, the UI polling will show Meridian data that lags Glofox by up to 30 minutes for transactions. This is acceptable for a shadow mode but may create confusion during parallel mode if staff expects both systems to agree in real time.
 
 ---
 
-### Inngest Function Architecture
+## Post-Cutover Architecture Cleanliness
 
-The 6 new Inngest functions are appropriate additions to the existing job infrastructure. Three observations:
+The plan includes a cleanup phase (Week 9+). The architectural obligation is to ensure Meridian's data model fully replaces Glofox's after cutover:
 
-**`event/shipping-tracker`** polls EasyPost for tracking updates. Polling frequency matters — EasyPost also offers tracking webhooks (the plan correctly includes `/api/webhooks/easypost`). The Inngest polling function should only be a fallback for missed webhooks, not the primary update mechanism. Polling every N minutes for every in-transit shipment could get expensive at scale.
+**Member classification logic must change.** Currently, member `engagement_status`, churn classification, and membership status may depend on Glofox-synced data (membership_expiry, booking status). After cutover, these must derive from Stripe subscription status and Meridian's own booking records. The plan mentions this ("update member classification logic to use Stripe subscription status") but it is a non-trivial refactor that needs its own testing.
 
-**`event/corporate-credits-refresh`** — triggered on `subscription/period_start`. This presumes SaaS subscription period events. For The Sauna Guys' own corporate contracts, credit refresh is on the company's contract anniversary, not the SaaS billing cycle. The trigger event needs to be either a corporate-specific event type or a monthly cron.
-
-**`cron/invoice-overdue-check`** — flags invoices past due_date. This correctly runs daily at 8am. The update should be idempotent (don't re-flag already-flagged invoices) and should send one reminder email per invoice, not a reminder every day it's overdue.
+**The `glofox_synced_at` field becomes semantically wrong.** After cutover, if a record is updated in Meridian, there is no "sync to Glofox" happening. The timestamp loses meaning. It should either be removed or repurposed.
 
 ---
 
-### Navigation & Routing Impact
+## Summary
 
-New admin pages require navigation additions:
+The architecture is well-suited to this migration. The plan does not introduce any new infrastructure, picks appropriate patterns for the existing codebase, and limits Glofox-specific code to isolated modules. The main architectural concerns are:
+1. Outbound trigger mechanism unspecified (creates inconsistency risk)
+2. RLS policies missing from new tables
+3. Inngest event types not defined for new sync events
+4. Post-cutover schema cleanup needs to be more precise about which `glofox_*` fields to drop vs. retain
+5. Member classification refactor after cutover is larger than the plan implies
 
-**New top-level module:** `/corporate` — needs to be added to the admin sidebar navigation. The existing modules are: analytics, engagement/marketing, members, operations, revenue, schedule, settings. Corporate becomes the 8th top-level module.
-
-**Revenue module expansion:** Products and orders live under `/revenue/products` and `/revenue/orders`, extending the existing revenue section. This is the right placement — merch is revenue.
-
-**Settings expansion:** Geofence settings and SMS provider configuration extend the existing `/settings` page. This follows Phase 3's pattern of adding tabs to settings rather than standalone pages.
-
-**Onboarding wizard:** Lives at `/onboarding` outside the admin route group. This needs to be accessible before full admin setup, meaning it must have different auth middleware handling (allow access before `studio_id` is set in context).
-
----
-
-### Bundle Size Impact
-
-New npm packages and their estimated bundle contributions:
-- `twilio` (~500KB unpacked) — server-only, no client bundle impact
-- `@easypost/api` (~200KB unpacked) — server-only, no client bundle impact
-- `next-swagger-doc` (~100KB) + `swagger-ui-react` (~4MB unpacked) — swagger-ui is large and client-rendered. Should be lazy-loaded and route-split at `/docs/api` to prevent it from entering the main bundle
-- `react-grid-layout` (~120KB) — client bundle, used only in dashboard builder
-
-**Concern:** `swagger-ui-react` at ~4MB is significant. It must be dynamically imported: `const SwaggerUI = dynamic(() => import('swagger-ui-react'), { ssr: false })`. Failure to do this will inflate every page's bundle.
-
-**Better approach for swagger-ui:** Use [Scalar](https://github.com/scalar/scalar) (React component, ~200KB, much better UX) instead of swagger-ui-react. Or use the Redoc component. swagger-ui-react is functional but shows its age.
-
----
-
-### Type System Impact
-
-Phase 4 requires new type definitions in `packages/types/src/`. Based on the plan:
-
-New files needed:
-- `packages/types/src/corporate.ts` — CompanyAccount, CompanyMember, CorporateInvoice
-- `packages/types/src/events.ts` — Event, EventGuest
-- `packages/types/src/payroll.ts` — PayrollPeriod, PayrollLineItem
-- `packages/types/src/shipping.ts` — ShippingLabel (extends existing merch.ts)
-- `packages/types/src/saas.ts` — SaasSubscription, OnboardingProgress, ApiKey
-
-The existing `employees.ts` and `merch.ts` types need updates (see technical-feasibility). The `packages/types/src/index.ts` barrel export must be updated to export from these new files.
-
----
-
-## Architecture Health After Phase 4
-
-If the identified concerns are addressed, Phase 4 leaves the architecture in good health:
-- RLS isolation maintained across all 22+ tables
-- API routes remain organized by domain
-- Inngest handles all async jobs
-- Stripe handles all payments
-- SMS is provider-agnostic
-- Shipping is behind an abstraction (EasyPost SDK, swappable)
-
-The main architectural risk introduced by Phase 4 is the complexity of the SaaS billing layer sitting alongside studio payment processing in the same Stripe account. This is manageable with the metadata routing approach but adds ongoing operational awareness requirements.
+None of these are blockers to Phase 1. All should be addressed before Phase 2 is considered complete.

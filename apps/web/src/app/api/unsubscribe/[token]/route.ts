@@ -227,9 +227,9 @@ export async function POST(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: memberId,
-      action: "member_unsubscribed",
-      entity_type: "email_preferences",
-      entity_id: memberId,
+      type: "member_unsubscribed",
+      subject_type: "email_preferences",
+      subject_id: memberId,
       metadata: { email: member.email, method: "unsubscribe_link" },
     });
 

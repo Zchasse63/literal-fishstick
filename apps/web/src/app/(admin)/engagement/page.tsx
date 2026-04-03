@@ -146,10 +146,10 @@ export default function EngagementPage() {
   useEffect(() => {
     async function fetchCount() {
       const { count } = await supabase
-        .from('memberships')
+        .from('members')
         .select('id', { count: 'exact', head: true })
         .eq('studio_id', STUDIO_ID)
-        .eq('status', 'active')
+        .eq('membership_status', 'active')
       setActiveMemberCount(count ?? 0)
     }
     fetchCount()
@@ -223,10 +223,10 @@ function LeaderboardTab() {
     async function fetchLeaderboard() {
       // Query members ordered by total_visits descending
       const { data } = await supabase
-        .from('memberships')
-        .select('*, profiles:member_id ( full_name )')
+        .from('members')
+        .select('*, profiles:profile_id ( full_name )')
         .eq('studio_id', STUDIO_ID)
-        .eq('status', 'active')
+        .eq('membership_status', 'active')
         .order('total_visits', { ascending: false })
         .limit(50)
 
@@ -241,8 +241,8 @@ function LeaderboardTab() {
           rank: i + 1,
           name: m.profiles?.full_name ?? 'Unknown',
           totalVisits: visits,
-          currentStreak: m.current_streak ?? 0,
-          referrals: m.referral_count ?? 0,
+          currentStreak: 0, // Not tracked in members table
+          referrals: 0, // Not tracked in members table
           ltv: m.lifetime_value ?? 0,
           badge,
         }

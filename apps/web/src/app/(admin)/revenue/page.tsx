@@ -945,7 +945,7 @@ export default function RevenuePage() {
           .from('transactions')
           .select(`
             id, amount, type, status, description, created_at, discount_applied, payment_method,
-            members ( profiles ( full_name ) )
+            members:member_id ( profiles:profile_id ( full_name ) )
           `)
           .eq('studio_id', STUDIO_ID)
           .order('created_at', { ascending: false })
@@ -960,7 +960,7 @@ export default function RevenuePage() {
         // Promo attributions
         supabase
           .from('promo_attributions')
-          .select('promo_code, attributed_sale_amount, created_at, trainers ( profiles ( full_name ) )')
+          .select('promo_code, attributed_sale_amount, created_at, trainers:trainer_id ( profiles:profile_id ( full_name ) )')
           .eq('studio_id', STUDIO_ID)
           .order('created_at', { ascending: false })
           .limit(50),

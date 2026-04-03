@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -32,6 +33,8 @@ import {
   AlertTriangle,
   X,
   Layers,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 
 // ─── Animation ──────────────────────────────────────────────
@@ -331,6 +334,7 @@ const PREVIEW_DATA = [
 
 // ─── Component ──────────────────────────────────────────────
 export default function ReportBuilderPage() {
+  const router = useRouter()
   const [step, setStep] = useState<Step>(1)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [selectedColumns, setSelectedColumns] = useState<string[]>([])
@@ -345,6 +349,8 @@ export default function ReportBuilderPage() {
   const [recipients, setRecipients] = useState<string[]>([])
   const [newRecipient, setNewRecipient] = useState('')
   const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const selectedReportType = useMemo(
     () => REPORT_TYPES.find((t) => t.id === selectedType),
@@ -389,6 +395,39 @@ export default function ReportBuilderPage() {
 
   function removeRecipient(email: string) {
     setRecipients((prev) => prev.filter((r) => r !== email))
+  }
+
+  async function handleSaveReport() {
+    if (!reportName.trim()) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: reportName.trim(),
+          description: reportDescription.trim() || null,
+          type: selectedType,
+          columns: selectedColumns,
+          filters: filters.map(({ field, operator, value }) => ({ field, operator, value })),
+          time_range: timeRange,
+          group_by: groupBy,
+          schedule_frequency: scheduleFrequency,
+          schedule_day: scheduleFrequency === 'weekly' ? scheduleDay : null,
+          schedule_date: scheduleFrequency === 'monthly' ? Number(scheduleDate) : null,
+          recipients,
+          export_format: exportFormat,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to save report')
+      router.push('/analytics/reports')
+    } catch (err: any) {
+      setSaveError(err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const STEP_LABELS = ['Choose Type', 'Configure', 'Preview', 'Save & Schedule']
@@ -971,6 +1010,13 @@ export default function ReportBuilderPage() {
                 </div>
               </div>
 
+              {saveError && (
+                <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700">{saveError}</p>
+                </div>
+              )}
+
               <div className="mt-8 flex justify-between">
                 <button
                   onClick={() => setStep(3)}
@@ -980,15 +1026,16 @@ export default function ReportBuilderPage() {
                   Back
                 </button>
                 <button
-                  disabled={!reportName.trim()}
+                  onClick={handleSaveReport}
+                  disabled={!reportName.trim() || saving}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition',
-                    reportName.trim()
+                    reportName.trim() && !saving
                       ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   )}
                 >
-                  <Save className="h-4 w-4" />
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save Report
                 </button>
               </div>

@@ -415,7 +415,7 @@ export default function LeadPipelinePage() {
     async function loadLeads() {
       const { data } = await supabase
         .from('leads')
-        .select('*')
+        .select('*, assignee:profiles!leads_assigned_to_fkey ( full_name )')
         .eq('studio_id', STUDIO_ID)
         .order('created_at', { ascending: false })
 
@@ -423,19 +423,22 @@ export default function LeadPipelinePage() {
 
       if (data) {
         setLeads(
-          data.map((l: any) => ({
-            id: l.id,
-            firstName: l.first_name || '',
-            lastName: l.last_name || '',
-            email: l.email || '',
-            phone: l.phone || undefined,
-            source: (l.source || 'website') as LeadSource,
-            score: l.score ?? 50,
-            status: (l.status || 'new') as LeadStatus,
-            lastActivity: l.updated_at ? getRelativeTime(l.updated_at) : 'Just now',
-            tags: l.tags || [],
-            assignedTo: l.assigned_to_name ? { name: l.assigned_to_name, initials: l.assigned_to_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() } : undefined,
-          }))
+          data.map((l: any) => {
+            const assigneeName = l.assignee?.full_name ?? null
+            return {
+              id: l.id,
+              firstName: l.first_name || '',
+              lastName: l.last_name || '',
+              email: l.email || '',
+              phone: l.phone || undefined,
+              source: (l.source || 'website') as LeadSource,
+              score: l.score ?? 50,
+              status: (l.status || 'new') as LeadStatus,
+              lastActivity: l.updated_at ? getRelativeTime(l.updated_at) : 'Just now',
+              tags: l.tags || [],
+              assignedTo: assigneeName ? { name: assigneeName, initials: assigneeName.split(' ').map((n: string) => n[0]).join('').toUpperCase() } : undefined,
+            }
+          })
         )
       }
 

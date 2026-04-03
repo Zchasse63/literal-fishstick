@@ -23,6 +23,10 @@ import {
   Eye,
   XCircle,
   RefreshCw,
+  Loader2,
+  DollarSign,
+  Coins,
+  Plus,
 } from 'lucide-react'
 
 // ─── Animation ──────────────────────────────────────────────
@@ -33,7 +37,7 @@ const fadeInUp = {
 }
 
 // ─── Types ──────────────────────────────────────────────────
-type Tab = 'overview' | 'members' | 'events' | 'invoices'
+type Tab = 'overview' | 'members' | 'events' | 'invoices' | 'credits'
 type MemberRole = 'primary' | 'admin' | 'member'
 type EventStatus = 'confirmed' | 'deposit_paid' | 'completed' | 'inquiry'
 type EventType = 'team_building' | 'corporate' | 'workshop' | 'private_party'
@@ -81,6 +85,7 @@ const TABS: { value: Tab; label: string; icon: typeof FileText }[] = [
   { value: 'members', label: 'Members', icon: Users },
   { value: 'events', label: 'Events', icon: Calendar },
   { value: 'invoices', label: 'Invoices', icon: FileText },
+  { value: 'credits', label: 'Credits', icon: CreditCard },
 ]
 
 // ─── Page ───────────────────────────────────────────────────
@@ -91,6 +96,21 @@ export default function CompanyDetailPage() {
   const [EVENTS, setEVENTS] = useState<any[]>([])
   const [INVOICES, setINVOICES] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Invoice action state
+  const [invoiceActionLoading, setInvoiceActionLoading] = useState<Record<string, boolean>>({})
+  const [invoiceErrors, setInvoiceErrors] = useState<Record<string, string>>({})
+  const [paymentDialogId, setPaymentDialogId] = useState<string | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('stripe')
+
+  // Credits state
+  const [creditHistory, setCreditHistory] = useState<any[]>([])
+  const [creditsLoading, setCreditsLoading] = useState(false)
+  const [allocAmount, setAllocAmount] = useState('')
+  const [allocReason, setAllocReason] = useState('')
+  const [allocating, setAllocating] = useState(false)
+  const [allocError, setAllocError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -138,6 +158,109 @@ export default function CompanyDetailPage() {
     loadCompany()
     return () => { cancelled = true }
   }, [])
+
+  // Load credits when credits tab is active
+  useEffect(() => {
+    if (activeTab !== 'credits' || !COMPANY) return
+    const companyId = COMPANY.id
+    const supabase = createBrowserClient()
+    setCreditsLoading(true)
+    supabase
+      .from('activity_log')
+      .select('*')
+      .eq('subject_type', 'company_account')
+      .eq('subject_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        setCreditHistory(data || [])
+        setCreditsLoading(false)
+      })
+  }, [activeTab, COMPANY])
+
+  // Invoice action handlers
+  async function handleSendInvoice(invoiceId: string) {
+    setInvoiceActionLoading(prev => ({ ...prev, [invoiceId]: true }))
+    setInvoiceErrors(prev => { const n = { ...prev }; delete n[invoiceId]; return n })
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/send`, { method: 'POST' })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error || 'Send failed') }
+      setINVOICES(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: 'sent' } : inv))
+    } catch (err: any) {
+      setInvoiceErrors(prev => ({ ...prev, [invoiceId]: err.message }))
+    } finally {
+      setInvoiceActionLoading(prev => ({ ...prev, [invoiceId]: false }))
+    }
+  }
+
+  async function handleVoidInvoice(invoiceId: string) {
+    if (!window.confirm('Are you sure you want to void this invoice? This cannot be undone.')) return
+    setInvoiceActionLoading(prev => ({ ...prev, [invoiceId]: true }))
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/void`, { method: 'POST' })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error || 'Void failed') }
+      setINVOICES(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: 'void' as InvoiceStatus } : inv))
+    } catch (err: any) {
+      setInvoiceErrors(prev => ({ ...prev, [invoiceId]: err.message }))
+    } finally {
+      setInvoiceActionLoading(prev => ({ ...prev, [invoiceId]: false }))
+    }
+  }
+
+  async function handleRecordPayment() {
+    if (!paymentDialogId || !paymentAmount) return
+    const amountCents = Math.round(parseFloat(paymentAmount) * 100)
+    if (isNaN(amountCents) || amountCents <= 0) return
+    setInvoiceActionLoading(prev => ({ ...prev, [paymentDialogId]: true }))
+    try {
+      const res = await fetch(`/api/invoices/${paymentDialogId}/record-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amountCents, payment_method: paymentMethod }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error || 'Payment failed') }
+      setINVOICES(prev => prev.map(inv => inv.id === paymentDialogId ? { ...inv, status: 'paid' as InvoiceStatus } : inv))
+      setPaymentDialogId(null)
+      setPaymentAmount('')
+      setPaymentMethod('stripe')
+    } catch (err: any) {
+      setInvoiceErrors(prev => ({ ...prev, [paymentDialogId]: err.message }))
+    } finally {
+      setInvoiceActionLoading(prev => ({ ...prev, [paymentDialogId!]: false }))
+    }
+  }
+
+  async function handleAllocateCredits() {
+    if (!COMPANY || !allocAmount || !allocReason.trim()) return
+    const amount = Number(allocAmount)
+    if (isNaN(amount) || amount === 0) return
+    if (amount < 0 && Math.abs(amount) > COMPANY.creditsRemaining) {
+      setAllocError(`Cannot deduct more than current balance (${COMPANY.creditsRemaining} credits)`)
+      return
+    }
+    setAllocating(true)
+    setAllocError(null)
+    try {
+      const res = await fetch(`/api/corporate/${COMPANY.id}/credits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, reason: allocReason }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Allocation failed')
+      setCOMPANY((prev: any) => ({ ...prev, creditsRemaining: json.data?.new_balance ?? prev.creditsRemaining + amount }))
+      setAllocAmount('')
+      setAllocReason('')
+      // Refresh credit history
+      const supabase = createBrowserClient()
+      const { data } = await supabase.from('activity_log').select('*').eq('subject_type', 'company_account').eq('subject_id', COMPANY.id).order('created_at', { ascending: false }).limit(50)
+      setCreditHistory(data || [])
+    } catch (err: any) {
+      setAllocError(err.message)
+    } finally {
+      setAllocating(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -458,20 +581,203 @@ export default function CompanyDetailPage() {
                   </span>
                 </div>
                 <div className="w-28 flex justify-end gap-1.5">
-                  <button className="h-7 w-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors" title="View">
-                    <Eye className="h-3.5 w-3.5 text-gray-500" />
-                  </button>
-                  <button className="h-7 w-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors" title="Send">
-                    <Send className="h-3.5 w-3.5 text-gray-500" />
-                  </button>
-                  <button className="h-7 w-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-red-50 transition-colors" title="Void">
-                    <XCircle className="h-3.5 w-3.5 text-gray-500 hover:text-red-500" />
-                  </button>
+                  {(invoice.status === 'draft' || invoice.status === 'sent') && (
+                    <button
+                      onClick={() => handleSendInvoice(invoice.id)}
+                      disabled={invoiceActionLoading[invoice.id]}
+                      className="h-7 w-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                      title="Send"
+                    >
+                      {invoiceActionLoading[invoice.id] ? <Loader2 className="h-3.5 w-3.5 text-gray-400 animate-spin" /> : <Send className="h-3.5 w-3.5 text-indigo-500" />}
+                    </button>
+                  )}
+                  {invoice.status !== 'paid' && (invoice.status as string) !== 'void' && (
+                    <button
+                      onClick={() => { setPaymentDialogId(invoice.id); setPaymentAmount(''); setPaymentMethod('stripe') }}
+                      className="h-7 w-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-emerald-50 transition-colors"
+                      title="Record Payment"
+                    >
+                      <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                    </button>
+                  )}
+                  {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
+                    <button
+                      onClick={() => handleVoidInvoice(invoice.id)}
+                      disabled={invoiceActionLoading[invoice.id]}
+                      className="h-7 w-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-red-50 transition-colors disabled:opacity-50"
+                      title="Void"
+                    >
+                      <XCircle className="h-3.5 w-3.5 text-red-500" />
+                    </button>
+                  )}
                 </div>
+                {invoiceErrors[invoice.id] && (
+                  <div className="col-span-full mt-1 text-xs text-red-600">{invoiceErrors[invoice.id]}</div>
+                )}
               </div>
             ))}
           </div>
         </motion.div>
+      )}
+
+      {activeTab === 'credits' && (
+        <motion.div {...fadeInUp} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Credit History */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm">
+            <div className="px-5 pt-5 pb-3">
+              <h3 className="text-base font-bold text-gray-900">Credit History</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Allocations and deductions</p>
+            </div>
+            {creditsLoading ? (
+              <div className="px-5 py-8 text-center">
+                <Loader2 className="h-5 w-5 text-gray-300 animate-spin mx-auto" />
+              </div>
+            ) : creditHistory.length === 0 ? (
+              <div className="py-12 text-center">
+                <CreditCard className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-gray-500">No credit adjustments yet</p>
+                <p className="text-xs text-gray-400 mt-0.5">Allocations and deductions will appear here</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {creditHistory.map((entry: any) => (
+                  <div key={entry.id} className="flex items-center justify-between px-5 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{entry.type?.includes('allocated') ? 'Allocated' : entry.type?.includes('deducted') ? 'Deducted' : entry.type}</p>
+                      <p className="text-xs text-gray-400">{entry.created_at ? new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn('text-sm font-bold tabular-nums', entry.type?.includes('allocated') ? 'text-emerald-600' : 'text-red-600')}>
+                        {entry.type?.includes('allocated') ? '+' : '-'}{Math.abs(entry.metadata?.amount ?? 0)}
+                      </p>
+                      {entry.metadata?.reason && <p className="text-[10px] text-gray-400">{entry.metadata.reason}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Credits Sidebar */}
+          <div className="space-y-4">
+            {/* Balance */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+              <h3 className="text-base font-bold text-gray-900 mb-4">Credit Balance</h3>
+              <div className="text-center mb-4">
+                <p className="text-[42px] font-black text-gray-900 tabular-nums leading-none">{COMPANY.creditsRemaining}</p>
+                <p className="text-sm text-gray-400 mt-1">of {COMPANY.monthlyCredits} monthly credits</p>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-3 mb-2">
+                <div className="bg-indigo-600 h-3 rounded-full transition-all" style={{ width: `${creditsPercent}%` }} />
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>{COMPANY.creditsRemaining} remaining</span>
+                <span>{COMPANY.monthlyCredits - COMPANY.creditsRemaining} used</span>
+              </div>
+            </div>
+
+            {/* Allocate Credits */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Adjust Credits</h3>
+              {allocError && (
+                <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700 mb-3">{allocError}</div>
+              )}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Amount</label>
+                  <input
+                    type="number"
+                    value={allocAmount}
+                    onChange={(e) => setAllocAmount(e.target.value)}
+                    placeholder="Positive to add, negative to deduct"
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Reason</label>
+                  <input
+                    value={allocReason}
+                    onChange={(e) => setAllocReason(e.target.value)}
+                    placeholder="e.g., Monthly renewal"
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+                <button
+                  onClick={handleAllocateCredits}
+                  disabled={allocating || !allocAmount || !allocReason.trim()}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {allocating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Apply Adjustment
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Record Payment Dialog */}
+      {paymentDialogId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl border border-gray-200 shadow-xl p-6 w-full max-w-sm mx-4"
+          >
+            <h3 className="text-base font-bold text-gray-900 mb-1">Record Payment</h3>
+            <p className="text-xs text-gray-400 mb-4">Record a manual payment for this invoice</p>
+
+            {invoiceErrors[paymentDialogId] && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700 mb-3">{invoiceErrors[paymentDialogId]}</div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Amount ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Payment Method</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                >
+                  <option value="stripe">Stripe</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="check">Check</option>
+                  <option value="cash">Cash</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleRecordPayment}
+                disabled={invoiceActionLoading[paymentDialogId] || !paymentAmount}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                {invoiceActionLoading[paymentDialogId] && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Record Payment
+              </button>
+              <button
+                onClick={() => { setPaymentDialogId(null); setPaymentAmount(''); setPaymentMethod('stripe') }}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </motion.div>
   )

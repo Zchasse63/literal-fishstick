@@ -205,9 +205,9 @@ export async function PUT(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: 'corporate.company_updated',
-      entity_type: 'company_account',
-      entity_id: id,
+      type: 'corporate.company_updated',
+      subject_type: 'company_account',
+      subject_id: id,
       metadata: { company_name: existing.name, updated_fields: Object.keys(updates) },
     })
 
@@ -282,9 +282,9 @@ export async function DELETE(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: 'corporate.company_churned',
-      entity_type: 'company_account',
-      entity_id: id,
+      type: 'corporate.company_churned',
+      subject_type: 'company_account',
+      subject_id: id,
       metadata: { company_name: company.name, previous_status: company.status },
     })
 

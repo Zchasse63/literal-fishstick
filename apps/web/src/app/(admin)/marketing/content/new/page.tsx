@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -20,6 +21,8 @@ import {
   Globe,
   X,
   Check,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -92,6 +95,7 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string; description: strin
 
 // ─── Main Page ──────────────────────────────────────────────
 export default function NewPostPage() {
+  const router = useRouter()
   const [selectedType, setSelectedType] = useState<PostType | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -99,8 +103,37 @@ export default function NewPostPage() {
   const [pinned, setPinned] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const isValid = selectedType && content.trim().length > 0
+
+  async function handleSubmit(status: 'draft' | 'published') {
+    if (!isValid) return
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: selectedType,
+          title: title.trim() || null,
+          body: content,
+          visibility,
+          pinned,
+          status,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to save post')
+      router.push('/marketing/content')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -316,17 +349,30 @@ export default function NewPostPage() {
           </button>
         </motion.div>
 
+        {/* Error */}
+        {error && (
+          <motion.div {...fadeInUp} className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-2 mb-4">
+            <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
+          </motion.div>
+        )}
+
         {/* Actions */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.4 }} className="flex gap-3">
-          <button className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors">
-            <Save className="h-4 w-4" />
+          <button
+            onClick={() => handleSubmit('draft')}
+            disabled={saving || !isValid}
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save as Draft
           </button>
           <button
-            disabled={!isValid}
+            onClick={() => handleSubmit('published')}
+            disabled={!isValid || saving}
             className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Send className="h-4 w-4" />
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Publish Now
           </button>
         </motion.div>

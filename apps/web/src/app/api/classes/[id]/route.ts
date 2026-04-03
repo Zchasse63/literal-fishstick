@@ -204,9 +204,9 @@ export async function PUT(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "class_updated",
-      entity_type: "class",
-      entity_id: id,
+      type: "class_updated",
+      subject_type: "class",
+      subject_id: id,
       metadata: updates,
     });
 
@@ -285,9 +285,9 @@ export async function DELETE(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "class_deleted",
-      entity_type: "class",
-      entity_id: id,
+      type: "class_deleted",
+      subject_type: "class",
+      subject_id: id,
       metadata: {},
     });
 

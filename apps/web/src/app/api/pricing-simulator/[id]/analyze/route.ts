@@ -184,9 +184,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'pricing_simulation_analyzed',
-      entity_type: 'pricing_simulation',
-      entity_id: id,
+      type: 'pricing_simulation_analyzed',
+      subject_type: 'pricing_simulation',
+      subject_id: id,
       metadata: {
         projected_mrr: result.projected_mrr,
         churn_risk_level: result.churn_risk_level,

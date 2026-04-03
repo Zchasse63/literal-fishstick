@@ -1334,6 +1334,59 @@ export default function CampaignDetailPage({
               </div>
             )}
 
+            {/* A/B Winner Selection (read-only campaigns with A/B enabled) */}
+            {isReadOnly && abTestEnabled && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-9 w-9 rounded-xl bg-violet-50 flex items-center justify-center">
+                    <Split className="h-4 w-4 text-violet-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">A/B Test Results</h3>
+                    <p className="text-xs text-gray-400">Select the winning variant to apply to remaining recipients</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="rounded-xl border border-gray-200 p-4 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mb-1">Variant A ({abSplit}%)</p>
+                    <p className="text-sm text-gray-600 truncate">{subject || 'Original subject'}</p>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 p-4 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600 mb-1">Variant B ({100 - abSplit}%)</p>
+                    <p className="text-sm text-gray-600 truncate">{variantBSubject || 'Variant B subject'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      const campaignId = typeof window !== 'undefined' ? window.location.pathname.split('/')[3] : ''
+                      await fetch(`/api/campaigns/${campaignId}/select-winner`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ winner: 'a' }),
+                      })
+                    }}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                  >
+                    Select A as Winner
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const campaignId = typeof window !== 'undefined' ? window.location.pathname.split('/')[3] : ''
+                      await fetch(`/api/campaigns/${campaignId}/select-winner`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ winner: 'b' }),
+                      })
+                    }}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+                  >
+                    Select B as Winner
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Send Options */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               <h3 className="text-sm font-bold text-gray-900 mb-4">

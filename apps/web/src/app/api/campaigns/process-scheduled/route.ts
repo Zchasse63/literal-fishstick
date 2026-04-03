@@ -99,9 +99,9 @@ export async function POST(request: NextRequest) {
         await supabase.from('activity_log').insert({
           studio_id: STUDIO_ID,
           actor_id: null,
-          action: 'campaign_auto_cancelled',
-          entity_type: 'campaign',
-          entity_id: campaign.id,
+          type: 'campaign_auto_cancelled',
+          subject_type: 'campaign',
+          subject_id: campaign.id,
           metadata: {
             reason: 'Scheduled time exceeded 2-hour auto-cancel window',
             scheduled_at: campaign.scheduled_at,
@@ -218,13 +218,13 @@ export async function POST(request: NextRequest) {
 
         // Fetch membership data for merge tags
         const { data: memberships } = await supabase
-          .from('memberships')
-          .select('member_id, type')
-          .in('member_id', toSendIds)
-          .eq('status', 'active')
+          .from('members')
+          .select('profile_id, membership_tier')
+          .in('profile_id', toSendIds)
+          .eq('membership_status', 'active')
 
         const membershipMap = new Map(
-          (memberships ?? []).map((m: { member_id: string; type: string }) => [m.member_id, m])
+          (memberships ?? []).map((m: { profile_id: string; membership_tier: string }) => [m.profile_id, m])
         )
 
         for (const member of members) {
@@ -241,12 +241,12 @@ export async function POST(request: NextRequest) {
           }
 
           const nameParts = (member.full_name ?? '').split(' ')
-          const membership = membershipMap.get(member.id) as { member_id: string; type: string } | undefined
+          const membership = membershipMap.get(member.id) as { profile_id: string; membership_tier: string } | undefined
 
           const mergeData = {
             first_name: nameParts[0] ?? '',
             last_name: nameParts.slice(1).join(' '),
-            membership_name: membership?.type ?? 'No active membership',
+            membership_name: membership?.membership_tier ?? 'No active membership',
             campaign_name: campaign.name,
           }
 
@@ -321,9 +321,9 @@ export async function POST(request: NextRequest) {
       await supabase.from('activity_log').insert({
         studio_id: STUDIO_ID,
         actor_id: null,
-        action: 'campaign_sent_by_scheduler',
-        entity_type: 'campaign',
-        entity_id: campaign.id,
+        type: 'campaign_sent_by_scheduler',
+        subject_type: 'campaign',
+        subject_id: campaign.id,
         metadata: { sent, failed, status: finalStatus },
       })
 

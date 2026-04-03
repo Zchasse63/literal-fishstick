@@ -210,9 +210,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'order_shipped',
-      entity_type: 'order',
-      entity_id: id,
+      type: 'order_shipped',
+      subject_type: 'order',
+      subject_id: id,
       metadata: {
         carrier: labelData.carrier,
         service: labelData.service,

@@ -182,9 +182,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'product_created',
-      entity_type: 'product',
-      entity_id: product.id,
+      type: 'product_created',
+      subject_type: 'product',
+      subject_id: product.id,
       metadata: { name, price, category: category ?? null },
     })
 

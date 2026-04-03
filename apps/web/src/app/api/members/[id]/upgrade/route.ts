@@ -59,13 +59,13 @@ export async function POST(
       );
     }
 
-    // Fetch current member
+    // Fetch current member record
     const { data: member, error: memberError } = await supabase
-      .from("profiles")
-      .select("*, memberships(id, type, status, stripe_subscription_id)")
-      .eq("id", memberId)
+      .from("members")
+      .select("id, profile_id, membership_tier, membership_status, stripe_subscription_id")
+      .eq("profile_id", memberId)
       .eq("studio_id", studioId)
-      .single();
+      .maybeSingle();
 
     if (memberError || !member) {
       return NextResponse.json(
@@ -74,13 +74,7 @@ export async function POST(
       );
     }
 
-    const currentMembership = Array.isArray(member.memberships)
-      ? member.memberships.find(
-          (m: { status: string }) => m.status === "active"
-        )
-      : null;
-
-    const oldPlan = currentMembership?.type ?? "none";
+    const oldPlan = member.membership_tier ?? "none";
 
     if (oldPlan === new_plan) {
       return NextResponse.json(
@@ -89,14 +83,14 @@ export async function POST(
       );
     }
 
-    // Update membership tier on the profile
+    // Update membership tier on the members table
     const { error: updateError } = await supabase
-      .from("profiles")
+      .from("members")
       .update({
         membership_tier: new_plan,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", memberId)
+      .eq("id", member.id)
       .eq("studio_id", studioId);
 
     if (updateError) {
@@ -106,18 +100,6 @@ export async function POST(
       );
     }
 
-    // Update the membership record if it exists
-    if (currentMembership) {
-      await supabase
-        .from("memberships")
-        .update({
-          type: new_plan,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", currentMembership.id)
-        .eq("studio_id", studioId);
-    }
-
     // If Stripe subscription exists, update with proration
     // Note: Full Stripe integration requires the Stripe SDK.
     // This logs the intent; the actual Stripe call would be:
@@ -125,7 +107,7 @@ export async function POST(
     //   items: [{ id: itemId, price: newPriceId }],
     //   proration_behavior: 'create_prorations',
     // });
-    const stripeNote = currentMembership?.stripe_subscription_id
+    const stripeNote = member.stripe_subscription_id
       ? "Stripe subscription proration pending"
       : "No Stripe subscription to update";
 
@@ -133,9 +115,9 @@ export async function POST(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "membership_upgraded",
-      entity_type: "profile",
-      entity_id: memberId,
+      type: "membership_upgraded",
+      subject_type: "profile",
+      subject_id: memberId,
       metadata: {
         old_plan: oldPlan,
         new_plan,

@@ -185,44 +185,73 @@ export default function OperationsPage() {
     async function fetchData() {
       const supabase = createBrowserClient()
 
-      // Fetch staff profiles
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('studio_id', STUDIO_ID)
+      // Fetch employees joined with profiles and trainers for trainer-specific data
+      const [empRes, trainerRes, clockRes] = await Promise.all([
+        supabase
+          .from('employees')
+          .select('*, profiles:profile_id ( id, full_name, email, phone, roles )')
+          .eq('studio_id', STUDIO_ID),
+        supabase
+          .from('trainers')
+          .select('profile_id, promo_code, total_classes_led, total_bonus_earned, total_commission_earned, base_pay_per_class, bonus_threshold')
+          .eq('studio_id', STUDIO_ID),
+        // Fetch active clock entries (no clock_out) to determine who is clocked in
+        supabase
+          .from('clock_entries')
+          .select('employee_id, clock_in')
+          .eq('studio_id', STUDIO_ID)
+          .is('clock_out', null),
+      ])
 
-      if (profiles && profiles.length > 0) {
-        const mapped: Employee[] = profiles.map((p: any) => {
-          const roles: string[] = p.roles ?? []
+      const employees = empRes.data ?? []
+      const trainers = trainerRes.data ?? []
+      const activeClocks = clockRes.data ?? []
+
+      // Build lookup maps
+      const trainerByProfileId = new Map<string, any>()
+      for (const t of trainers) {
+        trainerByProfileId.set(t.profile_id, t)
+      }
+      const activeClockByEmployeeId = new Map<string, any>()
+      for (const c of activeClocks) {
+        activeClockByEmployeeId.set(c.employee_id, c)
+      }
+
+      if (employees.length > 0) {
+        const mapped: Employee[] = employees.map((emp: any) => {
+          const profile = emp.profiles ?? {}
+          const roles: string[] = profile.roles ?? []
           const role: Role = roles.includes('owner') ? 'Owner'
             : roles.includes('trainer') ? 'Trainer'
             : roles.includes('front_desk') ? 'Front Desk'
             : roles.includes('manager') ? 'Manager'
             : 'Front Desk'
+          const trainerData = trainerByProfileId.get(emp.profile_id)
+          const activeClock = activeClockByEmployeeId.get(emp.id)
           return {
-            id: p.id,
-            name: p.full_name ?? p.email ?? 'Unknown',
-            initials: getInitials(p.full_name ?? p.email ?? 'U'),
+            id: emp.id,
+            name: profile.full_name ?? profile.email ?? 'Unknown',
+            initials: getInitials(profile.full_name ?? profile.email ?? 'U'),
             role,
-            status: (p.status === 'active' ? 'Active' : p.status === 'on_leave' ? 'On Leave' : 'Inactive') as Employee['status'],
-            employmentType: (p.employment_type ?? 'Part-Time') as EmploymentType,
-            hireDate: p.hire_date ? new Date(p.hire_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
-            payRate: p.pay_rate ?? null,
-            hoursThisPeriod: p.hours_this_period ?? null,
-            clockStatus: p.clock_status === 'in' ? 'in' : p.clock_status === 'out' ? 'out' : null,
-            clockedInSince: p.clocked_in_since ? new Date(p.clocked_in_since).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
-            email: p.email ?? '',
-            phone: p.phone ?? '',
-            classesLed: p.classes_led,
-            avgAttendance: p.avg_attendance,
-            bonusHitRate: p.bonus_hit_rate,
-            promoCode: p.promo_code,
-            promoRedemptions: p.promo_redemptions,
-            promoRevenue: p.promo_revenue,
-            currentPeriodHours: p.current_period_hours,
-            grossPayEstimate: p.gross_pay_estimate,
-            ytdGross: p.ytd_gross,
-            ytdBonuses: p.ytd_bonuses,
+            status: (emp.status === 'active' ? 'Active' : emp.status === 'on_leave' ? 'On Leave' : 'Inactive') as Employee['status'],
+            employmentType: (emp.employment_type ?? 'Part-Time') as EmploymentType,
+            hireDate: emp.hire_date ? new Date(emp.hire_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+            payRate: emp.pay_rate != null ? `$${emp.pay_rate}/${emp.pay_type === 'hourly' ? 'hr' : emp.pay_type ?? 'hr'}` : null,
+            hoursThisPeriod: null,
+            clockStatus: activeClock ? 'in' as ClockStatus : 'out' as ClockStatus,
+            clockedInSince: activeClock ? new Date(activeClock.clock_in).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
+            email: profile.email ?? '',
+            phone: profile.phone ?? '',
+            classesLed: trainerData?.total_classes_led,
+            avgAttendance: undefined,
+            bonusHitRate: undefined,
+            promoCode: trainerData?.promo_code,
+            promoRedemptions: undefined,
+            promoRevenue: undefined,
+            currentPeriodHours: undefined,
+            grossPayEstimate: undefined,
+            ytdGross: undefined,
+            ytdBonuses: undefined,
           }
         })
         setEmployees(mapped)
@@ -233,25 +262,14 @@ export default function OperationsPage() {
         .from('payroll_periods')
         .select('*')
         .eq('studio_id', STUDIO_ID)
-        .order('start_date', { ascending: false })
+        .order('period_start', { ascending: false })
 
       if (ppData && ppData.length > 0) {
         const mapped: PayPeriod[] = ppData.map((pp: any) => ({
           id: pp.id,
-          label: pp.label ?? `${new Date(pp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(pp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-          range: `${new Date(pp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(pp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-          rows: (pp.line_items ?? []).map((li: any) => ({
-            employeeId: li.employee_id ?? '',
-            name: li.name ?? '',
-            role: li.role ?? 'Trainer',
-            regularHours: li.regular_hours ?? 0,
-            overtime: li.overtime ?? 0,
-            grossPay: li.gross_pay ?? 0,
-            trainerBonuses: li.trainer_bonuses ?? 0,
-            promoCommissions: li.promo_commissions ?? 0,
-            total: li.total ?? 0,
-            status: li.status ?? 'Pending Review',
-          })),
+          label: `${new Date(pp.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(pp.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          range: `${new Date(pp.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(pp.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          rows: [],  // Payroll line items are computed separately, not stored as a JSON column
         }))
         setPayPeriods(mapped)
       }

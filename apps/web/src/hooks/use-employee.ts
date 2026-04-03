@@ -379,7 +379,7 @@ export function usePayrollPeriods() {
 export interface EmployeeDocument {
   id: string
   employee_id: string
-  type: string
+  document_type: string
   name: string
   file_url: string | null
   status: string

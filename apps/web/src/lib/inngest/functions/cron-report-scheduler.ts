@@ -170,14 +170,14 @@ async function generateReportData(
     case 'attendance': {
       const { data } = await db
         .from('daily_metrics')
-        .select('metric_date, total_bookings, total_check_ins, total_no_shows, total_cancellations, avg_class_utilization, classes_held')
+        .select('metric_date, total_bookings, total_check_ins, total_no_shows, total_late_cancellations, avg_class_fill_rate, classes_held')
         .eq('studio_id', report.studio_id)
         .gte('metric_date', dateFrom)
         .lte('metric_date', dateTo)
         .order('metric_date', { ascending: true });
 
       return {
-        headers: ['Date', 'Bookings', 'Check-Ins', 'No-Shows', 'Cancellations', 'Utilization %', 'Classes Held'],
+        headers: ['Date', 'Bookings', 'Check-Ins', 'No-Shows', 'Late Cancellations', 'Fill Rate %', 'Classes Held'],
         rows: data ?? [],
       };
     }
@@ -185,7 +185,7 @@ async function generateReportData(
     case 'revenue': {
       const { data } = await db
         .from('daily_metrics')
-        .select('metric_date, total_revenue, membership_revenue, credit_pack_revenue, drop_in_revenue, merch_revenue, gift_card_revenue, refund_total')
+        .select('metric_date, revenue_total, revenue_memberships, revenue_credit_packs, revenue_drop_ins, revenue_merch, revenue_gift_cards, refunds_total')
         .eq('studio_id', report.studio_id)
         .gte('metric_date', dateFrom)
         .lte('metric_date', dateTo)
@@ -200,14 +200,14 @@ async function generateReportData(
     case 'membership': {
       const { data } = await db
         .from('daily_metrics')
-        .select('metric_date, active_members, new_members, churned_members, total_members')
+        .select('metric_date, active_members, new_members, churned_members, paused_members')
         .eq('studio_id', report.studio_id)
         .gte('metric_date', dateFrom)
         .lte('metric_date', dateTo)
         .order('metric_date', { ascending: true });
 
       return {
-        headers: ['Date', 'Active Members', 'New Members', 'Churned Members', 'Total Members'],
+        headers: ['Date', 'Active Members', 'New Members', 'Churned Members', 'Paused Members'],
         rows: data ?? [],
       };
     }
@@ -215,13 +215,13 @@ async function generateReportData(
     case 'trainer_payroll': {
       const { data } = await db
         .from('trainer_metric_snapshots')
-        .select('trainer_id, period_month, total_classes, base_pay, bonus_pay, commission_pay, total_compensation')
+        .select('trainer_id, period_start, period_end, total_classes, base_pay, bonus_pay, promo_commission, total_compensation')
         .eq('studio_id', report.studio_id)
-        .order('period_month', { ascending: false })
+        .order('period_start', { ascending: false })
         .limit(100);
 
       return {
-        headers: ['Trainer ID', 'Period', 'Classes', 'Base Pay', 'Bonus Pay', 'Commission', 'Total'],
+        headers: ['Trainer ID', 'Period Start', 'Period End', 'Classes', 'Base Pay', 'Bonus Pay', 'Commission', 'Total'],
         rows: data ?? [],
       };
     }
@@ -229,13 +229,13 @@ async function generateReportData(
     case 'trainer_performance': {
       const { data } = await db
         .from('trainer_metric_snapshots')
-        .select('trainer_id, period_month, total_classes, total_check_ins, avg_attendance, classes_above_bonus_threshold, max_attendance')
+        .select('trainer_id, period_start, period_end, total_classes, total_check_ins, avg_attendance, classes_above_bonus_threshold, avg_capacity_utilization')
         .eq('studio_id', report.studio_id)
-        .order('period_month', { ascending: false })
+        .order('period_start', { ascending: false })
         .limit(100);
 
       return {
-        headers: ['Trainer ID', 'Period', 'Classes', 'Check-Ins', 'Avg Attendance', 'Above Threshold', 'Max Attendance'],
+        headers: ['Trainer ID', 'Period Start', 'Period End', 'Classes', 'Check-Ins', 'Avg Attendance', 'Above Threshold', 'Avg Utilization'],
         rows: data ?? [],
       };
     }
@@ -258,11 +258,11 @@ async function generateReportData(
     case 'class_performance': {
       const { data } = await db
         .from('classes')
-        .select('id, name, class_type, date, start_time, capacity, booked_count, checked_in_count, trainer_id, status')
+        .select('id, title, class_type_id, starts_at, ends_at, capacity, booked_count, checked_in_count, trainer_id, status')
         .eq('studio_id', report.studio_id)
-        .gte('date', dateFrom)
-        .lte('date', dateTo)
-        .order('date', { ascending: true });
+        .gte('starts_at', `${dateFrom}T00:00:00.000Z`)
+        .lte('starts_at', `${dateTo}T23:59:59.999Z`)
+        .order('starts_at', { ascending: true });
 
       return {
         headers: ['Class ID', 'Name', 'Type', 'Date', 'Time', 'Capacity', 'Booked', 'Checked In', 'Trainer ID', 'Status'],
@@ -273,7 +273,7 @@ async function generateReportData(
     case 'transaction_log': {
       const { data } = await db
         .from('transactions')
-        .select('id, member_id, amount, payment_type, status, created_at')
+        .select('id, member_id, amount, type, status, created_at')
         .eq('studio_id', report.studio_id)
         .gte('created_at', `${dateFrom}T00:00:00.000Z`)
         .lte('created_at', `${dateTo}T23:59:59.999Z`)
@@ -289,7 +289,7 @@ async function generateReportData(
     case 'failed_payments': {
       const { data } = await db
         .from('transactions')
-        .select('id, member_id, amount, payment_type, status, created_at')
+        .select('id, member_id, amount, type, status, created_at')
         .eq('studio_id', report.studio_id)
         .eq('status', 'failed')
         .gte('created_at', `${dateFrom}T00:00:00.000Z`)
@@ -305,14 +305,14 @@ async function generateReportData(
     case 'member_movement': {
       const { data } = await db
         .from('daily_metrics')
-        .select('metric_date, new_members, churned_members, active_members, new_leads, leads_converted')
+        .select('metric_date, new_members, churned_members, active_members, paused_members, at_risk_members')
         .eq('studio_id', report.studio_id)
         .gte('metric_date', dateFrom)
         .lte('metric_date', dateTo)
         .order('metric_date', { ascending: true });
 
       return {
-        headers: ['Date', 'New Members', 'Churned', 'Active', 'New Leads', 'Converted Leads'],
+        headers: ['Date', 'New Members', 'Churned', 'Active', 'Paused', 'At Risk'],
         rows: data ?? [],
       };
     }
@@ -320,13 +320,13 @@ async function generateReportData(
     case 'campaign_performance': {
       const { data } = await db
         .from('campaigns')
-        .select('id, name, status, recipient_count, delivered_count, open_count, unique_click_count, conversion_count, revenue_attributed, created_at')
+        .select('id, name, status, sent_count, delivered_count, open_count, click_count, created_at')
         .eq('studio_id', report.studio_id)
         .order('created_at', { ascending: false })
         .limit(100);
 
       return {
-        headers: ['Campaign ID', 'Name', 'Status', 'Recipients', 'Delivered', 'Opens', 'Clicks', 'Conversions', 'Revenue', 'Created'],
+        headers: ['Campaign ID', 'Name', 'Status', 'Sent', 'Delivered', 'Opens', 'Clicks', 'Created'],
         rows: data ?? [],
       };
     }

@@ -79,9 +79,9 @@ export async function PUT(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'payroll_approved',
-      entity_type: 'payroll_period',
-      entity_id: id,
+      type: 'payroll_approved',
+      subject_type: 'payroll_period',
+      subject_id: id,
       metadata: { previous_status: period.status },
     })
 

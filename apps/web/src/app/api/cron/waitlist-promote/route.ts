@@ -223,9 +223,9 @@ export async function POST(request: Request) {
         await supabase.from("activity_log").insert({
           studio_id: cls.studio_id,
           actor_id: actorId,
-          action: "waitlist_promoted",
-          entity_type: "waitlist_entry",
-          entity_id: entry.id,
+          type: "waitlist_promoted",
+          subject_type: "waitlist_entry",
+          subject_id: entry.id,
           metadata: {
             class_id: cls.id,
             class_title: cls.title,

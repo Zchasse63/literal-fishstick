@@ -58,7 +58,7 @@ export async function GET(
     // ─── Fetch Members with Profile Join ──────────────────────
     const { data, error, count } = await supabase
       .from('company_members')
-      .select('*, profiles:member_id(id, first_name, last_name, email, phone, avatar_url)', { count: 'exact' })
+      .select('*, profiles:member_id(id, full_name, email, phone, avatar_url)', { count: 'exact' })
       .eq('company_id', id)
       .eq('studio_id', STUDIO_ID)
       .eq('is_active', true)
@@ -170,9 +170,9 @@ export async function POST(
       await supabase.from('activity_log').insert({
         studio_id: STUDIO_ID,
         actor_id: user.id,
-        action: 'corporate.member_added',
-        entity_type: 'company_member',
-        entity_id: reactivated.id,
+        type: 'corporate.member_added',
+        subject_type: 'company_member',
+        subject_id: reactivated.id,
         metadata: { company_name: company.name, member_id, reactivated: true },
       })
 
@@ -207,9 +207,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      action: 'corporate.member_added',
-      entity_type: 'company_member',
-      entity_id: newMember.id,
+      type: 'corporate.member_added',
+      subject_type: 'company_member',
+      subject_id: newMember.id,
       metadata: { company_name: company.name, member_id },
     })
 

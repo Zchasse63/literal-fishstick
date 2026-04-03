@@ -101,9 +101,9 @@ export async function POST(
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "enrollment_exited",
-      entity_type: "automation_enrollment",
-      entity_id: eid,
+      type: "enrollment_exited",
+      subject_type: "automation_enrollment",
+      subject_id: eid,
       metadata: {
         flow_id: id,
         member_id: enrollment.member_id,

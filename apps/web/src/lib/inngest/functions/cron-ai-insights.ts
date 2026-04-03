@@ -38,7 +38,7 @@ export const cronAIInsights = inngest.createFunction(
       // Revenue — current 30d
       const { data: currentTx } = await db
         .from('transactions')
-        .select('amount, payment_type')
+        .select('amount, type')
         .eq('studio_id', STUDIO_ID)
         .eq('status', 'completed')
         .gte('created_at', `${periodStart}T00:00:00.000Z`)
@@ -47,10 +47,10 @@ export const cronAIInsights = inngest.createFunction(
       const currentTxRows = currentTx ?? [];
       const revenueCurrent = currentTxRows.reduce((s, t) => s + (t.amount ?? 0), 0);
       const merchRevenue = currentTxRows
-        .filter((t) => t.payment_type === 'merch')
+        .filter((t) => t.type === 'merch')
         .reduce((s, t) => s + (t.amount ?? 0), 0);
       const dropInRevenue = currentTxRows
-        .filter((t) => t.payment_type === 'drop_in')
+        .filter((t) => t.type === 'drop_in')
         .reduce((s, t) => s + (t.amount ?? 0), 0);
 
       // Revenue — previous 30d
@@ -101,17 +101,17 @@ export const cronAIInsights = inngest.createFunction(
       // Classes — get per-class stats for top/bottom
       const { data: classData } = await db
         .from('classes')
-        .select('id, name, capacity, booked_count, checked_in_count')
+        .select('id, title, capacity, booked_count, checked_in_count')
         .eq('studio_id', STUDIO_ID)
-        .gte('date', periodStart)
-        .lte('date', periodEnd)
+        .gte('starts_at', `${periodStart}T00:00:00.000Z`)
+        .lte('starts_at', `${periodEnd}T23:59:59.999Z`)
         .in('status', ['completed', 'in_progress']);
 
       const classRows = classData ?? [];
       const classMetricsMap = new Map<string, { name: string; totalFill: number; count: number; bookings: number }>();
 
       for (const c of classRows) {
-        const key = c.name ?? c.id;
+        const key = c.title ?? c.id;
         const existing = classMetricsMap.get(key) ?? { name: key, totalFill: 0, count: 0, bookings: 0 };
         existing.totalFill += ((c.checked_in_count ?? 0) / (c.capacity || 12)) * 100;
         existing.count += 1;

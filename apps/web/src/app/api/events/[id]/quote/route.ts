@@ -87,9 +87,9 @@ export async function POST(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'event_quoted',
-      entity_type: 'event',
-      entity_id: id,
+      type: 'event_quoted',
+      subject_type: 'event',
+      subject_id: id,
       metadata: {
         base_price: basePrice,
         per_person_price: perPersonPrice,

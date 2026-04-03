@@ -180,6 +180,17 @@ The dashboard IS the entire backend of the business. The iOS app and website are
 
 **All 18 edge cases fully decided.** Strike penalties: $5 (2nd), $10 (3rd). Unlimited members: warning-only. System-level and member-level toggles for the penalty system. Guest pass system with QR/link invite flow, conversion tracking, referral attribution.
 
+## Glofox API Integration
+
+- **Full API remediation plan:** `docs/glofox-api-remediation-plan.md` — 12-phase plan covering all 50+ Glofox API endpoints
+- **API client:** `apps/web/src/lib/glofox/client.ts` — all Glofox REST API methods
+- **Official OpenAPI spec:** https://apidocs-plat.aws.glofox.com/openapi.yaml
+- **Discovered endpoints (undocumented):** taxes, programs, facilities, branches, integrations, invoices, analytics (members/revenue/bookings), categories
+- **ClassPass integration active** — bookings may originate from ClassPass
+- **Tax rate:** 4.25% ("Fees & Tax")
+- **Trainers populated:** Trent Lott (TRENT60), Whitney Cooper (WHITNEY60), Emily Drennen (no code yet)
+- **Promo logic:** `discount_ids` and `promo_code` are mutually exclusive in Glofox price-breakdown
+
 ## Conventions
 
 - User prefers Apple-native design philosophy — powerful, intuitive, not boring

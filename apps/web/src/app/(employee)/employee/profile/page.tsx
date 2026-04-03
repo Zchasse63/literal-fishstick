@@ -51,8 +51,8 @@ export default function ProfilePage() {
   const loading = profileLoading || docsLoading
 
   // Separate certifications (have expiry) from signed documents
-  const certifications = documents.filter((d) => d.type === 'certification' || d.expires_at)
-  const signedDocs = documents.filter((d) => d.type !== 'certification' && !d.expires_at)
+  const certifications = documents.filter((d) => d.document_type === 'certification' || d.expires_at)
+  const signedDocs = documents.filter((d) => d.document_type !== 'certification' && !d.expires_at)
 
   const roles = profile?.roles ?? []
   const roleLabel = roles.includes('trainer') ? 'Trainer' : roles.includes('admin') ? 'Admin' : 'Employee'

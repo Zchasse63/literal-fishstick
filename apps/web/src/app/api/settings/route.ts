@@ -178,9 +178,9 @@ export async function PUT(request: NextRequest) {
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "settings_updated",
-      entity_type: "studio_settings",
-      entity_id: studioId,
+      type: "settings_updated",
+      subject_type: "studio_settings",
+      subject_id: studioId,
       metadata: updates,
     });
 

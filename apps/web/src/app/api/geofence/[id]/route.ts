@@ -105,9 +105,9 @@ export async function PUT(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'geofence_updated',
-      entity_type: 'geofence_location',
-      entity_id: id,
+      type: 'geofence_updated',
+      subject_type: 'geofence_location',
+      subject_id: id,
       metadata: updateData,
     })
 
@@ -167,9 +167,9 @@ export async function DELETE(
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'geofence_deleted',
-      entity_type: 'geofence_location',
-      entity_id: id,
+      type: 'geofence_deleted',
+      subject_type: 'geofence_location',
+      subject_id: id,
       metadata: {},
     })
 

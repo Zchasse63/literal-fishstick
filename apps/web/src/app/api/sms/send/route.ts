@@ -84,9 +84,9 @@ export async function POST(request: NextRequest) {
   await supabase.from('activity_log').insert({
     studio_id: STUDIO_ID,
     actor_id: user.id,
-    action: 'sms_sent',
-    entity_type: 'sms',
-    entity_id: result.provider_message_id,
+    type: 'sms_sent',
+    subject_type: 'sms',
+    subject_id: result.provider_message_id,
     metadata: { to, segments: result.segments },
   });
 

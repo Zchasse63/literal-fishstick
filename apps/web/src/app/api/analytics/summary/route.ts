@@ -49,10 +49,11 @@ export async function GET(request: NextRequest) {
       .gte("metric_date", firstOfMonth.toISOString().split("T")[0])
       .lte("metric_date", now.toISOString().split("T")[0]);
 
+    // daily_metrics stores revenue_total in cents — convert to dollars
     const revenueMtd = (mtdRows ?? []).reduce(
       (sum, r) => sum + (r.revenue_total ?? 0),
       0
-    );
+    ) / 100;
 
     // ─── Previous month total revenue for trend ───────────────
     const { data: prevMtdRows } = await supabase
@@ -65,30 +66,36 @@ export async function GET(request: NextRequest) {
     const prevRevenueMtd = (prevMtdRows ?? []).reduce(
       (sum, r) => sum + (r.revenue_total ?? 0),
       0
-    );
+    ) / 100;
 
     // ─── Live query: active members count ─────────────────────
     const { count: activeMembersCount } = await supabase
-      .from("memberships")
+      .from("members")
       .select("id", { count: "exact", head: true })
       .eq("studio_id", studioId)
-      .eq("status", "active");
+      .eq("membership_status", "active");
 
     const activeMembers = activeMembersCount ?? 0;
 
     // ─── Compute KPIs ─────────────────────────────────────────
-    const mrr = latestMetric?.mrr ?? 0;
-    const prevMrr = prevMetric?.mrr ?? 0;
+    // daily_metrics stores mrr in cents — convert to dollars
+    const mrr = (latestMetric?.mrr ?? 0) / 100;
+    const prevMrr = (prevMetric?.mrr ?? 0) / 100;
     const arpm = activeMembers > 0 ? Math.round((mrr / activeMembers) * 100) / 100 : 0;
     const prevActiveMembers = prevMetric?.active_members ?? 0;
     const prevArpm =
       prevActiveMembers > 0
         ? Math.round((prevMrr / prevActiveMembers) * 100) / 100
         : 0;
-    const churnRate = latestMetric?.churn_rate ?? 0;
-    const prevChurnRate = prevMetric?.churn_rate ?? 0;
-    const avgFillRate = latestMetric?.avg_fill_rate ?? 0;
-    const prevAvgFillRate = prevMetric?.avg_fill_rate ?? 0;
+    // Compute churn rate from churned_members / active_members
+    const churnRate = (latestMetric?.active_members ?? 0) > 0
+      ? (latestMetric?.churned_members ?? 0) / (latestMetric?.active_members ?? 1)
+      : 0;
+    const prevChurnRate = (prevMetric?.active_members ?? 0) > 0
+      ? (prevMetric?.churned_members ?? 0) / (prevMetric?.active_members ?? 1)
+      : 0;
+    const avgFillRate = latestMetric?.avg_class_fill_rate ?? 0;
+    const prevAvgFillRate = prevMetric?.avg_class_fill_rate ?? 0;
 
     // Helper for trend calculation
     const trend = (current: number, previous: number) => {

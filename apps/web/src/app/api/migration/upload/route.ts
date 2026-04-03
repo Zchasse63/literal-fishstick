@@ -90,9 +90,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: 'migration_file_uploaded',
-      entity_type: 'migration',
-      entity_id: studioId,
+      type: 'migration_file_uploaded',
+      subject_type: 'migration',
+      subject_id: studioId,
       metadata: {
         file_name: file.name,
         file_size: file.size,

@@ -267,9 +267,9 @@ export async function POST(request: NextRequest) {
       await supabase.from("activity_log").insert({
         studio_id: studioId,
         actor_id: user.id,
-        action: "employee_clocked_in",
-        entity_type: "clock_entry",
-        entity_id: entry.id,
+        type: "employee_clocked_in",
+        subject_type: "clock_entry",
+        subject_id: entry.id,
         metadata: {
           location_name: matchedLocationName,
           geofence_verified: geofenceVerified,
@@ -339,9 +339,9 @@ export async function POST(request: NextRequest) {
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      action: "employee_clocked_out",
-      entity_type: "clock_entry",
-      entity_id: activeEntry.id,
+      type: "employee_clocked_out",
+      subject_type: "clock_entry",
+      subject_id: activeEntry.id,
       metadata: {
         location_name: matchedLocationName,
         total_hours: Math.round(totalHours * 100) / 100,
