@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import { fadeInUpWithExit as fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
-import type { Step, ChannelType, PreviewMode, Segment } from '../_components/types'
+import type { Step, ChannelType, PreviewMode, Segment, Template } from '../_components/types'
 import { TEMPLATES, MERGE_TAGS, AI_SUBJECT_SUGGESTIONS } from '../_components/constants'
 import StepIndicator from '../_components/StepIndicator'
 import EmailPreview from '../_components/EmailPreview'
