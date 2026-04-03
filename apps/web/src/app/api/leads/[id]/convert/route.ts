@@ -7,7 +7,7 @@ const ALLOWED_ROLES = ["owner", "admin", "manager"];
  * POST /api/leads/[id]/convert
  * Convert a lead to a member: create a profile, update lead status to 'converted',
  * set converted_member_id and converted_at, log activity.
- * Body: { roles?, membership_type? }
+ * Body: { roles?, membership_plan_id? }
  */
 export async function POST(
   request: NextRequest,
@@ -99,6 +99,33 @@ export async function POST(
         );
       }
       memberId = newProfile.id;
+    }
+
+    // If a membership plan was specified, create the membership record
+    const membershipPlanId = body.membership_plan_id;
+    if (membershipPlanId) {
+      // Look up the plan details
+      const { data: plan } = await supabase
+        .from("membership_plans")
+        .select("id, name, tier, price")
+        .eq("id", membershipPlanId)
+        .eq("studio_id", studioId)
+        .single();
+
+      if (plan) {
+        // Upsert into members table with the chosen plan
+        await supabase.from("members").upsert(
+          {
+            profile_id: memberId,
+            studio_id: studioId,
+            membership_plan_id: plan.id,
+            membership_tier: plan.tier ?? plan.name,
+            membership_status: "active",
+            join_date: new Date().toISOString().split("T")[0],
+          },
+          { onConflict: "profile_id,studio_id" }
+        );
+      }
     }
 
     // Update lead status

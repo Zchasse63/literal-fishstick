@@ -19,12 +19,7 @@ import {
   useClockEntries,
   useTrainerClassLog,
 } from '@/hooks/use-employee'
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
-}
+import { fadeInUp } from '@/lib/motion'
 
 function PayStubRow({ period, payRate, bonusForPeriod }: {
   period: { id: string; period_start: string; period_end: string; total_gross: number | null; total_bonuses: number | null; total_payroll: number | null; status: string }

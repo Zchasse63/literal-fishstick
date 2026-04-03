@@ -26,13 +26,7 @@ import {
   type ClassData,
   type ActivityItem,
 } from '@/hooks/use-command-center-data'
-
-// Animation variants
-const fadeInUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
-}
+import { fadeInUp } from '@/lib/motion'
 
 // ─── Icon map for AI insights ───────────────────────────────
 const INSIGHT_ICON_MAP = {

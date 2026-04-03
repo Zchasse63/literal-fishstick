@@ -4,6 +4,8 @@ import { useState } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+const ADMIN_ROLES = ["admin", "owner", "manager"];
+
 type AuthMode = "password" | "magic-link";
 
 export default function LoginPage() {
@@ -37,7 +39,23 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    // Role-based routing: non-admin users go to employee portal
+    const { data: { user: signedInUser } } = await supabase.auth.getUser();
+    let destination = "/";
+    if (signedInUser) {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("roles")
+        .eq("id", signedInUser.id)
+        .single();
+      const userRoles: string[] = profileData?.roles ?? [];
+      const hasAdminRole = userRoles.some((r) => ADMIN_ROLES.includes(r));
+      if (!hasAdminRole && userRoles.length > 0) {
+        destination = "/employee";
+      }
+    }
+
+    router.push(destination);
     router.refresh();
   };
 

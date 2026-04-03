@@ -1,3 +1,5 @@
+// TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
+// Create /api/ai/seasonal-predictor/route.ts to expose seasonal demand forecasting.
 import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------

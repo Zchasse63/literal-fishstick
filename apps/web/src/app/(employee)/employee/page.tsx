@@ -24,12 +24,7 @@ import {
   useClockEntries,
   useEmployeeDocuments,
 } from '@/hooks/use-employee'
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
-}
+import { fadeInUp } from '@/lib/motion'
 
 function formatElapsed(ms: number): string {
   const totalMin = Math.floor(ms / 60_000)

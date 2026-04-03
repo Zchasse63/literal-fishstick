@@ -1,3 +1,5 @@
+// TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
+// Create /api/ai/report-narrative/route.ts to expose AI-generated report narratives.
 import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------

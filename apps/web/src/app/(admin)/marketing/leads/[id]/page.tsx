@@ -33,13 +33,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-
-// ─── Animation ──────────────────────────────────────────────
-const fadeInUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
-}
+import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
 type ActivityType =
@@ -135,6 +129,13 @@ function ScoreGauge({ score }: { score: number }) {
   )
 }
 
+// ─── Types for membership selection ────────────────────────
+interface MembershipPlanOption {
+  id: string
+  name: string
+  price: number
+}
+
 // ─── Convert Panel ──────────────────────────────────────────
 function ConvertPanel({
   lead,
@@ -145,6 +146,9 @@ function ConvertPanel({
   newMemberId,
   onConfirm,
   onViewMember,
+  membershipPlans,
+  selectedPlanId,
+  onPlanChange,
 }: {
   lead: any
   onClose: () => void
@@ -154,6 +158,9 @@ function ConvertPanel({
   newMemberId: string | null
   onConfirm: () => void
   onViewMember: () => void
+  membershipPlans: MembershipPlanOption[]
+  selectedPlanId: string
+  onPlanChange: (planId: string) => void
 }) {
   return (
     <motion.div
@@ -195,11 +202,33 @@ function ConvertPanel({
             </div>
           </div>
 
+          {/* Membership Assignment */}
+          {membershipPlans.length > 0 && (
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Assign Membership (optional)</label>
+              <select
+                value={selectedPlanId}
+                onChange={(e) => onPlanChange(e.target.value)}
+                className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              >
+                <option value="">No membership</option>
+                {membershipPlans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name} — ${plan.price}/mo
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* What happens */}
           <div className="bg-indigo-50 rounded-xl p-3 mb-3 space-y-1.5">
             <p className="text-xs text-indigo-800">• A member account will be created with this lead&apos;s info</p>
             <p className="text-xs text-indigo-800">• All lead activity history will be preserved</p>
             <p className="text-xs text-indigo-800">• Lead status will be updated to Converted</p>
+            {selectedPlanId && (
+              <p className="text-xs text-indigo-800">• Membership will be assigned to the new member</p>
+            )}
           </div>
 
           {convertError && (
@@ -259,16 +288,42 @@ export default function LeadDetailPage() {
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertSuccess, setConvertSuccess] = useState(false)
   const [newMemberId, setNewMemberId] = useState<string | null>(null)
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlanOption[]>([])
+  const [selectedPlanId, setSelectedPlanId] = useState('')
+
+  // Load membership plans for the conversion form
+  useEffect(() => {
+    const supabase = createBrowserClient()
+    supabase
+      .from('membership_plans')
+      .select('id, name, price')
+      .eq('studio_id', STUDIO_ID)
+      .eq('active', true)
+      .order('price')
+      .then(({ data }) => {
+        if (data) {
+          setMembershipPlans(data.map((p: any) => ({
+            id: p.id,
+            name: p.name ?? 'Unnamed',
+            price: p.price ?? 0,
+          })))
+        }
+      })
+  }, [])
 
   async function handleConvert() {
     if (!lead) return
     setConverting(true)
     setConvertError(null)
     try {
+      const convertBody: Record<string, string> = {}
+      if (selectedPlanId) {
+        convertBody.membership_plan_id = selectedPlanId
+      }
       const res = await fetch(`/api/leads/${lead.id}/convert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(convertBody),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Conversion failed')
@@ -689,13 +744,16 @@ export default function LeadDetailPage() {
               {showConvert && (
                 <ConvertPanel
                   lead={lead}
-                  onClose={() => { setShowConvert(false); setConvertError(null); setConvertSuccess(false); setNewMemberId(null) }}
+                  onClose={() => { setShowConvert(false); setConvertError(null); setConvertSuccess(false); setNewMemberId(null); setSelectedPlanId('') }}
                   converting={converting}
                   convertError={convertError}
                   convertSuccess={convertSuccess}
                   newMemberId={newMemberId}
                   onConfirm={handleConvert}
                   onViewMember={() => newMemberId && router.push(`/members/${newMemberId}`)}
+                  membershipPlans={membershipPlans}
+                  selectedPlanId={selectedPlanId}
+                  onPlanChange={setSelectedPlanId}
                 />
               )}
             </AnimatePresence>

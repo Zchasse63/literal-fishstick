@@ -38,13 +38,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-
-// ─── Animation ──────────────────────────────────────────────
-const fadeInUp = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
-}
+import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
 type TimeRange = '7d' | '30d' | '90d' | '12m' | 'custom'

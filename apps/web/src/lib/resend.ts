@@ -131,47 +131,93 @@ export async function sendCampaignEmail(
 // ─── Batch Email ─────────────────────────────────────────────
 
 const RESEND_BATCH_LIMIT = 100
+const BATCH_RETRY_ATTEMPTS = 3
+const BATCH_RETRY_BASE_MS = 1000
+
+/**
+ * Retry a chunk with exponential backoff.
+ * Returns the Resend response or throws after all retries are exhausted.
+ */
+async function sendChunkWithRetry(
+  resend: Resend,
+  chunk: BatchEmail[],
+  chunkIndex: number
+): Promise<{ ids: string[] }> {
+  const payload = chunk.map((email) => ({
+    from: FROM_ADDRESS,
+    to: email.to,
+    subject: email.subject,
+    html: email.html,
+    replyTo: email.replyTo,
+    headers: email.headers,
+    tags: email.tags,
+  }))
+
+  let lastError: string | null = null
+
+  for (let attempt = 0; attempt < BATCH_RETRY_ATTEMPTS; attempt++) {
+    const { data, error } = await resend.batch.send(payload)
+
+    if (!error) {
+      const ids = data?.data?.map((d) => d.id) ?? []
+      return { ids }
+    }
+
+    lastError = error.message
+    console.warn(
+      `[RESEND] Batch chunk ${chunkIndex + 1} failed (attempt ${attempt + 1}/${BATCH_RETRY_ATTEMPTS}): ${error.message}`
+    )
+
+    // Don't retry on the last attempt
+    if (attempt < BATCH_RETRY_ATTEMPTS - 1) {
+      const delayMs = BATCH_RETRY_BASE_MS * Math.pow(2, attempt)
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+
+  // All retries exhausted — throw so the caller can handle it
+  throw new Error(lastError ?? 'Batch send failed after retries')
+}
 
 export async function sendBatchEmails(
   emails: BatchEmail[]
-): Promise<{ ids: (string | null)[]; error: string | null; dryRun: boolean }> {
+): Promise<{ ids: (string | null)[]; errors: string[]; error: string | null; dryRun: boolean }> {
   if (emails.length === 0) {
-    return { ids: [], error: null, dryRun: false }
+    return { ids: [], errors: [], error: null, dryRun: false }
   }
 
   if (DRY_RUN) {
     console.log(`[RESEND DRY RUN] Batch sending ${emails.length} emails`)
     const ids = emails.map((_, i) => `dry_run_batch_${Date.now()}_${i}`)
-    return { ids, error: null, dryRun: true }
+    return { ids, errors: [], error: null, dryRun: true }
   }
 
   const resend = getResend()
   const allIds: (string | null)[] = []
+  const chunkErrors: string[] = []
 
   // Chunk into batches of 100 (Resend API limit)
   for (let i = 0; i < emails.length; i += RESEND_BATCH_LIMIT) {
+    const chunkIndex = Math.floor(i / RESEND_BATCH_LIMIT)
     const chunk = emails.slice(i, i + RESEND_BATCH_LIMIT)
 
-    const { data, error } = await resend.batch.send(
-      chunk.map((email) => ({
-        from: FROM_ADDRESS,
-        to: email.to,
-        subject: email.subject,
-        html: email.html,
-        replyTo: email.replyTo,
-        headers: email.headers,
-        tags: email.tags,
-      }))
-    )
-
-    if (error) {
-      console.error(`[RESEND] Batch email error (chunk ${Math.floor(i / RESEND_BATCH_LIMIT) + 1}):`, error)
-      return { ids: allIds, error: error.message, dryRun: false }
+    try {
+      const { ids } = await sendChunkWithRetry(resend, chunk, chunkIndex)
+      allIds.push(...ids)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown batch error'
+      console.error(`[RESEND] Batch chunk ${chunkIndex + 1} failed permanently:`, message)
+      chunkErrors.push(`Chunk ${chunkIndex + 1}: ${message}`)
+      // Fill with nulls for the failed chunk so index mapping stays aligned
+      allIds.push(...chunk.map(() => null))
+      // Continue with remaining chunks instead of aborting
     }
-
-    const chunkIds = data?.data?.map((d) => d.id) ?? []
-    allIds.push(...chunkIds)
   }
 
-  return { ids: allIds, error: null, dryRun: false }
+  return {
+    ids: allIds,
+    errors: chunkErrors,
+    error: chunkErrors.length > 0 ? `${chunkErrors.length} chunk(s) failed: ${chunkErrors.join('; ')}` : null,
+    dryRun: false,
+  }
 }

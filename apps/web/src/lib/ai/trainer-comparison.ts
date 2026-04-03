@@ -1,3 +1,5 @@
+// TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
+// Create /api/ai/trainer-comparison/route.ts to expose team performance comparison.
 import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------

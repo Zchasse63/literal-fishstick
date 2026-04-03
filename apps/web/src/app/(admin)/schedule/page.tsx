@@ -23,12 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useClasses, useSupabase } from '@/hooks/use-supabase'
 import type { ClassInstance } from '@meridian/types'
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
-}
+import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
 type ViewMode = 'Day' | 'Week' | 'Month'

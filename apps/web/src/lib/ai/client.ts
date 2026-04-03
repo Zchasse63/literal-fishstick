@@ -52,3 +52,72 @@ export function parseAIJson<T>(text: string): T {
   const cleaned = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
   return JSON.parse(cleaned) as T;
 }
+
+// ---------------------------------------------------------------------------
+// Retry wrapper for Anthropic API calls
+// ---------------------------------------------------------------------------
+
+const RETRY_MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 1000;
+const RETRYABLE_STATUS_CODES = [429, 529];
+
+/**
+ * Check if an error is a retryable Anthropic API error (429 rate-limited
+ * or 529 overloaded).
+ */
+function isRetryableError(err: unknown): boolean {
+  if (err && typeof err === "object") {
+    // The Anthropic SDK throws APIError instances with a `status` property
+    const status = (err as { status?: number }).status;
+    if (status && RETRYABLE_STATUS_CODES.includes(status)) {
+      return true;
+    }
+    // Also check for error message patterns as a fallback
+    const message = (err as { message?: string }).message ?? "";
+    if (message.includes("rate_limit") || message.includes("overloaded")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Execute an Anthropic API call with automatic retry on 429/529 errors.
+ *
+ * Uses exponential backoff: 1s, 2s, 4s (by default).
+ *
+ * Usage:
+ * ```ts
+ * const message = await withRetry(() =>
+ *   anthropic.messages.create({ model: AI_MODEL, ... })
+ * );
+ * ```
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts: number = RETRY_MAX_ATTEMPTS
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+
+      if (!isRetryableError(err) || attempt >= maxAttempts - 1) {
+        throw err;
+      }
+
+      const delayMs = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+      console.warn(
+        `[Anthropic] Retryable error (attempt ${attempt + 1}/${maxAttempts}), retrying in ${delayMs}ms...`,
+        (err as { status?: number }).status ?? (err as { message?: string }).message
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  // Should not reach here, but satisfy TypeScript
+  throw lastError;
+}

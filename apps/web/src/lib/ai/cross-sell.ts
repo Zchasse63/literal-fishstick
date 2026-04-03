@@ -1,3 +1,5 @@
+// TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
+// Create /api/ai/cross-sell/route.ts to expose cross-sell opportunity detection.
 import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------

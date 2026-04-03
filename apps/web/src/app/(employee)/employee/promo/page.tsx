@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Copy,
@@ -17,12 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEmployeeProfile, usePromoAttributions } from '@/hooks/use-employee'
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] as const },
-}
+import { fadeInUp } from '@/lib/motion'
 
 const statusConfig = {
   active: { label: 'Active', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -32,11 +27,38 @@ const statusConfig = {
 
 export default function PromoPage() {
   const [copied, setCopied] = useState(false)
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
   const { trainer, loading: profileLoading } = useEmployeeProfile()
   const { attributions, loading: attribLoading } = usePromoAttributions(trainer?.id)
 
   const loading = profileLoading || attribLoading
   const promoCode = trainer?.promo_code ?? 'N/A'
+
+  // Fetch QR code image from the API endpoint when promo code is available
+  useEffect(() => {
+    if (!promoCode || promoCode === 'N/A') return
+    let revoked = false
+    setQrLoading(true)
+    fetch(`/api/qr/promo/${encodeURIComponent(promoCode)}`)
+      .then((res) => {
+        if (res.ok) return res.blob()
+        return null
+      })
+      .then((blob) => {
+        if (blob && !revoked) {
+          setQrUrl(URL.createObjectURL(blob))
+        }
+      })
+      .catch(() => {
+        // Silently fail — QR placeholder remains
+      })
+      .finally(() => setQrLoading(false))
+
+    return () => {
+      revoked = true
+    }
+  }, [promoCode])
   const commissionRate = trainer?.commission_rate ?? 0
 
   // Calculate stats
@@ -112,10 +134,22 @@ export default function PromoPage() {
               </button>
             </div>
           </div>
-          {/* QR Code Placeholder */}
-          <div className="w-32 h-32 rounded-xl bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center border border-white/20">
-            <QrCode className="w-12 h-12 text-white/60 mb-1" />
-            <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">QR Code</span>
+          {/* QR Code */}
+          <div className="w-32 h-32 rounded-xl bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center border border-white/20 overflow-hidden">
+            {qrLoading ? (
+              <Loader2 className="w-8 h-8 text-white/60 animate-spin" />
+            ) : qrUrl ? (
+              <img
+                src={qrUrl}
+                alt={`QR code for promo ${promoCode}`}
+                className="w-full h-full object-contain p-1"
+              />
+            ) : (
+              <>
+                <QrCode className="w-12 h-12 text-white/60 mb-1" />
+                <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">QR Code</span>
+              </>
+            )}
           </div>
         </div>
       </motion.div>
