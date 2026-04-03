@@ -66,7 +66,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
@@ -84,7 +84,7 @@ export default function LoginPage() {
             <div className="text-center py-4">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50">
                 <svg
-                  className="h-6 w-6 text-[#4F46E5]"
+                  className="h-6 w-6 text-primary"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
@@ -110,7 +110,7 @@ export default function LoginPage() {
                   setSent(false);
                   setEmail("");
                 }}
-                className="mt-6 text-sm font-medium text-[#4F46E5] hover:text-indigo-500 transition-colors"
+                className="mt-6 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
               >
                 Use a different email
               </button>
@@ -145,7 +145,7 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     required
                     autoFocus
-                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent transition-shadow"
+                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
                   />
                 </div>
 
@@ -164,7 +164,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent transition-shadow"
+                      className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
                     />
                   </div>
                 )}
@@ -176,7 +176,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || !email || (mode === "password" && !password)}
-                  className="w-full rounded-lg bg-[#4F46E5] px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F46E5] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full rounded-lg bg-primary px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loading
                     ? mode === "password" ? "Signing in..." : "Sending..."

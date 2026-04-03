@@ -47,6 +47,9 @@ jobs:
           ANTHROPIC_API_KEY: test-anthropic-key
           DEFAULT_STUDIO_ID: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -62,6 +65,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('apps/web/src/**') }}
+          restore-keys: |
+            nextjs-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+            nextjs-cache-${{ runner.os }}-
 
       - name: Install dependencies
         run: npm ci

@@ -23,46 +23,25 @@ $$;
 -- ==========================================
 -- GDPR: Clean up Phase 2 member data on deletion
 -- ==========================================
+-- CONSOLIDATED: This function was previously duplicated as cleanup_phase2_member_data.
+-- The canonical version is delete_member_phase2_data in phase2-migration.sql.
+-- Drop the old alias if it exists, then delegate to the canonical function.
+DROP FUNCTION IF EXISTS cleanup_phase2_member_data(UUID);
+
 CREATE OR REPLACE FUNCTION cleanup_phase2_member_data(p_member_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  -- Delete campaign recipient records
-  DELETE FROM campaign_recipients WHERE member_id = p_member_id;
-
-  -- Exit and delete automation enrollments
-  UPDATE automation_enrollments
-  SET status = 'exited', exit_reason = 'member_deleted', exited_at = NOW()
-  WHERE member_id = p_member_id AND status IN ('active', 'paused');
-
-  DELETE FROM automation_enrollments WHERE member_id = p_member_id;
-
-  -- Delete automation cooldowns
-  DELETE FROM automation_cooldowns WHERE member_id = p_member_id;
-
-  -- Email preferences cascade via ON DELETE CASCADE
-
-  -- Anonymize lead activities performed by this member
-  UPDATE lead_activities SET performed_by = NULL WHERE performed_by = p_member_id;
-
-  -- Anonymize content (reassign to deleted-user placeholder or delete)
-  DELETE FROM content_likes WHERE author_id = p_member_id;
-  DELETE FROM content_comments WHERE author_id = p_member_id;
-  UPDATE content_posts SET author_id = '00000000-0000-0000-0000-000000000000'
-  WHERE author_id = p_member_id; -- Reassign to "Deleted User" placeholder
-
-  -- If member was a lead, anonymize
-  UPDATE leads SET
-    first_name = '[Deleted]',
-    last_name = '',
-    email = NULL,
-    phone = NULL,
-    notes = NULL
-  WHERE converted_member_id = p_member_id;
+  -- Delegate to the canonical GDPR deletion function
+  PERFORM delete_member_phase2_data(p_member_id);
 END;
 $$;
+
+COMMENT ON FUNCTION cleanup_phase2_member_data(UUID) IS
+  'Legacy alias for delete_member_phase2_data. '
+  'All GDPR Phase 2 cleanup logic is consolidated in delete_member_phase2_data (phase2-migration.sql).';
 
 -- ==========================================
 -- Calculate lead score (rules-based, called by scheduled function)

@@ -25,7 +25,7 @@ import {
   type AIInsight,
   type ClassData,
   type ActivityItem,
-} from './use-command-center-data'
+} from '@/hooks/use-command-center-data'
 
 // Animation variants
 const fadeInUp = {

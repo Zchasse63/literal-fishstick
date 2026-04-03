@@ -20,12 +20,14 @@ import {
   Key,
   Mail,
   MessageSquare,
+  MapPin,
   ChevronRight,
   Pencil,
   Plus,
   ExternalLink,
   CheckCircle2,
 } from 'lucide-react'
+import NextLink from 'next/link'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -211,6 +213,34 @@ function GeneralTab() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Links */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-indigo-600" />
+            Additional Settings
+          </CardTitle>
+          <CardDescription>Configure advanced location and operational features</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <NextLink
+              href="/settings/geofence"
+              className="flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <MapPin className="w-4 h-4 text-indigo-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Geofence Settings</p>
+                  <p className="text-xs text-gray-500">Configure location boundaries for employee clock in/out</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            </NextLink>
           </div>
         </CardContent>
       </Card>
@@ -611,6 +641,16 @@ function NotificationsTab() {
                 SMS infrastructure is built and provider-agnostic. Connect a provider when ready.
               </p>
             </div>
+          </div>
+          <div className="mt-4">
+            <NextLink
+              href="/settings/sms"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              SMS Configuration
+              <ChevronRight className="w-3 h-3" />
+            </NextLink>
           </div>
         </CardContent>
       </Card>
