@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { DEFAULT_STUDIO_ID, STUDIO_SHIP_FROM } from '@/lib/constants'
 
 const ALLOWED_ROLES = ['owner', 'manager']
 
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const studioId = profile.studio_id || '11111111-1111-1111-1111-111111111111'
+    const studioId = profile.studio_id || DEFAULT_STUDIO_ID
 
     // ─── Parse Body ────────────────────────────────────────────
     const body = await request.json()
@@ -89,14 +90,7 @@ export async function POST(request: NextRequest) {
       const EasyPost = (await import(/* webpackIgnore: true */ '@easypost/api' as string)).default
       const client = new EasyPost(easypostApiKey)
 
-      const fromAddress = {
-        name: 'The Sauna Guys',
-        street1: '123 Main St',
-        city: 'Tampa',
-        state: 'FL',
-        zip: '33601',
-        country: 'US',
-      }
+      const fromAddress = STUDIO_SHIP_FROM
 
       const shipment = await client.Shipment.create({
         from_address: fromAddress,

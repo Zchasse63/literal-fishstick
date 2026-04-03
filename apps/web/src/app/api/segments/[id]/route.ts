@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 /**
  * GET /api/segments/[id]
@@ -32,7 +33,7 @@ export async function GET(
       .single();
 
     const studioId =
-      authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Role check
     const roles: string[] = authProfile?.roles ?? [];
@@ -165,7 +166,7 @@ export async function PUT(
       .single();
 
     const studioId =
-      authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Check that the segment exists and is not a system segment
     const { data: existing } = await supabase
@@ -264,7 +265,7 @@ export async function DELETE(
       .single();
 
     const studioId =
-      authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Check that segment exists and is not a system segment
     const { data: existing } = await supabase

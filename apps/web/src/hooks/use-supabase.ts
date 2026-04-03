@@ -10,12 +10,12 @@ import type {
   Booking,
   MembershipPlan,
 } from '@meridian/types'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 const DEFAULT_POLL_INTERVAL = 60_000 // 60 seconds
 
 // ---------------------------------------------------------------------------

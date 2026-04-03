@@ -32,6 +32,7 @@ import {
   Info,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 interface ReportTemplate {
@@ -163,7 +164,7 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
   },
 ]
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const TYPE_BADGE_COLORS: Record<string, string> = {
   Attendance: 'bg-indigo-50 text-indigo-700',

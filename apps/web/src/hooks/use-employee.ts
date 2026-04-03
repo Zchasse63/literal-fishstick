@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/auth-context'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // ---------------------------------------------------------------------------
 // Shared Supabase instance

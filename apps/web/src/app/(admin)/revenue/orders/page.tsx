@@ -23,6 +23,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type OrderStatus = 'pending' | 'processing' | 'ready_for_pickup' | 'shipped' | 'delivered' | 'completed'
@@ -48,7 +49,7 @@ interface Order {
   trackingNumber?: string
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },

@@ -39,6 +39,7 @@ import {
   Legend,
 } from 'recharts'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type TimeRange = '7d' | '30d' | '90d' | '12m' | 'custom'
@@ -58,7 +59,7 @@ interface AttendanceRow {
 }
 
 // ─── Constants ──────────────────────────────────────────────
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const summaryMetrics_PLACEHOLDER_TEMP = [
   { label: 'Total Bookings', value: '0', icon: Users, color: 'text-indigo-600' },

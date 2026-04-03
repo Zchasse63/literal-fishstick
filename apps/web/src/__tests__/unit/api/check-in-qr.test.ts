@@ -15,23 +15,7 @@ function makeRequest(url: string, init?: RequestInit): NextRequest {
 }
 
 // ─── Chainable mock ─────────────────────────────────────────────────
-type MockReturnValue = { data: unknown; error: unknown; count?: number | null };
-
-function createChainableMock(response: MockReturnValue) {
-  const chain: Record<string, unknown> = {};
-  const methods = [
-    "from", "select", "insert", "update", "delete",
-    "eq", "neq", "gte", "lte", "gt", "lt", "in", "or", "not", "is",
-    "order", "limit", "range", "single", "maybeSingle",
-    "match", "contains", "filter", "textSearch",
-  ];
-  for (const m of methods) {
-    chain[m] = vi.fn().mockReturnValue(chain);
-  }
-  chain.then = (resolve: (v: unknown) => void) =>
-    resolve({ data: response.data, error: response.error, count: response.count ?? null });
-  return chain;
-}
+import { createChainableMock, type MockReturnValue } from "@/__tests__/helpers/mock-chainable";
 
 // ─── Supabase mock builder ──────────────────────────────────────────
 function buildSupabaseMock(opts: {

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type PostType = 'announcement' | 'event' | 'class_promo' | 'tip'
@@ -60,7 +61,7 @@ const ROLE_COLORS: Record<AuthorRole, string> = {
   trainer: 'bg-amber-100 text-amber-700',
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
   { value: 'all', label: 'All' },

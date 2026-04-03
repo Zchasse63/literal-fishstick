@@ -17,46 +17,7 @@ function makeRequest(
 }
 
 // ─── Chainable Supabase mock builder ────────────────────────────────
-
-type MockReturnValue = {
-  data: unknown;
-  error: unknown;
-  count?: number | null;
-};
-
-/**
- * Creates a chainable mock that records method calls and returns
- * the configured response when a terminal method (single/maybeSingle)
- * is reached, or when the chain resolves as a thenable (for queries
- * without an explicit terminal).
- */
-function createChainableMock(response: MockReturnValue) {
-  const chain: Record<string, unknown> = {};
-  const methods = [
-    "from",
-    "select",
-    "insert",
-    "eq",
-    "in",
-    "order",
-    "range",
-    "single",
-    "maybeSingle",
-  ];
-
-  for (const method of methods) {
-    if (method === "single" || method === "maybeSingle") {
-      chain[method] = vi.fn(() => Promise.resolve(response));
-    } else {
-      chain[method] = vi.fn(() => chain);
-    }
-  }
-
-  // Allow awaiting the chain directly (query with no terminal call)
-  chain.then = vi.fn((resolve: (v: unknown) => void) => resolve(response));
-
-  return chain;
-}
+import { createChainableMock, type MockReturnValue } from "@/__tests__/helpers/mock-chainable";
 
 /**
  * Build a Supabase client mock where each .from(table) call can return

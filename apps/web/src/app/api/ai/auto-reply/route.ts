@@ -6,8 +6,9 @@ import {
 } from "@/lib/ai/auto-reply";
 import { requireRole } from "@/lib/auth/require-role";
 import { rateLimit } from "@/lib/rate-limit";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
+const STUDIO_ID = DEFAULT_STUDIO_ID;
 
 // ---------------------------------------------------------------------------
 // POST /api/ai/auto-reply — Generate a draft reply for a campaign reply

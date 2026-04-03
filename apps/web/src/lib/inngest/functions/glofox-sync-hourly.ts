@@ -12,6 +12,7 @@ import { inngest } from '@/lib/inngest/client'
 import { getAdminClient } from '@/lib/inngest/helpers'
 import { GlofoxClient } from '@/lib/glofox/client'
 import type { GlofoxMember, GlofoxEvent, GlofoxBooking } from '@/lib/glofox/types'
+import { GLOFOX_NAMESPACE } from '@/lib/constants'
 import {
   transformMember,
   transformEvent,
@@ -297,7 +298,7 @@ export const glofoxSyncHourly = inngest.createFunction(
 
         const transactions = await glofox.getTransactions(
           BRANCH_ID,
-          'thesaunaguys',
+          GLOFOX_NAMESPACE,
           startDate,
           endDate,
         )

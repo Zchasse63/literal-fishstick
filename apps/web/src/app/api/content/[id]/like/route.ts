@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 /**
  * POST /api/content/[id]/like
@@ -30,7 +31,7 @@ export async function POST(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Role check
     const roles: string[] = profile?.roles ?? [];

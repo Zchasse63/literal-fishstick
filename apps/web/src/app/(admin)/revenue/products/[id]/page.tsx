@@ -21,6 +21,7 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 interface Product {
@@ -49,7 +50,7 @@ interface OrderHistoryItem {
   status: string
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // ─── Helpers ────────────────────────────────────────────────
 function formatCents(cents: number) {

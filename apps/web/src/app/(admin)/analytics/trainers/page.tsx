@@ -25,6 +25,7 @@ import {
   Cell,
 } from 'recharts'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type Period = 'this-month' | 'last-month' | 'last-3-months' | 'custom'
@@ -57,7 +58,7 @@ const COMPARE_METRICS: { value: CompareMetric; label: string }[] = [
 
 const BAR_COLORS = ['#4F46E5', '#6366F1', '#818CF8', '#A78BFA', '#C4B5FD']
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)

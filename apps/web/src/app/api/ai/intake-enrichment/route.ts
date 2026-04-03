@@ -7,8 +7,9 @@ import {
 } from "@/lib/ai/intake-enrichment";
 import { requireRole } from "@/lib/auth/require-role";
 import { rateLimit } from "@/lib/rate-limit";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
+const STUDIO_ID = DEFAULT_STUDIO_ID;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const INTAKE_WINDOW_DAYS = 14; // analyze first 2 weeks
 const MAX_JOIN_AGE_DAYS = 21; // only process members who joined within 21 days

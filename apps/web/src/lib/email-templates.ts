@@ -7,6 +7,7 @@
  * Handlebars merge tag support.
  */
 import Handlebars from 'handlebars'
+import { STUDIO_URL } from '@/lib/constants'
 
 // ─── Brand Colors ────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ const MERGE_TAG_DEFAULTS: Record<string, string> = {
   campaign_name: '',
   studio_name: 'The Sauna Guys',
   studio_address: '123 Main Street, Tampa, FL 33602', // CAN-SPAM required physical address
-  unsubscribe_url: 'https://thesaunaguys.com/unsubscribe',
+  unsubscribe_url: `${STUDIO_URL}/unsubscribe`,
 }
 
 // ─── Template Resolution ────────────────────────────────────
@@ -144,7 +145,7 @@ export function wrapEmailLayout(bodyHtml: string, preheaderText?: string): strin
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
                 <tr>
                   <td align="center">
-                    <a href="https://thesaunaguys.com/book" target="_blank" style="display: inline-block; background-color: ${COLORS.teal}; color: ${COLORS.white}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 6px;">
+                    <a href="${STUDIO_URL}/book" target="_blank" style="display: inline-block; background-color: ${COLORS.teal}; color: ${COLORS.white}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 6px;">
                       Book a Session
                     </a>
                   </td>
@@ -173,9 +174,9 @@ export function wrapEmailLayout(bodyHtml: string, preheaderText?: string): strin
                     <p style="margin: 0;">
                       <a href="{{unsubscribe_url}}" style="color: ${COLORS.teal}; text-decoration: underline;">Unsubscribe</a>
                       &nbsp;&middot;&nbsp;
-                      <a href="https://thesaunaguys.com/preferences" style="color: ${COLORS.teal}; text-decoration: underline;">Email Preferences</a>
+                      <a href="${STUDIO_URL}/preferences" style="color: ${COLORS.teal}; text-decoration: underline;">Email Preferences</a>
                       &nbsp;&middot;&nbsp;
-                      <a href="https://thesaunaguys.com/privacy" style="color: ${COLORS.teal}; text-decoration: underline;">Privacy Policy</a>
+                      <a href="${STUDIO_URL}/privacy" style="color: ${COLORS.teal}; text-decoration: underline;">Privacy Policy</a>
                     </p>
                   </td>
                 </tr>

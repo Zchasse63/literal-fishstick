@@ -8,8 +8,9 @@ import {
 } from "@/lib/ai/revenue-anomaly";
 import { requireRole } from "@/lib/auth/require-role";
 import { rateLimit } from "@/lib/rate-limit";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
+const STUDIO_ID = DEFAULT_STUDIO_ID;
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours — shorter since revenue changes frequently
 
 // ---------------------------------------------------------------------------

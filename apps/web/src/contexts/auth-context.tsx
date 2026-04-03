@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { User, Session } from '@supabase/supabase-js'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   // Default studio for The Sauna Guys
-  const studioId = profile?.studio_id ?? '11111111-1111-1111-1111-111111111111'
+  const studioId = profile?.studio_id ?? DEFAULT_STUDIO_ID
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase

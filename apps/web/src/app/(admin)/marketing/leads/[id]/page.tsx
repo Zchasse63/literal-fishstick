@@ -34,6 +34,7 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type ActivityType =
@@ -61,7 +62,7 @@ interface ScoreFactor {
   value: string
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // Score factors are loaded from API, not hardcoded
 

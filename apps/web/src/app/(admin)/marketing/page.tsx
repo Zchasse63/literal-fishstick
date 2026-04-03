@@ -38,6 +38,7 @@ import {
   Cell,
 } from 'recharts'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type CampaignStatus = 'sent' | 'active' | 'scheduled' | 'draft'
@@ -53,7 +54,7 @@ interface RecentCampaign {
   openHistory: number[]
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const NAV_CARDS = [
   { label: 'Campaigns', href: '/marketing/campaigns', icon: Megaphone, description: 'Email & SMS campaigns' },

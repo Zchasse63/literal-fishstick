@@ -22,12 +22,13 @@ import {
   Shield,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type EventStatus = 'inquiry' | 'quoted' | 'confirmed' | 'deposit_paid' | 'completed' | 'invoiced' | 'paid'
 type RSVPStatus = 'confirmed' | 'pending' | 'declined'
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // ─── Helpers ────────────────────────────────────────────────
 const STATUS_FLOW: EventStatus[] = ['inquiry', 'quoted', 'confirmed', 'deposit_paid', 'completed', 'invoiced', 'paid']

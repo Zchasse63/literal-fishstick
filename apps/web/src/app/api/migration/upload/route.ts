@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const DEFAULT_STUDIO_ID = '11111111-1111-1111-1111-111111111111'
 const ALLOWED_ROLES = ['owner', 'manager']
 
 /**

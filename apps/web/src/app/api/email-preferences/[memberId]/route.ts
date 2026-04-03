@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 /**
  * GET /api/email-preferences/[memberId]
@@ -29,7 +30,7 @@ export async function GET(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
     const userRoles: string[] = profile?.roles ?? [];
     const isAdmin = userRoles.some((r: string) => ["admin", "manager"].includes(r));
 
@@ -130,7 +131,7 @@ export async function PUT(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
     const userRoles: string[] = profile?.roles ?? [];
     const isAdmin = userRoles.some((r: string) => ["admin", "manager"].includes(r));
 

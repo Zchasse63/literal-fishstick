@@ -7,8 +7,9 @@ import {
 } from "@/lib/anthropic";
 import { requireRole } from "@/lib/auth/require-role";
 import { rateLimit } from "@/lib/rate-limit";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
+const STUDIO_ID = DEFAULT_STUDIO_ID;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const BATCH_LIMIT = 50;
 

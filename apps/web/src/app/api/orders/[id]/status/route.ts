@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const ALLOWED_ROLES = ['owner', 'manager']
 
@@ -49,7 +50,7 @@ export async function PUT(
       )
     }
 
-    const studioId = profile.studio_id || '11111111-1111-1111-1111-111111111111'
+    const studioId = profile.studio_id || DEFAULT_STUDIO_ID
 
     // ─── Parse Body ────────────────────────────────────────────
     const body = await request.json()

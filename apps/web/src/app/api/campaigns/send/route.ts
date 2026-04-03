@@ -3,8 +3,9 @@ import { createServerClient } from '@/lib/supabase/server'
 import { sendCampaignEmail } from '@/lib/resend'
 import { resolveTemplate, textToHtml, wrapEmailLayout } from '@/lib/email-templates'
 import { randomInt } from 'crypto'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 const ALLOWED_ROLES = ['owner', 'admin', 'manager']
 const DEFAULT_BATCH_SIZE = 10
 const SEND_DELAY_MS = 200

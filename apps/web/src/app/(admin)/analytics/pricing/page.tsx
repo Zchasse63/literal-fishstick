@@ -22,6 +22,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ interface Simulation {
   appliedAt?: string
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // ─── Helpers ──────────────────────────────────────────────────
 

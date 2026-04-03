@@ -12,6 +12,7 @@
 import { inngest } from '@/lib/inngest/client'
 import { getAdminClient } from '@/lib/inngest/helpers'
 import { GlofoxClient } from '@/lib/glofox/client'
+import { GLOFOX_NAMESPACE } from '@/lib/constants'
 import type { GlofoxMember, GlofoxEvent, GlofoxBooking } from '@/lib/glofox/types'
 import {
   transformMember,
@@ -271,7 +272,7 @@ export const glofoxSyncManual = inngest.createFunction(
           const today = new Date().toISOString().split('T')[0]
           const transactions = await glofox.getTransactions(
             BRANCH_ID,
-            'thesaunaguys',
+            GLOFOX_NAMESPACE,
             '2020-01-01',
             today,
           )

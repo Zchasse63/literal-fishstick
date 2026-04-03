@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/require-role'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 /**
  * GET /api/email-templates

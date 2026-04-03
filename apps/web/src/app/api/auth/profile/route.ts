@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 /**
  * POST /api/auth/profile
@@ -48,7 +49,7 @@ export async function POST() {
     // 4. Create new profile with default role
     // Default studio_id — in production this would come from the sign-up flow
     // or an invitation link. For single-tenant Phase 1, we use the default.
-    const defaultStudioId = process.env.DEFAULT_STUDIO_ID ?? "11111111-1111-1111-1111-111111111111";
+    const defaultStudioId = process.env.DEFAULT_STUDIO_ID ?? DEFAULT_STUDIO_ID;
 
     const { data: newProfile, error: insertError } = await supabase
       .from("profiles")

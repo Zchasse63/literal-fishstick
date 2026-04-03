@@ -35,6 +35,7 @@ import {
   Cell,
 } from 'recharts'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type RecipientStatus = 'delivered' | 'opened' | 'clicked' | 'bounced' | 'unsubscribed'
@@ -48,7 +49,7 @@ interface Recipient {
   clickedAt: string | null
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 const ITEMS_PER_PAGE = 6
 
 // ─── Helpers ────────────────────────────────────────────────

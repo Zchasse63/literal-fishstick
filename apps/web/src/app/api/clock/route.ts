@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 /**
  * Calculate the distance in meters between two lat/lng points
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // ─── Geofence Verification (optional) ─────────────────────
     let geofenceVerified = false;

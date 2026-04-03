@@ -4,6 +4,7 @@ import {
   generateTrainerSummary,
   TrainerMetrics,
 } from "@/lib/ai/trainer-summary";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const ALLOWED_ROLES = ["owner", "manager"];
 const BONUS_THRESHOLD = 7;
@@ -41,7 +42,7 @@ export async function POST(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
     const roles: string[] = profile?.roles ?? [];
     if (!roles.some((r: string) => ALLOWED_ROLES.includes(r))) {
       return NextResponse.json(

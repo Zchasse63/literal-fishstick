@@ -5,10 +5,12 @@
  * fallback logic. See MED-008 for the full list of routes to update.
  */
 
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+
 export function getStudioId(profile: { studio_id?: string | null }): string {
   return (
     profile?.studio_id ||
     process.env.DEFAULT_STUDIO_ID ||
-    '11111111-1111-1111-1111-111111111111'
+    DEFAULT_STUDIO_ID
   );
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 /**
  * GET /api/members/[id]
@@ -32,7 +33,7 @@ export async function GET(
       .single();
 
     const studioId =
-      authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Role check
     const roles: string[] = authProfile?.roles ?? [];
@@ -161,7 +162,7 @@ export async function PUT(
       .single();
 
     const studioId =
-      authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Role check — only owner/manager can update members (prevents privilege escalation)
     const callerRoles: string[] = authProfile?.roles ?? [];
@@ -279,7 +280,7 @@ export async function DELETE(
       .single();
 
     const studioId =
-      authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     const { data: updated, error } = await supabase
       .from("profiles")

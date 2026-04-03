@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { inngest } from "@/lib/inngest/client";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 /**
  * POST /api/bookings/[id]/cancel
@@ -39,7 +40,7 @@ export async function POST(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Role check
     const roles: string[] = profile?.roles ?? [];

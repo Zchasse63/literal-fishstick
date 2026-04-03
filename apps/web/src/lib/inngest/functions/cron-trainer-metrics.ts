@@ -7,13 +7,16 @@
  *
  * The `trainers` table has `profile_id`, `base_pay_per_class`, `bonus_amount`,
  * `bonus_threshold`, `commission_rate`. `classes.trainer_id` references `trainers.id`.
+ *
+ * Uses bulk queries to avoid N+1 performance issues.
  */
 import { inngest } from '@/lib/inngest/client';
 import { getAdminClient } from '@/lib/inngest/helpers';
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // TODO: Multi-tenancy — query `studios` table and iterate all active studios
 // instead of hardcoding a single studio ID. See MED-001.
-const STUDIO_ID = process.env.DEFAULT_STUDIO_ID || '11111111-1111-1111-1111-111111111111';
+const STUDIO_ID = process.env.DEFAULT_STUDIO_ID || DEFAULT_STUDIO_ID;
 
 interface TrainerRow {
   id: string;
@@ -30,6 +33,16 @@ interface ClassRow {
   checked_in_count: number;
   capacity: number;
   status: string;
+}
+
+interface BookingRow {
+  class_id: string;
+  member_id: string;
+}
+
+interface CommissionRow {
+  trainer_id: string;
+  commission_amount: number;
 }
 
 export const cronTrainerMetrics = inngest.createFunction(
@@ -71,12 +84,16 @@ export const cronTrainerMetrics = inngest.createFunction(
       return { status: 'no_trainers', period: periodMonth };
     }
 
-    // ── Load all classes in the prior month ─────────────────────
+    const trainerIds = trainers.map((t) => t.id);
+    const trainerProfileIds = trainers.map((t) => t.profile_id);
+
+    // ── Load all classes in the prior month (bulk) ─────────────
     const allClasses = await step.run('load-classes', async () => {
       const { data, error } = await db
         .from('classes')
         .select('id, trainer_id, checked_in_count, capacity, status')
         .eq('studio_id', STUDIO_ID)
+        .in('trainer_id', trainerIds)
         .gte('starts_at', `${monthStart}T00:00:00.000Z`)
         .lt('starts_at', `${monthEnd}T00:00:00.000Z`)
         .in('status', ['completed', 'in_progress']);
@@ -88,14 +105,94 @@ export const cronTrainerMetrics = inngest.createFunction(
       return (data ?? []) as ClassRow[];
     });
 
-    // ── Aggregate per trainer ──────────────────────────────────
+    // ── Bulk: Load all checked-in bookings for these classes ───
+    // Excludes trainer's own attendance by filtering in JS
+    const classIds = allClasses.map((c) => c.id);
+    const allBookings = await step.run('load-bookings-bulk', async () => {
+      if (classIds.length === 0) return [];
+
+      const { data, error } = await db
+        .from('bookings')
+        .select('class_id, member_id')
+        .eq('studio_id', STUDIO_ID)
+        .in('class_id', classIds)
+        .eq('status', 'checked_in');
+
+      if (error) {
+        console.error('[trainer-metrics] Failed to load bookings:', error);
+        return [];
+      }
+      return (data ?? []) as BookingRow[];
+    });
+
+    // ── Bulk: Load all promo commissions for all trainers ──────
+    const allCommissions = await step.run('load-commissions-bulk', async () => {
+      const { data, error } = await db
+        .from('promo_attributions')
+        .select('trainer_id, commission_amount')
+        .eq('studio_id', STUDIO_ID)
+        .in('trainer_id', trainerIds)
+        .gte('attributed_at', `${monthStart}T00:00:00.000Z`)
+        .lt('attributed_at', `${monthEnd}T00:00:00.000Z`);
+
+      if (error) {
+        console.error('[trainer-metrics] Failed to load commissions:', error);
+        return [];
+      }
+      return (data ?? []) as CommissionRow[];
+    });
+
+    // ── Index bulk data ───────────────────────────────────────
+    // Group classes by trainer_id
+    const classesByTrainer = new Map<string, ClassRow[]>();
+    for (const cls of allClasses) {
+      const list = classesByTrainer.get(cls.trainer_id) ?? [];
+      list.push(cls);
+      classesByTrainer.set(cls.trainer_id, list);
+    }
+
+    // Build a set of trainer profile_ids for fast lookup
+    const trainerProfileIdSet = new Set(trainerProfileIds);
+
+    // Build a map: trainer_id -> profile_id for excluding self-attendance
+    const trainerProfileMap = new Map<string, string>();
+    for (const t of trainers) {
+      trainerProfileMap.set(t.id, t.profile_id);
+    }
+
+    // Build a map: class_id -> trainer_id (to look up whose class it is)
+    const classTrainerMap = new Map<string, string>();
+    for (const cls of allClasses) {
+      classTrainerMap.set(cls.id, cls.trainer_id);
+    }
+
+    // Count check-ins per class, excluding the trainer's own profile_id
+    const checkInsByClass = new Map<string, number>();
+    for (const booking of allBookings) {
+      const trainerId = classTrainerMap.get(booking.class_id);
+      const trainerProfileId = trainerId ? trainerProfileMap.get(trainerId) : undefined;
+      // Exclude trainer's own attendance
+      if (trainerProfileId && booking.member_id === trainerProfileId) {
+        continue;
+      }
+      const current = checkInsByClass.get(booking.class_id) ?? 0;
+      checkInsByClass.set(booking.class_id, current + 1);
+    }
+
+    // Sum commissions by trainer_id
+    const commissionByTrainer = new Map<string, number>();
+    for (const c of allCommissions) {
+      const current = commissionByTrainer.get(c.trainer_id) ?? 0;
+      commissionByTrainer.set(c.trainer_id, current + (c.commission_amount ?? 0));
+    }
+
+    // ── Aggregate per trainer (no additional queries) ─────────
     for (const trainer of trainers) {
       await step.run(`aggregate-${trainer.id}`, async () => {
-        const trainerClasses = (allClasses as ClassRow[]).filter((c: ClassRow) => c.trainer_id === trainer.id);
+        const trainerClasses = classesByTrainer.get(trainer.id) ?? [];
         const totalClasses = trainerClasses.length;
 
         if (totalClasses === 0) {
-          // Still insert a zero row for completeness
           await upsertTrainerSnapshot(db, trainer, periodMonth, {
             totalClasses: 0,
             totalCheckIns: 0,
@@ -110,22 +207,12 @@ export const cronTrainerMetrics = inngest.createFunction(
           return;
         }
 
-        // For each class, get check-ins excluding the trainer's own attendance
-        // We need to query bookings to exclude trainer's own profile_id
+        // Calculate attendance counts per class using pre-fetched data
         let totalCheckIns = 0;
         const attendanceCounts: number[] = [];
 
         for (const cls of trainerClasses) {
-          // Count check-ins excluding the trainer's profile_id
-          const { count } = await db
-            .from('bookings')
-            .select('*', { count: 'exact', head: true })
-            .eq('studio_id', STUDIO_ID)
-            .eq('class_id', cls.id)
-            .eq('status', 'checked_in')
-            .neq('member_id', trainer.profile_id);
-
-          const classCheckIns = count ?? 0;
+          const classCheckIns = checkInsByClass.get(cls.id) ?? 0;
           totalCheckIns += classCheckIns;
           attendanceCounts.push(classCheckIns);
         }
@@ -143,19 +230,8 @@ export const cronTrainerMetrics = inngest.createFunction(
         const basePay = totalClasses * trainer.base_pay_per_class;
         const bonusPay = classesAboveThreshold * trainer.bonus_amount;
 
-        // Commission from promo code attributions in the period
-        const { data: commissions } = await db
-          .from('promo_attributions')
-          .select('commission_amount')
-          .eq('studio_id', STUDIO_ID)
-          .eq('trainer_id', trainer.id)
-          .gte('attributed_at', `${monthStart}T00:00:00.000Z`)
-          .lt('attributed_at', `${monthEnd}T00:00:00.000Z`);
-
-        const commissionPay = (commissions ?? []).reduce(
-          (sum, c) => sum + (c.commission_amount ?? 0),
-          0,
-        );
+        // Commission from pre-fetched promo attributions
+        const commissionPay = commissionByTrainer.get(trainer.id) ?? 0;
 
         await upsertTrainerSnapshot(db, trainer, periodMonth, {
           totalClasses,

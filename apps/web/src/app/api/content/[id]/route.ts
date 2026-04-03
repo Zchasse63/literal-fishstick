@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const ALLOWED_ROLES = ["owner", "admin", "manager"];
 
@@ -31,7 +32,7 @@ export async function GET(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     const { data: post, error: postError } = await supabase
       .from("content_posts")
@@ -104,7 +105,7 @@ export async function PUT(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
     const userRoles: string[] = profile?.roles ?? [];
     const isAdmin = userRoles.some((r: string) => ALLOWED_ROLES.includes(r));
 
@@ -211,7 +212,7 @@ export async function DELETE(
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
     const userRoles: string[] = profile?.roles ?? [];
     const isAdmin = userRoles.some((r: string) => ALLOWED_ROLES.includes(r));
 

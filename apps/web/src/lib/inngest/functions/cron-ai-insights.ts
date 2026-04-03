@@ -9,10 +9,11 @@
 import { inngest } from '@/lib/inngest/client';
 import { getAdminClient } from '@/lib/inngest/helpers';
 import { generateInsights, type StudioMetricsContext, type ClassMetrics } from '@/lib/ai/insights-generator';
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // TODO: Multi-tenancy — query `studios` table and iterate all active studios
 // instead of hardcoding a single studio ID. See MED-001.
-const STUDIO_ID = process.env.DEFAULT_STUDIO_ID || '11111111-1111-1111-1111-111111111111';
+const STUDIO_ID = process.env.DEFAULT_STUDIO_ID || DEFAULT_STUDIO_ID;
 
 export const cronAIInsights = inngest.createFunction(
   {

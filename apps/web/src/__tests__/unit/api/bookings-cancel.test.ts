@@ -13,25 +13,7 @@ function makeRequest(url: string, init?: RequestInit): NextRequest {
 }
 
 // ─── Chainable mock ────────────────────────────────────────────────
-type MockReturnValue = { data: unknown; error: unknown; count?: number | null };
-
-function createChainableMock(response: MockReturnValue) {
-  const chain: Record<string, unknown> = {};
-  const methods = [
-    "from", "select", "insert", "update", "delete",
-    "eq", "neq", "gt", "gte", "lt", "lte", "is", "in", "or", "not",
-    "order", "range", "limit", "single", "maybeSingle",
-  ];
-  for (const method of methods) {
-    if (method === "single" || method === "maybeSingle") {
-      chain[method] = vi.fn(() => Promise.resolve(response));
-    } else {
-      chain[method] = vi.fn(() => chain);
-    }
-  }
-  chain.then = vi.fn((resolve: (v: unknown) => void) => resolve(response));
-  return chain;
-}
+import { createChainableMock, type MockReturnValue } from "@/__tests__/helpers/mock-chainable";
 
 function buildSupabaseMock(
   tableResponses: Record<string, MockReturnValue>,

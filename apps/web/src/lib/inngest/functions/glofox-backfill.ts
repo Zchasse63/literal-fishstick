@@ -18,6 +18,7 @@
 import { inngest } from '@/lib/inngest/client'
 import { getAdminClient } from '@/lib/inngest/helpers'
 import { GlofoxClient } from '@/lib/glofox/client'
+import { GLOFOX_NAMESPACE } from '@/lib/constants'
 import type {
   GlofoxMember,
   GlofoxStaff,
@@ -369,7 +370,7 @@ export const glofoxBackfill = inngest.createFunction(
         const today = new Date().toISOString().split('T')[0]
         const transactions = await glofox.getTransactions(
           BRANCH_ID,
-          'thesaunaguys',
+          GLOFOX_NAMESPACE,
           BACKFILL_START_DATE,
           today,
         )

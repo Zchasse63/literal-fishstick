@@ -5,6 +5,7 @@
  * Server-side only — never expose the secret key to the client.
  */
 import Stripe from 'stripe'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // Server-side Stripe instance (lazy init to avoid build-time errors)
 let _stripe: Stripe | null = null
@@ -34,7 +35,7 @@ export async function getOrCreateCustomer(email: string, name: string, memberId:
     name,
     metadata: {
       meridian_member_id: memberId,
-      meridian_studio_id: '11111111-1111-1111-1111-111111111111',
+      meridian_studio_id: DEFAULT_STUDIO_ID,
     },
   })
 }
@@ -117,7 +118,7 @@ export async function createPaymentIntent(
       enabled: true,
     },
     metadata: {
-      meridian_studio_id: '11111111-1111-1111-1111-111111111111',
+      meridian_studio_id: DEFAULT_STUDIO_ID,
       ...metadata,
     },
   }, {

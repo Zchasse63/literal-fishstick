@@ -6,8 +6,9 @@ import {
   generatePDF,
   type PDFColumnConfig,
 } from "@/lib/reports/pdf-export";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
+const STUDIO_ID = DEFAULT_STUDIO_ID;
 const ALLOWED_ROLES = ["owner", "admin", "manager"];
 const PDF_ASYNC_THRESHOLD = 500;
 const STORAGE_BUCKET = "report-exports";

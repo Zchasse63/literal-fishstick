@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const VALID_PLANS = ["unlimited", "10_class", "6_class"] as const;
 type Plan = (typeof VALID_PLANS)[number];
@@ -36,7 +37,7 @@ export async function POST(
       .single();
 
     const studioId =
-      authProfile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     // Role check
     const roles: string[] = authProfile?.roles ?? [];

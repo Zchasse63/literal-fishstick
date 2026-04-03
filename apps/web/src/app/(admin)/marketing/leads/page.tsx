@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type LeadStatus = 'new' | 'contacted' | 'trial' | 'converted' | 'lost'
@@ -75,7 +76,7 @@ const COLUMNS: Column[] = [
   { id: 'lost', label: 'Lost', color: 'bg-gray-400', borderColor: 'border-t-gray-400' },
 ]
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const SOURCE_ICONS: Record<LeadSource, typeof Globe> = {
   website: Globe,

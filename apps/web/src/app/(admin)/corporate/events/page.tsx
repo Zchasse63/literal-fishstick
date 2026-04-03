@@ -16,6 +16,7 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type EventType = 'corporate' | 'private_party' | 'team_building' | 'birthday' | 'community' | 'workshop'
@@ -34,7 +35,7 @@ interface CalendarEvent {
   status: EventStatus
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // ─── Helpers ────────────────────────────────────────────────
 const eventTypeConfig: Record<EventType, { label: string; className: string; pillClass: string }> = {

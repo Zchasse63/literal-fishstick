@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const ALLOWED_ROLES = ["owner", "admin", "manager"];
 const STAFF_ROLES = ["admin", "manager", "trainer", "staff"];
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     let query = supabase
       .from("content_posts")
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
     const userRoles: string[] = profile?.roles ?? [];
 
     const body = await request.json();

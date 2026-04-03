@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { DEFAULT_STUDIO_ID, STUDIO_SHIP_FROM } from '@/lib/constants'
 
 const ALLOWED_ROLES = ['owner', 'manager']
 
@@ -40,7 +41,7 @@ export async function POST(
       )
     }
 
-    const studioId = profile.studio_id || '11111111-1111-1111-1111-111111111111'
+    const studioId = profile.studio_id || DEFAULT_STUDIO_ID
 
     // ─── Fetch Order ─────────────────────────────────────────────
     const { data: order, error: fetchError } = await supabase
@@ -92,14 +93,7 @@ export async function POST(
     }
 
     const toAddress = body.to_address ?? order.shipping_address ?? {}
-    const fromAddress = body.from_address ?? {
-      name: 'The Sauna Guys',
-      street1: '123 Main St',
-      city: 'Tampa',
-      state: 'FL',
-      zip: '33601',
-      country: 'US',
-    }
+    const fromAddress = body.from_address ?? STUDIO_SHIP_FROM
 
     // ─── Create Shipping Label ───────────────────────────────────
     const easypostApiKey = process.env.EASYPOST_API_KEY

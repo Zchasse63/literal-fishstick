@@ -27,6 +27,7 @@ import {
   File,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type DocType = 'W4' | 'W9' | 'I9' | 'W2' | '1099' | 'Contract' | 'Certification' | 'Direct Deposit'
@@ -46,7 +47,7 @@ interface EmployeeDocument {
   expiresDate: string | null
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const DOC_TYPE_FILTERS: DocFilter[] = ['All', 'W4', 'W9', 'I9', 'W2', '1099', 'Contract', 'Certification', 'Direct Deposit']
 

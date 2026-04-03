@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const ALLOWED_ROLES = ["owner", "manager", "trainer"];
 
@@ -8,6 +9,8 @@ const ALLOWED_ROLES = ["owner", "manager", "trainer"];
  *
  * List all trainers with current-period metrics.
  * Joins trainers table with profiles, computes live metrics from classes/bookings.
+ *
+ * Uses bulk queries instead of per-trainer queries to avoid N+1 performance issues.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     const studioId =
-      profile?.studio_id ?? "11111111-1111-1111-1111-111111111111";
+      profile?.studio_id ?? DEFAULT_STUDIO_ID;
     const roles: string[] = profile?.roles ?? [];
     if (!roles.some((r: string) => ALLOWED_ROLES.includes(r))) {
       return NextResponse.json(
@@ -96,10 +99,60 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // ─── Compute Live Metrics Per Trainer ─────────────────────
-    const trainerMetrics = [];
+    const trainerIds = trainers.map((t) => t.id);
 
-    for (const trainer of trainers) {
+    // ─── Bulk: All classes for all trainers in period ──────────
+    const { data: allClasses } = await supabase
+      .from("classes")
+      .select("id, trainer_id, checked_in_count, capacity")
+      .eq("studio_id", studioId)
+      .in("trainer_id", trainerIds)
+      .gte("starts_at", periodStart)
+      .lte("starts_at", periodEnd + "T23:59:59");
+
+    // ─── Bulk: Revenue attributed via promo code for all trainers ──
+    const { data: allRevenue } = await supabase
+      .from("transactions")
+      .select("amount, promo_trainer_id")
+      .eq("studio_id", studioId)
+      .in("promo_trainer_id", trainerIds)
+      .eq("status", "completed")
+      .gte("created_at", periodStart)
+      .lte("created_at", periodEnd + "T23:59:59");
+
+    // ─── Bulk: Latest snapshots for all trainers ──────────────
+    // Fetch recent snapshots and pick the latest per trainer in JS
+    const { data: allSnapshots } = await supabase
+      .from("trainer_metric_snapshots")
+      .select("*")
+      .eq("studio_id", studioId)
+      .in("trainer_id", trainerIds)
+      .order("snapshot_date", { ascending: false });
+
+    // ─── Index bulk data by trainer_id ────────────────────────
+    const classesByTrainer = new Map<string, typeof allClasses>();
+    for (const cls of allClasses ?? []) {
+      const list = classesByTrainer.get(cls.trainer_id) ?? [];
+      list.push(cls);
+      classesByTrainer.set(cls.trainer_id, list);
+    }
+
+    const revenueByTrainer = new Map<string, number>();
+    for (const txn of allRevenue ?? []) {
+      const current = revenueByTrainer.get(txn.promo_trainer_id) ?? 0;
+      revenueByTrainer.set(txn.promo_trainer_id, current + (txn.amount ?? 0));
+    }
+
+    const snapshotByTrainer = new Map<string, (typeof allSnapshots extends (infer T)[] | null ? T : never)>();
+    for (const snap of allSnapshots ?? []) {
+      // Only keep the first (latest) snapshot per trainer
+      if (!snapshotByTrainer.has(snap.trainer_id)) {
+        snapshotByTrainer.set(snap.trainer_id, snap);
+      }
+    }
+
+    // ─── Compute Metrics Per Trainer (no additional queries) ──
+    const trainerMetrics = trainers.map((trainer) => {
       const trainerProfile = trainer.profiles as unknown as {
         id: string;
         full_name: string;
@@ -107,16 +160,7 @@ export async function GET(request: NextRequest) {
         avatar_url: string | null;
       } | null;
 
-      // Classes in period
-      const { data: classes } = await supabase
-        .from("classes")
-        .select("id, checked_in_count, capacity")
-        .eq("studio_id", studioId)
-        .eq("trainer_id", trainer.id)
-        .gte("starts_at", periodStart)
-        .lte("starts_at", periodEnd + "T23:59:59");
-
-      const trainerClasses = classes ?? [];
+      const trainerClasses = classesByTrainer.get(trainer.id) ?? [];
       const totalClasses = trainerClasses.length;
       const totalCheckIns = trainerClasses.reduce(
         (sum, c) => sum + (c.checked_in_count ?? 0),
@@ -135,33 +179,10 @@ export async function GET(request: NextRequest) {
       const bonusHitRate =
         totalClasses > 0 ? (bonusHits / totalClasses) * 100 : 0;
 
-      // Revenue attributed via promo code
-      const { data: revenueData } = await supabase
-        .from("transactions")
-        .select("amount")
-        .eq("studio_id", studioId)
-        .eq("promo_trainer_id", trainer.id)
-        .eq("status", "completed")
-        .gte("created_at", periodStart)
-        .lte("created_at", periodEnd + "T23:59:59");
+      const revenueAttributed = revenueByTrainer.get(trainer.id) ?? 0;
+      const snapshot = snapshotByTrainer.get(trainer.id) ?? null;
 
-      const revenueAttributed =
-        revenueData?.reduce(
-          (sum, t: { amount: number }) => sum + (t.amount ?? 0),
-          0
-        ) ?? 0;
-
-      // Check for latest snapshot
-      const { data: snapshot } = await supabase
-        .from("trainer_metric_snapshots")
-        .select("*")
-        .eq("trainer_id", trainer.id)
-        .eq("studio_id", studioId)
-        .order("snapshot_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      trainerMetrics.push({
+      return {
         trainer_id: trainer.profile_id,
         trainer_table_id: trainer.id,
         name: trainerProfile?.full_name ?? "Unknown",
@@ -183,9 +204,9 @@ export async function GET(request: NextRequest) {
           bonus_hits: bonusHits,
           revenue_attributed: revenueAttributed,
         },
-        latest_snapshot: snapshot ?? null,
-      });
-    }
+        latest_snapshot: snapshot,
+      };
+    });
 
     return NextResponse.json({
       data: trainerMetrics,

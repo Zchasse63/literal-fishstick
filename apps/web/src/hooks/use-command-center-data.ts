@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase/client'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 const POLL_INTERVAL = 60_000 // 60 seconds
 
 // ─── Types ──────────────────────────────────────────────────

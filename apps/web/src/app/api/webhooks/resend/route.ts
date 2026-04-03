@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Webhook } from 'svix'
 import { createServerClient } from '@/lib/supabase/server'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET!
 
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
               .upsert(
                 {
                   member_id: memberId,
-                  studio_id: tags.find((t) => t.name === 'studio_id')?.value ?? '11111111-1111-1111-1111-111111111111',
+                  studio_id: tags.find((t) => t.name === 'studio_id')?.value ?? DEFAULT_STUDIO_ID,
                   hard_bounced: true,
                   hard_bounced_at: payload.created_at,
                   marketing_email: false,
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
             .upsert(
               {
                 member_id: memberId,
-                studio_id: tags.find((t) => t.name === 'studio_id')?.value ?? '11111111-1111-1111-1111-111111111111',
+                studio_id: tags.find((t) => t.name === 'studio_id')?.value ?? DEFAULT_STUDIO_ID,
                 marketing_email: false,
                 unsubscribed_at: payload.created_at,
                 unsubscribe_reason: 'spam_complaint',

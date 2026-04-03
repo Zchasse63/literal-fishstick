@@ -21,6 +21,7 @@ import {
   Tag,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 // ─── Types ──────────────────────────────────────────────────
 type Category = 'all' | 'apparel' | 'accessories' | 'equipment' | 'supplements'
@@ -38,7 +39,7 @@ interface Product {
   active: boolean
 }
 
-const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
+const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: 'all', label: 'All' },

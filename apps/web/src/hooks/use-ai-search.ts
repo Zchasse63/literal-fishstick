@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { NLSearchResult } from "@/lib/anthropic";
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const DEFAULT_STUDIO_ID = "11111111-1111-1111-1111-111111111111";
 const DEBOUNCE_MS = 300;
 const MAX_HISTORY = 5;
 
