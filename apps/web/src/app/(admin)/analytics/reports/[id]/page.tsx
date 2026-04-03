@@ -441,7 +441,7 @@ export default function ReportViewerPage() {
                     </td>
                     <td className="px-5 py-3">
                       <Link
-                        href={`/members/${row.trainerId}`}
+                        href={`/analytics/trainers/${row.trainerId}`}
                         className="text-sm text-gray-700 hover:text-indigo-600 transition"
                       >
                         {row.trainer}

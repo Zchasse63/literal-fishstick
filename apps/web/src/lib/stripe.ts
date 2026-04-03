@@ -145,7 +145,8 @@ export async function createCheckoutSession(
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
     metadata: options.metadata,
-    payment_method_types: ['card'],
+    // Enable card + wallet payments (Apple Pay / Google Pay)
+    payment_method_types: ['card', 'link'],
   })
 }
 

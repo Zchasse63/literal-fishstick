@@ -658,6 +658,7 @@ Tables:
 - trainers (id uuid, studio_id uuid, profile_id uuid, promo_code text, glofox_id text, created_at timestamptz)
 - trainer_bonuses (id uuid, trainer_id uuid, class_id uuid, studio_id uuid, check_in_count int, threshold int, status text, created_at timestamptz)
 - appointments (id uuid, studio_id uuid, member_id uuid, trainer_id uuid, title text, start_time timestamptz, end_time timestamptz, status text, price int, glofox_id text, created_at timestamptz)
+- leads (id uuid, studio_id uuid, full_name text, email text, phone text, source text, status text, score int, assigned_to uuid, notes text, converted_member_id uuid, created_at timestamptz, updated_at timestamptz)
 - lead_interactions (id uuid, studio_id uuid, lead_id uuid, type text, notes text, created_by uuid, created_at timestamptz)
 - glofox_sync_conflicts (id uuid, studio_id uuid, entity_type text, entity_id text, glofox_id text, conflict_type text, glofox_data jsonb, meridian_data jsonb, resolved boolean, created_at timestamptz)
 
@@ -675,6 +676,8 @@ Important relationships:
 - appointments.member_id references members.id
 - appointments.trainer_id references profiles.id
 - lead_interactions.lead_id references leads.id
+- leads.assigned_to references profiles.id
+- leads.converted_member_id references members.id
 
 Notes:
 - Transaction amounts are stored in CENTS (divide by 100 for display)
