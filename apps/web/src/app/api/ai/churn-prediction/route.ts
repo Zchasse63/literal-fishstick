@@ -76,7 +76,7 @@ async function buildChurnInput(
   const { data: memberRow, error: memberError } = await supabase
     .from("members")
     .select(
-      "id, membership_tier, membership_status, join_date, created_at, profiles:profile_id ( full_name )"
+      "id, membership_tier, membership_status, join_date, created_at, profiles:profile_id ( full_name, email )"
     )
     .eq("id", memberId)
     .eq("studio_id", STUDIO_ID)
@@ -88,6 +88,7 @@ async function buildChurnInput(
 
   const profile = {
     full_name: (memberRow.profiles as any)?.full_name ?? "Unknown Member",
+    email: (memberRow.profiles as any)?.email ?? "",
     membership_type: memberRow.membership_tier,
     membership_status: memberRow.membership_status,
     join_date: memberRow.join_date,
@@ -199,7 +200,7 @@ async function buildChurnInput(
       .from("email_send_log")
       .select("id", { count: "exact", head: true })
       .eq("studio_id", STUDIO_ID)
-      .eq("recipient_email", profile.full_name) // will be re-queried below with actual email
+      .eq("recipient_email", profile.email ?? "")
       .not("opened_at", "is", null)
       .gte("created_at", thirtyDaysAgo),
 

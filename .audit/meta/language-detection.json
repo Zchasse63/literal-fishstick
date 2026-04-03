@@ -1,32 +1,104 @@
 {
-  "primary_language": "TypeScript",
-  "languages": ["TypeScript", "SQL", "YAML", "CSS"],
-  "frameworks": ["Next.js 16 (App Router)", "React 19", "Supabase", "Inngest", "Stripe"],
+  "languages": [
+    { "name": "TypeScript", "files": 391, "primary": true },
+    { "name": "SQL", "files": 17, "usage": "migrations and seed scripts" },
+    { "name": "Python", "files": 2, "usage": "data import scripts" },
+    { "name": "CSS", "files": 1, "usage": "Tailwind CSS v4 globals" }
+  ],
+  "frameworks": [
+    { "name": "Next.js", "version": "16.2.0", "role": "fullstack framework (App Router, RSC)" },
+    { "name": "React", "version": "^19.2.4", "role": "UI library" },
+    { "name": "Tailwind CSS", "version": "^4", "role": "utility-first CSS framework" },
+    { "name": "shadcn/ui", "style": "base-nova", "role": "component library" },
+    { "name": "Turborepo", "version": "^2.8.20", "role": "monorepo build orchestration" },
+    { "name": "Inngest", "version": "^4.0.2", "role": "background jobs and event-driven workflows" },
+    { "name": "ReactFlow", "version": "^11.11.4", "role": "flow/node graph UI" },
+    { "name": "Recharts", "version": "^2.15.4", "role": "data visualization" },
+    { "name": "Framer Motion", "version": "^12.4.10", "role": "animations" },
+    { "name": "Zod", "version": "^3.24.0", "role": "runtime schema validation" }
+  ],
   "has_frontend": true,
-  "has_backend": true,
   "ai_detected": true,
-  "ai_frameworks": ["Anthropic Claude SDK", "pgvector"],
-  "test_frameworks": [],
-  "package_manager": "npm",
+  "ai_details": {
+    "sdk": "@anthropic-ai/sdk ^0.80.0",
+    "model": "Claude (Anthropic)",
+    "modules": [
+      "briefing",
+      "churn-prediction",
+      "booking-patterns",
+      "health-score",
+      "campaign-copy",
+      "revenue-anomaly",
+      "insights",
+      "intake-enrichment",
+      "recommendations",
+      "search",
+      "trainer-summary",
+      "waitlist-message",
+      "auto-reply"
+    ],
+    "integration_depth": "core infrastructure (13 AI API endpoints, dedicated ai/ module)"
+  },
+  "package_managers": [
+    { "name": "npm", "version": "10.9.2", "lockfile": "package-lock.json" }
+  ],
+  "databases": [
+    { "name": "Supabase (PostgreSQL)", "packages": ["@supabase/supabase-js ^2.49.0", "@supabase/ssr ^0.6.0"], "role": "primary database, auth, realtime" }
+  ],
+  "testing_frameworks": [
+    { "name": "Vitest", "version": "^4.1.0", "types": ["unit", "integration"], "coverage": "v8" },
+    { "name": "Playwright", "version": "^1.58.2", "type": "e2e", "projects": ["auth-setup", "admin", "employee"] },
+    { "name": "Testing Library", "packages": ["@testing-library/react ^16.3.2", "@testing-library/jest-dom ^6.9.1"], "type": "component testing" }
+  ],
+  "build_tools": [
+    { "name": "Turborepo", "version": "^2.8.20", "role": "monorepo task runner" },
+    { "name": "Next.js Compiler", "role": "application bundler (SWC-based)" },
+    { "name": "PostCSS", "role": "CSS processing (Tailwind v4 plugin)" },
+    { "name": "tsx", "version": "^4.21.0", "role": "TypeScript script execution" },
+    { "name": "ESLint", "version": "^9", "config": "eslint-config-next (core-web-vitals + typescript)" }
+  ],
+  "css_frameworks": [
+    { "name": "Tailwind CSS", "version": "^4", "variant": "v4 with @tailwindcss/postcss" },
+    { "name": "tw-animate-css", "version": "^1.4.0" },
+    { "name": "tailwindcss-animate", "version": "^1.0.7" },
+    { "name": "class-variance-authority", "version": "^0.7.1" },
+    { "name": "tailwind-merge", "version": "^3.5.0" },
+    { "name": "clsx", "version": "^2.1.1" },
+    { "name": "shadcn/ui", "style": "base-nova", "icons": "lucide-react" }
+  ],
+  "deployment": [
+    { "name": "Netlify", "config": "netlify.toml", "plugin": "@netlify/plugin-nextjs ^5.15.9" }
+  ],
+  "integrations": [
+    { "name": "Stripe", "version": "^20.4.1", "role": "payments (direct, not Connect)" },
+    { "name": "Resend", "version": "^6.9.4", "role": "transactional and campaign email" },
+    { "name": "Twilio", "version": "^5.13.0", "role": "SMS provider" },
+    { "name": "Svix", "version": "^1.89.0", "role": "webhook delivery" },
+    { "name": "Glofox API", "role": "fitness studio platform (read-only integration)" },
+    { "name": "Handlebars", "version": "^4.7.8", "role": "email templating" },
+    { "name": "QRCode", "version": "^1.5.4", "role": "QR code generation for check-ins" }
+  ],
   "monorepo": true,
-  "monorepo_tool": "Turborepo",
-  "build_tool": "Turbopack",
-  "hosting": "Netlify",
-  "database": "PostgreSQL (Supabase)",
-  "auth": "Supabase Auth (Magic Link / SSO)",
-  "css": "Tailwind CSS",
-  "ui_libraries": ["framer-motion", "recharts", "lucide-react", "reactflow", "@dnd-kit"],
-  "api_style": "REST (Next.js Route Handlers)",
-  "total_routes_estimated": 120,
-  "total_pages_estimated": 45,
-  "total_lines_estimated": 45000,
-  "packages": ["@meridian/types", "@meridian/utils", "@meridian/supabase", "web"],
-  "notable": {
-    "sms_provider": "Twilio (with stub fallback)",
-    "email_provider": "Resend",
-    "payments": "Stripe (direct)",
-    "shipping": "EasyPost (stub + real)",
-    "realtime": "60s polling (Phase 1)",
-    "multi_tenancy": "RLS with studio_id"
-  }
+  "monorepo_structure": {
+    "tool": "Turborepo with npm workspaces",
+    "apps": ["apps/web (Next.js 16)"],
+    "packages": [
+      "packages/types (@meridian/types)",
+      "packages/utils (@meridian/utils)",
+      "packages/supabase (@meridian/supabase)"
+    ]
+  },
+  "node_version": ">=22.0.0",
+  "typescript_version": "^5",
+  "file_counts": {
+    "ts": 297,
+    "tsx": 94,
+    "sql": 17,
+    "json": 15,
+    "py": 2,
+    "mjs": 2,
+    "css": 1,
+    "total_tracked": 533
+  },
+  "summary": "Turborepo monorepo with Next.js 16 (React 19) frontend, Supabase backend, 13 Anthropic AI endpoints, Stripe/Resend/Twilio integrations, Tailwind v4 + shadcn/ui, tested via Vitest + Playwright, deployed to Netlify"
 }

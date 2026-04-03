@@ -96,7 +96,7 @@ export async function predictSeasonalTrends(
     const weeklyAggregated = aggregateToWeekly(data.daily_metrics);
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: AI_MODEL,
       max_tokens: 2500,
       system: SYSTEM_PROMPT,
       messages: [

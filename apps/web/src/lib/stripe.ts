@@ -34,7 +34,7 @@ export async function getOrCreateCustomer(email: string, name: string, memberId:
     name,
     metadata: {
       meridian_member_id: memberId,
-      studio_id: '11111111-1111-1111-1111-111111111111',
+      meridian_studio_id: '11111111-1111-1111-1111-111111111111',
     },
   })
 }
@@ -117,7 +117,7 @@ export async function createPaymentIntent(
       enabled: true,
     },
     metadata: {
-      studio_id: '11111111-1111-1111-1111-111111111111',
+      meridian_studio_id: '11111111-1111-1111-1111-111111111111',
       ...metadata,
     },
   }, {

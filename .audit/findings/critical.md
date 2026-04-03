@@ -1,87 +1,122 @@
 # Critical Findings
 
-All CRITICAL severity findings, deduplicated and cross-referenced.
+Generated: 2026-04-02
+Deduplicated and cross-referenced from 10 layer audit reports.
 
 ---
 
-## CRIT-001 — Automation Engine Completely Non-Functional (Field Mismatch)
+## CRIT-01: In-Memory Rate Limiter is Non-Functional in Production (Serverless)
 
-**Source layers:** data-model, integration, user-flow, ai-layer
-**Corroboration score:** 4/10 agents
+**Root cause**: `lib/rate-limit.ts` uses a module-level `Map` that resets on every Netlify cold start.
 
-**Finding:**
-`evaluate-triggers.ts` (Inngest cron, runs every 10 minutes) queries `.eq('status', 'active')` on the `automation_flows` table. The SQL schema defines this as `is_active BOOLEAN DEFAULT FALSE`, not a `status` TEXT column. The query returns 0 flows every run.
+**Corroboration**: 7 of 10 layers (project-structure, api-surface, testing-quality, ai-layer, integration, security, performance-infra). This is the most corroborated finding in the entire audit.
 
-**Impact:** The entire automation engine — all 12 trigger types including win-back, churn re-engagement, birthday, credit-expiry, member signup, no-show follow-up — is silently non-functional. No automation flow has ever or will ever execute until this is fixed.
+**Impact**: All 13 AI endpoints, the SMS send endpoint, and the leads capture endpoint have zero rate limiting in production. A single authenticated user can invoke the Anthropic API without throttling, creating unbounded cost exposure. The leads capture endpoint (public, rate-limited by IP) is also unprotected, enabling form spam.
 
-**Fix:** Change `.eq('status', 'active')` to `.eq('is_active', true)` in `evaluate-triggers.ts`.
+**Evidence**: The file's own comment acknowledges this: "Suitable for single-instance deployments. For multi-instance / serverless, replace with a Redis-backed implementation."
 
----
-
-## CRIT-002 — `members` vs `profiles` Table Split Breaks Stripe Webhook
-
-**Source layers:** data-model, integration, security
-**Corroboration score:** 3/10 agents
-
-**Finding:**
-The Stripe webhook handler (`/api/webhooks/stripe/route.ts`) writes subscription events to `.from('members')`. The entire API layer and UI reads from `.from('profiles')`. If these are separate tables (not a view), Stripe subscription data is written to a dead table.
-
-**Impact:** Membership status never updates from Stripe events. Subscription activations, cancellations, and billing failures are invisible in the admin UI. Revenue data is permanently stale.
-
-**Fix:** Determine whether `members` is a table or a view of `profiles`. If a separate table, migrate the webhook to write to `profiles` using the appropriate field names. Verify `helpers.ts:checkExitConditions()` (which also queries `.from('members')`) is similarly corrected.
+**File**: `apps/web/src/lib/rate-limit.ts`
+**Effort**: Medium (requires Upstash Redis or Supabase-backed implementation)
+**Confidence**: 100%
 
 ---
 
-## CRIT-003 — Churn Prediction Inputs Permanently Corrupted
+## CRIT-02: Role Alias Mismatch -- "owner" Role Silently Denied by ~20 Routes
 
-**Source layers:** data-model, ai-layer
-**Corroboration score:** 2/10 agents
+**Root cause**: `requireRole()` normalizes "owner" and "admin" as equivalent, but ~20 routes bypass it and check only `["admin", "manager"]`, excluding the canonical "owner" role.
 
-**Finding:**
-`/api/ai/churn-prediction/route.ts` queries `credit_packs` with `.select('remaining')`. The actual column name is `credits_remaining` (per TypeScript types and consistent API usage). Supabase returns `null` for the unknown column, resulting in `credits_remaining: 0` and `credits_expiring_soon: false` for every member.
+**Corroboration**: 3 layers (api-surface C-1, security SEC-C2, project-structure HIGH-003 indirectly)
 
-**Impact:** All 13 churn predictions receive systematically wrong input data. Claude is making predictions based on false information that every member has zero credits and no credits expiring. This produces incorrect `churn_probability`, `risk_level`, and `recommended_interventions` for all members. Cached results are poisoned for 24 hours.
+**Impact**: An account with the canonical "owner" role is silently refused from: managing leads, converting leads to members, managing content posts, activating automations, exporting financial reports, generating PDFs, sending SMS, and accessing payroll data. The highest-privilege account cannot access critical business functions.
 
-**Fix:** Change `.select('remaining')` to `.select('credits_remaining')` in the churn prediction route. Invalidate any cached results in `ai_cache` where `cache_type = 'churn_narrative'`.
+**Affected routes**: `api/leads/*`, `api/content/*`, `api/automations/*`, `api/reports/*/export`, `api/reports/*/generate`, `api/sms/send`, `api/payroll/periods/*/approve`, `api/payroll/periods/*/calculate`, `api/payroll/periods/*/export`
 
----
-
-## CRIT-004 — Phase 2 RLS Policies May Not Be Enforced
-
-**Source layers:** security, data-model
-**Corroboration score:** 2/10 agents
-
-**Finding:**
-Phase 2 RLS policies (campaigns, automations, leads, content, email preferences, cooldowns) use `current_setting('app.studio_id')::uuid`. No code was found that sets this PostgreSQL session variable before executing queries. The `@meridian/supabase` server client is a standard `createSSRClient` with no session variable injection.
-
-**Impact:** If `app.studio_id` is never set, either all RLS policies throw an error (fail-closed, breaking all Phase 2 functionality) or `current_setting` with no default returns null (making `studio_id = null::uuid` comparisons that exclude all rows). Either way, Phase 2 tables are either inaccessible or improperly isolated.
-
-**Fix:** Verify the Supabase RLS configuration. Supabase's standard RLS pattern uses `auth.uid()` not custom session variables. If the intent is session-variable RLS, the server client must execute `SET app.studio_id = '...'` before every query batch, or the RLS policies must be rewritten to use `auth.uid()` lookups against a `studio_members` junction table.
+**File**: ~20 route files with `ALLOWED_ROLES = ["admin", "manager"]`
+**Effort**: Low (search-replace "admin" with "owner" in ALLOWED_ROLES, or migrate to `requireRole()`)
+**Confidence**: 95%
 
 ---
 
-## CRIT-005 — `automation_cooldowns` Schema Mismatch (Synthesis Finding)
+## CRIT-03: Automation Cooldown System is Non-Functional (Schema/Code Mismatch)
 
-**Source layers:** Synthesizer (from data-model + integration cross-reference)
-**Corroboration score:** 2/10 agents (synthesis)
+**Root cause**: Phase 2 migration defines `last_automation_email_at`/`last_automation_sms_at` columns, but `helpers.ts` queries a non-existent `channel` column and upserts on a non-existent three-column constraint.
 
-**Finding:**
-The Phase 2 SQL migration defines `automation_cooldowns` with two timestamp columns (`last_automation_email_at`, `last_automation_sms_at`) — one row per member. The `checkAutomationCooldown()` and `updateCooldown()` functions in `lib/inngest/helpers.ts` query with `.eq('channel', channel)` and upsert with `{ onConflict: 'member_id,studio_id,channel' }` — expecting one row per member-channel combination with a `channel` TEXT column.
+**Corroboration**: 2 layers (data-model C-002, integration I-C1)
 
-**Impact:** Both `checkAutomationCooldown()` and `updateCooldown()` will fail at runtime with a Postgres column-not-found error (`channel` column does not exist). Since these are called inside Inngest step functions, failures will be caught and retried, but the cooldown system will never function correctly. This means the 24-hour automation rate limit cannot be enforced.
+**Impact**: `checkAutomationCooldown()` always returns false (no row matched). `updateCooldown()` silently fails. Every automation enrollment sends email and SMS on every trigger evaluation cycle with no throttling. Members enrolled in automations receive unbounded duplicate messages.
 
-**Fix:** Reconcile the schema with the code. Either add a `channel TEXT` column and unique constraint to `automation_cooldowns`, or update `helpers.ts` to use the two-timestamp approach defined in the SQL.
+**Files**: `scripts/phase2-migration.sql` (lines 344-356), `apps/web/src/lib/inngest/helpers.ts` (lines 143-175)
+**Effort**: Low (either add `channel` column to schema or rewrite helpers to use existing columns)
+**Confidence**: 100%
 
 ---
 
-## CRIT-006 — Zero Test Coverage on Financial and Security Paths
+## CRIT-04: `classes` Table API Writes to Non-Existent Columns
 
-**Source layers:** testing-quality, security
-**Corroboration score:** 2/10 agents
+**Root cause**: API route handlers for `/api/classes` use `start_time`/`end_time` but the database columns are `starts_at`/`ends_at`.
 
-**Finding:**
-No tests exist for the Stripe webhook handler, booking capacity enforcement, credit expiry grace periods, trainer bonus threshold calculations, or RLS isolation. There is no CI pipeline to catch regressions.
+**Corroboration**: 1 layer directly (data-model C-001), corroborated by seed SQL, Inngest cron, and SCHEMA_CONTEXT all using `starts_at`.
 
-**Impact:** Any regression in financial flows (payment processing, subscription management, credit tracking) or security boundaries (RLS isolation, role authorization) will reach production undetected. As the platform approaches Phase 5 (member-facing, public), this becomes a critical operational risk.
+**Impact**: Class creation via the admin dashboard inserts rows with NULL `starts_at`/`ends_at`. Existing classes display correctly (imported via seed SQL with correct columns), but new classes created through the UI will have no time information.
 
-**Fix:** Establish minimum test coverage for: (1) Stripe webhook event handling, (2) concurrent booking capacity, (3) RLS cross-tenant isolation, (4) role-based API authorization. Set up Vitest + Playwright as the test infrastructure.
+**Files**: `apps/web/src/app/api/classes/route.ts`, `apps/web/src/app/api/classes/[id]/route.ts`
+**Effort**: Low (rename `start_time` to `starts_at` and `end_time` to `ends_at` in both files)
+**Confidence**: 95%
+
+---
+
+## CRIT-05: Campaign Builder "Send" and "Save as Draft" Buttons Have No API Call
+
+**Root cause**: The campaign builder's final action buttons are `<button>` elements with no `onClick` handler and no `fetch` call.
+
+**Corroboration**: 1 layer directly (user-flow UF-C-1), supported by testing-quality's finding that E2E tests never test mutations.
+
+**Impact**: The entire campaign creation flow is a visual prototype. Admins cannot launch, schedule, or save any new campaign. The `POST /api/campaigns` and `POST /api/campaigns/send` endpoints exist and are functional but are never called by the UI. The 3-step campaign builder (Setup, Content, Review) is fully interactive but produces no result.
+
+**File**: `apps/web/src/app/(admin)/marketing/campaigns/new/page.tsx` (line 1343)
+**Effort**: Low (add onClick handler that calls the existing API endpoint)
+**Confidence**: 100%
+
+---
+
+## CRIT-06: Automation Builder "Save" and "Activate" Buttons Have No API Call
+
+**Root cause**: Same pattern as CRIT-05. ReactFlow-based automation builder stores nodes/edges only in React state; neither Save Draft nor Save & Activate has an onClick handler.
+
+**Corroboration**: 1 layer (user-flow UF-C-2)
+
+**Impact**: Any automation flow built by an admin is lost on page navigation. The `POST /api/automations` endpoint exists but is never called. This is the highest-value feature in the Marketing module.
+
+**File**: `apps/web/src/app/(admin)/marketing/automations/new/page.tsx`
+**Effort**: Low (serialize ReactFlow state to request body, call existing API endpoint)
+**Confidence**: 100%
+
+---
+
+## CRIT-07: Node Version Mismatch -- CI (Node 22) vs Netlify (Node 20)
+
+**Root cause**: `package.json` requires `>=22.0.0`, CI uses Node 22, `netlify.toml` sets `NODE_VERSION = "20"`.
+
+**Corroboration**: 2 layers (project-structure CRIT-001, performance-infra PERF-04). Performance-infra adds that `@types/node` is `^20`, creating a third inconsistency.
+
+**Impact**: Code that passes CI on Node 22 may fail or behave differently on Netlify's Node 20. Next.js 16 with React 19 may use Node 22-specific APIs. A production build failure would take the platform offline.
+
+**Files**: `netlify.toml` (line 10), `package.json` (engines), `apps/web/package.json` (@types/node)
+**Effort**: Low (change `NODE_VERSION = "22"` in netlify.toml, update @types/node to ^22)
+**Confidence**: 100%
+
+---
+
+## CRIT-08: AI-Generated SQL Has Bypassable Studio Isolation (Multi-Tenant Risk)
+
+**Root cause**: `/api/ai/search` executes AI-generated SQL. The studio_id check is a string presence check (`sql.includes(studio_id)`) which can be satisfied while still querying other tenants via JOINs or UNIONs. No LIMIT enforcement.
+
+**Corroboration**: 2 layers (security SEC-C3, ai-layer M-03 and M-06)
+
+**Impact**: In a multi-tenant deployment, a crafted natural language query could extract data from other studios. Current single-tenant deployment prevents cross-tenant leakage (only one studio exists). This is a blocking pre-condition for SaaS multi-tenancy.
+
+**Note**: The SQL forbidden keyword check and SELECT-only enforcement are strong baseline protections. The gap is specifically in the studio isolation guarantee.
+
+**Files**: `apps/web/src/app/api/ai/search/route.ts`, `apps/web/src/lib/anthropic.ts` (translateToSQL)
+**Effort**: Medium (rewrite `execute_readonly_sql` RPC to enforce studio_id server-side)
+**Confidence**: 85% (exploitability depends on `execute_readonly_sql` implementation, which was not found in the repo)

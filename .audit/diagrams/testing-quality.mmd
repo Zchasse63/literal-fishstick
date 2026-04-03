@@ -1,7 +1,115 @@
-pie title Test Coverage by Domain
-    "AI Claude functions (13 untested)" : 13
-    "API route handlers (120+ untested)" : 120
-    "Inngest automation functions (12 untested)" : 12
-    "Webhook handlers (4 untested)" : 4
-    "Shared packages (3 untested)" : 3
-    "UI components (20+ untested)" : 20
+flowchart TD
+    subgraph UNIT["Unit Tests (26/148 API routes)"]
+        direction TB
+
+        subgraph WELL["Well Tested"]
+            style WELL fill:#d1fae5,stroke:#10b981
+            BOOKINGS["bookings\n15 tests"]:::green
+            CHECKIN["check-in\n12 tests"]:::green
+            STRIPE["webhooks/stripe\n23 tests"]:::green
+            REQUIREROLE["lib/require-role\n12 tests"]:::green
+            RATELIMIT["lib/rate-limit\n10 tests"]:::green
+            INNGEST["lib/inngest/helpers\n32 tests"]:::green
+            VALIDATION["lib/validation\n18 tests"]:::green
+        end
+
+        subgraph PARTIAL["Partial Coverage"]
+            style PARTIAL fill:#fef3c7,stroke:#f59e0b
+            MEMBERS["members\n10 tests\n(4 routes, 2 covered)"]:::yellow
+            CLASSES["classes\n11 tests"]:::yellow
+            LEADS["leads\n10 tests\n(5 routes, 2 covered)"]:::yellow
+            CAMPAIGNS["campaigns\n10 tests\n(9 routes, 1 covered)"]:::yellow
+            CORPORATE["corporate\n8 tests\n(6 routes, 2 covered)"]:::yellow
+            INVOICES["invoices\n9 tests\n(5 routes, 1 covered)"]:::yellow
+        end
+
+        subgraph MINIMAL["Minimal Coverage"]
+            style MINIMAL fill:#fee2e2,stroke:#ef4444
+            CLOCK["clock\n8 tests"]:::red
+            STAFF["staff\n10 tests"]:::red
+            SETTINGS["settings\n8 tests"]:::red
+            PRICING_SIM["pricing-simulator\n10 tests\n(3 routes, 1 covered)"]:::red
+            RESEND["lib/resend\n14 tests"]:::red
+        end
+    end
+
+    subgraph ZERO["Zero Unit Test Coverage"]
+        direction TB
+        style ZERO fill:#f1f5f9,stroke:#94a3b8,stroke-dasharray: 5 5
+
+        subgraph AI_GROUP["AI Routes (17 routes)"]
+            style AI_GROUP stroke-dasharray: 5 5
+            AI["ai/*\n0 tests\n17 routes"]:::none
+        end
+
+        subgraph ANALYTICS_GROUP["Analytics Routes (7 routes)"]
+            style ANALYTICS_GROUP stroke-dasharray: 5 5
+            ANALYTICS["analytics/*\n0 tests\n7 routes"]:::none
+        end
+
+        subgraph REVENUE_GROUP["Revenue & Payments"]
+            style REVENUE_GROUP stroke-dasharray: 5 5
+            REVENUE["revenue/\n0 tests"]:::none
+            TRANSACTIONS["transactions/\n0 tests"]:::none
+            PAYROLL["payroll/*\n0 tests\n6 routes"]:::none
+            UPGRADE["members/upgrade\ndowngrade/tags\n0 tests"]:::none
+        end
+
+        subgraph COMMS["Communications"]
+            style COMMS stroke-dasharray: 5 5
+            CAMPAIGN_SEND["campaigns/send\nprocess-scheduled\n0 tests"]:::none
+            SMS["sms/send\n0 tests"]:::none
+            WEBHOOKS_OTHER["webhooks/resend\ntwilio, easypost\n0 tests"]:::none
+        end
+
+        subgraph OPS["Operations"]
+            style OPS stroke-dasharray: 5 5
+            EVENTS["events/*\n0 tests\n6 routes"]:::none
+            AUTOMATIONS["automations/*\n0 tests\n6 routes"]:::none
+            MIGRATION["migration/*\n0 tests\n7 routes"]:::none
+            GEOFENCE["geofence/*\n0 tests"]:::none
+        end
+
+        subgraph MERCH["Merch & Orders"]
+            style MERCH stroke-dasharray: 5 5
+            ORDERS["orders/*\n0 tests\n4 routes"]:::none
+            PRODUCTS["products/*\n0 tests"]:::none
+        end
+    end
+
+    subgraph INTEGRATION["Integration Tests (Live Supabase)"]
+        direction LR
+        INT_CRUD["supabase-crud\n12 tests\nprofile/member/class/booking/tx"]:::green
+        INT_AUTH["auth-flow\n6 tests\nsign-in/sign-out/password"]:::green
+        INT_STRIPE["stripe-webhook-effects\n11 tests\nDB side effects"]:::green
+        INT_INNGEST["inngest-helpers\n17 tests\nenrollment lifecycle"]:::green
+        INT_BOOKINGS["api-bookings\n6 tests\ncapacity enforcement"]:::green
+        INT_AI["ai-endpoints\n7 tests\nLIVE Anthropic API\ncosts real money"]:::yellow
+    end
+
+    subgraph E2E["E2E Tests (Playwright - Smoke Only)"]
+        direction LR
+        E2E_LOGIN["login\n4 tests\npage load only"]:::yellow
+        E2E_COMMAND["command-center\n4 tests\npage load only"]:::yellow
+        E2E_MEMBERS["members\n4 tests\npage load + search"]:::yellow
+        E2E_SCHEDULE["schedule\n3 tests\npage load only"]:::yellow
+        E2E_REVENUE["revenue\n3 tests\npage load only"]:::yellow
+        E2E_ANALYTICS["analytics\n4 tests\npage load only"]:::yellow
+        E2E_EMPLOYEE["employee-portal\n4 tests\npage load only"]:::yellow
+        E2E_MARKETING["marketing\n4 tests\npage load only"]:::yellow
+        E2E_CORPORATE["corporate\n2 tests\npage load only"]:::yellow
+    end
+
+    subgraph GAPS["Test Gaps (0 tests)"]
+        direction LR
+        HOOKS["13 React hooks\n0 tests"]:::none
+        COMPONENTS["UI components\n0 tests\n(Testing Library installed)"]:::none
+        MIDDLEWARE["middleware.ts\nauth guard\n0 tests"]:::none
+        INNGEST_FNS["19 Inngest functions\n0 tests"]:::none
+        AI_LIB["lib/ai/* (14 files)\nanthropics.ts (1699 lines)\n0 unit tests"]:::none
+    end
+
+    classDef green fill:#d1fae5,stroke:#10b981,color:#065f46
+    classDef yellow fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef red fill:#fee2e2,stroke:#ef4444,color:#991b1b
+    classDef none fill:#f1f5f9,stroke:#94a3b8,color:#64748b,stroke-dasharray: 5 5

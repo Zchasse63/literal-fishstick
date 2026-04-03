@@ -55,15 +55,15 @@ export async function GET(request: NextRequest) {
         { count: "exact" }
       )
       .eq("studio_id", studioId)
-      .order("start_time", { ascending: true })
+      .order("starts_at", { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (startDate) {
-      query = query.gte("start_time", startDate);
+      query = query.gte("starts_at", startDate);
     }
 
     if (endDate) {
-      query = query.lte("start_time", endDate);
+      query = query.lte("starts_at", endDate);
     }
 
     if (classTypeId) {
@@ -179,8 +179,8 @@ export async function POST(request: NextRequest) {
       .from("classes")
       .insert({
         class_type_id,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
         capacity,
         trainer_id: trainer_id ?? null,
         title: title ?? null,

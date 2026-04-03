@@ -1,60 +1,83 @@
-graph TD
-    subgraph Public["Public Internet (No Auth Required)"]
-        LEADS["/api/leads/capture\nRate limited 10/min/IP\nin-memory only"]:::yellow
-        UNSUB["/api/unsubscribe/:token\nHMAC verified\nno expiry check"]:::yellow
-        OPENAPI["/api/openapi\nFull API schema"]:::yellow
-    end
-
-    subgraph Webhooks["Webhook Endpoints"]
-        STRIPE_WH["/api/webhooks/stripe\nStripe-Signature HMAC"]:::green
-        RESEND_WH["/api/webhooks/resend\nSvix verified"]:::green
-        TWILIO_WH["/api/webhooks/twilio\nOptional — skipped if no secret"]:::yellow
-        EASY_WH["/api/webhooks/easypost\nOptional — open if no secret"]:::red
-        INNGEST_WH["/api/inngest\nInngest signing key"]:::green
-    end
-
-    subgraph Cron["Cron (x-cron-secret OR user auth)"]
-        WAITLIST["/api/cron/waitlist-promote\nGET mutates state"]:::yellow
-        SCHED["/api/campaigns/process-scheduled"]:::yellow
-    end
-
-    subgraph AuthedAPI["Authenticated API (middleware.ts JWT gate)"]
-        MEMBERS_PUT["/api/members/:id PUT\nNO ROLE CHECK\nroles field writable"]:::red
-        ADMIN_ROUTES["Admin-only routes\nowner/manager check\nmembers GET/DELETE\npayroll, migration\ncampaigns, staff"]:::green
-        ANY_AUTHED["Auth-only routes\nno role check\nbookings, classes\ngeofence, segments"]:::yellow
-        AI_ROUTES["/api/ai/* (13 endpoints)\nowner/manager + rate limit\nin-memory limiter only"]:::yellow
-    end
-
-    subgraph Secrets["Credentials (ROTATE IMMEDIATELY)"]
-        SRK["SUPABASE_SERVICE_ROLE_KEY\nIn .env.local\nBypasses all RLS"]:::red
-        ANT["ANTHROPIC_API_KEY\nIn .env.local\nLive production key"]:::red
-        ANON["NEXT_PUBLIC anon key\nIn client bundle\nIntended"]:::green
-    end
-
-    subgraph DataLayer["Data Layer"]
-        SUPABASE_DB[("Supabase Postgres\nRLS on all tables\nstudio_id isolation")]:::green
-        SUPA_SVC[("Service Role Client\nRLS bypassed\nInngest only")]:::yellow
-    end
-
-    subgraph External["External Services"]
-        STRIPE_API["Stripe API\nSecret key server-only"]:::green
-        ANTHROPIC["Anthropic API\nKey needs rotation"]:::red
-        RESEND["Resend API"]:::green
-    end
-
-    Public --> SUPABASE_DB
-    Webhooks --> SUPABASE_DB
-    Cron --> SUPABASE_DB
-    ADMIN_ROUTES --> SUPABASE_DB
-    ANY_AUTHED --> SUPABASE_DB
-    MEMBERS_PUT --> SUPABASE_DB
-    AI_ROUTES --> ANTHROPIC
-    INNGEST_WH --> SUPA_SVC
-    SUPA_SVC --> SUPABASE_DB
-    STRIPE_WH --> SUPABASE_DB
-    ADMIN_ROUTES --> STRIPE_API
-    ADMIN_ROUTES --> RESEND
-
+flowchart TB
     classDef green fill:#10B981,color:#fff,stroke:#059669
     classDef yellow fill:#F59E0B,color:#fff,stroke:#D97706
     classDef red fill:#EF4444,color:#fff,stroke:#DC2626
+    classDef grey fill:#6B7280,color:#fff,stroke:#4B5563
+
+    Internet(["Internet / Public"])
+
+    subgraph PUBLIC["Public Endpoints (no auth)"]
+        direction TB
+        LC["/api/leads/capture"]:::yellow
+        UN["/api/unsubscribe/[token]"]:::green
+        WS["/api/webhooks/stripe"]:::green
+        WR["/api/webhooks/resend"]:::green
+        WT["/api/webhooks/twilio"]:::red
+        WE["/api/webhooks/easypost"]:::red
+        OA["/api/openapi"]:::yellow
+        INN["/api/inngest"]:::yellow
+    end
+
+    subgraph CRONAUTH["Cron Endpoints (x-cron-secret)"]
+        CR["/api/cron/waitlist-promote"]:::yellow
+        PS["/api/campaigns/process-scheduled"]:::yellow
+        LS["/api/leads/score"]:::yellow
+    end
+
+    subgraph AUTHMW["Middleware Auth Boundary"]
+        direction TB
+        subgraph CANONICAL["Canonical requireRole() — 58 routes"]
+            direction TB
+            AI["AI Endpoints (13)"]:::green
+            AN["Analytics Endpoints (7)"]:::green
+            SE["Segments CRUD"]:::green
+            TR["Trainers CRUD"]:::green
+        end
+        subgraph ADHOC["Ad-hoc Auth — 90 routes"]
+            direction TB
+            MBR["Members CRUD"]:::yellow
+            CLS["Classes CRUD"]:::yellow
+            RPT["Reports (owner blocked)"]:::red
+            PAY["Payroll (owner blocked)"]:::red
+            CAM["Campaigns CRUD"]:::yellow
+            AUT["Automations CRUD (owner blocked)"]:::red
+            LED["Leads CRUD (owner blocked)"]:::red
+            CNT["Content CRUD (owner blocked)"]:::red
+            SMS["SMS Send (owner blocked)"]:::red
+            CHK["Check-in"]:::yellow
+            CLK["Clock In/Out"]:::yellow
+        end
+    end
+
+    subgraph DB["Supabase (Postgres)"]
+        direction TB
+        RLS["RLS Policies (app.studio_id — NEVER SET)"]:::red
+        SRV["Service-role Client (bypasses RLS)"]:::yellow
+        PG["Postgres Tables"]:::grey
+    end
+
+    subgraph EXT["External Integrations"]
+        STRIPE["Stripe (signed)"]:::green
+        ANTH["Anthropic API (rate limit: broken)"]:::red
+        TWILIO["Twilio"]:::grey
+        RESEND["Resend (signed)"]:::green
+    end
+
+    Internet --> PUBLIC
+    Internet --> CRONAUTH
+    Internet --> AUTHMW
+
+    AUTHMW --> SRV
+    SRV --> PG
+    RLS --> PG
+
+    CANONICAL --> ANTH
+    AI --> ANTH
+    WS --> STRIPE
+    WR --> RESEND
+    WT --> TWILIO
+
+    LC -.->|"rate limit: broken in serverless"| DB
+    WE -.->|"no auth if env var missing"| DB
+    WT -.->|"no auth if env var missing"| DB
+    INN -.->|"auth only if INNGEST_SIGNING_KEY set"| DB

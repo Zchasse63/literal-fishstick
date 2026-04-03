@@ -1,50 +1,55 @@
-graph TD
-    subgraph APIRoutes["AI API Endpoints (13)"]
-        BRIEF["/api/ai/briefing\nGET — 30min cache"]
-        CHURN["/api/ai/churn-prediction\nPOST — 24h cache"]
-        INSIGHTS["/api/ai/insights\nPOST — fingerprinted"]
-        CAMP["/api/ai/campaign-copy\nPOST"]
-        SEARCH["/api/ai/search\nGET/POST + pgvector"]
-        HEALTH["/api/ai/health-score\nPOST"]
-        ANOMALY["/api/ai/revenue-anomaly\nPOST"]
-        TRAINER["/api/ai/trainer-summary\nPOST"]
-        INTAKE["/api/ai/intake-enrichment\nPOST"]
-        WAITLIST["/api/ai/waitlist-message\nPOST"]
-        AUTOREPLY["/api/ai/auto-reply\nPOST"]
-        BOOKING["/api/ai/booking-patterns\nPOST"]
-        RECS["/api/ai/recommendations\nPOST"]
+flowchart TD
+    subgraph CLIENT["Client (Browser)"]
+        UI["Admin UI / Hooks\n(AbortController, polling)"]
     end
 
-    subgraph LibModules["AI Library Modules"]
-        LIB_MAIN["lib/anthropic.ts\ngenerateBriefing()\ngenerateRecommendations()"]
-        LIB_CHURN_M["lib/ai/churn-prediction.ts\npredictChurn() + fallback"]
-        LIB_INS_M["lib/ai/insights-generator.ts\ngenerateInsights()"]
-        LIB_OTHER["lib/ai/*.ts\n10 additional modules\n5 unwired (cross-sell, pricing-analyzer,\nreport-narrative, seasonal-predictor,\ntrainer-comparison)"]
+    subgraph API["API Layer (Next.js Routes)"]
+        RL["Rate Limiter\n(in-memory, 20 req/min)"]
+        AUTH["requireRole()\nAuth Guard"]
+        CACHE["ai_cache / ai_briefings\n(Supabase — 24h TTL)"]
+        ROUTES["13 AI Route Handlers\n/api/ai/*"]
     end
 
-    subgraph CacheLayer["AI Cache (Supabase)"]
-        BRIEF_C[("ai_briefings\nstudio scoped\n30min TTL")]
-        GENERIC_C[("ai_cache\ncache_type + entity_id\nconfigurable TTL")]
+    subgraph LIBAI["lib/ai/ + lib/anthropic.ts"]
+        CLIENT_MOD["client.ts\nSingleton Anthropic\nAI_MODEL constant"]
+        BRIEFING["anthropic.ts\nbriefing, recommendations\ncampaign-copy, health-score\nnl-search, lead-score\nsubject-lines, send-time\ncampaign-summary, automation-recs"]
+        AIMOD["lib/ai/ modules\nchurn-prediction\nbooking-patterns\nrevenue-anomaly\ninsights-generator\ntrainer-summary\nwaitlist-messaging\nauto-reply\nintake-enrichment"]
+        DEADMOD["lib/ai/ — NO API ROUTE\ncross-sell\npricing-analyzer\nseasonal-predictor\nreport-narrative\ntrainer-comparison"]
     end
 
-    subgraph InngestAI["Inngest AI Crons"]
-        CRON_I["cron-ai-insights (daily)"]
-        CRON_T["cron-trainer-metrics"]
-        CRON_C["cron-cohort-refresh"]
+    subgraph ANTHROPIC["Anthropic API"]
+        MODEL_MAIN["claude-sonnet-4-6\n(9 modules)"]
+        MODEL_OLD["claude-sonnet-4-20250514\n(6 modules — stale ID)"]
     end
 
-    subgraph ExternalAI["External AI Services"]
-        CLAUDE_API["Anthropic Claude\nclaude-sonnet-4-6\nno temperature set"]
-        PGVECTOR["pgvector\nsemantic embeddings"]
+    subgraph FALLBACK["Rules-Based Fallbacks"]
+        RB["Every module has\nfull rules-based fallback\nif API unavailable"]
     end
 
-    BRIEF --> LIB_MAIN --> CLAUDE_API
-    CHURN --> LIB_CHURN_M --> CLAUDE_API
-    INSIGHTS --> LIB_INS_M --> CLAUDE_API
-    CAMP --> LIB_OTHER --> CLAUDE_API
-    SEARCH --> PGVECTOR
-    SEARCH --> CLAUDE_API
-    LIB_MAIN --> BRIEF_C
-    LIB_CHURN_M --> GENERIC_C
-    CRON_I --> LIB_INS_M
-    CRON_I --> GENERIC_C
+    subgraph DB["Supabase Database"]
+        TABLES["members, bookings\ntransactions, classes\nprofiles, credit_packs\nemail_send_log"]
+        CACHE_TABLE["ai_cache\nai_briefings\nai_insights"]
+    end
+
+    UI -->|"fetch + AbortController"| ROUTES
+    ROUTES --> AUTH
+    AUTH --> RL
+    RL -->|"check cache"| CACHE
+    CACHE -->|"cache miss"| AIMOD
+    CACHE -->|"cache miss"| BRIEFING
+    AIMOD --> CLIENT_MOD
+    BRIEFING --> CLIENT_MOD
+    CLIENT_MOD -->|"primary"| MODEL_MAIN
+    CLIENT_MOD -->|"stale model ID\nin 6 modules"| MODEL_OLD
+    MODEL_MAIN -->|"JSON output\nvalidated"| AIMOD
+    MODEL_OLD -->|"JSON output\nvalidated"| AIMOD
+    MODEL_MAIN -->|"error / key missing"| RB
+    MODEL_OLD -->|"error / key missing"| RB
+    ROUTES -->|"parallel queries"| TABLES
+    AIMOD -->|"persist results"| CACHE_TABLE
+    DEADMOD -.->|"implemented but\nnot routed"| CLIENT_MOD
+
+    style DEADMOD fill:#f97316,color:#fff
+    style MODEL_OLD fill:#f59e0b,color:#000
+    style RB fill:#10b981,color:#fff
+    style MODEL_MAIN fill:#4f46e5,color:#fff

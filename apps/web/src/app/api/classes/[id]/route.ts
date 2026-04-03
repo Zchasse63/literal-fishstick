@@ -132,6 +132,17 @@ export async function PUT(
       }
     }
 
+    // Remap API field names to DB column names
+    // Clients send start_time/end_time, DB uses starts_at/ends_at
+    if (updates.start_time !== undefined) {
+      updates.starts_at = updates.start_time;
+      delete updates.start_time;
+    }
+    if (updates.end_time !== undefined) {
+      updates.ends_at = updates.end_time;
+      delete updates.end_time;
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update" },
@@ -140,9 +151,9 @@ export async function PUT(
     }
 
     // Validate time fields if provided
-    if (updates.start_time || updates.end_time) {
-      const startStr = (updates.start_time as string) || null;
-      const endStr = (updates.end_time as string) || null;
+    if (updates.starts_at || updates.ends_at) {
+      const startStr = (updates.starts_at as string) || null;
+      const endStr = (updates.ends_at as string) || null;
 
       if (startStr) {
         const start = new Date(startStr);
@@ -152,7 +163,7 @@ export async function PUT(
             { status: 400 }
           );
         }
-        updates.start_time = start.toISOString();
+        updates.starts_at = start.toISOString();
       }
 
       if (endStr) {
@@ -163,7 +174,7 @@ export async function PUT(
             { status: 400 }
           );
         }
-        updates.end_time = end.toISOString();
+        updates.ends_at = end.toISOString();
       }
     }
 

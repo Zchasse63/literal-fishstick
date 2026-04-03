@@ -98,7 +98,7 @@ export async function generateInsights(
   try {
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: AI_MODEL,
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
       messages: [

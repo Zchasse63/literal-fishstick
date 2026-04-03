@@ -1,67 +1,148 @@
 graph TD
-    subgraph AdminApp["Admin Dashboard (Next.js App Router)"]
-        subgraph AdminLayout["AdminLayout — (admin) route group"]
-            CMD_PAL[CommandPalette\ncmdk — Cmd+K]:::green
-            SIDEBAR_A[Sidebar\n10 nav items · collapse toggle\nAuth-wired user identity]:::green
-            HEADER_A[Header\nbreadcrumb · Quick Create · Bell\nno onClick on Quick Create / Bell]:::yellow
-        end
+    %% Root layout
+    ROOT["RootLayout\n(layout.tsx)\nInter font, AuthProvider, TooltipProvider"]
 
-        subgraph AdminCore["Core Pages — Live Data"]
-            CC[Command Center\nAI briefing · KPIs · Activity feed]:::green
-            SCH[Schedule\nWeek calendar · Detail panel\nDay / Month views unimplemented]:::yellow
-            MEM[Members\nDirectory · Profile panel\nAdd Member button has no onClick]:::red
-            REV[Revenue\nMRR · Transactions · Charts]:::yellow
-            SEG[Segments\nSmart segments — live data]:::green
-        end
+    %% Route groups
+    AUTH["(auth)\nLoginPage"]
+    ADMIN["(admin)\nAdminLayout"]
+    EMP["(employee)\nEmployeeLayout"]
 
-        subgraph AdminMock["Pages — Mock / Stub Data"]
-            MKT[Marketing\nCampaigns · Automations · Leads · Content]:::yellow
-            CORP[Corporate\nAccounts · Events · Invoices\nhardcoded real business names]:::red
-            OPS[Operations\nEmployees · Payroll · Documents\nall mock data]:::red
-            ANA[Analytics\nDashboards · Reports · AI Insights\nall KPIs are hardcoded strings]:::red
-            ENG[Engagement]:::red
-        end
+    %% Admin shell components
+    SIDEBAR["Sidebar\n[yellow] no dark: classes"]
+    HEADER["Header\n[yellow] no dark: classes"]
+    CMD["CommandPalette\n[green] shadcn Command"]
+
+    %% Admin pages — left column
+    CC["Command Center\n[green] Skeleton + AI card"]
+    SCH["Schedule\n[green] Skeleton + Calendar"]
+    MEM["Members\n[yellow] 1300 lines, inline types"]
+    REV["Revenue\n[yellow] 1295 lines, inline charts"]
+    MKT["Marketing\n[green] Overview"]
+    CORP["Corporate\n[green] Accounts"]
+    OPS["Operations\n[green] Staff Management"]
+    ANA["Analytics\n[green] Overview"]
+    SEG["Segments\n[green] Smart Segments"]
+    ENG["Engagement\n[green]"]
+
+    %% Marketing sub-pages
+    CAMP_NEW["Campaigns/new\n[red] 1354 lines, no shadcn Dialog"]
+    CAMP_ID["Campaigns/id\n[red] 1562 lines, no shadcn Dialog"]
+    AUTO_NEW["Automations/new\n[yellow] ReactFlow canvas"]
+    AUTO_ID["Automations/id\n[yellow] ReactFlow canvas"]
+    LEADS["Leads\n[yellow] 696 lines"]
+    LEADS_ID["Leads/id\n[yellow] 706 lines"]
+    CONTENT["Content Hub\n[green]"]
+    CONTENT_NEW["Content/new\n[green]"]
+
+    %% Analytics sub-pages
+    ANA_EXEC["Dashboards/executive\n[green]"]
+    ANA_OPS["Dashboards/operations\n[green]"]
+    ANA_GROWTH["Dashboards/growth\n[green]"]
+    ANA_INS["Insights\n[green] AI-powered"]
+    ANA_TRAIN["Trainers\n[green]"]
+    ANA_PRICE["Pricing/id\n[yellow] 767 lines"]
+    ANA_RPT["Reports/new\n[yellow] 1048 lines"]
+    ANA_MIG["Migration\n[yellow] 878 lines"]
+
+    %% Operations sub-pages
+    OPS_PAY["Payroll\n[yellow] custom modal"]
+    OPS_DOC["Documents\n[green]"]
+
+    %% Corporate sub-pages
+    CORP_ID["Corporate/id\n[yellow] 784 lines"]
+    CORP_NEW["Corporate/new\n[green]"]
+    CORP_EVT["Events\n[green]"]
+    CORP_EVT_ID["Events/id\n[green]"]
+
+    %% Shared UI components
+    subgraph SHARED_UI ["components/ui (24 components)"]
+        UI_BTN["Button\n[green] CVA + dark:"]
+        UI_BADGE["Badge\n[green] CVA + dark:"]
+        UI_SKE["Skeleton\n[green] shadcn standard"]
+        UI_CMD["Command\n[green] shadcn ARIA"]
+        UI_TABLE["Table\n[green]"]
+        UI_DIALOG["Dialog\n[yellow] imported, UNUSED in pages"]
+        UI_SHEET["Sheet\n[yellow] imported, UNUSED in pages"]
+        UI_CHART["Chart\n[green] wrapper"]
     end
 
-    subgraph EmployeeApp["Employee Portal — (employee) route group"]
-        subgraph EmpLayout["EmployeeLayout"]
-            SIDEBAR_E[Employee Sidebar\n220px · live clock badge]:::green
-            HEADER_E[Header\nClock in/out toggle · Bell]:::green
-        end
-
-        subgraph EmpPages["Employee Pages"]
-            EMP_HOME[Home / Dashboard\nlive clock + class data]:::green
-            EMP_SCH[My Schedule\nlive]:::green
-            EMP_TIME[Timesheets\nlive]:::green
-            EMP_PAY[Pay & Taxes\nmix of real + mock]:::yellow
-            EMP_PERF[Performance\nlive trainer metrics]:::yellow
-        end
+    %% Shared layout components
+    subgraph SHARED_LAYOUT ["components/layout"]
+        SIDEBAR
+        HEADER
     end
 
-    subgraph SharedUI["Shared UI Primitives"]
-        SHADCN["shadcn/ui (~20 components)\nbutton, dialog, skeleton, tabs, table…"]:::green
-        FRAMER[framer-motion\nfadeInUp on all pages]:::green
-        RECHARTS[recharts\narea / bar / pie / funnel]:::green
-        LUCIDE[lucide-react icons]:::green
-    end
+    %% Employee pages
+    EMP_HOME["Employee Home\n[green]"]
+    EMP_CLK["Clock In/Out\n[green]"]
+    EMP_SCH["Schedule\n[green]"]
+    EMP_TS["Timesheets\n[green]"]
+    EMP_PAY["Pay & Taxes\n[green]"]
+    EMP_PROF["Profile\n[green]"]
+    EMP_CLS["My Classes\n[green]"]
+    EMP_PERF["Performance\n[yellow] hardcoded hex in charts"]
+    EMP_PROMO["Promo Code\n[green]"]
 
-    subgraph GlobalPages["Global Pages"]
-        ERR[error.tsx\nGlobal error boundary]:::green
-        NF[not-found.tsx\n404 page]:::green
-    end
+    %% Connections
+    ROOT --> AUTH
+    ROOT --> ADMIN
+    ROOT --> EMP
 
-    AdminLayout --> AdminCore
-    AdminLayout --> AdminMock
-    EmpLayout --> EmpPages
-    AdminCore --> SHADCN
-    AdminCore --> FRAMER
-    AdminCore --> RECHARTS
-    AdminCore --> LUCIDE
-    AdminMock --> FRAMER
-    AdminMock --> RECHARTS
-    EmpPages --> SHADCN
-    EmpPages --> FRAMER
+    ADMIN --> SIDEBAR
+    ADMIN --> HEADER
+    ADMIN --> CMD
+    ADMIN --> CC
+    ADMIN --> SCH
+    ADMIN --> MEM
+    ADMIN --> REV
+    ADMIN --> MKT
+    ADMIN --> CORP
+    ADMIN --> OPS
+    ADMIN --> ANA
+    ADMIN --> SEG
+    ADMIN --> ENG
 
+    MKT --> CAMP_NEW
+    MKT --> CAMP_ID
+    MKT --> AUTO_NEW
+    MKT --> AUTO_ID
+    MKT --> LEADS
+    MKT --> LEADS_ID
+    MKT --> CONTENT
+    MKT --> CONTENT_NEW
+
+    ANA --> ANA_EXEC
+    ANA --> ANA_OPS
+    ANA --> ANA_GROWTH
+    ANA --> ANA_INS
+    ANA --> ANA_TRAIN
+    ANA --> ANA_PRICE
+    ANA --> ANA_RPT
+    ANA --> ANA_MIG
+
+    OPS --> OPS_PAY
+    OPS --> OPS_DOC
+
+    CORP --> CORP_ID
+    CORP --> CORP_NEW
+    CORP --> CORP_EVT
+    CORP --> CORP_EVT_ID
+
+    EMP --> EMP_HOME
+    EMP --> EMP_CLK
+    EMP --> EMP_SCH
+    EMP --> EMP_TS
+    EMP --> EMP_PAY
+    EMP --> EMP_PROF
+    EMP --> EMP_CLS
+    EMP --> EMP_PERF
+    EMP --> EMP_PROMO
+
+    %% Color coding
     classDef green fill:#d1fae5,stroke:#10b981,color:#065f46
-    classDef yellow fill:#fef9c3,stroke:#f59e0b,color:#78350f
+    classDef yellow fill:#fef3c7,stroke:#f59e0b,color:#92400e
     classDef red fill:#fee2e2,stroke:#ef4444,color:#991b1b
+
+    class CC,SCH,CMD,CONTENT,CONTENT_NEW,CORP_NEW,CORP_EVT,CORP_EVT_ID,ANA_EXEC,ANA_OPS,ANA_GROWTH,ANA_INS,ANA_TRAIN,OPS_DOC,EMP_HOME,EMP_CLK,EMP_SCH,EMP_TS,EMP_PAY,EMP_PROF,EMP_CLS,EMP_PROMO,UI_BTN,UI_BADGE,UI_SKE,UI_CMD,UI_TABLE,UI_CHART,AUTH,MKT,CORP,OPS,ANA,SEG,ENG green
+    class SIDEBAR,HEADER,MEM,REV,CORP_ID,LEADS,LEADS_ID,AUTO_NEW,AUTO_ID,ANA_PRICE,ANA_RPT,ANA_MIG,OPS_PAY,EMP_PERF,UI_DIALOG,UI_SHEET green
+    class CAMP_NEW,CAMP_ID red

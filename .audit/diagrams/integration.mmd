@@ -1,54 +1,68 @@
 graph TD
-    subgraph Meridian["Meridian Platform"]
-        API["/api/* Route Handlers\n~120 endpoints"]
-        INNGEST_FN["Inngest Functions\n12 cron + event handlers"]
-        WH["Webhook Handlers\nstripe · resend · twilio · easypost"]
-    end
+    APP["Meridian\n(Next.js 16 / Netlify)"]
 
-    subgraph AuthDB["Auth & Database"]
-        SUPA_A["Supabase Auth\nMagic Link / SSO\n@supabase/ssr"]
-        SUPA_DB[("Supabase Postgres\nRLS + studio_id isolation")]
-        SUPA_RT["Supabase Realtime\nWebSocket subscriptions"]
-        SUPA_SVC[("Service-Role Client\nBypasses RLS\nInngest only — explicit studio_id required")]
-    end
+    %% Databases & Auth
+    SUPA["Supabase\n(PostgreSQL + Auth + RLS)"]
+    SUPAB["Supabase\n(Service Role / Inngest)"]
 
-    subgraph PaymentsBlock["Payments"]
-        STRIPE["Stripe\nv20.4.1\nSubscriptions + Webhooks"]
-    end
+    %% Payments
+    STRIPE["Stripe\n(subscriptions, checkout,\nwebhooks)"]
 
-    subgraph EmailSMS["Messaging"]
-        RESEND["Resend\nv6.9.4\nTransactional + Batch + Webhooks\nSvix verified"]
-        TWILIO["Twilio\nv5.13.0\nSMS — STUBBED by default"]
-    end
+    %% AI
+    ANTHROPIC["Anthropic\n(Claude Sonnet 4.6\n13 AI endpoints)"]
 
-    subgraph AI["AI & ML"]
-        CLAUDE["Anthropic Claude\nclaude-sonnet-4-6\nNew client per request"]
-        PGVEC["pgvector\nSemantic search embeddings"]
-    end
+    %% Email
+    RESEND["Resend\n(transactional + campaigns\n+ tracking webhooks via Svix)"]
+    SVIX["Svix\n(webhook verification\nfor Resend)"]
 
-    subgraph Jobs["Background Jobs"]
-        INNGEST_SVC["Inngest Cloud\nEvent queue + scheduler\nBuilt-in retries"]
-    end
+    %% SMS
+    TWILIO["Twilio\n(SMS — stubbed,\nTwilioProvider ready)"]
 
-    subgraph ShippingBlock["Shipping"]
-        EASYPOST["EasyPost\nStubbed — Phase 4"]
-    end
+    %% Background Jobs
+    INNGEST["Inngest\n(19 functions:\ncrons + automation\n+ Glofox write-back)"]
 
-    API --> SUPA_A
-    API --> SUPA_DB
-    API --> SUPA_RT
-    API --> STRIPE
-    API --> RESEND
-    API --> TWILIO
-    API --> CLAUDE
-    API --> INNGEST_SVC
-    API --> EASYPOST
+    %% Glofox
+    GLOFOX["Glofox API\n(read + write-back\nGlofox REST v2.x)"]
 
-    INNGEST_FN --> SUPA_SVC
-    INNGEST_FN --> CLAUDE
-    INNGEST_FN --> RESEND
-    INNGEST_SVC --> INNGEST_FN
+    %% Shipping
+    EASYPOST["EasyPost\n(shipping rates + labels\ntracking webhooks)"]
 
-    WH --> SUPA_DB
-    WH --> STRIPE
-    WH --> RESEND
+    %% Social embed
+    SNAPWIDGET["SnapWidget\n(Instagram embed\nno API key)"]
+
+    %% Data flow — primary
+    APP -->|"cookie-auth RLS queries"| SUPA
+    INNGEST -->|"service-role queries\n(bypass RLS)"| SUPAB
+    APP -->|"Stripe SDK\ncheckout, subscriptions,\nproration"| STRIPE
+    STRIPE -->|"webhook POST\nsignature verified"| APP
+    APP -->|"Anthropic SDK\nmessages.create\nno timeout set"| ANTHROPIC
+    APP -->|"Resend SDK\ntransactional + batch"| RESEND
+    RESEND -->|"Svix-signed\nwebhook POST\ndelivered/opened/\nbounced/clicked"| APP
+    SVIX -.->|"signs Resend webhooks"| RESEND
+    APP -->|"SMSProvider factory\n(stub default)"| TWILIO
+    TWILIO -->|"POST webhook\nauth conditional\non env var"| APP
+    APP -->|"inngest.send()\nevents"| INNGEST
+    INNGEST -->|"crons + async\nflow execution"| INNGEST
+    INNGEST -->|"GlofoxClient\nhourly sync +\nwrite-back"| GLOFOX
+    GLOFOX -->|"incremental sync\nread-only + write-back\n(attendance, booking)"| INNGEST
+    APP -->|"EasyPost API\nshipping rates\n(if EASYPOST_API_KEY set)"| EASYPOST
+    EASYPOST -->|"tracker.updated webhook\nHMAC conditional\non env var"| APP
+    APP -.->|"iframe embed\nno backend touch"| SNAPWIDGET
+
+    %% Color coding
+    classDef green fill:#10B981,stroke:#065F46,color:#fff
+    classDef yellow fill:#F59E0B,stroke:#92400E,color:#fff
+    classDef red fill:#EF4444,stroke:#991B1B,color:#fff
+    classDef purple fill:#7C3AED,stroke:#4C1D95,color:#fff
+    classDef gray fill:#9CA3AF,stroke:#4B5563,color:#fff
+
+    class APP green
+    class SUPA,SUPAB green
+    class STRIPE green
+    class RESEND,SVIX green
+    class ANTHROPIC yellow
+    class INNGEST green
+    class GLOFOX yellow
+    class TWILIO yellow
+    class EASYPOST red
+    class SNAPWIDGET gray
