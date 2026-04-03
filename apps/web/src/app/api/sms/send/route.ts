@@ -10,7 +10,7 @@ import { createSMSProvider } from '@/lib/sms';
 import { rateLimit } from '@/lib/rate-limit';
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111';
-const ALLOWED_ROLES = ['admin', 'manager'];
+const ALLOWED_ROLES = ['owner', 'admin', 'manager'];
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerClient();

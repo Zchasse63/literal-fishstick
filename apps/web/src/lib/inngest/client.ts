@@ -171,4 +171,14 @@ export type MeridianEvents = {
 // Inngest Client
 // ---------------------------------------------------------------------------
 
+// Enforce signing key in production to prevent unauthorized function invocation
+if (
+  process.env.NODE_ENV === 'production' &&
+  !process.env.INNGEST_SIGNING_KEY
+) {
+  console.error(
+    '[inngest] INNGEST_SIGNING_KEY is not set in production — Inngest functions will reject unsigned requests',
+  );
+}
+
 export const inngest = new Inngest({ id: 'meridian' });

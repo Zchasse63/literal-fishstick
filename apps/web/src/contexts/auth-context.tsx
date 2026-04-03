@@ -61,12 +61,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase])
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s)
-      setUser(s?.user ?? null)
-      if (s?.user) {
-        fetchProfile(s.user.id)
+    // Verify the current user with the server (more secure than getSession which only reads local storage)
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      setUser(u ?? null)
+      if (u) {
+        // Also get the session for token access
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+          setSession(s)
+        })
+        fetchProfile(u.id)
       }
       setLoading(false)
     })

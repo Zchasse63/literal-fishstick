@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 
 const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
-const ALLOWED_ROLES = ["admin", "manager"];
+const ALLOWED_ROLES = ["owner", "admin", "manager"];
 
 /**
  * GET /api/reports/[id]

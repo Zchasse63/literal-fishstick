@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
-const ALLOWED_ROLES = ['admin', 'manager']
+const ALLOWED_ROLES = ['owner', 'admin', 'manager']
 
 /**
  * GET /api/corporate/[id]/invoices
@@ -72,7 +72,7 @@ export async function GET(
     const { data, error, count } = await query
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
 
     return NextResponse.json({ data, count })

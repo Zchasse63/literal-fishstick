@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 
-const ALLOWED_ROLES = ["admin", "manager"];
+const ALLOWED_ROLES = ["owner", "admin", "manager"];
 const STAFF_ROLES = ["admin", "manager", "trainer", "staff"];
 const PAGE_SIZE = 20;
 
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const { data: posts, error } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 
     const allPosts = posts ?? [];

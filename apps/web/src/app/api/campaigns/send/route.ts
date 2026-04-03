@@ -5,7 +5,7 @@ import { resolveTemplate, textToHtml, wrapEmailLayout } from '@/lib/email-templa
 import { randomInt } from 'crypto'
 
 const STUDIO_ID = '11111111-1111-1111-1111-111111111111'
-const ALLOWED_ROLES = ['admin', 'manager']
+const ALLOWED_ROLES = ['owner', 'admin', 'manager']
 const DEFAULT_BATCH_SIZE = 10
 const SEND_DELAY_MS = 200
 const DUPLICATE_WINDOW_MINUTES = 5

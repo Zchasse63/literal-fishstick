@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { generateReport, type SavedReportConfig } from "@/lib/reports/engine";
 
 const STUDIO_ID = "11111111-1111-1111-1111-111111111111";
-const ALLOWED_ROLES = ["admin", "manager"];
+const ALLOWED_ROLES = ["owner", "admin", "manager"];
 
 /**
  * POST /api/reports/[id]/generate

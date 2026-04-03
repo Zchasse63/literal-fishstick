@@ -18,7 +18,7 @@ export async function GET() {
     .order("entity_type", { ascending: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
   const isSyncing = (data ?? []).some((row) => row.status === "syncing");

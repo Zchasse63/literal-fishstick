@@ -911,15 +911,32 @@ export async function translateToSQL(
       }
     }
 
-    // Verify studio_id is referenced in the query
-    if (!parsed.sql.includes(studio_id)) {
+    // Verify studio_id appears in a WHERE clause context (not just a comment or string)
+    // Check that the studio_id UUID is used as a filter value, not merely mentioned
+    const studioIdPattern = new RegExp(
+      `studio_id\\s*=\\s*'${studio_id.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}'`,
+      'i'
+    );
+    if (!studioIdPattern.test(parsed.sql)) {
       return {
         sql: parsed.sql,
         explanation: parsed.explanation,
         result_type: "other" as NLSearchResult["result_type"],
         error:
-          "Query rejected: missing studio_id filter for multi-tenant safety.",
+          "Query rejected: missing studio_id = '...' filter for multi-tenant safety.",
       };
+    }
+
+    // Enforce LIMIT to prevent unbounded result sets
+    const hasLimit = /\bLIMIT\s+\d+/i.test(parsed.sql);
+    if (!hasLimit) {
+      parsed.sql = parsed.sql.replace(/;?\s*$/, '') + ' LIMIT 100';
+    } else {
+      // Cap existing LIMIT to 100
+      parsed.sql = parsed.sql.replace(
+        /\bLIMIT\s+(\d+)/i,
+        (_match, n) => `LIMIT ${Math.min(parseInt(n, 10), 100)}`
+      );
     }
 
     const validTypes = [

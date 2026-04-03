@@ -32,11 +32,16 @@ export async function POST(request: Request) {
   try {
     const supabase = await createServerClient();
 
-    // Auth: check for cron secret or authenticated admin
-    const cronSecret = request.headers.get("x-cron-secret");
+    // Auth: check for cron secret (Authorization: Bearer <secret>) or authenticated admin
+    const authHeader = request.headers.get("authorization");
+    const legacyCronSecret = request.headers.get("x-cron-secret");
     const expectedSecret = process.env.CRON_SECRET;
 
     let actorId = "system";
+
+    // Support both "Authorization: Bearer <secret>" (standard) and legacy "x-cron-secret" header
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const cronSecret = bearerToken || legacyCronSecret;
 
     if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
       // Authorized via cron secret
@@ -50,7 +55,7 @@ export async function POST(request: Request) {
 
       if (authError || !user) {
         return NextResponse.json(
-          { error: "Unauthorized. Provide x-cron-secret header or authenticate." },
+          { error: "Unauthorized. Provide Authorization: Bearer <secret> header or authenticate." },
           { status: 401 }
         );
       }

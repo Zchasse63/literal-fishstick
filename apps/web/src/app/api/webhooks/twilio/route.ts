@@ -11,38 +11,44 @@ import { createSMSProvider } from '@/lib/sms';
 export async function POST(request: NextRequest) {
   // ── Validate Twilio Signature ────────────────────────────────
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (authToken) {
-    try {
-      // Dynamic import to avoid bundling twilio in non-SMS builds
-      const { validateRequest } = await import('twilio');
+  if (!authToken) {
+    console.error('[webhook:twilio] TWILIO_AUTH_TOKEN is not configured — rejecting request');
+    return NextResponse.json(
+      { error: 'Webhook not configured' },
+      { status: 500 },
+    );
+  }
 
-      const twilioSignature = request.headers.get('x-twilio-signature') ?? '';
-      const url = request.url;
-      const body = await request.clone().text();
+  try {
+    // Dynamic import to avoid bundling twilio in non-SMS builds
+    const { validateRequest } = await import('twilio');
 
-      // Parse form-encoded body into params object
-      const params: Record<string, string> = {};
-      const searchParams = new URLSearchParams(body);
-      searchParams.forEach((value, key) => {
-        params[key] = value;
-      });
+    const twilioSignature = request.headers.get('x-twilio-signature') ?? '';
+    const url = request.url;
+    const body = await request.clone().text();
 
-      const isValid = validateRequest(authToken, twilioSignature, url, params);
+    // Parse form-encoded body into params object
+    const params: Record<string, string> = {};
+    const searchParams = new URLSearchParams(body);
+    searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
 
-      if (!isValid) {
-        console.warn('[webhook:twilio] Invalid signature — rejecting request');
-        return NextResponse.json(
-          { error: 'Invalid Twilio signature' },
-          { status: 403 },
-        );
-      }
-    } catch (err) {
-      console.error('[webhook:twilio] Signature validation error:', err);
+    const isValid = validateRequest(authToken, twilioSignature, url, params);
+
+    if (!isValid) {
+      console.warn('[webhook:twilio] Invalid signature — rejecting request');
       return NextResponse.json(
-        { error: 'Signature validation failed' },
-        { status: 500 },
+        { error: 'Invalid Twilio signature' },
+        { status: 403 },
       );
     }
+  } catch (err) {
+    console.error('[webhook:twilio] Signature validation error:', err);
+    return NextResponse.json(
+      { error: 'Signature validation failed' },
+      { status: 500 },
+    );
   }
 
   // ── Parse Webhook Payload ────────────────────────────────────
@@ -69,8 +75,7 @@ export async function POST(request: NextRequest) {
     // Return 200 to acknowledge receipt (Twilio expects this)
     return NextResponse.json({ received: true, event: result.event });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[webhook:twilio] Failed to process webhook:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[webhook:twilio] Failed to process webhook:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -14,40 +14,39 @@ export async function POST(request: NextRequest) {
   try {
     // ─── Validate Webhook Secret ─────────────────────────────────
     const webhookSecret = process.env.EASYPOST_WEBHOOK_SECRET
-    if (webhookSecret) {
-      const signature = request.headers.get('x-hmac-signature')
-      if (!signature) {
-        return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 })
-      }
-
-      // Verify HMAC signature
-      const rawBody = await request.text()
-      const encoder = new TextEncoder()
-      const key = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(webhookSecret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-      )
-      const signatureBuffer = await crypto.subtle.sign(
-        'HMAC',
-        key,
-        encoder.encode(rawBody)
-      )
-      const computedSignature = `hmac-sha256-hex=${Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')}`
-
-      if (computedSignature !== signature) {
-        return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 })
-      }
-
-      // Parse the verified body
-      const event = JSON.parse(rawBody)
-      return await handleEvent(event)
+    if (!webhookSecret) {
+      console.error('[webhook:easypost] EASYPOST_WEBHOOK_SECRET is not configured — rejecting request')
+      return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
     }
 
-    // No secret configured — parse body directly (development mode)
-    const event = await request.json()
+    const signature = request.headers.get('x-hmac-signature')
+    if (!signature) {
+      return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 })
+    }
+
+    // Verify HMAC signature
+    const rawBody = await request.text()
+    const encoder = new TextEncoder()
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(webhookSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(rawBody)
+    )
+    const computedSignature = `hmac-sha256-hex=${Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')}`
+
+    if (computedSignature !== signature) {
+      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 })
+    }
+
+    // Parse the verified body
+    const event = JSON.parse(rawBody)
     return await handleEvent(event)
   } catch (err) {
     console.error('POST /api/webhooks/easypost error:', err)

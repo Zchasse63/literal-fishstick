@@ -199,7 +199,7 @@ export async function PUT(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: "Internal server error" },
         { status: 500 }
       );
     }
@@ -287,7 +287,7 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: "Internal server error" },
         { status: 500 }
       );
     }
