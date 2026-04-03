@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import CampaignsClient from './_components/CampaignsClient'
+import type { Campaign } from './_components/CampaignsClient'
 
 export default async function CampaignsPage() {
   const supabase = await createServerClient()
@@ -11,11 +12,11 @@ export default async function CampaignsPage() {
     .eq('studio_id', DEFAULT_STUDIO_ID)
     .order('created_at', { ascending: false })
 
-  const initialCampaigns = (data ?? []).map((c: any) => ({
+  const initialCampaigns: Campaign[] = (data ?? []).map((c: any) => ({
     id: c.id,
     name: c.name || 'Untitled Campaign',
     status: c.status || 'draft',
-    channels: [c.channel || 'email'] as string[],
+    channels: [c.channel || 'email'],
     recipients: c.recipient_count ?? 0,
     openRate: c.open_rate ?? null,
     clickRate: c.click_rate ?? null,

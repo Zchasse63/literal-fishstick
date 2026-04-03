@@ -22,7 +22,7 @@ type EventStatus = 'inquiry' | 'quoted' | 'confirmed' | 'deposit_paid' | 'comple
 type ViewMode = 'month' | 'week'
 type FilterType = 'all' | EventType
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string
   name: string
   company: string

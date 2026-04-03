@@ -40,10 +40,10 @@ import Link from 'next/link'
 import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
-type LeadStatus = 'new' | 'contacted' | 'trial' | 'converted' | 'lost'
-type LeadSource = 'website' | 'instagram' | 'referral' | 'walk_in' | 'campaign'
+export type LeadStatus = 'new' | 'contacted' | 'trial' | 'converted' | 'lost'
+export type LeadSource = 'website' | 'instagram' | 'referral' | 'walk_in' | 'campaign'
 
-interface Lead {
+export interface Lead {
   id: string
   firstName: string
   lastName: string

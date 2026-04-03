@@ -20,12 +20,12 @@ import {
 import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
-type PipelineStage = 'prospect' | 'active' | 'paused' | 'churned'
-type EventStatus = 'confirmed' | 'deposit_paid' | 'inquiry' | 'quoted' | 'completed'
-type InvoiceStatus = 'paid' | 'sent' | 'overdue' | 'draft'
-type EventType = 'corporate' | 'private_party' | 'team_building' | 'birthday' | 'workshop'
+export type PipelineStage = 'prospect' | 'active' | 'paused' | 'churned'
+export type EventStatus = 'confirmed' | 'deposit_paid' | 'inquiry' | 'quoted' | 'completed'
+export type InvoiceStatus = 'paid' | 'sent' | 'overdue' | 'draft'
+export type EventType = 'corporate' | 'private_party' | 'team_building' | 'birthday' | 'workshop'
 
-interface Company {
+export interface Company {
   id: string
   name: string
   contact: string
@@ -35,7 +35,7 @@ interface Company {
   stage: PipelineStage
 }
 
-interface UpcomingEvent {
+export interface UpcomingEvent {
   id: string
   date: string
   company: string
@@ -44,7 +44,7 @@ interface UpcomingEvent {
   status: EventStatus
 }
 
-interface Invoice {
+export interface Invoice {
   id: string
   number: string
   company: string

@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import LeadPipelineClient from './_components/LeadPipelineClient'
+import type { Lead } from './_components/LeadPipelineClient'
 
 function getRelativeTime(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -23,7 +24,7 @@ export default async function LeadPipelinePage() {
     .eq('studio_id', DEFAULT_STUDIO_ID)
     .order('created_at', { ascending: false })
 
-  const initialLeads = (data ?? []).map((l: any) => {
+  const initialLeads: Lead[] = (data ?? []).map((l: any) => {
     const assigneeName = l.assignee?.full_name ?? null
     return {
       id: l.id,
@@ -31,9 +32,9 @@ export default async function LeadPipelinePage() {
       lastName: l.last_name || '',
       email: l.email || '',
       phone: l.phone || undefined,
-      source: (l.source || 'website') as string,
+      source: l.source || 'website',
       score: l.score ?? 50,
-      status: (l.status || 'new') as string,
+      status: l.status || 'new',
       lastActivity: l.updated_at ? getRelativeTime(l.updated_at) : 'Just now',
       tags: l.tags || [],
       assignedTo: assigneeName

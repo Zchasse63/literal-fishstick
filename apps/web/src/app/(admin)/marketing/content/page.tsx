@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import ContentHubClient from './_components/ContentHubClient'
+import type { Post } from './_components/ContentHubClient'
 
 function getRelativeTime(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -22,20 +23,20 @@ export default async function ContentHubPage() {
     .eq('studio_id', DEFAULT_STUDIO_ID)
     .order('created_at', { ascending: false })
 
-  const initialPosts = (data ?? []).map((p: any) => ({
+  const initialPosts: Post[] = (data ?? []).map((p: any) => ({
     id: p.id,
     author: {
       name: p.author_name || 'Unknown',
       initials: (p.author_name || 'U').split(' ').map((n: string) => n[0]).join('').toUpperCase(),
-      role: (p.author_role || 'owner') as string,
+      role: p.author_role || 'owner',
     },
-    type: (p.post_type || 'announcement') as string,
+    type: p.post_type || 'announcement',
     title: p.title || undefined,
     content: p.content || '',
     imageUrl: p.image_url || undefined,
     likes: p.likes_count ?? 0,
     comments: p.comments_count ?? 0,
-    status: (p.status || 'draft') as string,
+    status: p.status || 'draft',
     pinned: p.pinned ?? false,
     createdAt: p.created_at ? getRelativeTime(p.created_at) : 'Just now',
   }))

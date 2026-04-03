@@ -25,11 +25,11 @@ import {
 import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
-type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
-type Channel = 'email' | 'sms' | 'push'
+export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
+export type Channel = 'email' | 'sms' | 'push'
 type StatusFilter = 'All' | 'Draft' | 'Scheduled' | 'Sending' | 'Sent' | 'Cancelled'
 
-interface Campaign {
+export interface Campaign {
   id: string
   name: string
   status: CampaignStatus

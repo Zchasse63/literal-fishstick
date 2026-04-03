@@ -27,7 +27,7 @@ import {
 import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
-type TriggerType = 'signup' | 'no_show' | 'churn_risk' | 'credit_expiry' | 'birthday' | 'milestone' | 'membership_change' | 'booking_completed' | 'failed_payment' | 'inactivity' | 'referral'
+export type TriggerType = 'signup' | 'no_show' | 'churn_risk' | 'credit_expiry' | 'birthday' | 'milestone' | 'membership_change' | 'booking_completed' | 'failed_payment' | 'inactivity' | 'referral'
 
 interface Template {
   id: string
@@ -40,7 +40,7 @@ interface Template {
   description: string
 }
 
-interface Automation {
+export interface Automation {
   id: string
   name: string
   triggerType: TriggerType

@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import AutomationsClient from './_components/AutomationsClient'
+import type { Automation } from './_components/AutomationsClient'
 
 function getRelativeTime(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -21,10 +22,10 @@ export default async function AutomationsPage() {
     .eq('studio_id', DEFAULT_STUDIO_ID)
     .order('created_at', { ascending: false })
 
-  const initialAutomations = (data ?? []).map((a: any) => ({
+  const initialAutomations: Automation[] = (data ?? []).map((a: any) => ({
     id: a.id,
     name: a.name || 'Untitled Automation',
-    triggerType: (a.trigger_type || 'signup') as string,
+    triggerType: a.trigger_type || 'signup',
     triggerLabel: a.trigger_label || a.trigger_type || 'Trigger',
     active: a.active ?? false,
     enrolled: a.enrolled_count ?? 0,

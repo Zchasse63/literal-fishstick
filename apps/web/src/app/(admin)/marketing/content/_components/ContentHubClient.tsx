@@ -26,12 +26,12 @@ import Link from 'next/link'
 import { fadeInUp } from '@/lib/motion'
 
 // ─── Types ──────────────────────────────────────────────────
-type PostType = 'announcement' | 'event' | 'class_promo' | 'tip'
-type AuthorRole = 'owner' | 'manager' | 'trainer'
-type PostStatus = 'published' | 'draft'
+export type PostType = 'announcement' | 'event' | 'class_promo' | 'tip'
+export type AuthorRole = 'owner' | 'manager' | 'trainer'
+export type PostStatus = 'published' | 'draft'
 type TypeFilter = 'all' | PostType
 
-interface Post {
+export interface Post {
   id: string
   author: { name: string; initials: string; role: AuthorRole }
   type: PostType
