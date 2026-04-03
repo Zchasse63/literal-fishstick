@@ -520,10 +520,89 @@ export default function CampaignBuilderPage() {
     setShowTemplates(false)
   }, [])
 
+  const [saving, setSaving] = useState(false)
+  const [sending, setSending] = useState(false)
+
   const handleSendTest = useCallback(() => {
     setTestSent(true)
     setTimeout(() => setTestSent(false), 3000)
   }, [])
+
+  const buildCampaignPayload = useCallback(() => {
+    const memberIds = selectedSegment === 'all' ? undefined : undefined // resolved server-side from segment
+    return {
+      name: campaignName,
+      studio_id: STUDIO_ID,
+      channel: selectedChannels[0],
+      segment_id: selectedSegment === 'all' ? null : selectedSegment,
+      subject,
+      preview_text: previewText,
+      body: selectedChannels.includes('email') ? emailBody : smsBody,
+      ab_test_enabled: abTestEnabled,
+      variant_b_subject: abTestEnabled ? variantBSubject : null,
+      variant_b_body: abTestEnabled ? variantBBody : null,
+      ab_split: abTestEnabled ? abSplit : null,
+      schedule_mode: scheduleMode,
+      scheduled_at: scheduleMode === 'schedule' && scheduleDate && scheduleTime
+        ? `${scheduleDate}T${scheduleTime}:00`
+        : null,
+    }
+  }, [campaignName, selectedChannels, selectedSegment, subject, previewText, emailBody, smsBody, abTestEnabled, variantBSubject, variantBBody, abSplit, scheduleMode, scheduleDate, scheduleTime])
+
+  const handleSaveDraft = useCallback(async () => {
+    if (!campaignName.trim()) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...buildCampaignPayload(), status: 'draft' }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        window.location.href = `/marketing/campaigns/${data.id ?? ''}`
+      }
+    } catch (err) {
+      console.error('Failed to save draft:', err)
+    } finally {
+      setSaving(false)
+    }
+  }, [campaignName, buildCampaignPayload])
+
+  const handleSendCampaign = useCallback(async () => {
+    setSending(true)
+    try {
+      // First create the campaign
+      const createRes = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...buildCampaignPayload(), status: 'sending' }),
+      })
+      if (!createRes.ok) return
+      const campaign = await createRes.json()
+
+      // Then trigger the send
+      const memberIds = segments.find(s => s.id === selectedSegment)
+        ? undefined  // resolved from segment server-side
+        : undefined
+
+      await fetch('/api/campaigns/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: campaign.id,
+          subject,
+          bodyTemplate: emailBody,
+          batchSize: 10,
+        }),
+      })
+      window.location.href = `/marketing/campaigns/${campaign.id}`
+    } catch (err) {
+      console.error('Failed to send campaign:', err)
+    } finally {
+      setSending(false)
+    }
+  }, [buildCampaignPayload, subject, emailBody, segments, selectedSegment])
 
   const canProceed = useMemo(() => {
     if (currentStep === 1) {
@@ -560,9 +639,13 @@ export default function CampaignBuilderPage() {
             <p className="text-sm text-gray-500 mt-0.5">Create and send email or SMS campaigns</p>
           </div>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+        <button
+          onClick={handleSaveDraft}
+          disabled={saving || !campaignName.trim()}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           <Save className="h-4 w-4" />
-          Save as Draft
+          {saving ? 'Saving...' : 'Save as Draft'}
         </button>
       </div>
 
@@ -1320,9 +1403,13 @@ export default function CampaignBuilderPage() {
         </button>
 
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+          <button
+            onClick={handleSaveDraft}
+            disabled={saving || !campaignName.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Save className="h-4 w-4" />
-            Save as Draft
+            {saving ? 'Saving...' : 'Save as Draft'}
           </button>
 
           {currentStep < 3 ? (
@@ -1341,10 +1428,12 @@ export default function CampaignBuilderPage() {
             </button>
           ) : (
             <button
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm"
+              onClick={handleSendCampaign}
+              disabled={sending}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
-              {scheduleMode === 'schedule' ? 'Schedule Campaign' : 'Send Campaign'}
+              {sending ? 'Sending...' : scheduleMode === 'schedule' ? 'Schedule Campaign' : 'Send Campaign'}
             </button>
           )}
         </div>

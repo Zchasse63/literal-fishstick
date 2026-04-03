@@ -602,6 +602,74 @@ function FlowBuilderInner() {
     setSelectedNode(null)
   }, [setNodes, setEdges])
 
+  const [saving, setSaving] = useState(false)
+  const [activating, setActivating] = useState(false)
+
+  const serializeFlow = useCallback(() => ({
+    name: flowName,
+    trigger_type: triggerType,
+    trigger_config: {
+      inactivity_days: triggerType === 'inactivity' ? inactivityDays : undefined,
+    },
+    exit_condition: exitCondition,
+    steps: nodes.map(n => ({
+      id: n.id,
+      type: n.data.stepType,
+      position: n.position,
+      config: n.data,
+    })),
+    connections: edges.map(e => ({
+      id: e.id,
+      source: e.source,
+      source_handle: e.sourceHandle ?? null,
+      target: e.target,
+    })),
+  }), [flowName, triggerType, inactivityDays, exitCondition, nodes, edges])
+
+  const handleSaveDraft = useCallback(async () => {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...serializeFlow(), status: 'draft' }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        window.location.href = `/marketing/automations/${data.id ?? ''}`
+      }
+    } catch (err) {
+      console.error('Failed to save automation draft:', err)
+    } finally {
+      setSaving(false)
+    }
+  }, [serializeFlow])
+
+  const handleSaveAndActivate = useCallback(async () => {
+    setActivating(true)
+    try {
+      // Create the automation
+      const createRes = await fetch('/api/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...serializeFlow(), status: 'draft' }),
+      })
+      if (!createRes.ok) return
+      const automation = await createRes.json()
+
+      // Activate it
+      await fetch(`/api/automations/${automation.id}/activate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      window.location.href = `/marketing/automations/${automation.id}`
+    } catch (err) {
+      console.error('Failed to save & activate automation:', err)
+    } finally {
+      setActivating(false)
+    }
+  }, [serializeFlow])
+
   const addNode = useCallback((type: StepType) => {
     const typeMap: Record<StepType, string> = {
       trigger: 'triggerNode',
@@ -655,13 +723,21 @@ function FlowBuilderInner() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-colors">
+          <button
+            onClick={handleSaveDraft}
+            disabled={saving || !flowName.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Save className="h-4 w-4" />
-            Save Draft
+            {saving ? 'Saving...' : 'Save Draft'}
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
+          <button
+            onClick={handleSaveAndActivate}
+            disabled={activating || !flowName.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Play className="h-4 w-4" />
-            Save &amp; Activate
+            {activating ? 'Activating...' : 'Save & Activate'}
           </button>
         </div>
       </div>

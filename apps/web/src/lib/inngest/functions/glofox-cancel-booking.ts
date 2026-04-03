@@ -53,6 +53,11 @@ export const glofoxCancelBooking = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
+    // Feature flag: gate Glofox write-back behind env var
+    if (process.env.GLOFOX_WRITE_BACK_ENABLED !== 'true') {
+      return { status: 'skipped' as const, reason: 'GLOFOX_WRITE_BACK_ENABLED is not true' }
+    }
+
     const { booking_id, glofox_booking_id } = event.data
 
     const result = await step.run('cancel-booking-in-glofox', async () => {

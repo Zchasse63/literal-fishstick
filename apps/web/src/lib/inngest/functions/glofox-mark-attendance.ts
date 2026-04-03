@@ -47,6 +47,11 @@ export const glofoxMarkAttendance = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
+    // Feature flag: gate Glofox write-back behind env var
+    if (process.env.GLOFOX_WRITE_BACK_ENABLED !== 'true') {
+      return { status: 'skipped' as const, reason: 'GLOFOX_WRITE_BACK_ENABLED is not true' }
+    }
+
     const { glofox_booking_id, glofox_user_id } = event.data
 
     const result = await step.run('mark-attendance-in-glofox', async () => {

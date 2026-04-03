@@ -178,31 +178,93 @@ export default function EmployeeClockPage() {
   const elapsedMs = clockStatus !== 'clocked-out' && clockedInSince ? now.getTime() - clockedInSince.getTime() : 0
   const isWithinRadius = currentDistance <= geoRadius
 
-  const handleClockIn = () => {
-    setClockStatus('clocked-in')
-    setClockedInSince(new Date())
-    setEntries(prev => [...prev, {
-      id: `entry-${Date.now()}`,
-      type: 'clock-in',
-      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      distance: currentDistance,
-      withinRadius: true,
-    }])
+  const [actionLoading, setActionLoading] = useState(false)
+
+  // Request real geolocation on mount
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationPermission('denied')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocationPermission('granted')
+        // Distance will be calculated server-side, but we store coords for the API call
+        setCurrentDistance(0) // Placeholder — actual distance computed server-side
+      },
+      (err) => {
+        setLocationPermission(err.code === 1 ? 'denied' : 'pending')
+      }
+    )
+  }, [])
+
+  const getPosition = (): Promise<{ latitude: number; longitude: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    })
   }
 
-  const handleClockOut = () => {
-    setClockStatus('clocked-out')
-    setClockedInSince(null)
-    setEntries(prev => [...prev, {
-      id: `entry-${Date.now()}`,
-      type: 'clock-out',
-      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      distance: currentDistance,
-      withinRadius: true,
-    }])
+  const callClockAPI = async (action: 'clock_in' | 'clock_out') => {
+    setActionLoading(true)
+    try {
+      const position = await getPosition()
+      const res = await fetch('/api/clock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          latitude: position?.latitude,
+          longitude: position?.longitude,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        // Refresh page state from API response
+        if (action === 'clock_in') {
+          setClockStatus('clocked-in')
+          setClockedInSince(new Date())
+          setCurrentDistance(data.distance_from_studio ?? 0)
+          setEntries(prev => [...prev, {
+            id: `entry-${Date.now()}`,
+            type: 'clock-in',
+            time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            distance: data.distance_from_studio ?? 0,
+            withinRadius: data.geofence_verified ?? true,
+          }])
+        } else {
+          setClockStatus('clocked-out')
+          setClockedInSince(null)
+          setCurrentDistance(data.distance_from_studio ?? 0)
+          setEntries(prev => [...prev, {
+            id: `entry-${Date.now()}`,
+            type: 'clock-out',
+            time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            distance: data.distance_from_studio ?? 0,
+            withinRadius: data.geofence_verified ?? true,
+          }])
+        }
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Failed' }))
+        console.error('Clock API error:', err.error)
+      }
+    } catch (err) {
+      console.error('Clock action failed:', err)
+    } finally {
+      setActionLoading(false)
+    }
   }
+
+  const handleClockIn = () => callClockAPI('clock_in')
+  const handleClockOut = () => callClockAPI('clock_out')
 
   const handleStartBreak = () => {
+    // Break tracking is done via local state — the clock_entries row is updated on clock_out
     setClockStatus('on-break')
     setEntries(prev => [...prev, {
       id: `entry-${Date.now()}`,
@@ -289,16 +351,16 @@ export default function EmployeeClockPage() {
                 {clockStatus === 'clocked-out' && (
                   <button
                     onClick={handleClockIn}
-                    disabled={!isWithinRadius}
+                    disabled={!isWithinRadius || actionLoading}
                     className={cn(
                       'inline-flex items-center gap-2.5 rounded-2xl px-8 py-4 text-base font-bold shadow-lg transition-all duration-200 active:scale-95',
-                      isWithinRadius
+                      isWithinRadius && !actionLoading
                         ? 'bg-gradient-to-br from-indigo-600 to-violet-500 text-white hover:from-indigo-700 hover:to-violet-600 hover:shadow-xl'
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     )}
                   >
-                    <Play className="h-5 w-5" />
-                    Clock In
+                    {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
+                    {actionLoading ? 'Clocking In...' : 'Clock In'}
                   </button>
                 )}
 
@@ -313,10 +375,11 @@ export default function EmployeeClockPage() {
                     </button>
                     <button
                       onClick={handleClockOut}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 px-8 py-4 text-base font-bold text-white shadow-lg transition-all duration-200 hover:from-red-600 hover:to-red-700 hover:shadow-xl active:scale-95"
+                      disabled={actionLoading}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 px-8 py-4 text-base font-bold text-white shadow-lg transition-all duration-200 hover:from-red-600 hover:to-red-700 hover:shadow-xl active:scale-95 disabled:opacity-50"
                     >
-                      <LogOut className="h-5 w-5" />
-                      Clock Out
+                      {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+                      {actionLoading ? 'Clocking Out...' : 'Clock Out'}
                     </button>
                   </>
                 )}
@@ -361,7 +424,12 @@ export default function EmployeeClockPage() {
                   </span>
                 ) : (
                   <button
-                    onClick={() => setLocationPermission('granted')}
+                    onClick={() => {
+                      navigator.geolocation?.getCurrentPosition(
+                        () => setLocationPermission('granted'),
+                        (err) => setLocationPermission(err.code === 1 ? 'denied' : 'pending')
+                      )
+                    }}
                     className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700"
                   >
                     Allow Location Access
