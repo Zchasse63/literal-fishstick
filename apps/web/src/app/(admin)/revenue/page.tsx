@@ -97,7 +97,7 @@ function MetricCard({ metric, index, loading }: { metric: MetricData; index: num
     <motion.div
       {...fadeInUp}
       transition={{ ...fadeInUp.transition, delay: index * 0.04 }}
-      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer group"
+      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', metric.bgColor)}>
@@ -122,7 +122,7 @@ function MetricCard({ metric, index, loading }: { metric: MetricData; index: num
           </span>
         )}
       </div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
         {metric.label}
       </p>
       {loading ? (
@@ -130,7 +130,7 @@ function MetricCard({ metric, index, loading }: { metric: MetricData; index: num
       ) : (
         <p className={cn(
           'text-[28px] font-black tabular-nums',
-          isNeutral ? 'text-orange-600' : 'text-gray-900'
+          isNeutral ? 'text-orange-600' : 'text-gray-900 dark:text-gray-100'
         )}>
           {metric.value}
         </p>
@@ -144,7 +144,7 @@ const TABS: Tab[] = ['Overview', 'Memberships', 'Transactions']
 
 function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
-    <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+    <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
       {TABS.map((tab) => (
         <button
           key={tab}
@@ -152,8 +152,8 @@ function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
           className={cn(
             'px-4 py-2 rounded-xl text-sm font-medium transition-all',
             active === tab
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           )}
         >
           {tab}
@@ -167,13 +167,13 @@ function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload) return null
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-sm">
-      <p className="font-semibold text-gray-900 mb-1.5">{label}</p>
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg p-3 text-sm">
+      <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1.5">{label}</p>
       {payload.map((entry: any, i: number) => (
         <div key={i} className="flex items-center gap-2 py-0.5">
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="text-gray-500">{entry.name}:</span>
-          <span className="font-semibold text-gray-900 ml-auto tabular-nums">
+          <span className="text-gray-500 dark:text-gray-400">{entry.name}:</span>
+          <span className="font-semibold text-gray-900 dark:text-gray-100 ml-auto tabular-nums">
             ${entry.value.toLocaleString()}
           </span>
         </div>
@@ -574,8 +574,8 @@ export default function RevenuePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Revenue</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Financial overview and transaction management</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Revenue</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Financial overview and transaction management</p>
         </div>
         <button className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
           <DollarSign className="w-4 h-4" />

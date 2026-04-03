@@ -92,20 +92,20 @@ export default function NewCompanyPage() {
     setTags(tags.filter((t) => t !== tag))
   }
 
-  const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all'
-  const labelClass = 'text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block'
+  const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all'
+  const labelClass = 'text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block'
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA]"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
     >
       {/* Back Link */}
       <Link
         href="/corporate"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors mb-4"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Corporate
@@ -114,8 +114,8 @@ export default function NewCompanyPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">New Corporate Account</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Add a new company partnership</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">New Corporate Account</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Add a new company partnership</p>
         </div>
         <button
           onClick={handleSave}
@@ -141,13 +141,13 @@ export default function NewCompanyPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
               <div className="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center">
                 <Building2 className="h-4 w-4 text-indigo-600" />
               </div>
-              <h3 className="text-base font-bold text-gray-900">Company Information</h3>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Company Information</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -180,13 +180,13 @@ export default function NewCompanyPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
               <div className="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center">
                 <User className="h-4 w-4 text-indigo-600" />
               </div>
-              <h3 className="text-base font-bold text-gray-900">Primary Contact</h3>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Primary Contact</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -212,13 +212,13 @@ export default function NewCompanyPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
               <div className="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center">
                 <CreditCard className="h-4 w-4 text-indigo-600" />
               </div>
-              <h3 className="text-base font-bold text-gray-900">Billing</h3>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Billing</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -260,13 +260,13 @@ export default function NewCompanyPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.15 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
               <div className="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center">
                 <FileText className="h-4 w-4 text-indigo-600" />
               </div>
-              <h3 className="text-base font-bold text-gray-900">Contract</h3>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Contract</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -280,7 +280,7 @@ export default function NewCompanyPage() {
               <div>
                 <label className={labelClass}>Contract Value (Annual)</label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input name="contract_value" type="number" placeholder="0.00" className={cn(inputClass, 'pl-7')} />
                 </div>
               </div>
@@ -303,12 +303,12 @@ export default function NewCompanyPage() {
                   >
                     <span
                       className={cn(
-                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm',
+                        'inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-950 transition-transform shadow-sm',
                         autoRenew ? 'translate-x-6' : 'translate-x-1'
                       )}
                     />
                   </button>
-                  <label className="text-sm font-semibold text-gray-700">Auto-Renew</label>
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Auto-Renew</label>
                 </div>
               </div>
             </div>
@@ -321,9 +321,9 @@ export default function NewCompanyPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Status</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-3">Status</h3>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
               <option value="prospect">Prospect</option>
               <option value="active">Active</option>
@@ -335,18 +335,18 @@ export default function NewCompanyPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Tags</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-3">Tags</h3>
             <div className="flex flex-wrap gap-2 mb-3">
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-400"
                 >
                   <Tag className="h-3 w-3" />
                   {tag}
-                  <button onClick={() => removeTag(tag)} className="ml-0.5 hover:text-gray-900 transition-colors">
+                  <button onClick={() => removeTag(tag)} className="ml-0.5 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
                     <X className="h-3 w-3" />
                   </button>
                 </span>
@@ -363,7 +363,7 @@ export default function NewCompanyPage() {
               />
               <button
                 onClick={addTag}
-                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:border-gray-300 transition-colors"
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:border-gray-300 transition-colors"
               >
                 Add
               </button>
@@ -374,9 +374,9 @@ export default function NewCompanyPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.15 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Notes</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-3">Notes</h3>
             <textarea
               rows={6}
               placeholder="Add any notes about this company..."

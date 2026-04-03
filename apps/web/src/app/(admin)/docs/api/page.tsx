@@ -17,20 +17,20 @@ export default function APIDocsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">API Documentation</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">API Documentation</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Meridian REST API reference. All endpoints require Supabase Auth.
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
           {spec ? (
             <SwaggerUI spec={spec} />
           ) : (
-            <div className="flex items-center justify-center py-20 text-gray-400">
+            <div className="flex items-center justify-center py-20 text-gray-400 dark:text-gray-500">
               Loading API specification...
             </div>
           )}

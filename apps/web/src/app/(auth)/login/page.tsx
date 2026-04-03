@@ -88,16 +88,16 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
             Meridian
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Fitness Studio Operating System
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+        <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8">
           {sent ? (
             <div className="text-center py-4">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50">
@@ -115,12 +115,12 @@ export default function LoginPage() {
                   />
                 </svg>
               </div>
-              <h2 className="text-lg font-medium text-gray-900">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                 Check your email
               </h2>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 We sent a magic link to{" "}
-                <span className="font-medium text-gray-700">{email}</span>.
+                <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>.
                 Click the link to sign in.
               </p>
               <button
@@ -135,10 +135,10 @@ export default function LoginPage() {
             </div>
           ) : (
             <>
-              <h2 className="text-lg font-medium text-gray-900 mb-1">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
                 Sign in
               </h2>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                 {mode === "password"
                   ? "Enter your credentials to access the dashboard."
                   : "Enter your email to receive a magic link."}
@@ -151,7 +151,7 @@ export default function LoginPage() {
                 <div>
                   <label
                     htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
                   >
                     Email address
                   </label>
@@ -163,7 +163,7 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     required
                     autoFocus
-                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
+                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
                   />
                 </div>
 
@@ -171,7 +171,7 @@ export default function LoginPage() {
                   <div>
                     <label
                       htmlFor="password"
-                      className="block text-sm font-medium text-gray-700 mb-1.5"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
                     >
                       Password
                     </label>
@@ -182,7 +182,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       required
-                      className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
+                      className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
                     />
                   </div>
                 )}
@@ -205,10 +205,10 @@ export default function LoginPage() {
               {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
+                  <div className="w-full border-t border-gray-200 dark:border-gray-800" />
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-2 text-gray-400">or</span>
+                  <span className="bg-white dark:bg-gray-950 px-2 text-gray-400 dark:text-gray-500">or</span>
                 </div>
               </div>
 
@@ -220,7 +220,7 @@ export default function LoginPage() {
                   setError(null);
                   setPassword("");
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 {mode === "password"
                   ? "Sign in with Magic Link"
@@ -230,7 +230,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="mt-6 text-center text-xs text-gray-400">
+        <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
           Secure authentication powered by Supabase
         </p>
       </div>

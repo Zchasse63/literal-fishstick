@@ -148,8 +148,8 @@ export default function PerformancePage() {
     <div className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
-        <h1 className="text-2xl font-bold text-gray-900">Performance</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Your trainer metrics and trends</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Performance</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Your trainer metrics and trends</p>
       </motion.div>
 
       {/* Stat Cards */}
@@ -159,15 +159,15 @@ export default function PerformancePage() {
             key={stat.label}
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.03 * i }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{stat.label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>
               <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center', stat.bg)}>
                 <stat.icon className={cn('w-4 h-4', stat.color)} />
               </div>
             </div>
-            <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{stat.value}</p>
+            <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{stat.value}</p>
           </motion.div>
         ))}
       </div>
@@ -176,11 +176,11 @@ export default function PerformancePage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.15 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-gray-900">Attendance Trend</h3>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Last 8 Weeks</span>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Attendance Trend</h3>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Last 8 Weeks</span>
         </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -230,11 +230,11 @@ export default function PerformancePage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.2 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-gray-900">Earnings Breakdown</h3>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Last 6 Months</span>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Earnings Breakdown</h3>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Last 6 Months</span>
         </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -275,45 +275,45 @@ export default function PerformancePage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.25 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
       >
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-bold text-gray-900">Class Type Comparison</h3>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Class Type Comparison</h3>
         </div>
         {classComparison.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-gray-400">No class data yet</div>
+          <div className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">No class data yet</div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-gray-100 dark:border-gray-800">
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Class Type</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Class Type</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Classes</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Classes</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Avg Attendance</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Avg Attendance</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Hit Rate</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Hit Rate</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Bonus Earned</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Bonus Earned</span>
                 </th>
               </tr>
             </thead>
             <tbody>
               {classComparison.map((cls, i) => (
-                <tr key={i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors">
+                <tr key={i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-5 py-4">
-                    <span className="text-sm font-semibold text-gray-900">{cls.type}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{cls.type}</span>
                   </td>
                   <td className="px-5 py-4">
-                    <span className="text-sm font-bold tabular-nums text-gray-900">{cls.classes}</span>
+                    <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">{cls.classes}</span>
                   </td>
                   <td className="px-5 py-4">
-                    <span className="text-sm font-bold tabular-nums text-gray-900">{cls.avgAttendance}</span>
+                    <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">{cls.avgAttendance}</span>
                   </td>
                   <td className="px-5 py-4">
                     <span className={cn(

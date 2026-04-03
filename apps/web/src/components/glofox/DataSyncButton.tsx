@@ -66,7 +66,7 @@ function statusIcon(status: string) {
     case 'error':
       return <AlertCircle className="h-3.5 w-3.5 text-red-500" />;
     default:
-      return <Database className="h-3.5 w-3.5 text-gray-400" />;
+      return <Database className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />;
   }
 }
 
@@ -152,7 +152,7 @@ export default function DataSyncButton() {
   }, null as string | null);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-[#1A1A1F]">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1F]">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
@@ -194,7 +194,7 @@ export default function DataSyncButton() {
       <div className="border-t border-gray-100 dark:border-gray-800">
         <button
           onClick={() => setExpanded((prev) => !prev)}
-          className="flex w-full items-center justify-between px-4 py-2 text-xs font-medium text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          className="flex w-full items-center justify-between px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
           <span>Sync Details</span>
           {expanded ? (
@@ -211,7 +211,7 @@ export default function DataSyncButton() {
               {(status?.data ?? []).map((entity) => (
                 <div
                   key={entity.entity_type}
-                  className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/50"
+                  className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 dark:bg-gray-900/50"
                 >
                   <div className="flex items-center gap-2">
                     {statusIcon(entity.status)}
@@ -231,14 +231,14 @@ export default function DataSyncButton() {
               ))}
 
               {(!status?.data || status.data.length === 0) && (
-                <p className="py-2 text-center text-xs text-gray-400">
+                <p className="py-2 text-center text-xs text-gray-400 dark:text-gray-500">
                   No sync history yet
                 </p>
               )}
             </div>
 
             {/* Full Backfill button */}
-            <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
+            <div className="mt-3 border-t border-gray-100 dark:border-gray-800 pt-3 dark:border-gray-800">
               <button
                 onClick={handleBackfill}
                 disabled={isSyncing}

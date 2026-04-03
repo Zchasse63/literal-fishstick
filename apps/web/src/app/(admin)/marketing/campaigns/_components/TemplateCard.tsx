@@ -17,7 +17,7 @@ export default function TemplateCard({
       className={cn(
         'flex items-center gap-3 p-3 rounded-xl border text-left transition-all',
         'hover:shadow-sm hover:border-indigo-200 hover:bg-indigo-50/30',
-        'bg-white border-gray-200'
+        'bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800'
       )}
     >
       <div
@@ -29,8 +29,8 @@ export default function TemplateCard({
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-gray-900">{template.name}</p>
-        <p className="text-xs text-gray-400 truncate">{template.subject}</p>
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{template.name}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{template.subject}</p>
       </div>
     </button>
   )

@@ -173,7 +173,7 @@ const CONDITION_FIELDS = [
 
 const NODE_PALETTE: { type: StepType; label: string; icon: typeof Mail; color: string }[] = [
   { type: 'email', label: 'Send Email', icon: Mail, color: 'bg-indigo-600' },
-  { type: 'wait', label: 'Wait', icon: Clock, color: 'bg-gray-500' },
+  { type: 'wait', label: 'Wait', icon: Clock, color: 'bg-gray-50 dark:bg-gray-9000' },
   { type: 'condition', label: 'Condition', icon: GitBranch, color: 'bg-amber-500' },
   { type: 'sms', label: 'Send SMS', icon: Phone, color: 'bg-emerald-600' },
   { type: 'tag', label: 'Add/Remove Tag', icon: Tag, color: 'bg-violet-600' },
@@ -221,7 +221,7 @@ function EmailNode({ data, selected }: NodeProps<NodeData>) {
 function WaitNode({ data, selected }: NodeProps<NodeData>) {
   return (
     <div className={cn(
-      'w-56 px-4 py-3 rounded-2xl bg-gray-500 text-white shadow-lg border-2 transition-all',
+      'w-56 px-4 py-3 rounded-2xl bg-gray-50 dark:bg-gray-9000 text-white shadow-lg border-2 transition-all',
       selected ? 'border-gray-300 ring-2 ring-gray-300/30' : 'border-gray-400'
     )}>
       <Handle type="target" position={Position.Top} className="!bg-gray-300 !w-3 !h-3 !border-2 !border-white" />
@@ -316,45 +316,45 @@ function TriggerConfigPanel({
   return (
     <div className="space-y-5">
       <div>
-        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Trigger Type</label>
+        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Trigger Type</label>
         <div className="relative">
           <select
             value={triggerType}
             onChange={(e) => setTriggerType(e.target.value as TriggerType)}
-            className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-8"
+            className="w-full appearance-none bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-8"
           >
             {TRIGGER_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <ChevronDown className="h-4 w-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       </div>
 
       {triggerType === 'inactivity' && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Days Inactive</label>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Days Inactive</label>
           <input
             type="number"
             value={inactivityDays}
             onChange={(e) => setInactivityDays(Number(e.target.value))}
             min={1}
-            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </motion.div>
       )}
 
-      <div className="pt-4 border-t border-gray-100">
+      <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-2 mb-2">
-          <AlertCircle className="h-3.5 w-3.5 text-gray-400" />
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Exit Conditions</label>
+          <AlertCircle className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Exit Conditions</label>
         </div>
         <textarea
           value={exitCondition}
           onChange={(e) => setExitCondition(e.target.value)}
           placeholder="e.g., Member books a class, membership becomes active..."
           rows={3}
-          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+          className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
       </div>
     </div>
@@ -377,30 +377,30 @@ function StepConfigPanel({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-gray-900 capitalize">{d.stepType} Configuration</h3>
-        <button onClick={onClose} className="h-7 w-7 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
-          <X className="h-3.5 w-3.5 text-gray-500" />
+        <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 capitalize">{d.stepType} Configuration</h3>
+        <button onClick={onClose} className="h-7 w-7 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 transition-colors">
+          <X className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
         </button>
       </div>
 
       {d.stepType === 'email' && (
         <>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Subject Line</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Subject Line</label>
             <input
               type="text"
               value={d.subject || ''}
               onChange={(e) => onUpdate(node.id, { subject: e.target.value })}
-              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Body</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Body</label>
             <textarea
               value={d.body || ''}
               onChange={(e) => onUpdate(node.id, { body: e.target.value })}
               rows={5}
-              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
               {['{{first_name}}', '{{studio_name}}', '{{next_class}}', '{{membership_type}}'].map((tag) => (
@@ -420,24 +420,24 @@ function StepConfigPanel({
       {d.stepType === 'wait' && (
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Duration</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Duration</label>
             <input
               type="number"
               value={d.duration || 1}
               onChange={(e) => onUpdate(node.id, { duration: Number(e.target.value), label: `Wait ${e.target.value} ${d.durationUnit || 'days'}` })}
               min={1}
-              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
           <div className="flex-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Unit</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Unit</label>
             <select
               value={d.durationUnit || 'days'}
               onChange={(e) => {
                 const unit = e.target.value as 'minutes' | 'hours' | 'days'
                 onUpdate(node.id, { durationUnit: unit, label: `Wait ${d.duration || 1} ${unit}` })
               }}
-              className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full appearance-none bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="minutes">Minutes</option>
               <option value="hours">Hours</option>
@@ -450,11 +450,11 @@ function StepConfigPanel({
       {d.stepType === 'condition' && (
         <>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Field</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Field</label>
             <select
               value={d.conditionField || 'email_opened'}
               onChange={(e) => onUpdate(node.id, { conditionField: e.target.value })}
-              className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full appearance-none bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               {CONDITION_FIELDS.map((f) => (
                 <option key={f.value} value={f.value}>{f.label}</option>
@@ -463,11 +463,11 @@ function StepConfigPanel({
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Comparison</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Comparison</label>
               <select
                 value={d.conditionOp || 'equals'}
                 onChange={(e) => onUpdate(node.id, { conditionOp: e.target.value })}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full appearance-none bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="equals">Equals</option>
                 <option value="not_equals">Not Equals</option>
@@ -476,12 +476,12 @@ function StepConfigPanel({
               </select>
             </div>
             <div className="flex-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Value</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Value</label>
               <input
                 type="text"
                 value={d.conditionValue || ''}
                 onChange={(e) => onUpdate(node.id, { conditionValue: e.target.value })}
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -490,15 +490,15 @@ function StepConfigPanel({
 
       {d.stepType === 'sms' && (
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Message Body</label>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Message Body</label>
           <textarea
             value={d.body || ''}
             onChange={(e) => onUpdate(node.id, { body: e.target.value })}
             rows={4}
             maxLength={160}
-            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+            className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
           />
-          <p className="text-[10px] font-medium text-gray-400 mt-1 text-right tabular-nums">
+          <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500 mt-1 text-right tabular-nums">
             {(d.body || '').length}/160 characters
           </p>
           <div className="flex items-center gap-1.5 mt-2 px-2.5 py-2 rounded-lg bg-amber-50 border border-amber-200">
@@ -511,16 +511,16 @@ function StepConfigPanel({
       {d.stepType === 'tag' && (
         <>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Tag Name</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Tag Name</label>
             <input
               type="text"
               value={d.tagName || ''}
               onChange={(e) => onUpdate(node.id, { tagName: e.target.value, label: `Tag: ${e.target.value}` })}
-              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Action</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-2">Action</label>
             <div className="flex gap-2">
               {(['add', 'remove'] as const).map((action) => (
                 <button
@@ -530,7 +530,7 @@ function StepConfigPanel({
                     'flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all capitalize',
                     (d.tagAction || 'add') === action
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                   )}
                 >
                   {action} Tag
@@ -541,7 +541,7 @@ function StepConfigPanel({
         </>
       )}
 
-      <div className="pt-3 border-t border-gray-100">
+      <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
         <button
           onClick={() => onDelete(node.id)}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors w-full justify-center"
@@ -645,13 +645,13 @@ export default function EditAutomationPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] -m-5 md:-m-7"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] -m-5 md:-m-7"
     >
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Link href="/marketing/automations" className="h-9 w-9 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
-            <ArrowLeft className="h-4 w-4 text-gray-600" />
+          <Link href="/marketing/automations" className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 transition-colors">
+            <ArrowLeft className="h-4 w-4 text-gray-600 dark:text-gray-400" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
@@ -659,19 +659,19 @@ export default function EditAutomationPage() {
                 type="text"
                 value={flowName}
                 onChange={(e) => setFlowName(e.target.value)}
-                className="text-lg font-black text-gray-900 tracking-tight bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-64"
+                className="text-lg font-black text-gray-900 dark:text-gray-100 tracking-tight bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-64"
               />
               <span className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold',
                 isActive
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-gray-100 text-gray-500 border border-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800'
               )}>
                 <span className={cn('h-1.5 w-1.5 rounded-full', isActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400')} />
                 {isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {nodes.length} steps &middot; {edges.length} connections
             </p>
           </div>
@@ -680,23 +680,23 @@ export default function EditAutomationPage() {
           {/* Stats badges */}
           <div className="hidden lg:flex items-center gap-4 mr-4">
             <div className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-xs font-semibold text-gray-700 tabular-nums">{meta.enrolled}</span>
-              <span className="text-[10px] text-gray-400">enrolled</span>
+              <Users className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 tabular-nums">{meta.enrolled}</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">enrolled</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-xs font-semibold text-gray-700 tabular-nums">{meta.completed}</span>
-              <span className="text-[10px] text-gray-400">completed</span>
+              <CheckCircle2 className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 tabular-nums">{meta.completed}</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">completed</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Percent className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-xs font-semibold text-gray-700 tabular-nums">{meta.conversionRate}%</span>
-              <span className="text-[10px] text-gray-400">conv</span>
+              <Percent className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 tabular-nums">{meta.conversionRate}%</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">conv</span>
             </div>
           </div>
 
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-colors">
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 transition-colors">
             <Save className="h-4 w-4" />
             Save Draft
           </button>
@@ -722,8 +722,8 @@ export default function EditAutomationPage() {
 
       <div className="flex h-[calc(100vh-140px)]">
         {/* Left Panel — Trigger Config */}
-        <div className="w-72 bg-white border-r border-gray-200 p-5 overflow-y-auto shrink-0">
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Trigger Configuration</h2>
+        <div className="w-72 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 p-5 overflow-y-auto shrink-0">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Trigger Configuration</h2>
           <TriggerConfigPanel
             triggerType={triggerType}
             setTriggerType={setTriggerType}
@@ -734,8 +734,8 @@ export default function EditAutomationPage() {
           />
 
           {/* Node Palette */}
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Add Step</h2>
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Add Step</h2>
             <div className="space-y-2">
               {NODE_PALETTE.map((item) => {
                 const Icon = item.icon
@@ -743,13 +743,13 @@ export default function EditAutomationPage() {
                   <button
                     key={item.type}
                     onClick={() => addNode(item.type)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left group"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left group"
                   >
                     <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0', item.color)}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{item.label}</span>
-                    <Plus className="h-3.5 w-3.5 text-gray-400 ml-auto group-hover:text-indigo-600 transition-colors" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:hover:text-gray-100 transition-colors">{item.label}</span>
+                    <Plus className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 ml-auto group-hover:text-indigo-600 transition-colors" />
                   </button>
                 )
               })}
@@ -770,13 +770,13 @@ export default function EditAutomationPage() {
             nodeTypes={nodeTypes}
             fitView
             fitViewOptions={{ padding: 0.3 }}
-            className="bg-[#FAFAFA]"
+            className="bg-[#FAFAFA] dark:bg-[#0F0F11]"
             proOptions={{ hideAttribution: true }}
           >
             <Background color="#e5e7eb" gap={20} size={1} />
             <Controls
               showInteractive={false}
-              className="!bg-white !border-gray-200 !rounded-xl !shadow-sm [&>button]:!border-gray-200 [&>button]:!rounded-lg [&>button:hover]:!bg-gray-50"
+              className="!bg-white dark:bg-gray-950 !border-gray-200 dark:border-gray-800 !rounded-xl !shadow-sm [&>button]:!border-gray-200 dark:border-gray-800 [&>button]:!rounded-lg [&>button:hover]:!bg-gray-50 dark:bg-gray-900"
             />
           </ReactFlow>
         </div>
@@ -790,7 +790,7 @@ export default function EditAutomationPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2 }}
-              className="w-80 bg-white border-l border-gray-200 p-5 overflow-y-auto shrink-0"
+              className="w-80 bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 p-5 overflow-y-auto shrink-0"
             >
               <StepConfigPanel
                 node={selectedNode}

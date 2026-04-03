@@ -65,8 +65,8 @@ interface MembershipPlan {
 function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
     <div className="mb-5">
-      <h3 className="text-base font-bold text-gray-900">{title}</h3>
-      <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+      <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{title}</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
     </div>
   )
 }
@@ -82,11 +82,11 @@ function FieldRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-6 py-4 border-b border-gray-100 last:border-0">
+    <div className="flex items-start justify-between gap-6 py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
       <div className="flex-1 min-w-0">
-        <Label className="text-sm font-semibold text-gray-900">{label}</Label>
+        <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">{label}</Label>
         {description && (
-          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
         )}
       </div>
       <div className="w-64 flex-shrink-0">{children}</div>
@@ -172,7 +172,7 @@ function GeneralTab() {
         <CardContent>
           <div className="space-y-2">
             {/* Header row */}
-            <div className="grid grid-cols-[120px_1fr_1fr_60px] gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-2 border-b border-gray-100">
+            <div className="grid grid-cols-[120px_1fr_1fr_60px] gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-2 border-b border-gray-100 dark:border-gray-800">
               <span>Day</span>
               <span>Open</span>
               <span>Close</span>
@@ -186,7 +186,7 @@ function GeneralTab() {
                   !hour.enabled && 'opacity-50'
                 )}
               >
-                <span className="text-sm font-semibold text-gray-900">{hour.day}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{hour.day}</span>
                 <Input
                   type="time"
                   value={hour.open}
@@ -224,16 +224,16 @@ function GeneralTab() {
           <div className="space-y-3">
             <NextLink
               href="/settings/geofence"
-              className="flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all"
+              className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-indigo-200 hover:shadow-sm transition-all"
             >
               <div className="flex items-center gap-3">
                 <MapPin className="w-4 h-4 text-indigo-600" />
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">Geofence Settings</p>
-                  <p className="text-xs text-gray-500">Configure location boundaries for employee clock in/out</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Geofence Settings</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Configure location boundaries for employee clock in/out</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </NextLink>
           </div>
         </CardContent>
@@ -275,7 +275,7 @@ function BookingRulesTab() {
           >
             <div className="flex items-center gap-2">
               <Input type="number" defaultValue={8} min={1} max={48} className="w-20" />
-              <span className="text-sm text-gray-500">hours</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">hours</span>
             </div>
           </FieldRow>
           <FieldRow
@@ -294,7 +294,7 @@ function BookingRulesTab() {
                 description="Fee charged on the second strike in the rolling window"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">$</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">$</span>
                   <Input type="number" defaultValue={5} min={0} className="w-20" />
                 </div>
               </FieldRow>
@@ -303,7 +303,7 @@ function BookingRulesTab() {
                 description="Fee charged on the third strike and beyond"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">$</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">$</span>
                   <Input type="number" defaultValue={10} min={0} className="w-20" />
                 </div>
               </FieldRow>
@@ -313,7 +313,7 @@ function BookingRulesTab() {
               >
                 <div className="flex items-center gap-2">
                   <Input type="number" defaultValue={30} min={7} max={90} className="w-20" />
-                  <span className="text-sm text-gray-500">days</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">days</span>
                 </div>
               </FieldRow>
               <FieldRow
@@ -348,7 +348,7 @@ function BookingRulesTab() {
           >
             <div className="flex items-center gap-2">
               <Input type="number" defaultValue={12} min={1} max={100} className="w-20" />
-              <span className="text-sm text-gray-500">members</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">members</span>
             </div>
           </FieldRow>
           <FieldRow
@@ -366,7 +366,7 @@ function BookingRulesTab() {
           >
             <div className="flex items-center gap-2">
               <Input type="number" defaultValue={30} min={5} max={120} className="w-20" />
-              <span className="text-sm text-gray-500">minutes</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">minutes</span>
             </div>
           </FieldRow>
         </CardContent>
@@ -388,7 +388,7 @@ function BookingRulesTab() {
           >
             <div className="flex items-center gap-2">
               <Input type="number" defaultValue={7} min={0} max={30} className="w-20" />
-              <span className="text-sm text-gray-500">days</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">days</span>
             </div>
           </FieldRow>
         </CardContent>
@@ -458,35 +458,35 @@ function MembershipPricingTab() {
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-900">{plan.name}</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{plan.name}</span>
                     {plan.isActive ? (
                       <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-full">
                         Active
                       </span>
                     ) : (
-                      <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider rounded-full">
                         Inactive
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{plan.description}</p>
                 </div>
-                <span className="text-lg font-black text-gray-900 tabular-nums">
+                <span className="text-lg font-black text-gray-900 dark:text-gray-100 tabular-nums">
                   ${plan.price}
                   {plan.interval === 'monthly' && (
-                    <span className="text-xs font-medium text-gray-400">/mo</span>
+                    <span className="text-xs font-medium text-gray-400 dark:text-gray-500">/mo</span>
                   )}
                 </span>
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <Pencil className="w-4 h-4 text-gray-400" />
+                <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <Pencil className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 </button>
               </div>
             ))}
-            <button className="flex items-center gap-2 w-full p-3 rounded-xl border border-dashed border-gray-300 text-sm font-semibold text-gray-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
+            <button className="flex items-center gap-2 w-full p-3 rounded-xl border border-dashed border-gray-300 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
               <Plus className="w-4 h-4" />
               Add Membership Plan
             </button>
@@ -512,7 +512,7 @@ function MembershipPricingTab() {
           >
             <div className="flex items-center gap-2">
               <Input type="number" defaultValue={10} min={0} max={100} className="w-20" />
-              <span className="text-sm text-gray-500">%</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">%</span>
             </div>
           </FieldRow>
         </CardContent>
@@ -535,7 +535,7 @@ function MembershipPricingTab() {
             description="Base rate for the first hour of a private session or event"
           >
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">$</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">$</span>
               <Input type="number" defaultValue={250} min={0} className="w-24" />
             </div>
           </FieldRow>
@@ -544,7 +544,7 @@ function MembershipPricingTab() {
             description="Tapered rate for each additional hour"
           >
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">$</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">$</span>
               <Input type="number" defaultValue={150} min={0} className="w-24" />
             </div>
           </FieldRow>
@@ -554,7 +554,7 @@ function MembershipPricingTab() {
           >
             <div className="flex items-center gap-2">
               <Input type="number" defaultValue={20} min={0} max={100} className="w-20" />
-              <span className="text-sm text-gray-500">%</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">%</span>
             </div>
           </FieldRow>
         </CardContent>
@@ -713,11 +713,11 @@ function IntegrationsTab() {
             </span>
           </FieldRow>
           <FieldRow label="Account ID">
-            <span className="text-sm text-gray-600 font-mono">acct_••••••••••</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400 font-mono">acct_••••••••••</span>
           </FieldRow>
           <FieldRow label="Webhook Endpoint">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-mono truncate">/api/webhooks/stripe</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">/api/webhooks/stripe</span>
               <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded">Active</span>
             </div>
           </FieldRow>
@@ -754,15 +754,15 @@ function IntegrationsTab() {
             </span>
           </FieldRow>
           <FieldRow label="Project URL">
-            <span className="text-xs text-gray-500 font-mono truncate">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
               {process.env.NEXT_PUBLIC_SUPABASE_URL ? '••••••.supabase.co' : 'Not configured'}
             </span>
           </FieldRow>
           <FieldRow label="Auth Method">
-            <span className="text-sm text-gray-600">Magic Link / SSO (Passwordless)</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Magic Link / SSO (Passwordless)</span>
           </FieldRow>
           <FieldRow label="Real-time">
-            <span className="text-sm text-gray-600">60-second polling (Phase 1)</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">60-second polling (Phase 1)</span>
           </FieldRow>
         </CardContent>
       </Card>
@@ -799,7 +799,7 @@ function IntegrationsTab() {
             <Input defaultValue="" placeholder="e.g., abc123xyz" />
           </FieldRow>
           <FieldRow label="Display Location">
-            <span className="text-sm text-gray-600">iOS App + Web Booking Portal</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">iOS App + Web Booking Portal</span>
           </FieldRow>
         </CardContent>
       </Card>
@@ -817,10 +817,10 @@ function IntegrationsTab() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">Production Key</p>
-                <p className="text-xs font-mono text-gray-500 mt-0.5">mk_live_••••••••••••••••</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Production Key</p>
+                <p className="text-xs font-mono text-gray-500 dark:text-gray-400 mt-0.5">mk_live_••••••••••••••••</p>
               </div>
               <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase rounded-full">
                 Active
@@ -830,10 +830,10 @@ function IntegrationsTab() {
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">Test Key</p>
-                <p className="text-xs font-mono text-gray-500 mt-0.5">mk_test_••••••••••••••••</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Test Key</p>
+                <p className="text-xs font-mono text-gray-500 dark:text-gray-400 mt-0.5">mk_test_••••••••••••••••</p>
               </div>
               <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold uppercase rounded-full">
                 Test
@@ -843,7 +843,7 @@ function IntegrationsTab() {
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
-            <button className="flex items-center gap-2 w-full p-3 rounded-xl border border-dashed border-gray-300 text-sm font-semibold text-gray-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
+            <button className="flex items-center gap-2 w-full p-3 rounded-xl border border-dashed border-gray-300 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
               <Plus className="w-4 h-4" />
               Generate New API Key
             </button>
@@ -877,15 +877,15 @@ export default function SettingsPage() {
     <motion.div {...fadeInUp} className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-black text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">Settings</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Configure your studio, booking rules, pricing, and integrations
         </p>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue={0}>
-        <TabsList variant="line" className="border-b border-gray-200 w-full justify-start gap-0">
+        <TabsList variant="line" className="border-b border-gray-200 dark:border-gray-800 w-full justify-start gap-0">
           {tabs.map((tab, i) => (
             <TabsTrigger key={tab.label} value={i} className="gap-1.5 px-4 pb-3">
               <tab.icon className="w-4 h-4" />

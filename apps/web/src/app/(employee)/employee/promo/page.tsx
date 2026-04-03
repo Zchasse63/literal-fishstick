@@ -22,7 +22,7 @@ import { fadeInUp } from '@/lib/motion'
 const statusConfig = {
   active: { label: 'Active', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   churned: { label: 'Churned', icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
-  'one-time': { label: 'One-Time', icon: Clock, color: 'text-gray-500', bg: 'bg-gray-100' },
+  'one-time': { label: 'One-Time', icon: Clock, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-800' },
 }
 
 export default function PromoPage() {
@@ -101,8 +101,8 @@ export default function PromoPage() {
     <div className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
-        <h1 className="text-2xl font-bold text-gray-900">Promo Code</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Your personal referral code and commissions</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Promo Code</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Your personal referral code and commissions</p>
       </motion.div>
 
       {/* Promo Code Hero */}
@@ -123,19 +123,19 @@ export default function PromoPage() {
             <div className="flex items-center gap-3 mt-5">
               <button
                 onClick={handleCopy}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/20 backdrop-blur-sm text-white text-sm font-semibold hover:bg-white/30 transition-colors border border-white/20"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-gray-950/20 backdrop-blur-sm text-white text-sm font-semibold hover:bg-white dark:bg-gray-950/30 transition-colors border border-white/20"
               >
                 <Copy className="w-4 h-4" />
                 {copied ? 'Copied!' : 'Copy Code'}
               </button>
-              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/20 backdrop-blur-sm text-white text-sm font-semibold hover:bg-white/30 transition-colors border border-white/20">
+              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-gray-950/20 backdrop-blur-sm text-white text-sm font-semibold hover:bg-white dark:bg-gray-950/30 transition-colors border border-white/20">
                 <Share2 className="w-4 h-4" />
                 Share
               </button>
             </div>
           </div>
           {/* QR Code */}
-          <div className="w-32 h-32 rounded-xl bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center border border-white/20 overflow-hidden">
+          <div className="w-32 h-32 rounded-xl bg-white dark:bg-gray-950/20 backdrop-blur-sm flex flex-col items-center justify-center border border-white/20 overflow-hidden">
             {qrLoading ? (
               <Loader2 className="w-8 h-8 text-white/60 animate-spin" />
             ) : qrUrl ? (
@@ -161,15 +161,15 @@ export default function PromoPage() {
             key={stat.label}
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 + 0.03 * i }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{stat.label}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>
               <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center', stat.bg)}>
                 <stat.icon className={cn('w-4 h-4', stat.color)} />
               </div>
             </div>
-            <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{stat.value}</p>
+            <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{stat.value}</p>
           </motion.div>
         ))}
       </div>
@@ -178,31 +178,31 @@ export default function PromoPage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.25 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
       >
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-bold text-gray-900">Referral Log</h3>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Referral Log</h3>
         </div>
         {attributions.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-gray-400">No referrals yet</div>
+          <div className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">No referrals yet</div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-gray-100 dark:border-gray-800">
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Member</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Member</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Signup Date</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Signup Date</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Plan</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Plan</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Commission</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Commission</span>
                 </th>
               </tr>
             </thead>
@@ -215,15 +215,15 @@ export default function PromoPage() {
                 const status = statusConfig[statusKey]
 
                 return (
-                  <tr key={attr.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors">
+                  <tr key={attr.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-5 py-3.5">
-                      <span className="text-sm font-semibold text-gray-900">{memberName}</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{memberName}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-sm text-gray-600">{date}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{date}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-sm font-medium text-gray-700">{attr.plan_purchased ?? 'N/A'}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{attr.plan_purchased ?? 'N/A'}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={cn(

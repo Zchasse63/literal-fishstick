@@ -93,25 +93,25 @@ export default function GeofenceSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
   }
 
   return (
-    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] p-6">
+    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6">
       {/* Header */}
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/settings"
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-700"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Geofence Settings</h1>
-          <p className="mt-0.5 text-sm text-gray-500">Configure clock-in/out location verification</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Geofence Settings</h1>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Configure clock-in/out location verification</p>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export default function GeofenceSettingsPage() {
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
           >
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Locations</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Locations</p>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700"
@@ -137,7 +137,7 @@ export default function GeofenceSettingsPage() {
             {locations.map((location) => (
               <div
                 key={location.id}
-                className="mb-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                className="mb-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
@@ -145,13 +145,13 @@ export default function GeofenceSettingsPage() {
                       <MapPin className="h-5 w-5 text-indigo-600" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-gray-900">{location.name}</h3>
+                      <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{location.name}</h3>
                       <div className="mt-1 flex items-center gap-4">
-                        <span className="text-xs tabular-nums text-gray-500">
+                        <span className="text-xs tabular-nums text-gray-500 dark:text-gray-400">
                           {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
                         </span>
-                        <span className="text-xs text-gray-400">&middot;</span>
-                        <span className="text-xs font-semibold text-gray-600">{location.radius}m radius</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">&middot;</span>
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{location.radius}m radius</span>
                       </div>
                     </div>
                   </div>
@@ -165,7 +165,7 @@ export default function GeofenceSettingsPage() {
                   >
                     <span
                       className={cn(
-                        'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white dark:bg-gray-950 shadow-sm transition-transform duration-200',
                         location.isActive ? 'translate-x-5' : 'translate-x-0'
                       )}
                     />
@@ -220,8 +220,8 @@ export default function GeofenceSettingsPage() {
                     </>
                   ) : (
                     <>
-                      <Shield className="h-3.5 w-3.5 text-gray-400" />
-                      <span className="text-xs font-semibold text-gray-500">Disabled — clock actions not restricted by location</span>
+                      <Shield className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Disabled — clock actions not restricted by location</span>
                     </>
                   )}
                 </div>
@@ -233,42 +233,42 @@ export default function GeofenceSettingsPage() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm"
+                className="rounded-2xl border border-indigo-200 bg-white dark:bg-gray-950 p-6 shadow-sm"
               >
-                <h3 className="mb-4 text-sm font-bold text-gray-900">Add New Location</h3>
+                <h3 className="mb-4 text-sm font-bold text-gray-900 dark:text-gray-100">Add New Location</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400">Location Name</label>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Location Name</label>
                     <input
                       type="text"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       placeholder="e.g., Downtown Studio"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400">Latitude</label>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Latitude</label>
                     <input
                       type="text"
                       value={newLat}
                       onChange={(e) => setNewLat(e.target.value)}
                       placeholder="27.9506"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm tabular-nums text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-sm tabular-nums text-gray-900 dark:text-gray-100 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400">Longitude</label>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Longitude</label>
                     <input
                       type="text"
                       value={newLng}
                       onChange={(e) => setNewLng(e.target.value)}
                       placeholder="-82.4572"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm tabular-nums text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-sm tabular-nums text-gray-900 dark:text-gray-100 placeholder-gray-400 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       Radius: {newRadius}m
                     </label>
                     <input
@@ -280,16 +280,16 @@ export default function GeofenceSettingsPage() {
                       onChange={(e) => setNewRadius(parseInt(e.target.value))}
                       className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-indigo-600"
                     />
-                    <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+                    <div className="mt-1 flex justify-between text-[10px] text-gray-400 dark:text-gray-500">
                       <span>50m</span>
                       <span>150m</span>
                       <span>300m</span>
                       <span>500m</span>
                     </div>
                   </div>
-                  <div className="col-span-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                    <p className="text-xs text-gray-500">
-                      <span className="font-semibold text-gray-600">How to find coordinates:</span>{' '}
+                  <div className="col-span-2 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="font-semibold text-gray-600 dark:text-gray-400">How to find coordinates:</span>{' '}
                       Open Google Maps, right-click your studio location, and click the coordinates to copy them.
                     </p>
                   </div>
@@ -297,7 +297,7 @@ export default function GeofenceSettingsPage() {
                 <div className="mt-4 flex justify-end gap-3">
                   <button
                     onClick={() => setShowAddForm(false)}
-                    className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                    className="rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     Cancel
                   </button>
@@ -318,11 +318,11 @@ export default function GeofenceSettingsPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm"
           >
             <div className="flex items-center gap-2 mb-4">
               <Info className="h-4 w-4 text-indigo-500" />
-              <h3 className="text-sm font-bold text-gray-900">How Geofencing Works</h3>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">How Geofencing Works</h3>
             </div>
 
             <div className="space-y-4">
@@ -363,8 +363,8 @@ export default function GeofenceSettingsPage() {
                     <item.icon className="h-3.5 w-3.5 text-indigo-600" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-900">{item.title}</p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-gray-500">{item.description}</p>
+                    <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{item.title}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{item.description}</p>
                   </div>
                 </div>
               ))}

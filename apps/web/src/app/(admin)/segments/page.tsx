@@ -95,7 +95,7 @@ function getColorClasses(hex: string): { color: string; bgColor: string; iconBg:
     '#4F46E5': { color: 'text-indigo-600', bgColor: 'bg-indigo-50', iconBg: 'bg-indigo-100' },
     '#EC4899': { color: 'text-pink-500', bgColor: 'bg-pink-50', iconBg: 'bg-pink-100' },
   }
-  return colorMap[hex] ?? { color: 'text-gray-500', bgColor: 'bg-gray-50', iconBg: 'bg-gray-100' }
+  return colorMap[hex] ?? { color: 'text-gray-500 dark:text-gray-400', bgColor: 'bg-gray-50 dark:bg-gray-900', iconBg: 'bg-gray-100 dark:bg-gray-800' }
 }
 
 function mapDbSegmentToDisplay(seg: DbSegment): DisplaySegment {
@@ -118,7 +118,7 @@ function mapDbSegmentToDisplay(seg: DbSegment): DisplaySegment {
 function TrendIndicator({ trend, value }: { trend: 'up' | 'down' | 'stable'; value: string }) {
   if (trend === 'stable') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 dark:text-gray-500">
         <Minus className="h-3 w-3" />
         Stable
       </span>
@@ -172,8 +172,8 @@ export default function SegmentsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
-        <div className="flex items-center gap-3 text-gray-400">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
+        <div className="flex items-center gap-3 text-gray-400 dark:text-gray-500">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm font-medium">Loading segments...</span>
         </div>
@@ -183,11 +183,11 @@ export default function SegmentsPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <div className="text-center">
           <AlertTriangle className="mx-auto h-8 w-8 text-orange-400" />
-          <p className="mt-3 text-sm font-medium text-gray-700">Failed to load segments</p>
-          <p className="mt-1 text-xs text-gray-400">{error}</p>
+          <p className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">Failed to load segments</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{error}</p>
           <button
             onClick={fetchSegments}
             className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
@@ -200,13 +200,13 @@ export default function SegmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8">
       {/* Header */}
       <motion.div {...fadeInUp} className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Smart Segments</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Smart Segments</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               AI-powered member segments that update automatically
             </p>
           </div>
@@ -218,19 +218,19 @@ export default function SegmentsPage() {
 
         {/* Summary stats */}
         <div className="mt-6 flex gap-6">
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Segments</p>
-            <p className="mt-1 text-xl font-black tabular-nums text-gray-900">{segments.length}</p>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Total Segments</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-gray-900 dark:text-gray-100">{segments.length}</p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Members Tracked</p>
-            <p className="mt-1 text-xl font-black tabular-nums text-gray-900">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Total Members Tracked</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-gray-900 dark:text-gray-100">
               {segments.reduce((sum, s) => sum + s.count, 0).toLocaleString()}
             </p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">System Segments</p>
-            <p className="mt-1 text-xl font-black tabular-nums text-gray-900">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">System Segments</p>
+            <p className="mt-1 text-xl font-black tabular-nums text-gray-900 dark:text-gray-100">
               {segments.filter(s => s.type === 'auto').length}
             </p>
           </div>
@@ -266,10 +266,10 @@ export default function SegmentsPage() {
                     setSelectedSegment(isSelected ? null : segment)
                   }
                   className={cn(
-                    'group w-full rounded-2xl border bg-white p-5 text-left shadow-sm transition-all hover:shadow-md',
+                    'group w-full rounded-2xl border bg-white dark:bg-gray-950 p-5 text-left shadow-sm transition-all hover:shadow-md',
                     isSelected
                       ? 'border-indigo-300 ring-2 ring-indigo-100'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
                   )}
                 >
                   <div className="flex items-start justify-between">
@@ -285,13 +285,13 @@ export default function SegmentsPage() {
                   </div>
 
                   <div className="mt-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       {segment.name}
                     </p>
-                    <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900">
+                    <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">
                       {segment.count.toLocaleString()}
                     </p>
-                    <p className="mt-1 text-sm text-gray-500">{segment.description}</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{segment.description}</p>
                   </div>
 
                   <div className="mt-4 flex items-center justify-between">
@@ -300,7 +300,7 @@ export default function SegmentsPage() {
                         'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest',
                         segment.type === 'auto'
                           ? 'bg-violet-50 text-violet-600'
-                          : 'bg-gray-100 text-gray-500'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                       )}
                     >
                       {segment.type === 'auto' ? 'AI Auto' : 'Manual'}
@@ -310,7 +310,7 @@ export default function SegmentsPage() {
                         'h-4 w-4 transition-transform',
                         isSelected
                           ? 'translate-x-0 text-indigo-500'
-                          : 'text-gray-300 group-hover:translate-x-1 group-hover:text-gray-400'
+                          : 'text-gray-300 group-hover:translate-x-1 group-hover:text-gray-400 dark:text-gray-500'
                       )}
                     />
                   </div>
@@ -331,9 +331,9 @@ export default function SegmentsPage() {
               transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
               className="hidden w-[380px] shrink-0 lg:block"
             >
-              <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div className="sticky top-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
                 {/* Panel Header */}
-                <div className="flex items-center justify-between border-b border-gray-100 p-5">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 p-5">
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
@@ -346,35 +346,35 @@ export default function SegmentsPage() {
                       />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-900">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {selectedSegment.name}
                       </h3>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {selectedSegment.description}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setSelectedSegment(null)}
-                    className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
                 {/* Stats */}
-                <div className="border-b border-gray-100 p-5">
+                <div className="border-b border-gray-100 dark:border-gray-800 p-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                         Members
                       </p>
-                      <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900">
+                      <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">
                         {selectedSegment.count.toLocaleString()}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                         Trend
                       </p>
                       <div className="mt-2">
@@ -391,7 +391,7 @@ export default function SegmentsPage() {
                         'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest',
                         selectedSegment.type === 'auto'
                           ? 'bg-violet-50 text-violet-600'
-                          : 'bg-gray-100 text-gray-500'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                       )}
                     >
                       {selectedSegment.type === 'auto' ? 'Auto' : 'Manual'}
@@ -401,43 +401,43 @@ export default function SegmentsPage() {
 
                 {/* Segment Info */}
                 <div className="p-5">
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                     Segment Details
                   </p>
                   <div className="space-y-3">
-                    <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <p className="text-xs font-medium text-gray-500">Description</p>
-                      <p className="mt-1 text-sm text-gray-900">{selectedSegment.description}</p>
+                    <div className="rounded-xl bg-gray-50 dark:bg-gray-900 px-4 py-3">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Description</p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedSegment.description}</p>
                     </div>
-                    <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <p className="text-xs font-medium text-gray-500">Type</p>
-                      <p className="mt-1 text-sm text-gray-900">
+                    <div className="rounded-xl bg-gray-50 dark:bg-gray-900 px-4 py-3">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Type</p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                         {selectedSegment.type === 'auto'
                           ? 'System — auto-computed from member data'
                           : 'Custom — manually defined rules'}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-gray-50 px-4 py-3">
-                      <p className="text-xs font-medium text-gray-500">Color</p>
+                    <div className="rounded-xl bg-gray-50 dark:bg-gray-900 px-4 py-3">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Color</p>
                       <div className="mt-1 flex items-center gap-2">
                         <div
                           className="h-4 w-4 rounded-full"
                           style={{ backgroundColor: selectedSegment.dbColor }}
                         />
-                        <span className="text-sm text-gray-900">{selectedSegment.dbColor}</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{selectedSegment.dbColor}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="border-t border-gray-100 p-5">
+                <div className="border-t border-gray-100 dark:border-gray-800 p-5">
                   <div className="flex gap-3">
                     <button className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
                       <Send className="h-4 w-4" />
                       Send Campaign
                     </button>
-                    <button className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+                    <button className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
                       <Users className="h-4 w-4" />
                       View All
                     </button>

@@ -74,12 +74,12 @@ export default function ProfilePage() {
           <span className="text-white text-xl font-bold">{getInitials(fullName)}</span>
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{fullName}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{fullName}</h1>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-xs font-bold uppercase tracking-wider">
               {roleLabel}
             </span>
-            {hireDate && <span className="text-sm text-gray-500">Since {hireDate}</span>}
+            {hireDate && <span className="text-sm text-gray-500 dark:text-gray-400">Since {hireDate}</span>}
           </div>
         </div>
       </motion.div>
@@ -90,10 +90,10 @@ export default function ProfilePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.05 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-gray-900">Personal Information</h3>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Personal Information</h3>
             <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors">
               <Pencil className="w-3 h-3" />
               Edit
@@ -101,25 +101,25 @@ export default function ProfilePage() {
           </div>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <User className="w-4 h-4 text-gray-400" />
+              <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Full Name</p>
-                <p className="text-sm font-medium text-gray-900">{fullName}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Full Name</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{fullName}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Mail className="w-4 h-4 text-gray-400" />
+              <Mail className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Email</p>
-                <p className="text-sm font-medium text-gray-900">{email}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Email</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{email}</p>
               </div>
             </div>
             {phone && (
               <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-gray-400" />
+                <Phone className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Phone</p>
-                  <p className="text-sm font-medium text-gray-900">{phone}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Phone</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{phone}</p>
                 </div>
               </div>
             )}
@@ -132,15 +132,15 @@ export default function ProfilePage() {
             <motion.div
               {...fadeInUp}
               transition={{ ...fadeInUp.transition, delay: 0.1 }}
-              className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
             >
-              <h3 className="text-sm font-bold text-gray-900 mb-4">Emergency Contact</h3>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Emergency Contact</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Heart className="w-4 h-4 text-red-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{employee.emergency_contact_name}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{employee.emergency_contact_name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {employee.emergency_contact_relationship ?? 'Contact'}
                       {employee.emergency_contact_phone ? ` — ${employee.emergency_contact_phone}` : ''}
                     </p>
@@ -153,32 +153,32 @@ export default function ProfilePage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.15 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
-            <h3 className="text-sm font-bold text-gray-900 mb-4">Employment Details</h3>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Employment Details</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Hire Date</span>
-                <span className="text-sm font-medium text-gray-900">{hireDateFull}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Hire Date</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{hireDateFull}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Role</span>
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Role</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {roleLabel}{trainer ? ' / Instructor' : ''}
                 </span>
               </div>
               {employee?.pay_rate && (
                 <div className="flex justify-between">
-                  <span className="text-xs text-gray-500">Pay Rate</span>
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Pay Rate</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     ${employee.pay_rate.toFixed(2)}/{employee.pay_type === 'salary' ? 'yr' : 'hr'} + bonuses
                   </span>
                 </div>
               )}
               {employee?.employment_type && (
                 <div className="flex justify-between">
-                  <span className="text-xs text-gray-500">Employment Type</span>
-                  <span className="text-sm font-medium text-gray-900 capitalize">{employee.employment_type}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Employment Type</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{employee.employment_type}</span>
                 </div>
               )}
             </div>
@@ -191,9 +191,9 @@ export default function ProfilePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.2 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Certifications</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Certifications</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {certifications.map((cert) => {
               const certStatus = getCertStatus(cert.expires_at)
@@ -208,11 +208,11 @@ export default function ProfilePage() {
                 >
                   <status.icon className={cn('w-4 h-4 mt-0.5 flex-shrink-0', status.color)} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">{cert.name}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{cert.name}</p>
                     {cert.expires_at && (
                       <div className="flex items-center gap-1.5 mt-1">
-                        <Calendar className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs text-gray-500">
+                        <Calendar className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           Expires {new Date(cert.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </div>
@@ -236,17 +236,17 @@ export default function ProfilePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.25 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Signed Documents</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Signed Documents</h3>
           <div className="space-y-2">
             {signedDocs.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+              <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <div className="flex items-center gap-3">
                   <FileCheck className="w-4 h-4 text-emerald-500" />
-                  <span className="text-sm font-medium text-gray-900">{doc.name}</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.name}</span>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   {doc.uploaded_at
                     ? `Signed ${new Date(doc.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
                     : ''}

@@ -48,8 +48,8 @@ export interface MrrDataPoint {
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3">
-      <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg px-4 py-3">
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{label}</p>
       {payload.map((entry: any) => (
         <p key={entry.name} className="text-sm font-bold tabular-nums" style={{ color: entry.color }}>
           {entry.name}: ${entry.value?.toLocaleString()}
@@ -61,7 +61,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 function ChartSkeleton({ height = 300 }: { height?: number }) {
   return (
-    <div className="animate-pulse rounded-xl bg-gray-100" style={{ height }} />
+    <div className="animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" style={{ height }} />
   )
 }
 
@@ -103,11 +103,11 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
   return (
     <motion.div {...fadeInUp} className="grid grid-cols-12 gap-5">
       {/* Revenue Trend */}
-      <div className="lg:col-span-7 col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="lg:col-span-7 col-span-12 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Revenue Trend</p>
-            <p className="text-lg font-bold text-gray-900">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Revenue Trend</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
               {mrrGrowth.length > 0 ? `${mrrGrowth.length}-Month Overview` : 'Monthly Overview'}
             </p>
           </div>
@@ -115,7 +115,7 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
             {AREA_KEYS.map((key, i) => (
               <div key={key} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: AREA_COLORS[i] }} />
-                <span className="text-[11px] text-gray-500">{key}</span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">{key}</span>
               </div>
             ))}
           </div>
@@ -144,9 +144,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
       </div>
 
       {/* Revenue Breakdown Donut */}
-      <div className="lg:col-span-5 col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Revenue Breakdown</p>
-        <p className="text-lg font-bold text-gray-900 mb-2">By Source</p>
+      <div className="lg:col-span-5 col-span-12 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Revenue Breakdown</p>
+        <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">By Source</p>
         {loading ? <ChartSkeleton /> : (
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -162,22 +162,22 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
                 }}
                 contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '13px' }}
               />
-              <Legend verticalAlign="bottom" height={36} formatter={(value) => <span className="text-xs text-gray-600">{value}</span>} />
+              <Legend verticalAlign="bottom" height={36} formatter={(value) => <span className="text-xs text-gray-600 dark:text-gray-400">{value}</span>} />
             </PieChart>
           </ResponsiveContainer>
         )}
       </div>
 
       {/* 30-Day Revenue Trend */}
-      <div className="col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="col-span-12 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Daily Revenue</p>
-            <p className="text-lg font-bold text-gray-900">30-Day Trend</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Daily Revenue</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">30-Day Trend</p>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-indigo-500" />
-            <span className="text-[11px] text-gray-500">Revenue</span>
+            <span className="text-[11px] text-gray-500 dark:text-gray-400">Revenue</span>
           </div>
         </div>
         {loading ? <ChartSkeleton height={280} /> : (
@@ -196,9 +196,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.[0]) return null
                   return (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
-                      <p className="text-lg font-bold text-gray-900 tabular-nums">${payload[0].value?.toLocaleString()}</p>
+                    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg px-4 py-3">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">${payload[0].value?.toLocaleString()}</p>
                     </div>
                   )
                 }}
@@ -210,10 +210,10 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
       </div>
 
       {/* Revenue Breakdown by Source (Horizontal Bar) */}
-      <div className="lg:col-span-6 col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="lg:col-span-6 col-span-12 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
         <div className="mb-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Revenue Breakdown</p>
-          <p className="text-lg font-bold text-gray-900">By Source (This Month)</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Revenue Breakdown</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">By Source (This Month)</p>
         </div>
         {loading ? <ChartSkeleton height={260} /> : (
           <ResponsiveContainer width="100%" height={260}>
@@ -226,9 +226,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
                   if (!active || !payload?.[0]) return null
                   const data = payload[0].payload
                   return (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-1">{data.source}</p>
-                      <p className="text-lg font-bold text-gray-900 tabular-nums">${data.amount.toLocaleString()}</p>
+                    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg px-4 py-3">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{data.source}</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">${data.amount.toLocaleString()}</p>
                     </div>
                   )
                 }}
@@ -244,11 +244,11 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
       </div>
 
       {/* MRR Growth (Line Chart) */}
-      <div className="lg:col-span-6 col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="lg:col-span-6 col-span-12 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">MRR Growth</p>
-            <p className="text-lg font-bold text-gray-900">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">MRR Growth</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
               {mrrGrowth.length > 0 ? `${mrrGrowth.length}-Month Trend` : 'Monthly Trend'}
             </p>
           </div>
@@ -272,9 +272,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.[0]) return null
                   return (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
-                      <p className="text-lg font-bold text-gray-900 tabular-nums">${payload[0].value?.toLocaleString()}/mo</p>
+                    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg px-4 py-3">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">${payload[0].value?.toLocaleString()}/mo</p>
                     </div>
                   )
                 }}

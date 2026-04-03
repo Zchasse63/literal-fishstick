@@ -156,18 +156,18 @@ function mapStatus(dbStatus: string, joinDate: string, lastVisit: string | null)
 function ProfileSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-full bg-gray-200" />
           <div className="space-y-2">
             <div className="h-5 w-40 bg-gray-200 rounded" />
-            <div className="h-4 w-24 bg-gray-100 rounded" />
+            <div className="h-4 w-24 bg-gray-100 dark:bg-gray-800 rounded" />
           </div>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+          <div key={i} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
             <div className="h-3 w-16 bg-gray-200 rounded mb-2" />
             <div className="h-8 w-20 bg-gray-200 rounded" />
           </div>
@@ -217,15 +217,15 @@ function EmailPreferencesPanel({ memberId }: { memberId: string }) {
   ]
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Email Preferences</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Email Preferences</h3>
         {saving && <Loader2 className="h-3 w-3 text-gray-300 animate-spin" />}
       </div>
       <div className="space-y-2">
         {prefItems.map(item => (
           <label key={item.key} className="flex items-center justify-between cursor-pointer group">
-            <span className="text-xs text-gray-700">{item.label}</span>
+            <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
             <button
               onClick={() => togglePref(item.key)}
               className={cn(
@@ -234,7 +234,7 @@ function EmailPreferencesPanel({ memberId }: { memberId: string }) {
               )}
             >
               <span className={cn(
-                'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm',
+                'inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-gray-950 transition-transform shadow-sm',
                 prefs?.[item.key] ? 'translate-x-4' : 'translate-x-0.5'
               )} />
             </button>
@@ -275,8 +275,8 @@ function SMSComposePanel({ phone }: { phone: string }) {
   if (!phone) return null
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-      <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Send SMS</h3>
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
+      <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Send SMS</h3>
       {result && (
         <div className={cn(
           'rounded-lg p-2 text-xs mb-2',
@@ -290,7 +290,7 @@ function SMSComposePanel({ phone }: { phone: string }) {
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Type your message..."
         rows={2}
-        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        className="w-full resize-none rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
       />
       <button
         onClick={handleSend}
@@ -421,9 +421,9 @@ export default function MemberProfilePage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <div className="mb-6">
-          <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+          <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
             <ArrowLeft className="h-4 w-4" />
             Back to Members
           </Link>
@@ -435,25 +435,25 @@ export default function MemberProfilePage({
 
   if (!member) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <div className="mb-6">
-          <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+          <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
             <ArrowLeft className="h-4 w-4" />
             Back to Members
           </Link>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center">
-          <p className="text-sm text-gray-500">Member not found.</p>
+        <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-12 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Member not found.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA]">
+    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       {/* Back link */}
       <div className="mb-6">
-        <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+        <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to Members
         </Link>
@@ -463,7 +463,7 @@ export default function MemberProfilePage({
         {/* Left column — Profile + Stats */}
         <div className="lg:col-span-1 space-y-4">
           {/* Profile Header */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
             <div className="flex items-center gap-3 mb-4">
               <div className={cn(
                 'h-16 w-16 rounded-full flex items-center justify-center text-white text-xl font-bold',
@@ -472,7 +472,7 @@ export default function MemberProfilePage({
                 {member.avatar}
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                   {member.firstName} {member.lastName}
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
@@ -484,21 +484,21 @@ export default function MemberProfilePage({
                   </span>
                   <div className="flex items-center gap-1">
                     <div className={cn('h-1.5 w-1.5 rounded-full', statusDot(member.status))} />
-                    <span className="text-xs text-gray-500">{statusLabel(member.status)}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{statusLabel(member.status)}</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">Joined {member.joinDate}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Joined {member.joinDate}</p>
               </div>
             </div>
 
             {/* Contact */}
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-              <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors">
+            <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-200 transition-colors">
                 <Mail className="h-3 w-3" />
                 Email
               </a>
               {member.phone && (
-                <a href={`tel:${member.phone}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors">
+                <a href={`tel:${member.phone}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-200 transition-colors">
                   <Phone className="h-3 w-3" />
                   Call
                 </a>
@@ -506,24 +506,24 @@ export default function MemberProfilePage({
             </div>
 
             {/* Contact details */}
-            <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Email</span>
-                <span className="text-xs text-gray-700">{member.email}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Email</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">{member.email}</span>
               </div>
               {member.phone && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400">Phone</span>
-                  <span className="text-xs text-gray-700">{member.phone}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Phone</span>
+                  <span className="text-xs text-gray-700 dark:text-gray-300">{member.phone}</span>
                 </div>
               )}
             </div>
 
             {/* Tags */}
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
+              <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                 {tags.map((tag) => (
-                  <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px] font-medium">
+                  <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[11px] font-medium">
                     {tag}
                   </span>
                 ))}
@@ -538,34 +538,34 @@ export default function MemberProfilePage({
               { label: 'Total Visits', value: member.totalVisits.toString(), icon: Activity },
               { label: 'Avg Visits/Wk', value: member.avgVisitsPerWeek.toFixed(1), icon: Flame },
             ].map((stat) => (
-              <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{stat.label}</p>
-                <p className="text-xl font-black text-gray-900 tabular-nums leading-tight mt-1">{stat.value}</p>
+              <div key={stat.label} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-3 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>
+                <p className="text-xl font-black text-gray-900 dark:text-gray-100 tabular-nums leading-tight mt-1">{stat.value}</p>
               </div>
             ))}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Credits</p>
-              <p className="text-lg font-bold text-gray-900 tabular-nums mt-0.5">
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Credits</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">
                 {member.credits !== null ? member.credits : '\u221E'}
               </p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Last Visit</p>
-              <p className="text-lg font-bold text-gray-900 tabular-nums mt-0.5">{member.lastVisit}</p>
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Last Visit</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">{member.lastVisit}</p>
             </div>
           </div>
 
           {/* AI Insights */}
           <div className="rounded-xl p-[1px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
-            <div className="bg-white rounded-[11px] p-4">
+            <div className="bg-white dark:bg-gray-950 rounded-[11px] p-4">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
                   <Sparkles className="h-3.5 w-3.5 text-white" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900">AI Predictive Insights</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">AI Predictive Insights</h3>
               </div>
               <div className="space-y-3">
                 <div className="flex items-start gap-2.5">
@@ -575,7 +575,7 @@ export default function MemberProfilePage({
                   )}>
                     {member.status === 'at-risk' ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
                   </div>
-                  <p className="text-xs text-gray-700 leading-relaxed">
+                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
                     {member.status === 'at-risk'
                       ? `Visit frequency declining. Churn probability elevated. Consider a personal re-engagement.`
                       : `Strong retention pattern. ${member.avgVisitsPerWeek >= 3 ? 'Power user — candidate for referral program.' : 'Consistent visitor — trending toward upgrade.'}`}
@@ -593,25 +593,25 @@ export default function MemberProfilePage({
 
           {/* Notes */}
           {member.notes && (
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Notes</h3>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{member.notes}</p>
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Notes</h3>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{member.notes}</p>
             </div>
           )}
         </div>
 
         {/* Right column — Tabbed content */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
             {/* Tabs */}
-            <div className="flex border-b border-gray-100">
+            <div className="flex border-b border-gray-100 dark:border-gray-800">
               {(['overview', 'history', 'financials'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={cn(
                     'flex-1 py-3.5 text-sm font-semibold transition-colors relative capitalize',
-                    activeTab === tab ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                    activeTab === tab ? 'text-indigo-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   )}
                 >
                   {tab}
@@ -631,28 +631,28 @@ export default function MemberProfilePage({
               {activeTab === 'overview' && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Membership Details</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Membership Details</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Plan</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">{member.membership}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Plan</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">{member.membership}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Price</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Price</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">
                           {member.membershipPrice > 0 ? `$${member.membershipPrice}/mo` : '--'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <div className={cn('h-2 w-2 rounded-full', statusDot(member.status))} />
-                          <span className="text-sm text-gray-900">{statusLabel(member.status)}</span>
+                          <span className="text-sm text-gray-900 dark:text-gray-100">{statusLabel(member.status)}</span>
                         </div>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Next Billing</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">{member.nextBilling}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Next Billing</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">{member.nextBilling}</p>
                       </div>
                     </div>
                   </div>
@@ -665,7 +665,7 @@ export default function MemberProfilePage({
 
                     return (
                       <div>
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Change Plan</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Change Plan</h3>
 
                         {planActionMsg && (
                           <div className={cn(
@@ -678,10 +678,10 @@ export default function MemberProfilePage({
 
                         {confirmPlan ? (
                           <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
-                            <p className="text-sm font-semibold text-gray-900 mb-1">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
                               {confirmPlan.direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} to {confirmPlan.label}?
                             </p>
-                            <p className="text-xs text-gray-500 mb-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                               {confirmPlan.direction === 'upgrade'
                                 ? 'Immediate with Stripe proration — member will be charged the difference today.'
                                 : 'Takes effect at next billing cycle — member keeps current plan until then.'}
@@ -717,7 +717,7 @@ export default function MemberProfilePage({
                               </button>
                               <button
                                 onClick={() => setConfirmPlan(null)}
-                                className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -739,14 +739,14 @@ export default function MemberProfilePage({
                               <button
                                 key={p.key}
                                 onClick={() => setConfirmPlan({ key: p.key, label: p.label, direction: 'downgrade' })}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                               >
                                 <TrendingDown className="h-3 w-3" />
                                 Downgrade to {p.label}
                               </button>
                             ))}
                             {upgrades.length === 0 && downgrades.length === 0 && (
-                              <p className="text-xs text-gray-400">No plan changes available</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">No plan changes available</p>
                             )}
                           </div>
                         )}
@@ -756,18 +756,18 @@ export default function MemberProfilePage({
 
                   {/* Recent Bookings */}
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Recent Bookings</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Recent Bookings</h3>
                     {bookings.length === 0 ? (
-                      <p className="text-sm text-gray-400">No bookings found.</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500">No bookings found.</p>
                     ) : (
                       <div className="space-y-2">
                         {bookings.slice(0, 5).map((b, i) => (
                           <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                             <div className="flex items-center gap-3">
-                              <CalendarDays className="h-4 w-4 text-gray-400" />
+                              <CalendarDays className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                               <div>
-                                <p className="text-sm font-medium text-gray-900">{b.className}</p>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{b.className}</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500">
                                   {b.startsAt ? formatDate(b.startsAt) : 'Unknown date'}
                                 </p>
                               </div>
@@ -776,8 +776,8 @@ export default function MemberProfilePage({
                               'text-xs font-semibold px-2 py-0.5 rounded-full',
                               b.status === 'checked_in' ? 'bg-emerald-50 text-emerald-700' :
                               b.status === 'booked' ? 'bg-indigo-50 text-indigo-700' :
-                              b.status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
-                              'bg-gray-100 text-gray-500'
+                              b.status === 'cancelled' ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' :
+                              'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                             )}>
                               {b.status.replace('_', ' ')}
                             </span>
@@ -792,9 +792,9 @@ export default function MemberProfilePage({
               {/* History tab */}
               {activeTab === 'history' && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Visit History</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Visit History</h3>
                   {bookings.length === 0 ? (
-                    <p className="text-sm text-gray-400">No visit history.</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">No visit history.</p>
                   ) : (
                     <div className="space-y-2">
                       {bookings.map((b, i) => (
@@ -804,8 +804,8 @@ export default function MemberProfilePage({
                               <CalendarDays className="h-4 w-4 text-indigo-600" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{b.className}</p>
-                              <p className="text-xs text-gray-400">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{b.className}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">
                                 {b.startsAt ? new Date(b.startsAt).toLocaleString('en-US', {
                                   weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
                                 }) : '--'}
@@ -816,7 +816,7 @@ export default function MemberProfilePage({
                             'text-xs font-semibold px-2 py-0.5 rounded-full',
                             b.status === 'checked_in' ? 'bg-emerald-50 text-emerald-700' :
                             b.status === 'no_show' ? 'bg-red-50 text-red-600' :
-                            'bg-gray-100 text-gray-500'
+                            'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                           )}>
                             {b.status.replace('_', ' ')}
                           </span>
@@ -830,9 +830,9 @@ export default function MemberProfilePage({
               {/* Financials tab */}
               {activeTab === 'financials' && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Transaction History</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Transaction History</h3>
                   {transactions.length === 0 ? (
-                    <p className="text-sm text-gray-400">No transactions found.</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">No transactions found.</p>
                   ) : (
                     <div className="space-y-2">
                       {transactions.map((tx, i) => (
@@ -842,22 +842,22 @@ export default function MemberProfilePage({
                               <CreditCard className="h-4 w-4 text-emerald-600" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-gray-900 capitalize">{tx.type.replace('_', ' ')}</p>
-                              <p className="text-xs text-gray-400">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{tx.type.replace('_', ' ')}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">
                                 {tx.createdAt ? formatDate(tx.createdAt) : '--'}
                                 {tx.description && ` — ${tx.description}`}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-semibold text-gray-900 tabular-nums">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                               ${(tx.amount / 100).toFixed(2)}
                             </p>
                             <span className={cn(
                               'text-[10px] font-semibold',
                               tx.status === 'completed' ? 'text-emerald-600' :
                               tx.status === 'refunded' ? 'text-red-500' :
-                              'text-gray-400'
+                              'text-gray-400 dark:text-gray-500'
                             )}>
                               {tx.status}
                             </span>

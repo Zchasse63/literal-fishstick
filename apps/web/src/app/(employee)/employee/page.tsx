@@ -130,15 +130,15 @@ export default function EmployeeHomePage() {
     <div className="space-y-6">
       {/* Greeting */}
       <motion.div {...fadeInUp}>
-        <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {firstName}</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{formatDate(now)}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{getGreeting()}, {firstName}</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{formatDate(now)}</p>
       </motion.div>
 
       {/* Clock In/Out Hero Card */}
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.05 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-8"
       >
         <div className="flex flex-col items-center text-center">
           {/* Status */}
@@ -149,7 +149,7 @@ export default function EmployeeHomePage() {
                 {isOnBreak ? 'On Break' : `Clocked In — ${formatElapsed(elapsedMs)}`}
               </span>
             ) : (
-              <span className="text-sm font-medium text-gray-400">You are not clocked in</span>
+              <span className="text-sm font-medium text-gray-400 dark:text-gray-500">You are not clocked in</span>
             )}
           </div>
 
@@ -183,7 +183,7 @@ export default function EmployeeHomePage() {
           </button>
 
           {/* Current Time */}
-          <p className="text-[28px] font-black tabular-nums text-gray-900 mt-5">{formatTime(now)}</p>
+          <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 mt-5">{formatTime(now)}</p>
 
           {/* Geofencing Badge */}
           <div className="flex items-center gap-1.5 mt-3">
@@ -208,7 +208,7 @@ export default function EmployeeHomePage() {
                 'mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors',
                 isOnBreak
                   ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
               )}
             >
               {isOnBreak ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
@@ -224,24 +224,24 @@ export default function EmployeeHomePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Today&apos;s Summary</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Today&apos;s Summary</h3>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Hours Today</p>
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Hours Today</p>
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">
                 {Math.floor(totalHoursToday)}h {Math.round((totalHoursToday % 1) * 60).toString().padStart(2, '0')}m
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Break Time</p>
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{todayBreakMins}m</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Break Time</p>
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{todayBreakMins}m</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Est. Pay</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Est. Pay</p>
               <p className="text-[28px] font-black tabular-nums text-emerald-600 leading-none">${Math.floor(estPay)}</p>
-              <span className="text-xs text-gray-400">.{Math.round((estPay % 1) * 100).toString().padStart(2, '0')}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">.{Math.round((estPay % 1) * 100).toString().padStart(2, '0')}</span>
             </div>
           </div>
         </motion.div>
@@ -250,33 +250,33 @@ export default function EmployeeHomePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.15 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-gray-900">Upcoming Schedule</h3>
-            <Calendar className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Upcoming Schedule</h3>
+            <Calendar className="w-4 h-4 text-gray-400 dark:text-gray-500" />
           </div>
           <div className="space-y-3">
             {todayAndTomorrowClasses.length === 0 && (
-              <p className="text-sm text-gray-400">No upcoming classes</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">No upcoming classes</p>
             )}
             {todayAndTomorrowClasses.map((cls) => (
               <div key={cls.id} className="flex items-center gap-3">
                 <div className="w-1 h-10 rounded-full flex-shrink-0 bg-indigo-500" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                       {cls.class_types?.name ?? cls.title}
                     </p>
                     <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600">
                       Class
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {isToday(cls.starts_at) ? 'Today' : 'Tomorrow'} &middot; {formatClassTime(cls.starts_at, cls.ends_at)}
                   </p>
                 </div>
-                <span className="text-xs font-semibold text-gray-500 tabular-nums">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 tabular-nums">
                   {cls.booked_count}/{cls.capacity}
                 </span>
               </div>
@@ -290,9 +290,9 @@ export default function EmployeeHomePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.2 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Alerts & Quick Links</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Alerts & Quick Links</h3>
           <div className="space-y-2.5">
             {alerts.map((alert, i) => (
               <button

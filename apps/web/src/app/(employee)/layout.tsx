@@ -99,23 +99,23 @@ export default function EmployeeLayout({
   }
 
   return (
-    <div className={cn('min-h-screen bg-[#FAFAFA]', darkMode && 'dark')}>
+    <div className={cn('min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]', darkMode && 'dark')}>
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 flex flex-col transition-all duration-300',
+          'fixed left-0 top-0 h-full bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 z-50 flex flex-col transition-all duration-300',
           collapsed ? 'w-16' : 'w-[220px]'
         )}
       >
         {/* Logo */}
-        <div className={cn('flex items-center gap-2.5 px-4 h-16 border-b border-gray-100', collapsed && 'justify-center px-0')}>
+        <div className={cn('flex items-center gap-2.5 px-4 h-16 border-b border-gray-100 dark:border-gray-800', collapsed && 'justify-center px-0')}>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-500 flex items-center justify-center flex-shrink-0">
             <span className="text-white font-black text-sm">M</span>
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-gray-900 leading-tight">Meridian</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Employee Portal</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">Meridian</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Employee Portal</span>
             </div>
           )}
         </div>
@@ -130,7 +130,7 @@ export default function EmployeeLayout({
                 href={item.href}
                 className={cn(
                   'relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                  active ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+                  active ? 'text-indigo-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800',
                   collapsed && 'justify-center px-0'
                 )}
               >
@@ -150,7 +150,7 @@ export default function EmployeeLayout({
           {/* Trainer Section */}
           <div className="pt-4 pb-1">
             {!collapsed && (
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 px-3">
                 Trainer
               </span>
             )}
@@ -164,7 +164,7 @@ export default function EmployeeLayout({
                 href={item.href}
                 className={cn(
                   'relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                  active ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+                  active ? 'text-indigo-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800',
                   collapsed && 'justify-center px-0'
                 )}
               >
@@ -183,7 +183,7 @@ export default function EmployeeLayout({
         </nav>
 
         {/* Bottom */}
-        <div className="border-t border-gray-100 p-2 space-y-1">
+        <div className="border-t border-gray-100 dark:border-gray-800 p-2 space-y-1">
           <Link
             href="/"
             className={cn(
@@ -197,7 +197,7 @@ export default function EmployeeLayout({
           <button
             onClick={toggleDark}
             className={cn(
-              'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-50 w-full transition-colors',
+              'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full transition-colors',
               collapsed && 'justify-center px-0'
             )}
           >
@@ -210,7 +210,7 @@ export default function EmployeeLayout({
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{displayName}</p>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[10px] font-bold uppercase tracking-wider">
                   {displayRole}
                 </span>
@@ -222,21 +222,21 @@ export default function EmployeeLayout({
         {/* Collapse Toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 z-50"
+          className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 z-50"
         >
-          {collapsed ? <ChevronRight className="w-3 h-3 text-gray-400" /> : <ChevronLeft className="w-3 h-3 text-gray-400" />}
+          {collapsed ? <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500" /> : <ChevronLeft className="w-3 h-3 text-gray-400 dark:text-gray-500" />}
         </button>
       </aside>
 
       {/* Top Header */}
       <header
         className={cn(
-          'fixed top-0 right-0 h-16 bg-white/80 backdrop-blur-xl border-b border-gray-200 z-40 flex items-center justify-between px-6 transition-all duration-300',
+          'fixed top-0 right-0 h-16 bg-white dark:bg-gray-950/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 z-40 flex items-center justify-between px-6 transition-all duration-300',
           collapsed ? 'left-16' : 'left-[220px]'
         )}
       >
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Employee Portal</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Employee Portal</span>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -246,19 +246,19 @@ export default function EmployeeLayout({
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors',
               isClockedIn
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-gray-100 text-gray-500 border border-gray-200',
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800',
               (clockBusy || clockLoading) && 'opacity-60 cursor-not-allowed'
             )}
           >
             {clockBusy ? (
               <Loader2 className="w-2.5 h-2.5 animate-spin" />
             ) : (
-              <Circle className={cn('w-2 h-2 fill-current', isClockedIn ? 'text-emerald-500' : 'text-gray-400')} />
+              <Circle className={cn('w-2 h-2 fill-current', isClockedIn ? 'text-emerald-500' : 'text-gray-400 dark:text-gray-500')} />
             )}
             {isClockedIn ? 'Clocked In' : 'Clocked Out'}
           </button>
-          <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors">
-            <Bell className="w-5 h-5 text-gray-500" />
+          <button className="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
           </button>
         </div>

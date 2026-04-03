@@ -79,7 +79,7 @@ function TrendIcon({ trend }: { trend: TrendDirection }) {
     case 'down':
       return <TrendingDown className="w-3.5 h-3.5 text-red-500" />
     case 'flat':
-      return <Minus className="w-3.5 h-3.5 text-gray-400" />
+      return <Minus className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
   }
 }
 
@@ -87,16 +87,16 @@ function TrendIcon({ trend }: { trend: TrendDirection }) {
 function PerfTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-xs">
-      <p className="font-semibold text-gray-900 mb-1">{label}</p>
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg p-3 text-xs">
+      <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{label}</p>
       {payload.map((entry: any) => (
         <div key={entry.dataKey} className="flex items-center gap-2">
           <span
             className="w-2 h-2 rounded-full"
             style={{ background: entry.color }}
           />
-          <span className="text-gray-600">{entry.name}:</span>
-          <span className="font-semibold text-gray-900 tabular-nums">
+          <span className="text-gray-600 dark:text-gray-400">{entry.name}:</span>
+          <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
             {entry.dataKey === 'fillRate' ? `${entry.value}%` : entry.value}
           </span>
         </div>
@@ -211,7 +211,7 @@ export default function TrainerDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
@@ -219,14 +219,14 @@ export default function TrainerDetailPage() {
 
   if (!TRAINER.id) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] p-8">
-        <Link href="/analytics/trainers" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-8">
+        <Link href="/analytics/trainers" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-6">
           <ArrowLeft className="h-4 w-4" />Back to Trainers
         </Link>
-        <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center shadow-sm">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-16 text-center shadow-sm">
           <Users className="mx-auto h-12 w-12 text-gray-300" />
-          <h3 className="mt-4 text-base font-semibold text-gray-900">Trainer not found</h3>
-          <p className="mt-1 text-sm text-gray-500">This trainer profile may have been removed.</p>
+          <h3 className="mt-4 text-base font-semibold text-gray-900 dark:text-gray-100">Trainer not found</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">This trainer profile may have been removed.</p>
         </div>
       </div>
     )
@@ -240,13 +240,13 @@ export default function TrainerDetailPage() {
   const totalCompensation = PAYROLL.basePay + PAYROLL.bonuses + PAYROLL.promoCommission
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Back Link ───────────────────────────────── */}
         <motion.div {...fadeInUp}>
           <Link
             href="/analytics/trainers"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Trainer Performance
@@ -257,7 +257,7 @@ export default function TrainerDetailPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.03 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6"
         >
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-xl font-black text-white">
@@ -265,12 +265,12 @@ export default function TrainerDetailPage() {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-gray-900">{TRAINER.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{TRAINER.name}</h1>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-indigo-100 text-indigo-700">
                   {TRAINER.role}
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
                   {TRAINER.classesPerWeek} classes/week
@@ -293,7 +293,7 @@ export default function TrainerDetailPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-violet-500" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                 AI Performance Narrative
               </span>
             </div>
@@ -303,7 +303,7 @@ export default function TrainerDetailPage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                 isRefreshing
-                  ? 'text-gray-400 cursor-not-allowed'
+                  ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
                   : 'text-indigo-600 hover:bg-indigo-50'
               )}
             >
@@ -311,7 +311,7 @@ export default function TrainerDetailPage() {
               Refresh
             </button>
           </div>
-          <p className="text-sm text-gray-700 leading-relaxed">
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
             {AI_NARRATIVE}
           </p>
         </motion.div>
@@ -330,11 +330,11 @@ export default function TrainerDetailPage() {
                   duration: 0.25,
                   ease: [0.25, 1, 0.5, 1],
                 }}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4"
+                className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-gray-500" />
+                  <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                   </div>
                   <span
                     className={cn(
@@ -345,10 +345,10 @@ export default function TrainerDetailPage() {
                     {kpi.change}
                   </span>
                 </div>
-                <p className="text-[28px] font-black text-gray-900 tabular-nums leading-none mb-1">
+                <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none mb-1">
                   {kpi.value}
                 </p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                   {kpi.label}
                 </p>
               </motion.div>
@@ -360,11 +360,11 @@ export default function TrainerDetailPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.2 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-gray-900">Performance Over Time</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Performance Over Time</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               Avg attendance and fill rate — last 6 months
             </p>
           </div>
@@ -373,7 +373,7 @@ export default function TrainerDetailPage() {
             <div className="h-[300px] flex items-center justify-center">
               <div className="text-center">
                 <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">No performance data yet</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">No performance data yet</p>
               </div>
             </div>
           ) : (
@@ -463,55 +463,55 @@ export default function TrainerDetailPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.25 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
         >
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">Class Breakdown</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Class Breakdown</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               Individual class performance for this trainer
             </p>
           </div>
 
           {CLASS_BREAKDOWN.length === 0 ? (
             <div className="p-12 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-6 h-6 text-gray-400" />
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-6 h-6 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">No classes assigned</h3>
-              <p className="text-sm text-gray-500">This trainer has no classes in the current period.</p>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">No classes assigned</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">This trainer has no classes in the current period.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Class</th>
-                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Day / Time</th>
-                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Avg Attendance</th>
-                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Fill Rate</th>
-                    <th className="text-center px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Trend</th>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Class</th>
+                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Day / Time</th>
+                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Avg Attendance</th>
+                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Fill Rate</th>
+                    <th className="text-center px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Trend</th>
                   </tr>
                 </thead>
                 <tbody>
                   {CLASS_BREAKDOWN.map((cls, i) => (
                     <tr
                       key={`${cls.name}-${cls.dayTime}`}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                      className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       <td className="px-5 py-3.5">
-                        <span className="text-sm font-semibold text-gray-900">{cls.name}</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{cls.name}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-sm text-gray-600">{cls.dayTime}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{cls.dayTime}</span>
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                           {cls.avgAttendance}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="w-16 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                             <div
                               className={cn(
                                 'h-full rounded-full transition-all',
@@ -522,7 +522,7 @@ export default function TrainerDetailPage() {
                               style={{ width: `${cls.fillRate}%` }}
                             />
                           </div>
-                          <span className="text-sm font-semibold text-gray-900 tabular-nums w-10 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums w-10 text-right">
                             {cls.fillRate}%
                           </span>
                         </div>
@@ -545,20 +545,20 @@ export default function TrainerDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.3 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Highlights</h2>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Highlights</h2>
             </div>
             {HIGHLIGHTS.length === 0 ? (
-              <p className="text-sm text-gray-400">No highlights for this period.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">No highlights for this period.</p>
             ) : (
               <ul className="space-y-3">
                 {HIGHLIGHTS.map((item, i) => (
                   <li key={i} className="flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 leading-snug">{item}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 leading-snug">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -568,20 +568,20 @@ export default function TrainerDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.33 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
               <AlertCircle className="w-4 h-4 text-amber-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Areas to Develop</h2>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Areas to Develop</h2>
             </div>
             {GROWTH_AREAS.length === 0 ? (
-              <p className="text-sm text-gray-400">No growth areas identified.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">No growth areas identified.</p>
             ) : (
               <ul className="space-y-3">
                 {GROWTH_AREAS.map((item, i) => (
                   <li key={i} className="flex items-start gap-2.5">
                     <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 leading-snug">{item}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 leading-snug">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -593,12 +593,12 @@ export default function TrainerDetailPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.36 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">Payroll Summary</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Current period compensation breakdown</p>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Payroll Summary</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Current period compensation breakdown</p>
             </div>
             <Link
               href="/operations"
@@ -610,27 +610,27 @@ export default function TrainerDetailPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+            <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                 Base Pay
               </p>
-              <p className="text-lg font-black text-gray-900 tabular-nums">
+              <p className="text-lg font-black text-gray-900 dark:text-gray-100 tabular-nums">
                 {formatCurrency(PAYROLL.basePay)}
               </p>
             </div>
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+            <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                 Bonuses
               </p>
-              <p className="text-lg font-black text-gray-900 tabular-nums">
+              <p className="text-lg font-black text-gray-900 dark:text-gray-100 tabular-nums">
                 {formatCurrency(PAYROLL.bonuses)}
               </p>
             </div>
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+            <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                 Promo Commission
               </p>
-              <p className="text-lg font-black text-gray-900 tabular-nums">
+              <p className="text-lg font-black text-gray-900 dark:text-gray-100 tabular-nums">
                 {formatCurrency(PAYROLL.promoCommission)}
               </p>
             </div>

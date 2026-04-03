@@ -65,10 +65,10 @@ const NAV_CARDS = [
 
 // ─── Helpers ────────────────────────────────────────────────
 const statusConfig: Record<CampaignStatus, { label: string; className: string }> = {
-  sent: { label: 'Sent', className: 'bg-gray-100 text-gray-600' },
+  sent: { label: 'Sent', className: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
   active: { label: 'Active', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
   scheduled: { label: 'Scheduled', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  draft: { label: 'Draft', className: 'border border-gray-300 text-gray-500 bg-white' },
+  draft: { label: 'Draft', className: 'border border-gray-300 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-950' },
 }
 
 const channelIcon: Record<Channel, typeof Mail> = {
@@ -96,16 +96,16 @@ function MetricCard({
     <motion.div
       {...fadeInUp}
       transition={{ ...fadeInUp.transition, delay }}
-      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 flex flex-col gap-3"
     >
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
         <div className="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center">
           <Icon className="h-4 w-4 text-indigo-600" />
         </div>
       </div>
       <div className="flex items-end justify-between">
-        <p className="text-[28px] font-black text-gray-900 tabular-nums leading-none">{value}</p>
+        <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">{value}</p>
         <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
           <ArrowUpRight className="h-3 w-3" />
           {change}
@@ -168,17 +168,17 @@ function NavCard({
     <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay }}>
       <Link
         href={href}
-        className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:border-indigo-200 hover:shadow-md transition-all"
+        className="group bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 flex items-center gap-4 hover:border-indigo-200 hover:shadow-md transition-all"
       >
         <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
           <Icon className="h-5 w-5 text-indigo-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{label}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{label}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{description}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-500 tabular-nums">{count}</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 tabular-nums">{count}</span>
           <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-indigo-400 transition-colors" />
         </div>
       </Link>
@@ -307,13 +307,13 @@ export default function MarketingPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA]"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Marketing</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Overview of campaigns, automations, and leads</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Marketing</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Overview of campaigns, automations, and leads</p>
         </div>
       </div>
 
@@ -338,12 +338,12 @@ export default function MarketingPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
-          className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm"
+          className="lg:col-span-2 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm"
         >
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Recent Campaigns</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Last 5 campaigns by activity</p>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Recent Campaigns</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Last 5 campaigns by activity</p>
             </div>
             <Link
               href="/marketing/campaigns"
@@ -355,7 +355,7 @@ export default function MarketingPage() {
           </div>
 
           {/* Table header */}
-          <div className="flex items-center gap-4 px-5 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
+          <div className="flex items-center gap-4 px-5 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
             <div className="flex-1 min-w-0">Campaign</div>
             <div className="w-[72px]">Status</div>
             <div className="w-16 text-center">Open Trend</div>
@@ -380,8 +380,8 @@ export default function MarketingPage() {
             ) : campaigns.length === 0 ? (
               <div className="py-12 text-center">
                 <Megaphone className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-gray-500">No campaigns yet</p>
-                <p className="text-xs text-gray-400 mt-0.5">Create your first campaign to see results here</p>
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No campaigns yet</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Create your first campaign to see results here</p>
                 <Link href="/marketing/campaigns/new" className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
                   Create Campaign
                 </Link>
@@ -391,10 +391,10 @@ export default function MarketingPage() {
               <Link
                 key={campaign.id}
                 href={`/marketing/campaigns/${campaign.id}/report`}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 transition-colors group"
+                className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors group"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-indigo-600 transition-colors">
                     {campaign.name}
                   </p>
                 </div>
@@ -405,17 +405,17 @@ export default function MarketingPage() {
                   <SparkLine data={campaign.openHistory} />
                 </div>
                 <div className="w-14 text-right">
-                  <p className="text-sm font-medium text-gray-700 tabular-nums">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                     {campaign.openRate > 0 ? `${campaign.openRate}%` : '--'}
                   </p>
                 </div>
                 <div className="w-14 text-right">
-                  <p className="text-sm font-medium text-gray-700 tabular-nums">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                     {campaign.clickRate > 0 ? `${campaign.clickRate}%` : '--'}
                   </p>
                 </div>
                 <div className="w-20 text-right">
-                  <p className="text-sm font-medium text-gray-700 tabular-nums">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                     {campaign.revenueAttributed > 0 ? `$${campaign.revenueAttributed.toLocaleString()}` : '--'}
                   </p>
                 </div>
@@ -429,12 +429,12 @@ export default function MarketingPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.15 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Lead Pipeline</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Conversion funnel</p>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Lead Pipeline</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Conversion funnel</p>
             </div>
             <Link
               href="/marketing/leads"
@@ -453,7 +453,7 @@ export default function MarketingPage() {
               return (
                 <div key={stage.name} className="flex items-center gap-3">
                   <div className="w-20 shrink-0">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{stage.name}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stage.name}</p>
                   </div>
                   <div className="flex-1 relative">
                     <motion.div
@@ -474,15 +474,15 @@ export default function MarketingPage() {
           {totalLeads === 0 && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <Target className="h-8 w-8 text-gray-300 mb-2" />
-              <p className="text-sm font-semibold text-gray-500">No leads yet</p>
-              <p className="text-xs text-gray-400 mt-0.5">Add leads to see your conversion funnel</p>
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No leads yet</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Add leads to see your conversion funnel</p>
             </div>
           )}
 
           {/* Conversion rate */}
-          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Overall Conversion</p>
-            <p className="text-lg font-black text-gray-900 tabular-nums">{conversionRate}%</p>
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Overall Conversion</p>
+            <p className="text-lg font-black text-gray-900 dark:text-gray-100 tabular-nums">{conversionRate}%</p>
           </div>
         </motion.div>
       </div>
@@ -506,13 +506,13 @@ export default function MarketingPage() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-gray-900">AI Recommendation</h3>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">AI Recommendation</h3>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600">
                     Smart
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                  You have <span className="font-bold text-gray-900">23 members</span> at churn risk based on declining visit frequency.
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">
+                  You have <span className="font-bold text-gray-900 dark:text-gray-100">23 members</span> at churn risk based on declining visit frequency.
                   A targeted win-back campaign with a personalized offer could recover an estimated{' '}
                   <span className="font-bold text-emerald-600">$1,840/mo</span> in recurring revenue.
                   Members in this segment respond best to email campaigns sent Tuesday mornings.
@@ -525,7 +525,7 @@ export default function MarketingPage() {
                     <Zap className="h-3.5 w-3.5" />
                     Create Automation
                   </Link>
-                  <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 text-sm font-semibold hover:border-gray-300 hover:text-gray-800 transition-colors">
+                  <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 text-sm font-semibold hover:border-gray-300 hover:text-gray-800 dark:text-gray-200 transition-colors">
                     Dismiss
                   </button>
                 </div>
@@ -538,14 +538,14 @@ export default function MarketingPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.25 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Upcoming Scheduled</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Next 3 campaigns</p>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Upcoming Scheduled</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Next 3 campaigns</p>
             </div>
-            <Calendar className="h-4 w-4 text-gray-400" />
+            <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           </div>
 
           <div className="space-y-3">
@@ -554,17 +554,17 @@ export default function MarketingPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100/80 transition-colors"
+                  className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
                 >
                   <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
                     <Clock className="h-4 w-4 text-amber-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{item.name}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="text-xs text-gray-400">{item.date}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{item.date}</p>
                       <div className="h-5 w-5 rounded bg-gray-200 flex items-center justify-center">
-                        <ChannelIcon className="h-3 w-3 text-gray-500" />
+                        <ChannelIcon className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                       </div>
                     </div>
                   </div>
@@ -573,8 +573,8 @@ export default function MarketingPage() {
             }) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Calendar className="h-8 w-8 text-gray-300 mb-2" />
-                <p className="text-sm font-semibold text-gray-500">Nothing scheduled</p>
-                <p className="text-xs text-gray-400 mt-0.5">Schedule a campaign to see it here</p>
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Nothing scheduled</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Schedule a campaign to see it here</p>
               </div>
             )}
           </div>

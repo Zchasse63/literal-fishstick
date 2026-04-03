@@ -106,7 +106,7 @@ function formatDate(dateStr: string): string {
 }
 
 const STATUS_STYLES: Record<ImportStatus, { bg: string; text: string }> = {
-  'Not Started': { bg: 'bg-gray-100', text: 'text-gray-600' },
+  'Not Started': { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400' },
   'In Progress': { bg: 'bg-blue-50', text: 'text-blue-700' },
   'Completed': { bg: 'bg-emerald-50', text: 'text-emerald-700' },
   'Failed': { bg: 'bg-red-50', text: 'text-red-700' },
@@ -119,7 +119,7 @@ const JOB_STATUS_STYLES: Record<string, string> = {
 }
 
 const BILLING_STATUS_STYLES: Record<BillingStatus, { bg: string; text: string; icon: any }> = {
-  'Not Started': { bg: 'bg-gray-100', text: 'text-gray-600', icon: Circle },
+  'Not Started': { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', icon: Circle },
   'Ready to Activate': { bg: 'bg-amber-50', text: 'text-amber-700', icon: Clock },
   'Active': { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircle2 },
 }
@@ -178,7 +178,7 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className="border-t border-gray-100 mt-4 pt-4"
+      className="border-t border-gray-100 dark:border-gray-800 mt-4 pt-4"
     >
       {/* Step Indicators */}
       <div className="flex items-center gap-2 mb-5">
@@ -189,7 +189,7 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
                 'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold',
                 step === s && 'bg-indigo-600 text-white',
                 (['upload', 'validate', 'import', 'complete'].indexOf(step) > i) && 'bg-emerald-500 text-white',
-                (['upload', 'validate', 'import', 'complete'].indexOf(step) < i) && 'bg-gray-100 text-gray-400'
+                (['upload', 'validate', 'import', 'complete'].indexOf(step) < i) && 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
               )}
             >
               {(['upload', 'validate', 'import', 'complete'].indexOf(step) > i) ? (
@@ -200,7 +200,7 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
             </div>
             <span className={cn(
               'text-xs font-medium capitalize',
-              step === s ? 'text-gray-900' : 'text-gray-400'
+              step === s ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'
             )}>
               {s}
             </span>
@@ -217,22 +217,22 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
           onDrop={(e) => { e.preventDefault(); setIsDragOver(false); handleUpload() }}
           className={cn(
             'border-2 border-dashed rounded-xl p-8 text-center transition-colors',
-            isDragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-gray-50'
+            isDragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900'
           )}
         >
-          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center mx-auto mb-3">
-            <FileUp className="w-6 h-6 text-gray-400" />
+          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 flex items-center justify-center mx-auto mb-3">
+            <FileUp className="w-6 h-6 text-gray-400 dark:text-gray-500" />
           </div>
-          <p className="text-sm font-medium text-gray-700 mb-1">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Drag and drop your CSV file here
           </p>
-          <p className="text-xs text-gray-400 mb-3">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
             or{' '}
             <button onClick={handleUpload} className="text-indigo-600 hover:text-indigo-700 font-medium underline">
               browse files
             </button>
           </p>
-          <p className="text-[10px] text-gray-400">
+          <p className="text-[10px] text-gray-400 dark:text-gray-500">
             Accepted format: .csv (max 50MB)
           </p>
         </div>
@@ -258,14 +258,14 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
 
           {/* Sample Table */}
           <div className="overflow-x-auto">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
               Preview (first 5 rows)
             </p>
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-gray-200">
+                <tr className="border-b border-gray-200 dark:border-gray-800">
                   {['Name', 'Email', 'Plan', 'Start Date', 'Status'].map((h) => (
-                    <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-2 pr-4">
+                    <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-2 pr-4">
                       {h}
                     </th>
                   ))}
@@ -275,7 +275,7 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
                 {sampleData.map((row, i) => (
                   <tr key={i}>
                     {row.map((cell, j) => (
-                      <td key={j} className="py-2 pr-4 text-sm text-gray-700">{cell}</td>
+                      <td key={j} className="py-2 pr-4 text-sm text-gray-700 dark:text-gray-300">{cell}</td>
                     ))}
                   </tr>
                 ))}
@@ -298,11 +298,11 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
-              <span className="text-sm font-medium text-gray-700">Importing...</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Importing...</span>
             </div>
             <span className="text-sm font-bold tabular-nums text-indigo-600">{progress}%</span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5">
+          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2.5">
             <motion.div
               className="bg-indigo-600 h-2.5 rounded-full"
               initial={{ width: '0%' }}
@@ -310,7 +310,7 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
               transition={{ duration: 0.3 }}
             />
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-400">
+          <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
             <span>{Math.round((validRows * progress) / 100).toLocaleString()} / {validRows.toLocaleString()} rows</span>
             <span>~{Math.max(1, Math.round((100 - progress) / 12))}s remaining</span>
           </div>
@@ -384,7 +384,7 @@ export default function MigrationAdminPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
@@ -414,7 +414,7 @@ export default function MigrationAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
@@ -423,14 +423,14 @@ export default function MigrationAdminPage() {
               <Database className="w-5 h-5 text-indigo-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Glofox Migration</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Glofox Migration</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 Import data and manage the 3-wave migration process
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">Wave 1 in progress</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">Wave 1 in progress</span>
             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
           </div>
         </motion.div>
@@ -439,9 +439,9 @@ export default function MigrationAdminPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.05 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6"
         >
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-5">
             Migration Progress
           </p>
           <div className="flex items-center gap-0">
@@ -457,7 +457,7 @@ export default function MigrationAdminPage() {
                         'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all',
                         isComplete && 'bg-emerald-500 text-white',
                         isActive && 'bg-indigo-600 text-white ring-4 ring-indigo-100',
-                        isFuture && 'bg-gray-100 text-gray-400'
+                        isFuture && 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
                       )}
                     >
                       {isComplete ? (
@@ -469,11 +469,11 @@ export default function MigrationAdminPage() {
                     <div className="min-w-0">
                       <p className={cn(
                         'text-sm font-semibold truncate',
-                        isActive ? 'text-gray-900' : isFuture ? 'text-gray-400' : 'text-gray-900'
+                        isActive ? 'text-gray-900 dark:text-gray-100' : isFuture ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'
                       )}>
                         {step.label}
                       </p>
-                      <p className="text-xs text-gray-400 truncate">{step.description}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{step.description}</p>
                     </div>
                   </div>
                   {i < waveSteps.length - 1 && (
@@ -493,7 +493,7 @@ export default function MigrationAdminPage() {
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
         >
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
             Data Import
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -506,18 +506,18 @@ export default function MigrationAdminPage() {
                   key={dt.id}
                   layout
                   className={cn(
-                    'bg-white rounded-2xl border border-gray-200 shadow-sm p-5 cursor-pointer transition-all hover:shadow-md',
+                    'bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 cursor-pointer transition-all hover:shadow-md',
                     isExpanded && 'sm:col-span-2 lg:col-span-3'
                   )}
                   onClick={() => setExpandedCard(isExpanded ? null : dt.id)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-gray-600" />
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold text-gray-900">{dt.name}</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{dt.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={cn(
                             'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest',
@@ -526,7 +526,7 @@ export default function MigrationAdminPage() {
                             {dt.status}
                           </span>
                           {dt.rowCount !== null && (
-                            <span className="text-xs text-gray-500 tabular-nums">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
                               {dt.rowCount.toLocaleString()} rows
                             </span>
                           )}
@@ -537,7 +537,7 @@ export default function MigrationAdminPage() {
                       animate={{ rotate: isExpanded ? 90 : 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                      <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </div>
 
@@ -559,14 +559,14 @@ export default function MigrationAdminPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.15 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">Migration Job History</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Track all import operations</p>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Migration Job History</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Track all import operations</p>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
               {migrationJobs.length} Jobs
             </span>
           </div>
@@ -574,9 +574,9 @@ export default function MigrationAdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-gray-100 dark:border-gray-800">
                   {['Data Type', 'Wave', 'Status', 'Rows (Success / Error / Skip)', 'Started', 'Completed', 'Actions'].map((h) => (
-                    <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 pr-4 whitespace-nowrap">
+                    <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 pr-4 whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -586,7 +586,7 @@ export default function MigrationAdminPage() {
                 {migrationJobs.map((job) => (
                   <tr key={job.id}>
                     <td className="py-3 pr-4">
-                      <span className="text-sm font-medium text-gray-900">{job.dataType}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{job.dataType}</span>
                     </td>
                     <td className="py-3 pr-4">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold">
@@ -602,7 +602,7 @@ export default function MigrationAdminPage() {
                       </span>
                     </td>
                     <td className="py-3 pr-4">
-                      <span className="text-sm tabular-nums text-gray-700">
+                      <span className="text-sm tabular-nums text-gray-700 dark:text-gray-300">
                         <span className="text-emerald-600 font-semibold">{job.successRows.toLocaleString()}</span>
                         {' / '}
                         <span className="text-red-600 font-semibold">{job.errorRows}</span>
@@ -611,10 +611,10 @@ export default function MigrationAdminPage() {
                       </span>
                     </td>
                     <td className="py-3 pr-4">
-                      <span className="text-xs text-gray-500">{job.startedAt}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{job.startedAt}</span>
                     </td>
                     <td className="py-3 pr-4">
-                      <span className="text-xs text-gray-500">{job.completedAt}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{job.completedAt}</span>
                     </td>
                     <td className="py-3">
                       {job.canRollback && (
@@ -629,7 +629,7 @@ export default function MigrationAdminPage() {
                               </button>
                               <button
                                 onClick={() => setRollbackConfirm(null)}
-                                className="px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                               >
                                 Cancel
                               </button>
@@ -658,28 +658,28 @@ export default function MigrationAdminPage() {
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.2 }}
         >
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
             Member Wave Assignment
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left: Unassigned */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Unassigned Members</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">{filteredUnassigned.length} members</p>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Unassigned Members</h3>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{filteredUnassigned.length} members</p>
                 </div>
               </div>
 
               {/* Search */}
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
                   placeholder="Search members..."
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 transition-all outline-none"
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-900 focus:bg-white dark:bg-gray-950 focus:border-indigo-300 focus:ring-1 focus:ring-indigo-200 transition-all outline-none"
                 />
               </div>
 
@@ -687,12 +687,12 @@ export default function MigrationAdminPage() {
                 {filteredUnassigned.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-xl group hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{member.email}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{member.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{member.email}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
                         Renewal: {formatDate(member.glofoxRenewalDate)}
                       </p>
                     </div>
@@ -714,7 +714,7 @@ export default function MigrationAdminPage() {
                 ))}
                 {filteredUnassigned.length === 0 && (
                   <div className="text-center py-6">
-                    <p className="text-sm text-gray-400">No unassigned members found</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">No unassigned members found</p>
                   </div>
                 )}
               </div>
@@ -723,13 +723,13 @@ export default function MigrationAdminPage() {
             {/* Right: Wave 2 & Wave 3 */}
             <div className="space-y-4">
               {/* Wave 2 */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+              <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">2</span>
-                    <h3 className="text-sm font-semibold text-gray-900">Wave 2 — Internal Testing</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Wave 2 — Internal Testing</h3>
                   </div>
-                  <span className="text-xs text-gray-400 tabular-nums">{wave2Members.length} members</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">{wave2Members.length} members</span>
                 </div>
                 <div className="space-y-2 max-h-[160px] overflow-y-auto">
                   {wave2Members.map((member) => (
@@ -738,31 +738,31 @@ export default function MigrationAdminPage() {
                       className="flex items-center justify-between p-2.5 bg-indigo-50/50 rounded-xl group"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                        <p className="text-xs text-gray-400 truncate">{member.email}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{member.name}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{member.email}</p>
                       </div>
                       <button
                         onClick={() => assignMember(member.id, 'Unassigned')}
-                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white rounded-lg transition-all flex-shrink-0"
+                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white dark:bg-gray-950 rounded-lg transition-all flex-shrink-0"
                       >
-                        <X className="w-3.5 h-3.5 text-gray-400" />
+                        <X className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                       </button>
                     </div>
                   ))}
                   {wave2Members.length === 0 && (
-                    <p className="text-xs text-gray-400 text-center py-4">No members assigned</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No members assigned</p>
                   )}
                 </div>
               </div>
 
               {/* Wave 3 */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+              <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-xs font-bold">3</span>
-                    <h3 className="text-sm font-semibold text-gray-900">Wave 3 — Pilot Group</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Wave 3 — Pilot Group</h3>
                   </div>
-                  <span className="text-xs text-gray-400 tabular-nums">{wave3Members.length} members</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">{wave3Members.length} members</span>
                 </div>
                 <div className="space-y-2 max-h-[160px] overflow-y-auto">
                   {wave3Members.map((member) => (
@@ -771,19 +771,19 @@ export default function MigrationAdminPage() {
                       className="flex items-center justify-between p-2.5 bg-violet-50/50 rounded-xl group"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                        <p className="text-xs text-gray-400 truncate">{member.email}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{member.name}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{member.email}</p>
                       </div>
                       <button
                         onClick={() => assignMember(member.id, 'Unassigned')}
-                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white rounded-lg transition-all flex-shrink-0"
+                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white dark:bg-gray-950 rounded-lg transition-all flex-shrink-0"
                       >
-                        <X className="w-3.5 h-3.5 text-gray-400" />
+                        <X className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                       </button>
                     </div>
                   ))}
                   {wave3Members.length === 0 && (
-                    <p className="text-xs text-gray-400 text-center py-4">No members assigned</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">No members assigned</p>
                   )}
                 </div>
               </div>
@@ -795,7 +795,7 @@ export default function MigrationAdminPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.25 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -803,8 +803,8 @@ export default function MigrationAdminPage() {
                 <ShieldAlert className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">Double-Billing Guard</h2>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Double-Billing Guard</h2>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                   Ensure Glofox renewal has passed before activating Meridian billing
                 </p>
               </div>
@@ -814,9 +814,9 @@ export default function MigrationAdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-gray-100 dark:border-gray-800">
                   {['Member', 'Glofox Renewal Date', 'Meridian Billing Status', 'Safe to Activate'].map((h) => (
-                    <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 pr-4">
+                    <th key={h} className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 pr-4">
                       {h}
                     </th>
                   ))}
@@ -830,10 +830,10 @@ export default function MigrationAdminPage() {
                   return (
                     <tr key={member.id}>
                       <td className="py-3 pr-4">
-                        <span className="text-sm font-medium text-gray-900">{member.name}</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{member.name}</span>
                       </td>
                       <td className="py-3 pr-4">
-                        <span className="text-sm tabular-nums text-gray-700">
+                        <span className="text-sm tabular-nums text-gray-700 dark:text-gray-300">
                           {formatDate(member.glofoxRenewalDate)}
                         </span>
                       </td>

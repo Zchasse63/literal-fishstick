@@ -85,15 +85,15 @@ function MetricCard({
     <motion.div
       {...fadeInUp}
       transition={{ ...fadeInUp.transition, delay }}
-      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 flex flex-col gap-3"
     >
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
         <div className={cn('h-8 w-8 rounded-xl flex items-center justify-center', iconBg)}>
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <p className="text-[28px] font-black text-gray-900 tabular-nums leading-none">{value}</p>
+      <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">{value}</p>
     </motion.div>
   )
 }
@@ -103,19 +103,19 @@ function ProductGridCard({ product, delay }: { product: Product; delay: number }
     <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay }}>
       <Link
         href={`/revenue/products/${product.id}`}
-        className="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all block"
+        className="group bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all block"
       >
         {/* Image placeholder */}
-        <div className="aspect-square bg-gray-100 flex items-center justify-center">
+        <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
           <Package className="h-10 w-10 text-gray-300" />
         </div>
         <div className="p-4">
-          <p className="text-sm font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-indigo-600 transition-colors">
             {product.name}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5 uppercase">{product.sku}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 uppercase">{product.sku}</p>
           <div className="flex items-center justify-between mt-3">
-            <p className="text-base font-black text-gray-900 tabular-nums">
+            <p className="text-base font-black text-gray-900 dark:text-gray-100 tabular-nums">
               {formatCents(product.priceInCents)}
             </p>
             <span
@@ -193,13 +193,13 @@ export default function ProductsPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA]"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Products</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage merchandise and inventory</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Products</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage merchandise and inventory</p>
         </div>
         <Link
           href="/revenue/products/new"
@@ -222,7 +222,7 @@ export default function ProductsPage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.1 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-6"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 mb-6"
       >
         <div className="flex flex-wrap items-center gap-3">
           {/* Category pills */}
@@ -235,7 +235,7 @@ export default function ProductsPage() {
                   'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                   category === cat.value
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                 )}
               >
                 {cat.label}
@@ -245,13 +245,13 @@ export default function ProductsPage() {
 
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search products or SKUs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+              className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
             />
           </div>
 
@@ -262,19 +262,19 @@ export default function ProductsPage() {
               'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border',
               inStockOnly
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
             )}
           >
             In Stock Only
           </button>
 
           {/* View toggle */}
-          <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5">
+          <div className="flex items-center gap-1 border border-gray-200 dark:border-gray-800 rounded-lg p-0.5">
             <button
               onClick={() => setViewMode('grid')}
               className={cn(
                 'p-1.5 rounded-md transition-colors',
-                viewMode === 'grid' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:text-gray-600'
+                viewMode === 'grid' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
               )}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -283,7 +283,7 @@ export default function ProductsPage() {
               onClick={() => setViewMode('table')}
               className={cn(
                 'p-1.5 rounded-md transition-colors',
-                viewMode === 'table' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:text-gray-600'
+                viewMode === 'table' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
               )}
             >
               <List className="h-4 w-4" />
@@ -303,8 +303,8 @@ export default function ProductsPage() {
           {filtered.length === 0 && (
             <div className="col-span-full py-16 text-center">
               <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-gray-500">No products found</p>
-              <p className="text-xs text-gray-400 mt-1">Try adjusting your filters</p>
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No products found</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>
             </div>
           )}
         </div>
@@ -313,10 +313,10 @@ export default function ProductsPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.15 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
         >
           {/* Table header */}
-          <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
+          <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
             <div className="w-10" />
             <div className="flex-1 min-w-0">Product</div>
             <div className="w-24">Category</div>
@@ -331,24 +331,24 @@ export default function ProductsPage() {
               <Link
                 key={product.id}
                 href={`/revenue/products/${product.id}`}
-                className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/80 transition-colors group"
+                className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors group"
               >
-                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
                   <Package className="h-4 w-4 text-gray-300" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-indigo-600 transition-colors">
                     {product.name}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">{product.sku}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{product.sku}</p>
                 </div>
                 <div className="w-24">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 capitalize">
                     {product.category}
                   </span>
                 </div>
                 <div className="w-20 text-right">
-                  <p className="text-sm font-semibold text-gray-900 tabular-nums">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                     {formatCents(product.priceInCents)}
                   </p>
                 </div>
@@ -368,7 +368,7 @@ export default function ProductsPage() {
                       'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
                       product.active
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-gray-100 text-gray-500'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                     )}
                   >
                     {product.active ? 'Active' : 'Inactive'}
@@ -376,7 +376,7 @@ export default function ProductsPage() {
                 </div>
                 <div className="w-16 text-right">
                   <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-indigo-50 transition-colors">
-                    <Pencil className="h-3.5 w-3.5 text-gray-400 group-hover:text-indigo-600" />
+                    <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 group-hover:text-indigo-600" />
                   </span>
                 </div>
               </Link>
@@ -386,8 +386,8 @@ export default function ProductsPage() {
           {filtered.length === 0 && (
             <div className="py-16 text-center">
               <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-gray-500">No products found</p>
-              <p className="text-xs text-gray-400 mt-1">Try adjusting your filters</p>
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No products found</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>
             </div>
           )}
         </motion.div>

@@ -186,23 +186,23 @@ export default function OperationsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <Spinner className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
   }
 
   return (
-    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] p-6">
+    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Operations</h1>
-        <p className="mt-1 text-sm text-gray-500">Employee management, scheduling, payroll, and permissions</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Operations</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Employee management, scheduling, payroll, and permissions</p>
       </div>
 
       {/* Tab Navigation */}
       <div className="mb-6">
-        <div className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+        <div className="inline-flex items-center gap-1 rounded-xl bg-gray-100 dark:bg-gray-800 p-1">
           {MAIN_TABS.map(tab => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -213,8 +213,8 @@ export default function OperationsPage() {
                 className={cn(
                   'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200',
                   isActive
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 )}
               >
                 <Icon className="h-4 w-4" />

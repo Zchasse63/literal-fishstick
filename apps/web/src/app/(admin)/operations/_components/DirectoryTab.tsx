@@ -40,20 +40,20 @@ export default function DirectoryTab({
         {/* Search + Actions */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search employees..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none transition-colors focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
           <button className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
             <Plus className="h-4 w-4" />
             Add Employee
           </button>
-          <button className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
+          <button className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
             <Download className="h-4 w-4" />
             Export Payroll
           </button>
@@ -69,7 +69,7 @@ export default function DirectoryTab({
                 'rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200',
                 roleFilter === filter
                   ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               )}
             >
               {filter}
@@ -78,20 +78,20 @@ export default function DirectoryTab({
         </div>
 
         {/* Employee Table */}
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Name</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Role</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 hidden md:table-cell">Type</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 hidden lg:table-cell">Hire Date</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 hidden md:table-cell">Pay Rate</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 hidden xl:table-cell">Hours</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Clock</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 w-10"></th>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Name</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Role</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden md:table-cell">Type</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden lg:table-cell">Hire Date</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden md:table-cell">Pay Rate</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 hidden xl:table-cell">Hours</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Clock</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -103,7 +103,7 @@ export default function DirectoryTab({
                       'cursor-pointer border-b border-gray-50 transition-colors duration-150',
                       selectedEmployee?.id === emp.id
                         ? 'bg-indigo-50/50'
-                        : 'hover:bg-gray-50/80'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-800/80'
                     )}
                   >
                     <td className="px-5 py-3.5">
@@ -117,7 +117,7 @@ export default function DirectoryTab({
                         )}>
                           {emp.initials}
                         </div>
-                        <span className="text-sm font-medium text-gray-900">{emp.name}</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{emp.name}</span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
@@ -133,20 +133,20 @@ export default function DirectoryTab({
                           emp.status === 'On Leave' ? 'bg-amber-500' :
                           'bg-gray-300'
                         )} />
-                        <span className="text-xs text-gray-600">{emp.status}</span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">{emp.status}</span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
-                      <span className="text-xs text-gray-600">{emp.employmentType}</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">{emp.employmentType}</span>
                     </td>
                     <td className="px-5 py-3.5 hidden lg:table-cell">
-                      <span className="text-xs text-gray-600">{emp.hireDate}</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">{emp.hireDate}</span>
                     </td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
-                      <span className="text-xs font-medium text-gray-900 tabular-nums">{emp.payRate ?? '\u2014'}</span>
+                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100 tabular-nums">{emp.payRate ?? '\u2014'}</span>
                     </td>
                     <td className="px-5 py-3.5 hidden xl:table-cell">
-                      <span className="text-xs text-gray-600 tabular-nums">{emp.hoursThisPeriod != null ? `${emp.hoursThisPeriod}h` : '\u2014'}</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-400 tabular-nums">{emp.hoursThisPeriod != null ? `${emp.hoursThisPeriod}h` : '\u2014'}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       {emp.clockStatus === 'in' ? (
@@ -158,7 +158,7 @@ export default function DirectoryTab({
                           <span className="text-xs text-emerald-600 font-medium">In since {emp.clockedInSince}</span>
                         </div>
                       ) : emp.clockStatus === 'out' ? (
-                        <span className="text-xs text-gray-400">Clocked Out</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Clocked Out</span>
                       ) : (
                         <span className="text-xs text-gray-300">\u2014</span>
                       )}
@@ -166,7 +166,7 @@ export default function DirectoryTab({
                     <td className="px-5 py-3.5">
                       <button
                         onClick={e => e.stopPropagation()}
-                        className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        className="rounded-lg p-1 text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </button>

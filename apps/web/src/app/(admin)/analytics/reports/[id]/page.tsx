@@ -146,7 +146,7 @@ export default function ReportViewerPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
@@ -211,25 +211,25 @@ export default function ReportViewerPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* ─── Top Bar ────────────────────────────────────────── */}
         <motion.div {...fadeInUp} className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
               href="/analytics/reports"
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+              className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-gray-900">Weekly Attendance Summary</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Weekly Attendance Summary</h1>
                 <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
                   Attendance
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-gray-400">
+              <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
                 Report ID: rpt-001 &middot; Last run: Mar 19, 2026
               </p>
             </div>
@@ -237,7 +237,7 @@ export default function ReportViewerPage() {
 
           <div className="flex items-center gap-2">
             {/* Time Range */}
-            <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-0.5">
               {TIME_RANGES.map((tr) => (
                 <button
                   key={tr.key}
@@ -246,7 +246,7 @@ export default function ReportViewerPage() {
                     'rounded-md px-3 py-1.5 text-xs font-semibold transition',
                     timeRange === tr.key
                       ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   )}
                 >
                   {tr.label}
@@ -254,22 +254,22 @@ export default function ReportViewerPage() {
               ))}
             </div>
 
-            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition">
+            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition">
               <Download className="h-3.5 w-3.5" />
               CSV
             </button>
-            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition">
+            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition">
               <FileDown className="h-3.5 w-3.5" />
               PDF
             </button>
             <button
               onClick={() => setScheduleModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
               <Clock className="h-3.5 w-3.5" />
               Schedule
             </button>
-            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition">
+            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition">
               <Pencil className="h-3.5 w-3.5" />
               Edit
             </button>
@@ -286,15 +286,15 @@ export default function ReportViewerPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: i * 0.05, ease: [0.25, 1, 0.5, 1] }}
-                className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+                className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 shadow-sm"
               >
                 <div className="flex items-center gap-2">
                   <Icon className={cn('h-4 w-4', metric.color)} />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                     {metric.label}
                   </p>
                 </div>
-                <p className="mt-2 text-[28px] font-black tabular-nums text-gray-900">
+                <p className="mt-2 text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">
                   {metric.value}
                 </p>
               </motion.div>
@@ -305,9 +305,9 @@ export default function ReportViewerPage() {
         {/* ─── Chart ──────────────────────────────────────────── */}
         <motion.div
           {...fadeInUp}
-          className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+          className="mb-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm"
         >
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
             Attendance Trend
           </p>
           <div className="h-72">
@@ -370,15 +370,15 @@ export default function ReportViewerPage() {
         {/* ─── Data Table ─────────────────────────────────────── */}
         <motion.div
           {...fadeInUp}
-          className="mb-6 rounded-2xl border border-gray-200 bg-white shadow-sm"
+          className="mb-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm"
         >
           {/* Table Header */}
-          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-5 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
               Data ({filtered.length} rows)
             </p>
             <div className="relative w-64">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Filter rows..."
@@ -387,7 +387,7 @@ export default function ReportViewerPage() {
                   setSearchQuery(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 py-1.5 pl-8 pr-3 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
               />
             </div>
           </div>
@@ -396,13 +396,13 @@ export default function ReportViewerPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/40">
+                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
                   {COLUMNS.map((col) => (
                     <th
                       key={col.key}
                       onClick={() => toggleSort(col.key)}
                       className={cn(
-                        'cursor-pointer select-none px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 transition hover:text-gray-600',
+                        'cursor-pointer select-none px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 transition hover:text-gray-600 dark:hover:text-gray-300',
                         col.align === 'right' ? 'text-right' : 'text-left'
                       )}
                     >
@@ -423,13 +423,13 @@ export default function ReportViewerPage() {
                 {paginatedRows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-gray-50 transition hover:bg-gray-50/50 last:border-0"
+                    className="border-b border-gray-50 transition hover:bg-gray-50 dark:hover:bg-gray-800/50 last:border-0"
                   >
-                    <td className="px-5 py-3 text-sm text-gray-600">{row.date}</td>
+                    <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">{row.date}</td>
                     <td className="px-5 py-3">
                       <Link
                         href="/schedule"
-                        className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition"
+                        className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition"
                       >
                         {row.className}
                       </Link>
@@ -437,12 +437,12 @@ export default function ReportViewerPage() {
                     <td className="px-5 py-3">
                       <Link
                         href={`/analytics/trainers/${row.trainerId}`}
-                        className="text-sm text-gray-700 hover:text-indigo-600 transition"
+                        className="text-sm text-gray-700 dark:text-gray-300 hover:text-indigo-600 transition"
                       >
                         {row.trainer}
                       </Link>
                     </td>
-                    <td className="px-5 py-3 text-right text-sm tabular-nums font-medium text-gray-900">
+                    <td className="px-5 py-3 text-right text-sm tabular-nums font-medium text-gray-900 dark:text-gray-100">
                       {row.bookings}
                     </td>
                     <td className="px-5 py-3 text-right text-sm tabular-nums font-medium text-emerald-600">
@@ -472,8 +472,8 @@ export default function ReportViewerPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3">
-            <p className="text-xs text-gray-400">
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 px-5 py-3">
+            <p className="text-xs text-gray-400 dark:text-gray-500">
               Showing {(currentPage - 1) * ROWS_PER_PAGE + 1}–
               {Math.min(currentPage * ROWS_PER_PAGE, filtered.length)} of {filtered.length}
             </p>
@@ -481,7 +481,7 @@ export default function ReportViewerPage() {
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 disabled:opacity-30"
+                className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -493,7 +493,7 @@ export default function ReportViewerPage() {
                     'h-8 w-8 rounded-lg text-xs font-semibold transition',
                     page === currentPage
                       ? 'bg-indigo-600 text-white'
-                      : 'text-gray-500 hover:bg-gray-100'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                   )}
                 >
                   {page}
@@ -502,7 +502,7 @@ export default function ReportViewerPage() {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 disabled:opacity-30"
+                className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -513,7 +513,7 @@ export default function ReportViewerPage() {
         {/* ─── AI Narrative Card ───────────────────────────────── */}
         <motion.div
           {...fadeInUp}
-          className="rounded-2xl border border-transparent bg-white p-6 shadow-sm"
+          className="rounded-2xl border border-transparent bg-white dark:bg-gray-950 p-6 shadow-sm"
           style={{
             borderImage: 'linear-gradient(135deg, #4F46E5, #7C3AED, #4F46E5) 1',
             borderWidth: '1px',
@@ -525,11 +525,11 @@ export default function ReportViewerPage() {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500">
                 <Sparkles className="h-3.5 w-3.5 text-white" />
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                 AI Narrative Summary
               </p>
             </div>
-            <div className="space-y-2 text-sm leading-relaxed text-gray-700">
+            <div className="space-y-2 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
               <p>
                 Over the past 30 days, your studio recorded <strong>938 bookings</strong> with an{' '}
                 <strong>89.7% check-in rate</strong> (841 check-ins). This is a{' '}
@@ -570,13 +570,13 @@ export default function ReportViewerPage() {
                 exit={{ opacity: 0, scale: 0.95, y: 8 }}
                 transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl"
+                className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-xl"
               >
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-lg font-bold text-gray-900">Schedule Report</h2>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Schedule Report</h2>
                   <button
                     onClick={() => setScheduleModal(false)}
-                    className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+                    className="rounded-lg p-1 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -584,14 +584,14 @@ export default function ReportViewerPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
                       Frequency
                     </p>
                     <div className="flex gap-2">
                       {['Daily', 'Weekly', 'Monthly'].map((freq) => (
                         <button
                           key={freq}
-                          className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:border-indigo-300 hover:text-indigo-600 transition first:bg-indigo-600 first:text-white first:border-indigo-600"
+                          className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:border-indigo-300 hover:text-indigo-600 transition first:bg-indigo-600 first:text-white first:border-indigo-600"
                         >
                           {freq}
                         </button>
@@ -600,25 +600,25 @@ export default function ReportViewerPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
                       Email Recipients
                     </p>
                     <input
                       type="email"
                       placeholder="Add email address..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                     />
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
                       Format
                     </p>
                     <div className="flex gap-2">
                       {['CSV', 'PDF'].map((fmt) => (
                         <button
                           key={fmt}
-                          className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:border-indigo-300 hover:text-indigo-600 transition first:bg-indigo-600 first:text-white first:border-indigo-600"
+                          className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:border-indigo-300 hover:text-indigo-600 transition first:bg-indigo-600 first:text-white first:border-indigo-600"
                         >
                           {fmt}
                         </button>
@@ -630,7 +630,7 @@ export default function ReportViewerPage() {
                 <div className="mt-6 flex justify-end gap-2">
                   <button
                     onClick={() => setScheduleModal(false)}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition"
+                    className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                   >
                     Cancel
                   </button>

@@ -22,7 +22,7 @@ const weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const typeStyles = {
   shift: { bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700', dot: 'bg-teal-500' },
   class: { bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-700', dot: 'bg-indigo-500' },
-  off: { bg: 'bg-gray-50 border-gray-200', text: 'text-gray-500', dot: 'bg-gray-400' },
+  off: { bg: 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800', text: 'text-gray-500 dark:text-gray-400', dot: 'bg-gray-400' },
 }
 
 function getWeekStart(date: Date): Date {
@@ -123,8 +123,8 @@ export default function SchedulePage() {
       {/* Header */}
       <motion.div {...fadeInUp} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Schedule</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Week of {weekLabel}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Schedule</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Week of {weekLabel}</p>
         </div>
         <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
           <Plus className="w-4 h-4" />
@@ -139,22 +139,22 @@ export default function SchedulePage() {
         className="flex items-center justify-between"
       >
         <div className="flex items-center gap-2">
-          <button onClick={() => setWeekOffset((o) => o - 1)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
-            <ChevronLeft className="w-4 h-4 text-gray-500" />
+          <button onClick={() => setWeekOffset((o) => o - 1)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <ChevronLeft className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           </button>
-          <span className="text-sm font-semibold text-gray-900">{weekLabel}</span>
-          <button onClick={() => setWeekOffset((o) => o + 1)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
-            <ChevronRight className="w-4 h-4 text-gray-500" />
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{weekLabel}</span>
+          <button onClick={() => setWeekOffset((o) => o + 1)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
-        <div className="flex bg-gray-100 rounded-xl p-1">
+        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
           {(['day', 'week', 'month'] as ViewMode[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors capitalize',
-                view === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                view === v ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               )}
             >
               {v}
@@ -167,22 +167,22 @@ export default function SchedulePage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.1 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
       >
         {/* Day Headers */}
-        <div className="grid grid-cols-7 border-b border-gray-100">
+        <div className="grid grid-cols-7 border-b border-gray-100 dark:border-gray-800">
           {weekDayLabels.map((day, i) => (
             <div
               key={day}
               className={cn(
-                'px-3 py-3 text-center border-r border-gray-100 last:border-r-0',
+                'px-3 py-3 text-center border-r border-gray-100 dark:border-gray-800 last:border-r-0',
                 i === todayIndex && 'bg-indigo-50/50'
               )}
             >
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{day}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{day}</p>
               <p className={cn(
                 'text-lg font-bold mt-0.5',
-                i === todayIndex ? 'text-indigo-600' : 'text-gray-900'
+                i === todayIndex ? 'text-indigo-600' : 'text-gray-900 dark:text-gray-100'
               )}>
                 {weekDates[i].getDate()}
               </p>
@@ -196,7 +196,7 @@ export default function SchedulePage() {
             const dayClasses = classesByDay[dayIndex] ?? []
             return (
               <div key={dayIndex} className={cn(
-                'border-r border-gray-100 last:border-r-0 p-2 space-y-2',
+                'border-r border-gray-100 dark:border-gray-800 last:border-r-0 p-2 space-y-2',
                 dayIndex === todayIndex && 'bg-indigo-50/30'
               )}>
                 {dayClasses.length === 0 && (
@@ -237,29 +237,29 @@ export default function SchedulePage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.15 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
       >
-        <h3 className="text-sm font-bold text-gray-900 mb-4">Week Summary</h3>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Week Summary</h3>
         <div className="grid grid-cols-3 gap-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Scheduled Hours</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Scheduled Hours</p>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-teal-500" />
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{Math.round(totalClassHours)}h</p>
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{Math.round(totalClassHours)}h</p>
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Classes</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Classes</p>
             <div className="flex items-center gap-2">
               <Dumbbell className="w-4 h-4 text-indigo-500" />
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{totalClasses}</p>
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{totalClasses}</p>
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Days Off</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Days Off</p>
             <div className="flex items-center gap-2">
-              <CalendarOff className="w-4 h-4 text-gray-400" />
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{daysOff} days</p>
+              <CalendarOff className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{daysOff} days</p>
             </div>
           </div>
         </div>
@@ -270,7 +270,7 @@ export default function SchedulePage() {
         {Object.entries(typeStyles).map(([key, style]) => (
           <div key={key} className="flex items-center gap-2">
             <span className={cn('w-3 h-3 rounded-sm', style.dot)} />
-            <span className="text-xs font-medium text-gray-500 capitalize">{key === 'off' ? 'Time Off' : key === 'class' ? 'Classes' : 'Shifts'}</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 capitalize">{key === 'off' ? 'Time Off' : key === 'class' ? 'Classes' : 'Shifts'}</span>
           </div>
         ))}
       </div>

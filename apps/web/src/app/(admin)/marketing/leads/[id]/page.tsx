@@ -81,7 +81,7 @@ const ACTIVITY_ICONS: Record<ActivityType, typeof Star> = {
 const ACTIVITY_COLORS: Record<ActivityType, string> = {
   created: 'bg-blue-100 text-blue-600',
   status_change: 'bg-amber-100 text-amber-600',
-  note_added: 'bg-gray-100 text-gray-600',
+  note_added: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
   email_sent: 'bg-indigo-100 text-indigo-600',
   email_opened: 'bg-emerald-100 text-emerald-600',
   call_logged: 'bg-violet-100 text-violet-600',
@@ -95,7 +95,7 @@ const STATUS_OPTIONS = [
   { value: 'contacted', label: 'Contacted', color: 'bg-amber-100 text-amber-700' },
   { value: 'trial', label: 'Trial', color: 'bg-indigo-100 text-indigo-700' },
   { value: 'converted', label: 'Converted', color: 'bg-emerald-100 text-emerald-700' },
-  { value: 'lost', label: 'Lost', color: 'bg-gray-100 text-gray-700' },
+  { value: 'lost', label: 'Lost', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
 ]
 
 // ─── Score Gauge ────────────────────────────────────────────
@@ -123,8 +123,8 @@ function ScoreGauge({ score }: { score: number }) {
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-xl font-black text-gray-900 tabular-nums">{score}</span>
-        <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400">Score</span>
+        <span className="text-xl font-black text-gray-900 dark:text-gray-100 tabular-nums">{score}</span>
+        <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Score</span>
       </div>
     </div>
   )
@@ -172,17 +172,17 @@ function ConvertPanel({
       className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-gray-900">Convert to Member</h3>
-        <button onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100 transition-colors">
-          <X className="h-4 w-4 text-gray-500" />
+        <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Convert to Member</h3>
+        <button onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <X className="h-4 w-4 text-gray-500 dark:text-gray-400" />
         </button>
       </div>
 
       {convertSuccess ? (
         <div className="text-center py-4">
           <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
-          <p className="text-sm font-bold text-gray-900 mb-1">Conversion Complete</p>
-          <p className="text-xs text-gray-500 mb-4">{lead.firstName} {lead.lastName} is now a member.</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Conversion Complete</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{lead.firstName} {lead.lastName} is now a member.</p>
           <button
             onClick={onViewMember}
             className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
@@ -193,24 +193,24 @@ function ConvertPanel({
       ) : (
         <>
           {/* Lead info */}
-          <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 mb-3">
+          <div className="flex items-center gap-3 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-3 mb-3">
             <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-700">
               {(lead.firstName?.[0] || '?') + (lead.lastName?.[0] || '')}
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">{lead.firstName} {lead.lastName}</p>
-              <p className="text-xs text-gray-500">{lead.email}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{lead.firstName} {lead.lastName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{lead.email}</p>
             </div>
           </div>
 
           {/* Membership Assignment */}
           {membershipPlans.length > 0 && (
             <div className="mb-3">
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Assign Membership (optional)</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Assign Membership (optional)</label>
               <select
                 value={selectedPlanId}
                 onChange={(e) => onPlanChange(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               >
                 <option value="">No membership</option>
                 {membershipPlans.map((plan) => (
@@ -254,7 +254,7 @@ function ConvertPanel({
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>
@@ -414,7 +414,7 @@ export default function LeadDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center">
         <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
       </div>
     )
@@ -422,10 +422,10 @@ export default function LeadDetailPage() {
 
   if (!lead) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center">
         <div className="text-center">
           <UserPlus className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-gray-900 mb-1">Lead not found</h3>
+          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">Lead not found</h3>
           <Link href="/marketing/leads" className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-indigo-600">
             <ArrowLeft className="h-4 w-4" /> Back to Leads
           </Link>
@@ -448,13 +448,13 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-[1200px] px-6 py-8">
         {/* Back Link */}
         <motion.div {...fadeInUp}>
           <Link
             href="/marketing/leads"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Pipeline
@@ -466,10 +466,10 @@ export default function LeadDetailPage() {
           <div className="flex items-start gap-5">
             <ScoreGauge score={lead.score} />
             <div>
-              <h1 className="text-2xl font-black text-gray-900">
+              <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">
                 {lead.firstName} {lead.lastName}
               </h1>
-              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                 <span className="inline-flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5" />
                   {lead.email}
@@ -485,11 +485,11 @@ export default function LeadDetailPage() {
                 <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', currentStatusOption.color)}>
                   {currentStatusOption.label}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                   <Globe className="h-3 w-3" />
                   {lead.source.charAt(0).toUpperCase() + lead.source.slice(1)}
                 </span>
-                <span className="text-xs text-gray-400">Lead since {lead.createdAt}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Lead since {lead.createdAt}</span>
               </div>
             </div>
           </div>
@@ -500,14 +500,14 @@ export default function LeadDetailPage() {
           {/* Left — Activity Timeline (2/3) */}
           <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.1 }} className="lg:col-span-2 space-y-4">
             {/* Add Note */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Add Note</label>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Add Note</label>
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Write a note about this lead..."
                 rows={3}
-                className="mt-2 w-full resize-none rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="mt-2 w-full resize-none rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               />
               <div className="mt-3 flex justify-end">
                 <button
@@ -521,8 +521,8 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Timeline */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-5">Activity Timeline</h2>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-5">Activity Timeline</h2>
 
               <div className="relative space-y-0">
                 {/* Vertical line */}
@@ -545,12 +545,12 @@ export default function LeadDetailPage() {
                       </div>
 
                       <div className="min-w-0 flex-1 pt-1">
-                        <p className="text-sm text-gray-900">{activity.description}</p>
+                        <p className="text-sm text-gray-900 dark:text-gray-100">{activity.description}</p>
                         <div className="mt-1 flex items-center gap-3">
-                          <span className="text-xs text-gray-400">{activity.timestamp}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">{activity.timestamp}</span>
                           {activity.performedBy && (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-                              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-100 text-[8px] font-bold text-gray-600">
+                            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-[8px] font-bold text-gray-600 dark:text-gray-400">
                                 {activity.performedBy.initials}
                               </span>
                               {activity.performedBy.name}
@@ -568,9 +568,9 @@ export default function LeadDetailPage() {
           {/* Right — Details Panel (1/3) */}
           <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.15 }} className="space-y-4">
             {/* Score Breakdown */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Score Breakdown</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Score Breakdown</h3>
                 <button
                   onClick={handleRescore}
                   disabled={rescoring}
@@ -592,15 +592,15 @@ export default function LeadDetailPage() {
                       <div className="flex items-center gap-2">
                         {factor.impact === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
                         {factor.impact === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
-                        {factor.impact === 'neutral' && <Minus className="h-3.5 w-3.5 text-gray-400" />}
-                        <span className="text-sm text-gray-700">{factor.label}</span>
+                        {factor.impact === 'neutral' && <Minus className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />}
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{factor.label}</span>
                       </div>
                       <span
                         className={cn(
                           'text-xs font-bold tabular-nums',
                           factor.impact === 'positive' && 'text-emerald-600',
                           factor.impact === 'negative' && 'text-red-600',
-                          factor.impact === 'neutral' && 'text-gray-500'
+                          factor.impact === 'neutral' && 'text-gray-500 dark:text-gray-400'
                         )}
                       >
                         {factor.value}
@@ -609,35 +609,35 @@ export default function LeadDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">Click Rescore to generate score factors.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Click Rescore to generate score factors.</p>
               )}
             </div>
 
             {/* Assignment */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Assigned To</h3>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Assigned To</h3>
               <div className="relative">
                 <select
                   value={assigned}
                   onChange={(e) => setAssigned(e.target.value)}
-                  className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 >
                   <option value="Zach">Zach</option>
                   <option value="Whitney">Whitney Cooper</option>
                   <option value="Unassigned">Unassigned</option>
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               </div>
             </div>
 
             {/* Status */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Status</h3>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Status</h3>
               <div className="relative">
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as typeof status)}
-                  className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 >
                   {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -645,13 +645,13 @@ export default function LeadDetailPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               </div>
             </div>
 
             {/* Tags */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Tags</h3>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Tags</h3>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {tags.map((tag) => (
                   <span
@@ -664,7 +664,7 @@ export default function LeadDetailPage() {
                     </button>
                   </span>
                 ))}
-                {tags.length === 0 && <span className="text-xs text-gray-400">No tags</span>}
+                {tags.length === 0 && <span className="text-xs text-gray-400 dark:text-gray-500">No tags</span>}
               </div>
               <div className="flex gap-2">
                 <input
@@ -672,55 +672,55 @@ export default function LeadDetailPage() {
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addTag()}
                   placeholder="Add tag..."
-                  className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 />
-                <button onClick={addTag} className="rounded-lg bg-gray-100 px-2.5 py-1.5 hover:bg-gray-200 transition-colors">
-                  <Plus className="h-3.5 w-3.5 text-gray-600" />
+                <button onClick={addTag} className="rounded-lg bg-gray-100 dark:bg-gray-800 px-2.5 py-1.5 hover:bg-gray-200 transition-colors">
+                  <Plus className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
                 </button>
               </div>
             </div>
 
             {/* Source Details */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Source Details</h3>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Source Details</h3>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Source</span>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                    <Globe className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Source</span>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <Globe className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                     Website
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Landing Page</span>
-                  <span className="text-sm font-medium text-gray-900">/recovery</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Landing Page</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">/recovery</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">UTM Campaign</span>
-                  <span className="text-sm font-medium text-gray-900">spring_2026</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">UTM Campaign</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">spring_2026</span>
                 </div>
               </div>
             </div>
 
             {/* Next Follow-up */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Next Follow-up</h3>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Next Follow-up</h3>
               <input
                 type="date"
                 value={followUp}
                 onChange={(e) => setFollowUp(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               />
             </div>
 
             {/* Quick Actions */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-2.5">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Quick Actions</h3>
-              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm space-y-2.5">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Quick Actions</h3>
+              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <PhoneCall className="h-4 w-4 text-violet-500" />
                 Log Call
               </button>
-              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <Send className="h-4 w-4 text-indigo-500" />
                 Send Email
               </button>

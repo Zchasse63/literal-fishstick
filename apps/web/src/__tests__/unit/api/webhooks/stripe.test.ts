@@ -172,6 +172,58 @@ describe('POST /api/webhooks/stripe', () => {
     })
   })
 
+  // ─── Idempotency ───────────────────────────────────────────
+
+  describe('idempotency check', () => {
+    it('returns duplicate:true and skips processing when event was already processed', async () => {
+      const event = makeSubscriptionEvent('customer.subscription.created')
+      ;(event as Record<string, unknown>).id = 'evt_already_processed'
+      mockConstructWebhookEvent.mockReturnValue(event)
+
+      // First from() call is processed_webhook_events select — return existing record
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'processed_webhook_events') {
+          // Return a record to indicate this event was already processed
+          queryBuilder.mockResolvedData({ event_id: 'evt_already_processed' })
+          return queryBuilder
+        }
+        queryBuilder.mockResolvedData(null)
+        return queryBuilder
+      })
+
+      const response = await POST(makeSignedRequest())
+      const { status, body } = await parseResponse(response)
+
+      expect(status).toBe(200)
+      expect(body.received).toBe(true)
+      expect(body.duplicate).toBe(true)
+
+      // Should NOT have updated any member records (skipped processing)
+      const memberCalls = mockSupabase.from.mock.calls.filter(
+        (c: string[]) => c[0] === 'members'
+      )
+      expect(memberCalls.length).toBe(0)
+    })
+
+    it('processes event normally when not a duplicate', async () => {
+      mockConstructWebhookEvent.mockReturnValue(
+        makeSubscriptionEvent('customer.subscription.created')
+      )
+
+      // processed_webhook_events select returns null (not a duplicate)
+      // All other tables return default null
+      mockSupabase.from.mockReturnValue(queryBuilder)
+      queryBuilder.mockResolvedData(null)
+
+      const response = await POST(makeSignedRequest())
+      const { status, body } = await parseResponse(response)
+
+      expect(status).toBe(200)
+      expect(body.received).toBe(true)
+      expect(body.duplicate).toBeUndefined()
+    })
+  })
+
   // ─── customer.subscription.created ──────────────────────────
 
   describe('customer.subscription.created', () => {

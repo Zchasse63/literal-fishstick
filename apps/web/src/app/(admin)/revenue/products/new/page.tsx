@@ -88,13 +88,13 @@ export default function NewProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[800px] mx-auto px-6 py-8">
         {/* Back */}
         <motion.div {...fadeInUp}>
           <Link
             href="/revenue/products"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Products
@@ -107,8 +107,8 @@ export default function NewProductPage() {
             <Package className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-gray-900">New Product</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Add a new product to your inventory</p>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">New Product</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Add a new product to your inventory</p>
           </div>
         </motion.div>
 
@@ -119,11 +119,11 @@ export default function NewProductPage() {
           className="space-y-6"
         >
           {/* Basic Info */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Basic Information</h2>
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm space-y-4">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Basic Information</h2>
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Product Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -132,12 +132,12 @@ export default function NewProductPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Meridian Logo Tee"
-                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
               />
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Description
               </label>
               <textarea
@@ -146,19 +146,19 @@ export default function NewProductPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the product..."
                 rows={3}
-                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors resize-none"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors resize-none"
               />
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Category
               </label>
               <select
                 id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -168,26 +168,26 @@ export default function NewProductPage() {
           </div>
 
           {/* Image Placeholder */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Product Image</h2>
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-10 text-center">
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Product Image</h2>
+            <div className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl p-10 text-center">
               <ImagePlus className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-medium text-gray-500">Image upload coming soon</p>
-              <p className="text-xs text-gray-400 mt-1">Drag and drop or click to upload (Phase 2)</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Image upload coming soon</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Drag and drop or click to upload (Phase 2)</p>
             </div>
           </div>
 
           {/* Pricing */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Pricing</h2>
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm space-y-4">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Pricing</h2>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Price <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
                     id="price"
                     type="number"
@@ -196,16 +196,16 @@ export default function NewProductPage() {
                     value={priceStr}
                     onChange={(e) => setPriceStr(e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-200 pl-7 pr-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-800 pl-7 pr-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label htmlFor="compareAtPrice" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="compareAtPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Compare-at Price
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
                     id="compareAtPrice"
                     type="number"
@@ -214,7 +214,7 @@ export default function NewProductPage() {
                     value={compareAtPriceStr}
                     onChange={(e) => setCompareAtPriceStr(e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-200 pl-7 pr-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-800 pl-7 pr-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                   />
                 </div>
               </div>
@@ -222,12 +222,12 @@ export default function NewProductPage() {
           </div>
 
           {/* Inventory */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Inventory</h2>
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm space-y-4">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Inventory</h2>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="sku" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="sku" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   SKU
                 </label>
                 <input
@@ -236,11 +236,11 @@ export default function NewProductPage() {
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   placeholder="e.g., TSG-TEE-BLK-M"
-                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                 />
               </div>
               <div>
-                <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Barcode
                 </label>
                 <input
@@ -249,14 +249,14 @@ export default function NewProductPage() {
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
                   placeholder="UPC or EAN"
-                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="inventory" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="inventory" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Initial Stock
                 </label>
                 <input
@@ -265,11 +265,11 @@ export default function NewProductPage() {
                   min="0"
                   value={inventory}
                   onChange={(e) => setInventory(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                 />
               </div>
               <div>
-                <label htmlFor="lowStock" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="lowStock" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Low Stock Threshold
                 </label>
                 <input
@@ -278,15 +278,15 @@ export default function NewProductPage() {
                   min="0"
                   value={lowStockThreshold}
                   onChange={(e) => setLowStockThreshold(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                 />
               </div>
             </div>
           </div>
 
           {/* Status */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Status</h2>
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Status</h2>
             <label className="flex items-center gap-3 cursor-pointer">
               <button
                 type="button"
@@ -298,12 +298,12 @@ export default function NewProductPage() {
               >
                 <span
                   className={cn(
-                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-950 shadow ring-0 transition duration-200 ease-in-out',
                     active ? 'translate-x-5' : 'translate-x-0'
                   )}
                 />
               </button>
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {active ? 'Active — visible in store' : 'Inactive — hidden from store'}
               </span>
             </label>
@@ -320,7 +320,7 @@ export default function NewProductPage() {
           <div className="flex items-center justify-end gap-3 pt-2">
             <Link
               href="/revenue/products"
-              className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
             </Link>

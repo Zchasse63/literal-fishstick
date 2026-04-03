@@ -203,20 +203,20 @@ export default function CampaignDetailPage({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <a
             href="/marketing"
-            className="h-9 w-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="h-9 w-9 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4 text-gray-600" />
+            <ArrowLeft className="h-4 w-4 text-gray-600 dark:text-gray-400" />
           </a>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+              <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
                 {isReadOnly ? 'Campaign Details' : 'Edit Campaign'}
               </h1>
               {statusBadge && (
@@ -230,7 +230,7 @@ export default function CampaignDetailPage({
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">{campaignName || 'New Campaign'}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{campaignName || 'New Campaign'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -240,7 +240,7 @@ export default function CampaignDetailPage({
             </span>
           )}
           {!isReadOnly && (
-            <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+            <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <Save className="h-4 w-4" />
               Save Changes
             </button>
@@ -249,7 +249,7 @@ export default function CampaignDetailPage({
       </div>
 
       {/* Step Indicator */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-6">
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 mb-6">
         <StepIndicator currentStep={currentStep} />
       </div>
 
@@ -258,11 +258,11 @@ export default function CampaignDetailPage({
         {/* ─── Step 1: Setup ─────────────────────────────────── */}
         {currentStep === 1 && (
           <motion.div key="step-1" {...fadeInUp} className="space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-base font-bold text-gray-900 mb-5">Campaign Setup</h2>
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-5">Campaign Setup</h2>
 
               <div className="mb-5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                   Campaign Name
                 </label>
                 <input
@@ -272,14 +272,14 @@ export default function CampaignDetailPage({
                   disabled={isReadOnly}
                   placeholder="e.g., Win-Back: 14-Day Inactive Members"
                   className={cn(
-                    'w-full h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all',
-                    isReadOnly && 'bg-gray-50 cursor-not-allowed opacity-70'
+                    'w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all',
+                    isReadOnly && 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-70'
                   )}
                 />
               </div>
 
               <div className="mb-5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 block">
                   Channel
                 </label>
                 <div className="flex items-center gap-3">
@@ -290,7 +290,7 @@ export default function CampaignDetailPage({
                       'flex items-center gap-2.5 px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all',
                       selectedChannels.includes('email')
                         ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300',
+                        : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400 hover:border-gray-300',
                       isReadOnly && 'cursor-not-allowed opacity-70'
                     )}
                   >
@@ -308,7 +308,7 @@ export default function CampaignDetailPage({
                         'flex items-center gap-2.5 px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all',
                         selectedChannels.includes('sms')
                           ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300',
+                          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400 hover:border-gray-300',
                         isReadOnly && 'cursor-not-allowed opacity-70'
                       )}
                     >
@@ -326,7 +326,7 @@ export default function CampaignDetailPage({
               </div>
 
               <div className="mb-5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                   Target Segment
                 </label>
                 <select
@@ -334,8 +334,8 @@ export default function CampaignDetailPage({
                   onChange={(e) => setSelectedSegment(e.target.value)}
                   disabled={isReadOnly}
                   className={cn(
-                    'w-full h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none cursor-pointer',
-                    isReadOnly && 'bg-gray-50 cursor-not-allowed opacity-70'
+                    'w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none cursor-pointer',
+                    isReadOnly && 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-70'
                   )}
                   style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
@@ -374,7 +374,7 @@ export default function CampaignDetailPage({
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               <div className="xl:col-span-2 space-y-4">
                 {selectedChannels.length > 1 && (
-                  <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+                  <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
                     {selectedChannels.map((ch) => (
                       <button
                         key={ch}
@@ -382,8 +382,8 @@ export default function CampaignDetailPage({
                         className={cn(
                           'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all',
                           contentTab === ch
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                         )}
                       >
                         {ch === 'email' ? (
@@ -398,16 +398,16 @@ export default function CampaignDetailPage({
                 )}
 
                 {contentTab === 'email' && (
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+                  <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 space-y-4">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Subject Line
                         </label>
                         <span
                           className={cn(
                             'text-xs tabular-nums',
-                            subject.length > 60 ? 'text-amber-500 font-semibold' : 'text-gray-400'
+                            subject.length > 60 ? 'text-amber-500 font-semibold' : 'text-gray-400 dark:text-gray-500'
                           )}
                         >
                           {subject.length}/60
@@ -421,8 +421,8 @@ export default function CampaignDetailPage({
                           disabled={isReadOnly}
                           placeholder="Write a compelling subject line..."
                           className={cn(
-                            'w-full h-11 rounded-xl border border-gray-200 bg-white px-4 pr-28 text-sm text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all',
-                            isReadOnly && 'bg-gray-50 cursor-not-allowed opacity-70'
+                            'w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 pr-28 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all',
+                            isReadOnly && 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-70'
                           )}
                         />
                         {!isReadOnly && (
@@ -459,7 +459,7 @@ export default function CampaignDetailPage({
                                     setSubject(s)
                                     setShowAiSuggestions(false)
                                   }}
-                                  className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 transition-colors border-b border-gray-100 last:border-0"
+                                  className="w-full text-left px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
                                 >
                                   {s}
                                 </button>
@@ -471,7 +471,7 @@ export default function CampaignDetailPage({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                         Preview Text
                       </label>
                       <input
@@ -481,15 +481,15 @@ export default function CampaignDetailPage({
                         disabled={isReadOnly}
                         placeholder="Text that appears in the inbox preview..."
                         className={cn(
-                          'w-full h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all',
-                          isReadOnly && 'bg-gray-50 cursor-not-allowed opacity-70'
+                          'w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all',
+                          isReadOnly && 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-70'
                         )}
                       />
                     </div>
 
                     {!isReadOnly && (
                       <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                           Merge Tags
                         </label>
                         <div className="flex flex-wrap gap-1.5">
@@ -497,7 +497,7 @@ export default function CampaignDetailPage({
                             <button
                               key={mt.tag}
                               onClick={() => insertMergeTag(mt.tag)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200 text-xs font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all"
                             >
                               <Type className="h-3 w-3" />
                               {mt.label}
@@ -509,7 +509,7 @@ export default function CampaignDetailPage({
 
                     <div className="relative">
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Email Body
                         </label>
                         {!isReadOnly && (
@@ -529,8 +529,8 @@ export default function CampaignDetailPage({
                           disabled={isReadOnly}
                           placeholder="Write your email content here. Use merge tags above to personalize..."
                           className={cn(
-                            'w-full min-h-[240px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all resize-y leading-relaxed',
-                            isReadOnly && 'bg-gray-50 cursor-not-allowed opacity-70'
+                            'w-full min-h-[240px] rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all resize-y leading-relaxed',
+                            isReadOnly && 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-70'
                           )}
                         />
                         <AnimatePresence>
@@ -548,10 +548,10 @@ export default function CampaignDetailPage({
                 )}
 
                 {contentTab === 'sms' && (
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+                  <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 space-y-4">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           SMS Body
                         </label>
                         <div className="flex items-center gap-2">
@@ -562,7 +562,7 @@ export default function CampaignDetailPage({
                                 ? 'text-red-500 font-semibold'
                                 : smsBody.length > 140
                                 ? 'text-amber-500 font-semibold'
-                                : 'text-gray-400'
+                                : 'text-gray-400 dark:text-gray-500'
                             )}
                           >
                             {smsBody.length}/160
@@ -581,7 +581,7 @@ export default function CampaignDetailPage({
                             <button
                               key={mt.tag}
                               onClick={() => insertMergeTag(mt.tag)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200 text-xs font-medium text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all"
                             >
                               <Type className="h-3 w-3" />
                               {mt.label}
@@ -596,13 +596,13 @@ export default function CampaignDetailPage({
                         disabled={isReadOnly}
                         placeholder="Write your SMS message (160 characters per segment)..."
                         className={cn(
-                          'w-full min-h-[120px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all resize-y',
-                          isReadOnly && 'bg-gray-50 cursor-not-allowed opacity-70'
+                          'w-full min-h-[120px] rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all resize-y',
+                          isReadOnly && 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-70'
                         )}
                         maxLength={480}
                       />
 
-                      <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="mt-2 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
@@ -622,17 +622,17 @@ export default function CampaignDetailPage({
                 )}
 
                 {/* Preview Pane */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-gray-900">Preview</h3>
-                    <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Preview</h3>
+                    <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
                       <button
                         onClick={() => setPreviewMode('desktop')}
                         className={cn(
                           'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all',
                           previewMode === 'desktop'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                         )}
                       >
                         <Monitor className="h-3 w-3" />
@@ -643,8 +643,8 @@ export default function CampaignDetailPage({
                         className={cn(
                           'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all',
                           previewMode === 'mobile'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                         )}
                       >
                         <Phone className="h-3 w-3" />
@@ -652,7 +652,7 @@ export default function CampaignDetailPage({
                       </button>
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-4 flex items-start justify-center min-h-[200px]">
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 flex items-start justify-center min-h-[200px]">
                     <EmailPreview
                       subject={subject}
                       previewText={previewText}
@@ -666,9 +666,9 @@ export default function CampaignDetailPage({
               {/* Right: Template Library */}
               <div className="space-y-4">
                 {!isReadOnly && (
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                  <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-bold text-gray-900">Templates</h3>
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Templates</h3>
                       <button
                         onClick={() => setShowTemplates(!showTemplates)}
                         className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
@@ -688,11 +688,11 @@ export default function CampaignDetailPage({
                   </div>
                 )}
 
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-                  <h3 className="text-sm font-bold text-gray-900 mb-3">Campaign Info</h3>
+                <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">Campaign Info</h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Status</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Status</span>
                       {statusBadge && (
                         <span
                           className={cn(
@@ -705,18 +705,18 @@ export default function CampaignDetailPage({
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Recipients</span>
-                      <span className="text-sm font-bold text-gray-900 tabular-nums">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Recipients</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                         {recipientCount.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Channel(s)</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Channel(s)</span>
                       <div className="flex items-center gap-1.5">
                         {selectedChannels.map((ch) => (
                           <span
                             key={ch}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-xs font-medium text-gray-600 capitalize"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-600 dark:text-gray-400 capitalize"
                           >
                             {ch === 'email' ? (
                               <Mail className="h-3 w-3" />
@@ -729,8 +729,8 @@ export default function CampaignDetailPage({
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Segment</span>
-                      <span className="text-xs font-semibold text-gray-700">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Segment</span>
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                         {segments.find((s) => s.id === selectedSegment)?.name}
                       </span>
                     </div>
@@ -744,26 +744,26 @@ export default function CampaignDetailPage({
         {/* ─── Step 3: Review & Schedule ─────────────────────── */}
         {currentStep === 3 && (
           <motion.div key="step-3" {...fadeInUp} className="space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-base font-bold text-gray-900 mb-5">Campaign Summary</h2>
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-5">Campaign Summary</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                       Campaign Name
                     </p>
-                    <p className="text-sm font-semibold text-gray-900">{campaignName}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{campaignName}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                       Channel(s)
                     </p>
                     <div className="flex items-center gap-2">
                       {selectedChannels.map((ch) => (
                         <span
                           key={ch}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700 capitalize"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 capitalize"
                         >
                           {ch === 'email' ? (
                             <Mail className="h-3.5 w-3.5" />
@@ -776,27 +776,27 @@ export default function CampaignDetailPage({
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                       Segment
                     </p>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {segments.find((s) => s.id === selectedSegment)?.name}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                       Subject Line
                     </p>
-                    <p className="text-sm text-gray-700">{subject || 'No subject'}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{subject || 'No subject'}</p>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
                     Body Preview
                   </p>
-                  <div className="h-48 rounded-xl bg-gray-50 border border-gray-200 p-4 overflow-y-auto">
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+                  <div className="h-48 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 overflow-y-auto">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">
                       {emailBody || smsBody || 'No content'}
                     </p>
                   </div>
@@ -820,15 +820,15 @@ export default function CampaignDetailPage({
 
             {/* A/B Test */}
             {!isReadOnly && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-violet-50 flex items-center justify-center">
                       <Split className="h-4 w-4 text-violet-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900">A/B Testing</h3>
-                      <p className="text-xs text-gray-400">
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">A/B Testing</h3>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
                         Test different versions to optimize performance
                       </p>
                     </div>
@@ -842,7 +842,7 @@ export default function CampaignDetailPage({
                   >
                     <span
                       className={cn(
-                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm',
+                        'inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-950 transition-transform shadow-sm',
                         abTestEnabled ? 'translate-x-6' : 'translate-x-1'
                       )}
                     />
@@ -857,13 +857,13 @@ export default function CampaignDetailPage({
                       exit={{ opacity: 0, height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="pt-4 border-t border-gray-100 space-y-4">
+                      <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                               Traffic Split
                             </label>
-                            <span className="text-xs font-semibold text-gray-600">
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
                               A: {abSplit}% / B: {100 - abSplit}%
                             </span>
                           </div>
@@ -889,7 +889,7 @@ export default function CampaignDetailPage({
                         </div>
 
                         <div>
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                             Variant B — Subject Line
                           </label>
                           <input
@@ -897,18 +897,18 @@ export default function CampaignDetailPage({
                             value={variantBSubject}
                             onChange={(e) => setVariantBSubject(e.target.value)}
                             placeholder="Alternative subject line for Variant B..."
-                            className="w-full h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 placeholder:text-gray-300 transition-all"
+                            className="w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 placeholder:text-gray-300 transition-all"
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                             Variant B — Body
                           </label>
                           <textarea
                             value={variantBBody}
                             onChange={(e) => setVariantBBody(e.target.value)}
                             placeholder="Alternative body content for Variant B..."
-                            className="w-full min-h-[120px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 placeholder:text-gray-300 transition-all resize-y"
+                            className="w-full min-h-[120px] rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 placeholder:text-gray-300 transition-all resize-y"
                           />
                         </div>
                       </div>
@@ -920,24 +920,24 @@ export default function CampaignDetailPage({
 
             {/* A/B Winner Selection (read-only campaigns with A/B enabled) */}
             {isReadOnly && abTestEnabled && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-9 w-9 rounded-xl bg-violet-50 flex items-center justify-center">
                     <Split className="h-4 w-4 text-violet-600" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">A/B Test Results</h3>
-                    <p className="text-xs text-gray-400">Select the winning variant to apply to remaining recipients</p>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">A/B Test Results</h3>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Select the winning variant to apply to remaining recipients</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="rounded-xl border border-gray-200 p-4 text-center">
+                  <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mb-1">Variant A ({abSplit}%)</p>
-                    <p className="text-sm text-gray-600 truncate">{subject || 'Original subject'}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subject || 'Original subject'}</p>
                   </div>
-                  <div className="rounded-xl border border-gray-200 p-4 text-center">
+                  <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600 mb-1">Variant B ({100 - abSplit}%)</p>
-                    <p className="text-sm text-gray-600 truncate">{variantBSubject || 'Variant B subject'}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{variantBSubject || 'Variant B subject'}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -972,19 +972,19 @@ export default function CampaignDetailPage({
             )}
 
             {/* Send Options */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-              <h3 className="text-sm font-bold text-gray-900 mb-4">
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">
                 {isReadOnly ? 'Send Details' : 'Send Options'}
               </h3>
 
               {isReadOnly ? (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <Clock className="h-5 w-5 text-gray-400" />
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+                  <Clock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   <div>
-                    <p className="text-sm font-semibold text-gray-700">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                       {campaignStatus === 'sent' ? 'Campaign Sent' : 'Campaign Active'}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
                       This campaign has already been {campaignStatus}. Create a new campaign to send another.
                     </p>
                   </div>
@@ -998,7 +998,7 @@ export default function CampaignDetailPage({
                         'flex items-center gap-2.5 px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all',
                         scheduleMode === 'now'
                           ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400 hover:border-gray-300'
                       )}
                     >
                       <Send className="h-4 w-4" />
@@ -1010,7 +1010,7 @@ export default function CampaignDetailPage({
                         'flex items-center gap-2.5 px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all',
                         scheduleMode === 'schedule'
                           ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400 hover:border-gray-300'
                       )}
                     >
                       <Calendar className="h-4 w-4" />
@@ -1028,25 +1028,25 @@ export default function CampaignDetailPage({
                       >
                         <div className="grid grid-cols-2 gap-3 mb-5">
                           <div>
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                               Date
                             </label>
                             <input
                               type="date"
                               value={scheduleDate}
                               onChange={(e) => setScheduleDate(e.target.value)}
-                              className="w-full h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                              className="w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
                               Time
                             </label>
                             <input
                               type="time"
                               value={scheduleTime}
                               onChange={(e) => setScheduleTime(e.target.value)}
-                              className="w-full h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                              className="w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
                             />
                           </div>
                         </div>
@@ -1054,11 +1054,11 @@ export default function CampaignDetailPage({
                     )}
                   </AnimatePresence>
 
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+                    <Mail className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-700">Send Test Email</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Send Test Email</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
                         Preview in your inbox before sending to all recipients
                       </p>
                     </div>
@@ -1068,7 +1068,7 @@ export default function CampaignDetailPage({
                         'px-4 py-2 rounded-xl text-sm font-semibold transition-all',
                         testSent
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                          : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                          : 'bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                       )}
                     >
                       {testSent ? (
@@ -1089,7 +1089,7 @@ export default function CampaignDetailPage({
       </AnimatePresence>
 
       {/* ─── Navigation Footer ───────────────────────────────── */}
-      <div className="mt-6 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
+      <div className="mt-6 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex items-center justify-between">
         <button
           onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1) as Step)}
           disabled={currentStep === 1}
@@ -1097,7 +1097,7 @@ export default function CampaignDetailPage({
             'inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all',
             currentStep === 1
               ? 'text-gray-300 cursor-not-allowed'
-              : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+              : 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200'
           )}
         >
           <ArrowLeft className="h-4 w-4" />
@@ -1106,7 +1106,7 @@ export default function CampaignDetailPage({
 
         <div className="flex items-center gap-3">
           {!isReadOnly && (
-            <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+            <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <Save className="h-4 w-4" />
               Save Changes
             </button>
@@ -1120,7 +1120,7 @@ export default function CampaignDetailPage({
                 'inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all',
                 canProceed
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
-                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-300 cursor-not-allowed'
               )}
             >
               Next

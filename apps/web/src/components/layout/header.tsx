@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import {
   Search,
@@ -7,6 +8,7 @@ import {
   Bell,
   Plus,
   Keyboard,
+  BellOff,
 } from 'lucide-react'
 
 interface HeaderProps {
@@ -16,10 +18,26 @@ interface HeaderProps {
 }
 
 export function Header({ breadcrumb, sidebarCollapsed, onToggleSidebar }: HeaderProps) {
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    if (notifOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [notifOpen])
+
   return (
     <header
       className={cn(
-        'fixed top-0 right-0 z-30 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 transition-all duration-300',
+        'fixed top-0 right-0 z-30 h-16 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 transition-all duration-300',
         sidebarCollapsed ? 'left-[72px]' : 'left-[240px]'
       )}
     >
@@ -27,46 +45,63 @@ export function Header({ breadcrumb, sidebarCollapsed, onToggleSidebar }: Header
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleSidebar}
-          className="text-gray-500 hover:text-gray-700 transition-colors"
+          className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <nav className="hidden md:flex items-center text-sm text-gray-500">
-          <span className="font-medium text-gray-900">{breadcrumb}</span>
+        <nav className="hidden md:flex items-center text-sm text-gray-500 dark:text-gray-400">
+          <span className="font-medium text-gray-900 dark:text-gray-100">{breadcrumb}</span>
         </nav>
       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3">
         {/* Search */}
-        <button className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors">
+        <button className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
           <Search className="w-4 h-4" />
           <span>Search...</span>
-          <kbd className="text-[10px] font-medium bg-white border border-gray-200 rounded px-1.5 py-0.5">⌘K</kbd>
+          <kbd className="text-[10px] font-medium bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-1.5 py-0.5">⌘K</kbd>
         </button>
 
         {/* Keyboard shortcuts */}
-        <button className="hidden lg:flex text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+        <button className="hidden lg:flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
           <Keyboard className="w-5 h-5" />
         </button>
 
         {/* Live status */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-xl">
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
           <span>Live</span>
-          <span className="text-gray-400">·</span>
+          <span className="text-gray-400 dark:text-gray-500">·</span>
           <span className="text-emerald-600">Healthy</span>
         </div>
 
         {/* Notifications */}
-        <button className="relative text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full" />
-        </button>
+        <div ref={notifRef} className="relative">
+          <button
+            onClick={() => setNotifOpen((prev) => !prev)}
+            className="relative text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <Bell className="w-5 h-5" />
+          </button>
+
+          {notifOpen && (
+            <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg z-50">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
+              </div>
+              <div className="flex flex-col items-center justify-center px-4 py-8">
+                <BellOff className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No new notifications</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">You&apos;re all caught up</p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Quick Create — opens command palette */}
         <button

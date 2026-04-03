@@ -125,8 +125,8 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
     name: 'Transaction Log',
     description: 'Full ledger of all payments, refunds, adjustments, and gift card redemptions.',
     icon: FileText,
-    iconColor: 'text-gray-600',
-    iconBg: 'bg-gray-100',
+    iconColor: 'text-gray-600 dark:text-gray-400',
+    iconBg: 'bg-gray-100 dark:bg-gray-800',
   },
   {
     id: 'failed-payments',
@@ -174,7 +174,7 @@ const TYPE_BADGE_COLORS: Record<string, string> = {
   'Churn Risk': 'bg-orange-50 text-orange-700',
   'Class Performance': 'bg-cyan-50 text-cyan-700',
   'Credit Pack Usage': 'bg-teal-50 text-teal-700',
-  'Transaction Log': 'bg-gray-100 text-gray-700',
+  'Transaction Log': 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
   'Failed Payments': 'bg-red-50 text-red-700',
   'Member Movement': 'bg-amber-50 text-amber-700',
   Membership: 'bg-blue-50 text-blue-700',
@@ -201,7 +201,7 @@ export default function ReportLibraryPage() {
           id: r.id,
           name: r.name ?? 'Untitled Report',
           type: r.type ?? 'Attendance',
-          typeBadgeColor: TYPE_BADGE_COLORS[r.type] ?? 'bg-gray-100 text-gray-700',
+          typeBadgeColor: TYPE_BADGE_COLORS[r.type] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
           lastGenerated: r.last_generated_at ? new Date(r.last_generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
           schedule: r.schedule ?? 'Manual',
         })))
@@ -223,13 +223,13 @@ export default function ReportLibraryPage() {
   )
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Header */}
         <motion.div {...fadeInUp} className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Build, schedule, and export reports from your studio data.
             </p>
           </div>
@@ -245,20 +245,20 @@ export default function ReportLibraryPage() {
         {/* Search */}
         <motion.div {...fadeInUp} className="mb-8">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search templates and saved reports..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 shadow-sm transition focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-600/10"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 shadow-sm transition focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-600/10"
             />
           </div>
         </motion.div>
 
         {/* ─── Templates Section ─────────────────────────────── */}
         <motion.div {...fadeInUp}>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
             Report Templates
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -274,7 +274,7 @@ export default function ReportLibraryPage() {
                     delay: i * 0.03,
                     ease: [0.25, 1, 0.5, 1],
                   }}
-                  className="group relative flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:border-indigo-200"
+                  className="group relative flex flex-col rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm transition hover:shadow-md hover:border-indigo-200"
                 >
                   {template.requiresModule && (
                     <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
@@ -290,8 +290,8 @@ export default function ReportLibraryPage() {
                   >
                     <Icon className={cn('h-5 w-5', template.iconColor)} />
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900">{template.name}</h3>
-                  <p className="mt-1 flex-1 text-xs leading-relaxed text-gray-500">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{template.name}</h3>
+                  <p className="mt-1 flex-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                     {template.description}
                   </p>
                   <Link
@@ -299,7 +299,7 @@ export default function ReportLibraryPage() {
                     className={cn(
                       'mt-4 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition',
                       template.requiresModule
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none'
+                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none'
                         : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
                     )}
                   >
@@ -317,38 +317,38 @@ export default function ReportLibraryPage() {
           {...fadeInUp}
           className="mt-12"
         >
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
             Saved Reports
           </p>
 
           {filteredReports.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white px-6 py-16 shadow-sm text-center">
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-6 py-16 shadow-sm text-center">
               <FileText className="mx-auto h-10 w-10 text-gray-300" />
-              <p className="mt-3 text-sm font-medium text-gray-500">
+              <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
                 No saved reports yet.
               </p>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                 Create one from a template above.
               </p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/50">
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
+                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       Report Name
                     </th>
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       Type
                     </th>
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       Last Generated
                     </th>
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       Schedule
                     </th>
-                    <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       Actions
                     </th>
                   </tr>
@@ -357,12 +357,12 @@ export default function ReportLibraryPage() {
                   {filteredReports.map((report) => (
                     <tr
                       key={report.id}
-                      className="border-b border-gray-50 transition hover:bg-gray-50/50 last:border-0"
+                      className="border-b border-gray-50 transition hover:bg-gray-50 dark:hover:bg-gray-800/50 last:border-0"
                     >
                       <td className="px-5 py-3.5">
                         <Link
                           href={`/analytics/reports/${report.id}`}
-                          className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition"
+                          className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition"
                         >
                           {report.name}
                         </Link>
@@ -377,7 +377,7 @@ export default function ReportLibraryPage() {
                           {report.type}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-gray-500">
+                      <td className="px-5 py-3.5 text-sm text-gray-500 dark:text-gray-400">
                         {report.lastGenerated}
                       </td>
                       <td className="px-5 py-3.5">
@@ -385,7 +385,7 @@ export default function ReportLibraryPage() {
                           className={cn(
                             'inline-flex items-center gap-1 text-xs font-medium',
                             report.schedule === 'Manual'
-                              ? 'text-gray-400'
+                              ? 'text-gray-400 dark:text-gray-500'
                               : 'text-indigo-600'
                           )}
                         >
@@ -401,7 +401,7 @@ export default function ReportLibraryPage() {
                                 openDropdown === report.id ? null : report.id
                               )
                             }
-                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                            className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </button>
@@ -412,23 +412,23 @@ export default function ReportLibraryPage() {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -4 }}
                                 transition={{ duration: 0.12 }}
-                                className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border border-gray-200 bg-white py-1.5 shadow-lg"
+                                className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-1.5 shadow-lg"
                               >
-                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
-                                  <Play className="h-3.5 w-3.5 text-gray-400" />
+                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                  <Play className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                                   Run Now
                                 </button>
-                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
-                                  <Download className="h-3.5 w-3.5 text-gray-400" />
+                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                  <Download className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                                   Export CSV
                                 </button>
-                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
-                                  <FileDown className="h-3.5 w-3.5 text-gray-400" />
+                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                  <FileDown className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                                   Export PDF
                                 </button>
-                                <div className="my-1 border-t border-gray-100" />
-                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
-                                  <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                                <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                  <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                                   Edit
                                 </button>
                                 <button className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition">

@@ -78,11 +78,11 @@ const statusConfig: Record<OrderStatus, { label: string; className: string }> = 
   ready_for_pickup: { label: 'Ready', className: 'bg-indigo-50 text-indigo-700 border border-indigo-200' },
   shipped: { label: 'Shipped', className: 'bg-violet-50 text-violet-700 border border-violet-200' },
   delivered: { label: 'Delivered', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-  completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+  completed: { label: 'Completed', className: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
 }
 
 const fulfillmentConfig: Record<FulfillmentType, { label: string; className: string }> = {
-  pickup: { label: 'Pickup', className: 'bg-gray-100 text-gray-600' },
+  pickup: { label: 'Pickup', className: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
   shipping: { label: 'Shipping', className: 'bg-blue-50 text-blue-600 border border-blue-200' },
 }
 
@@ -105,15 +105,15 @@ function MetricCard({
     <motion.div
       {...fadeInUp}
       transition={{ ...fadeInUp.transition, delay }}
-      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3"
+      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 flex flex-col gap-3"
     >
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
         <div className={cn('h-8 w-8 rounded-xl flex items-center justify-center', iconBg)}>
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <p className="text-[28px] font-black text-gray-900 tabular-nums leading-none">{value}</p>
+      <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">{value}</p>
     </motion.div>
   )
 }
@@ -140,28 +140,28 @@ function ShippingLabelModal({
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        className="relative bg-white rounded-2xl border border-gray-200 shadow-xl p-6 w-full max-w-md mx-4"
+        className="relative bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl p-6 w-full max-w-md mx-4"
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-bold text-gray-900">Create Shipping Label</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
-            <X className="h-4 w-4 text-gray-400" />
+          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Create Shipping Label</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <X className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           </button>
         </div>
 
         <div className="mb-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Ship To</p>
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-50">
-            <MapPin className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Ship To</p>
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-900">
+            <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-gray-900">{order.customerName}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{order.shippingAddress}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{order.customerName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{order.shippingAddress}</p>
             </div>
           </div>
         </div>
 
         <div className="mb-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Select Rate</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Select Rate</p>
           <div className="space-y-2">
             {rates.map((rate) => (
               <button
@@ -171,14 +171,14 @@ function ShippingLabelModal({
                   'w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left',
                   selectedRate === rate.id
                     ? 'border-indigo-300 bg-indigo-50 ring-2 ring-indigo-500/20'
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
                 )}
               >
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{rate.carrier}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{rate.eta}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{rate.carrier}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{rate.eta}</p>
                 </div>
-                <p className="text-sm font-black text-gray-900 tabular-nums">{rate.price}</p>
+                <p className="text-sm font-black text-gray-900 dark:text-gray-100 tabular-nums">{rate.price}</p>
               </button>
             ))}
           </div>
@@ -187,7 +187,7 @@ function ShippingLabelModal({
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Cancel
           </button>
@@ -197,7 +197,7 @@ function ShippingLabelModal({
               'flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm',
               selectedRate
                 ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
             )}
           >
             Create Label
@@ -308,7 +308,7 @@ export default function OrdersPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA]"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
     >
       {/* Shipping Label Modal */}
       <AnimatePresence>
@@ -320,8 +320,8 @@ export default function OrdersPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Orders</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage merchandise orders and fulfillment</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Orders</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage merchandise orders and fulfillment</p>
         </div>
       </div>
 
@@ -337,7 +337,7 @@ export default function OrdersPage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.1 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-6"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 mb-6"
       >
         <div className="flex flex-wrap items-center gap-3">
           {/* Status pills */}
@@ -350,7 +350,7 @@ export default function OrdersPage() {
                   'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                   statusFilter === s.value
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                 )}
               >
                 {s.label}
@@ -370,7 +370,7 @@ export default function OrdersPage() {
                   'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                   fulfillmentFilter === f.value
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                 )}
               >
                 {f.label}
@@ -380,13 +380,13 @@ export default function OrdersPage() {
 
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search orders or customers..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+              className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
             />
           </div>
         </div>
@@ -396,10 +396,10 @@ export default function OrdersPage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.15 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
       >
         {/* Table header */}
-        <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
+        <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
           <div className="w-6" />
           <div className="w-24">Order</div>
           <div className="flex-1 min-w-0">Customer</div>
@@ -420,28 +420,28 @@ export default function OrdersPage() {
               <div key={order.id}>
                 {/* Main row */}
                 <div
-                  className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/80 transition-colors cursor-pointer"
+                  className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors cursor-pointer"
                   onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
                 >
                   <div className="w-6">
                     <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                      <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </div>
                   <div className="w-24">
                     <p className="text-sm font-semibold text-indigo-600 tabular-nums">{order.orderId}</p>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{order.customerName}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{order.customerName}</p>
                   </div>
                   <div className="w-28">
-                    <p className="text-sm text-gray-500">{order.date}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{order.date}</p>
                   </div>
                   <div className="w-14 text-center">
-                    <p className="text-sm font-medium text-gray-700 tabular-nums">{itemCount}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">{itemCount}</p>
                   </div>
                   <div className="w-20 text-right">
-                    <p className="text-sm font-semibold text-gray-900 tabular-nums">{formatCents(order.totalInCents)}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatCents(order.totalInCents)}</p>
                   </div>
                   <div className="w-20 text-center">
                     <span className={cn(
@@ -461,7 +461,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="w-28 text-right flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {actionLoading[order.id] ? (
-                      <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
+                      <Loader2 className="h-4 w-4 text-gray-400 dark:text-gray-500 animate-spin" />
                     ) : (
                       <>
                         {order.status === 'pending' && (
@@ -514,19 +514,19 @@ export default function OrdersPage() {
                       <div className="px-5 pb-4 pt-1 ml-10 border-l-2 border-indigo-100">
                         {/* Order items */}
                         <div className="mb-3">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Items</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Items</p>
                           <div className="space-y-1.5">
                             {order.items.map((item, i) => (
-                              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50">
+                              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900">
                                 <div className="flex items-center gap-2">
                                   <div className="h-8 w-8 rounded-lg bg-gray-200 flex items-center justify-center">
-                                    <Package className="h-3.5 w-3.5 text-gray-400" />
+                                    <Package className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                                   </div>
-                                  <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.name}</p>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                  <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
-                                  <p className="text-sm font-semibold text-gray-900 tabular-nums">{formatCents(item.priceInCents * item.quantity)}</p>
+                                  <p className="text-xs text-gray-400 dark:text-gray-500">Qty: {item.quantity}</p>
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatCents(item.priceInCents * item.quantity)}</p>
                                 </div>
                               </div>
                             ))}
@@ -536,10 +536,10 @@ export default function OrdersPage() {
                         {/* Shipping info */}
                         {order.shippingAddress && (
                           <div className="mb-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Shipping Address</p>
-                            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-gray-50">
-                              <MapPin className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
-                              <p className="text-sm text-gray-700">{order.shippingAddress}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Shipping Address</p>
+                            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900">
+                              <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
+                              <p className="text-sm text-gray-700 dark:text-gray-300">{order.shippingAddress}</p>
                             </div>
                           </div>
                         )}
@@ -547,10 +547,10 @@ export default function OrdersPage() {
                         {/* Tracking */}
                         {order.trackingNumber && (
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Tracking</p>
-                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50">
-                              <Truck className="h-4 w-4 text-gray-400 shrink-0" />
-                              <p className="text-sm font-mono text-gray-700">{order.trackingNumber}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Tracking</p>
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900">
+                              <Truck className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                              <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{order.trackingNumber}</p>
                             </div>
                           </div>
                         )}
@@ -566,8 +566,8 @@ export default function OrdersPage() {
         {filtered.length === 0 && (
           <div className="py-16 text-center">
             <ShoppingBag className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-gray-500">No orders found</p>
-            <p className="text-xs text-gray-400 mt-1">Try adjusting your filters</p>
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No orders found</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>
           </div>
         )}
       </motion.div>

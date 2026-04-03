@@ -52,7 +52,7 @@ const eventStatusConfig: Record<EventStatus, { label: string; className: string 
   quoted: { label: 'Quoted', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
   confirmed: { label: 'Confirmed', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
   deposit_paid: { label: 'Deposit Paid', className: 'bg-indigo-50 text-indigo-700 border border-indigo-200' },
-  completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+  completed: { label: 'Completed', className: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
   invoiced: { label: 'Invoiced', className: 'bg-orange-50 text-orange-700 border border-orange-200' },
   paid: { label: 'Paid', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
 }
@@ -147,13 +147,13 @@ export default function EventCalendarPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA]"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Events</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage corporate events, parties, and bookings</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Events</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage corporate events, parties, and bookings</p>
         </div>
         <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
           <Plus className="h-4 w-4" />
@@ -172,7 +172,7 @@ export default function EventCalendarPage() {
                 'inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all',
                 filter === opt.value
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                  : 'bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300'
               )}
             >
               {opt.value !== 'all' && (
@@ -182,12 +182,12 @@ export default function EventCalendarPage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1">
+        <div className="flex items-center gap-1 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-1">
           <button
             onClick={() => setViewMode('month')}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
-              viewMode === 'month' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'
+              viewMode === 'month' ? 'bg-indigo-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             )}
           >
             Month
@@ -196,7 +196,7 @@ export default function EventCalendarPage() {
             onClick={() => setViewMode('week')}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
-              viewMode === 'week' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-700'
+              viewMode === 'week' ? 'bg-indigo-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             )}
           >
             Week
@@ -209,16 +209,16 @@ export default function EventCalendarPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.05 }}
-          className="lg:col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="lg:col-span-3 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-4">
-            <button className="h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
-              <ChevronLeft className="h-4 w-4 text-gray-500" />
+            <button className="h-8 w-8 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </button>
-            <h3 className="text-base font-bold text-gray-900">{monthName}</h3>
-            <button className="h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
-              <ChevronRight className="h-4 w-4 text-gray-500" />
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{monthName}</h3>
+            <button className="h-8 w-8 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
 
@@ -226,13 +226,13 @@ export default function EventCalendarPage() {
           <div className="grid grid-cols-7 gap-px mb-1">
             {DAYS.map((day) => (
               <div key={day} className="text-center py-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{day}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{day}</p>
               </div>
             ))}
           </div>
 
           {/* Calendar cells */}
-          <div className="grid grid-cols-7 gap-px bg-gray-100 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-7 gap-px bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden">
             {Array.from({ length: rows * 7 }).map((_, i) => {
               const day = i - firstDay + 1
               const isValidDay = day >= 1 && day <= daysInMonth
@@ -243,8 +243,8 @@ export default function EventCalendarPage() {
                 <div
                   key={i}
                   className={cn(
-                    'bg-white min-h-[100px] p-1.5',
-                    !isValidDay && 'bg-gray-50/50'
+                    'bg-white dark:bg-gray-950 min-h-[100px] p-1.5',
+                    !isValidDay && 'bg-gray-50 dark:bg-gray-900/50'
                   )}
                 >
                   {isValidDay && (
@@ -252,7 +252,7 @@ export default function EventCalendarPage() {
                       <p
                         className={cn(
                           'text-xs font-semibold mb-1 w-6 h-6 flex items-center justify-center rounded-full',
-                          isToday ? 'bg-indigo-600 text-white' : 'text-gray-700'
+                          isToday ? 'bg-indigo-600 text-white' : 'text-gray-700 dark:text-gray-300'
                         )}
                       >
                         {day}
@@ -271,7 +271,7 @@ export default function EventCalendarPage() {
                           </Link>
                         ))}
                         {dayEvents.length > 2 && (
-                          <p className="text-[10px] font-semibold text-gray-400 px-1.5">
+                          <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 px-1.5">
                             +{dayEvents.length - 2} more
                           </p>
                         )}
@@ -288,37 +288,37 @@ export default function EventCalendarPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
-          <h3 className="text-base font-bold text-gray-900 mb-1">Upcoming</h3>
-          <p className="text-xs text-gray-400 mb-4">{upcomingEvents.length} events</p>
+          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">Upcoming</h3>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">{upcomingEvents.length} events</p>
 
           <div className="space-y-3">
             {upcomingEvents.map((event) => (
               <Link
                 key={event.id}
                 href={`/corporate/events/${event.id}`}
-                className="block p-3 rounded-xl bg-gray-50 hover:bg-gray-100/80 transition-colors group"
+                className="block p-3 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors group"
               >
                 <div className="flex items-start gap-2 mb-2">
                   <span className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', eventTypeConfig[event.eventType].pillClass)} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-indigo-600 transition-colors">
                       {event.name}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">{event.company}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{event.company}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 ml-4">
-                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
                     <Calendar className="h-3 w-3" />
                     {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
                     <Clock className="h-3 w-3" />
                     {event.time}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500">
                     <Users className="h-3 w-3" />
                     {event.guests}
                   </span>

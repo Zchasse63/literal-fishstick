@@ -47,7 +47,7 @@ function getActivityIcon(type: string) {
     case 'cancellation':
       return { icon: XCircle, color: 'text-orange-500' }
     default:
-      return { icon: Calendar, color: 'text-gray-500' }
+      return { icon: Calendar, color: 'text-gray-500 dark:text-gray-400' }
   }
 }
 
@@ -56,7 +56,7 @@ function CommandCenterSkeleton() {
   return (
     <div className="space-y-5">
       {/* AI Briefing skeleton */}
-      <div className="rounded-2xl border border-gray-200 p-6">
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
         <div className="flex items-center gap-2 mb-4">
           <Skeleton className="w-5 h-5 rounded" />
           <Skeleton className="h-6 w-48" />
@@ -78,7 +78,7 @@ function CommandCenterSkeleton() {
       {/* Metrics strip skeleton */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div key={i} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
             <Skeleton className="h-3 w-20 mb-3" />
             <Skeleton className="h-8 w-16 mb-2" />
             <Skeleton className="h-3 w-24" />
@@ -88,7 +88,7 @@ function CommandCenterSkeleton() {
 
       {/* Class Status + Timeline skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="lg:col-span-7 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
           <Skeleton className="h-5 w-40 mb-4" />
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
@@ -100,7 +100,7 @@ function CommandCenterSkeleton() {
             ))}
           </div>
         </div>
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="lg:col-span-5 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
           <Skeleton className="h-5 w-36 mb-4" />
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
@@ -121,7 +121,7 @@ function CommandCenterSkeleton() {
       </div>
 
       {/* Activity Feed skeleton */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
         <Skeleton className="h-5 w-32 mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -147,7 +147,7 @@ function AIBriefingCard({ insights, greeting, firstName }: { insights: AIInsight
       <div className="bg-gradient-to-br from-indigo-500/[0.04] to-violet-500/[0.04] -m-6 p-6 rounded-2xl">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-5 h-5 text-indigo-600" />
-          <h2 className="text-lg font-bold text-gray-900">{greeting}, {firstName}</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{greeting}, {firstName}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {insights.map((insight, i) => {
@@ -156,7 +156,7 @@ function AIBriefingCard({ insights, greeting, firstName }: { insights: AIInsight
               <div key={i} className="flex gap-3">
                 <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', insight.color)} />
                 <div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{insight.text}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{insight.text}</p>
                   <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1">
                     {insight.action}
                     <ChevronRight className="w-3 h-3" />
@@ -182,19 +182,19 @@ interface MetricCardProps {
 
 function MetricCard({ label, value, trend, trendDirection, subtitle }: MetricCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-indigo-100 transition-all cursor-pointer">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">{label}</p>
-      <p className="text-[28px] font-black text-gray-900 tabular-nums leading-none">{value}</p>
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md hover:border-indigo-100 transition-all cursor-pointer">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">{label}</p>
+      <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">{value}</p>
       <div className="flex items-center gap-1.5 mt-2">
         {trendDirection === 'up' && <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />}
         {trendDirection === 'down' && <ArrowDownRight className="w-3.5 h-3.5 text-orange-600" />}
         <span className={cn(
           'text-xs font-bold',
-          trendDirection === 'up' ? 'text-emerald-600' : trendDirection === 'down' ? 'text-orange-600' : 'text-gray-500'
+          trendDirection === 'up' ? 'text-emerald-600' : trendDirection === 'down' ? 'text-orange-600' : 'text-gray-500 dark:text-gray-400'
         )}>
           {trend}
         </span>
-        {subtitle && <span className="text-xs text-gray-400 ml-1">{subtitle}</span>}
+        {subtitle && <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">{subtitle}</span>}
       </div>
     </div>
   )
@@ -223,11 +223,11 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
   // Show at least a message if no classes
   if (classItems.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-900">Class Status Board</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100">Class Status Board</h3>
         </div>
-        <p className="text-sm text-gray-500">No classes scheduled for today.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No classes scheduled for today.</p>
       </div>
     )
   }
@@ -235,10 +235,10 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
   const hasLiveClass = classItems.some((c) => c.status === 'live')
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="font-bold text-gray-900">Class Status Board</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100">Class Status Board</h3>
           {hasLiveClass && (
             <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-full">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
@@ -254,10 +254,10 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
       <div className="space-y-3">
         {classItems.map((cls, i) => (
           <div key={i} className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-500 w-16 tabular-nums">{cls.time}</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 w-16 tabular-nums">{cls.time}</span>
             <span className={cn(
               'text-sm font-semibold flex-1',
-              cls.isGuided ? 'text-violet-600' : 'text-gray-900'
+              cls.isGuided ? 'text-violet-600' : 'text-gray-900 dark:text-gray-100'
             )}>
               {cls.name}
             </span>
@@ -268,7 +268,7 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
               </span>
             )}
             <div className="flex items-center gap-2 w-24">
-              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                 <motion.div
                   className={cn(
                     'h-full rounded-full',
@@ -280,7 +280,7 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
                   transition={{ duration: 0.8, ease: 'easeOut', delay: i * 0.1 }}
                 />
               </div>
-              <span className="text-xs font-bold text-gray-500 tabular-nums w-8 text-right">
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 tabular-nums w-8 text-right">
                 {cls.booked}/{cls.capacity}
               </span>
             </div>
@@ -288,7 +288,7 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
         ))}
       </div>
 
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
+      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 bg-emerald-500 rounded-full" />
           Cold Plunges: 4/6 available
@@ -349,18 +349,18 @@ function TodaysTimeline({ classes }: { classes: ClassData[] }) {
 
   if (entries.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h3 className="font-bold text-gray-900">Today&apos;s Timeline</h3>
-        <p className="text-sm text-gray-500 mt-4">No classes scheduled for today.</p>
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+        <h3 className="font-bold text-gray-900 dark:text-gray-100">Today&apos;s Timeline</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">No classes scheduled for today.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-gray-900">Today&apos;s Timeline</h3>
-        <span className="text-xs font-medium text-gray-400 tabular-nums">{currentTimeStr}</span>
+        <h3 className="font-bold text-gray-900 dark:text-gray-100">Today&apos;s Timeline</h3>
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 tabular-nums">{currentTimeStr}</span>
       </div>
 
       <div className="space-y-4">
@@ -375,20 +375,20 @@ function TodaysTimeline({ classes }: { classes: ClassData[] }) {
             </div>
             <div className="flex-1 pb-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-900">{entry.time}</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{entry.time}</span>
                 {entry.status === 'live' && (
                   <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] font-bold uppercase rounded-full">Live</span>
                 )}
               </div>
               <p className={cn(
                 'text-sm font-semibold mt-0.5',
-                entry.isGuided ? 'text-violet-600' : 'text-gray-700'
+                entry.isGuided ? 'text-violet-600' : 'text-gray-700 dark:text-gray-300'
               )}>
                 {entry.label}
               </p>
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {entry.names.map((name, j) => (
-                  <span key={j} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                  <span key={j} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-medium rounded-full">
                     {name}
                   </span>
                 ))}
@@ -405,18 +405,18 @@ function TodaysTimeline({ classes }: { classes: ClassData[] }) {
 function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
   if (activities.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h3 className="font-bold text-gray-900">Activity Feed</h3>
-        <p className="text-sm text-gray-500 mt-4">No recent activity.</p>
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+        <h3 className="font-bold text-gray-900 dark:text-gray-100">Activity Feed</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">No recent activity.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="font-bold text-gray-900">Activity Feed</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100">Activity Feed</h3>
           <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-full">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
             Live
@@ -434,13 +434,13 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
           const detail = parts.slice(1).join(' — ')
 
           return (
-            <div key={activity.id} className="flex items-start gap-3 py-2 px-2 rounded-xl hover:bg-gray-50/80 transition-colors cursor-pointer">
+            <div key={activity.id} className="flex items-start gap-3 py-2 px-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors cursor-pointer">
               <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', color)} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{mainText}</p>
-                {detail && <p className="text-xs text-gray-500">{detail}</p>}
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{mainText}</p>
+                {detail && <p className="text-xs text-gray-500 dark:text-gray-400">{detail}</p>}
               </div>
-              <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">{time}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0">{time}</span>
             </div>
           )
         })}

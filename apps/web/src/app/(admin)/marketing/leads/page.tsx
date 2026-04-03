@@ -122,9 +122,9 @@ function SortableLeadCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group relative rounded-xl border bg-white p-3 shadow-sm transition-all',
+        'group relative rounded-xl border bg-white dark:bg-gray-950 p-3 shadow-sm transition-all',
         isDragging ? 'z-50 opacity-50 shadow-lg' : 'hover:shadow-md',
-        isSelected ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-gray-200'
+        isSelected ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-gray-200 dark:border-gray-800'
       )}
     >
       <div className="flex items-start gap-2">
@@ -149,7 +149,7 @@ function SortableLeadCard({
           <div className="flex items-center justify-between">
             <Link
               href={`/marketing/leads/${lead.id}`}
-              className="truncate text-sm font-semibold text-gray-900 hover:text-indigo-600 transition-colors"
+              className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition-colors"
             >
               {lead.firstName} {lead.lastName}
             </Link>
@@ -158,14 +158,14 @@ function SortableLeadCard({
               {...listeners}
               className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <GripVertical className="h-4 w-4 text-gray-400" />
+              <GripVertical className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
 
-          <p className="truncate text-xs text-gray-500 mt-0.5">{lead.email}</p>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400 mt-0.5">{lead.email}</p>
 
           <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-400">
               <SourceIcon className="h-3 w-3" />
               {SOURCE_LABELS[lead.source]}
             </span>
@@ -175,7 +175,7 @@ function SortableLeadCard({
           </div>
 
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-[10px] text-gray-400">{lead.lastActivity}</span>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">{lead.lastActivity}</span>
             {lead.assignedTo && (
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-[9px] font-bold text-indigo-700">
                 {lead.assignedTo.initials}
@@ -202,18 +202,18 @@ function KanbanColumn({
 }) {
   return (
     <div className="flex w-72 shrink-0 flex-col lg:w-auto lg:flex-1">
-      <div className={cn('mb-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm border-t-4', column.borderColor)}>
+      <div className={cn('mb-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-3 shadow-sm border-t-4', column.borderColor)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">{column.label}</span>
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gray-100 px-1.5 text-[10px] font-bold text-gray-600">
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{column.label}</span>
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-1.5 text-[10px] font-bold text-gray-600 dark:text-gray-400">
               {leads.length}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto rounded-xl bg-gray-50/50 p-2" style={{ minHeight: 200 }}>
+      <div className="flex flex-1 flex-col gap-2 overflow-y-auto rounded-xl bg-gray-50 dark:bg-gray-900/50 p-2" style={{ minHeight: 200 }}>
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((lead) => (
             <SortableLeadCard
@@ -226,7 +226,7 @@ function KanbanColumn({
         </SortableContext>
         {leads.length === 0 && (
           <div className="flex flex-1 items-center justify-center py-8">
-            <p className="text-xs text-gray-400">No leads</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">No leads</p>
           </div>
         )}
       </div>
@@ -240,15 +240,15 @@ function DragOverlayCard({ lead }: { lead: Lead }) {
   const scoreColor = lead.score >= 70 ? 'bg-emerald-100 text-emerald-700' : lead.score >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
 
   return (
-    <div className="w-72 rounded-xl border border-indigo-200 bg-white p-3 shadow-xl ring-2 ring-indigo-100 lg:w-56">
+    <div className="w-72 rounded-xl border border-indigo-200 bg-white dark:bg-gray-950 p-3 shadow-xl ring-2 ring-indigo-100 lg:w-56">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900">
+          <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
             {lead.firstName} {lead.lastName}
           </p>
-          <p className="truncate text-xs text-gray-500 mt-0.5">{lead.email}</p>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400 mt-0.5">{lead.email}</p>
           <div className="mt-2 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-400">
               <SourceIcon className="h-3 w-3" />
               {SOURCE_LABELS[lead.source]}
             </span>
@@ -285,67 +285,67 @@ function QuickAddModal({ onClose, onAdd }: { onClose: () => void; onAdd: (lead: 
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-bold text-gray-900">Add New Lead</h3>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-gray-100 transition-colors">
-            <X className="h-4 w-4 text-gray-500" />
+          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Add New Lead</h3>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <X className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">First Name</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">First Name</label>
               <input
                 value={form.firstName}
                 onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 placeholder="Sarah"
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Last Name</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Last Name</label>
               <input
                 value={form.lastName}
                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 placeholder="Mitchell"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Email</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Email</label>
             <input
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               placeholder="sarah@example.com"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Phone</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Phone</label>
             <input
               type="tel"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               placeholder="(813) 555-0100"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Source</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Source</label>
             <div className="relative mt-1">
               <select
                 value={form.source}
                 onChange={(e) => setForm({ ...form, source: e.target.value as LeadSource })}
-                className="w-full appearance-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               >
                 <option value="website">Website</option>
                 <option value="instagram">Instagram</option>
@@ -353,13 +353,13 @@ function QuickAddModal({ onClose, onAdd }: { onClose: () => void; onAdd: (lead: 
                 <option value="walk_in">Walk-in</option>
                 <option value="campaign">Campaign</option>
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
         </div>
 
         <div className="mt-6 flex gap-3">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             Cancel
           </button>
           <button
@@ -540,18 +540,18 @@ export default function LeadPipelinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-[1440px] px-6 py-8">
         {/* Header */}
         <motion.div {...fadeInUp} className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-black text-gray-900">Lead Pipeline</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">Lead Pipeline</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {leads.length} leads &middot; {leads.filter((l) => l.status === 'converted').length} converted this month
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors">
+            <button className="inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <Code2 className="h-4 w-4" />
               Embed Form
             </button>
@@ -568,12 +568,12 @@ export default function LeadPipelinePage() {
         {/* Filters */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.05 }} className="mb-6 flex flex-wrap items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search leads..."
-              className="w-56 rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="w-56 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-2 pl-9 pr-3 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
@@ -581,7 +581,7 @@ export default function LeadPipelinePage() {
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value as LeadSource | 'all')}
-              className="appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2 pr-8 text-sm text-gray-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="appearance-none rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2 pr-8 text-sm text-gray-700 dark:text-gray-300 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             >
               <option value="all">All Sources</option>
               <option value="website">Website</option>
@@ -590,26 +590,26 @@ export default function LeadPipelinePage() {
               <option value="walk_in">Walk-in</option>
               <option value="campaign">Campaign</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           </div>
 
           <div className="relative">
             <select
               value={assignedFilter}
               onChange={(e) => setAssignedFilter(e.target.value)}
-              className="appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2 pr-8 text-sm text-gray-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="appearance-none rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2 pr-8 text-sm text-gray-700 dark:text-gray-300 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             >
               <option value="all">All Assigned</option>
               <option value="Zach">Zach</option>
               <option value="Whitney">Whitney</option>
               <option value="unassigned">Unassigned</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 shadow-sm">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-500">Score: 0 &ndash; 100</span>
+          <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2 shadow-sm">
+            <Filter className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+            <span className="text-sm text-gray-500 dark:text-gray-400">Score: 0 &ndash; 100</span>
           </div>
         </motion.div>
 
@@ -646,22 +646,22 @@ export default function LeadPipelinePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-gray-200 bg-white px-6 py-3 shadow-xl"
+              className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-6 py-3 shadow-xl"
             >
-              <span className="text-sm font-semibold text-gray-900">{selectedIds.size} selected</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedIds.size} selected</span>
               <div className="h-5 w-px bg-gray-200" />
               <button
                 onClick={() => handleBulkStatusChange('contacted')}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 Assign
               </button>
-              <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+              <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 <Tag className="h-3.5 w-3.5" />
                 Tag
               </button>
-              <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+              <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 <Mail className="h-3.5 w-3.5" />
                 Email
               </button>
@@ -674,9 +674,9 @@ export default function LeadPipelinePage() {
               </button>
               <button
                 onClick={() => setSelectedIds(new Set())}
-                className="rounded-lg p-1.5 hover:bg-gray-100 transition-colors"
+                className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <X className="h-4 w-4 text-gray-400" />
+                <X className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </button>
             </motion.div>
           )}

@@ -106,7 +106,7 @@ export function CommandPalette() {
                 <span>{item.label}</span>
                 {item.shortcut && (
                   <CommandShortcut>
-                    <kbd className="pointer-events-none inline-flex h-5 items-center rounded border border-gray-200 bg-gray-50 px-1.5 font-mono text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                    <kbd className="pointer-events-none inline-flex h-5 items-center rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-1.5 font-mono text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
                       {item.shortcut}
                     </kbd>
                   </CommandShortcut>
@@ -129,7 +129,7 @@ export function CommandPalette() {
                 <span>{item.label}</span>
                 {item.shortcut && (
                   <CommandShortcut>
-                    <kbd className="pointer-events-none inline-flex h-5 items-center rounded border border-gray-200 bg-gray-50 px-1.5 font-mono text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                    <kbd className="pointer-events-none inline-flex h-5 items-center rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-1.5 font-mono text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
                       {item.shortcut}
                     </kbd>
                   </CommandShortcut>

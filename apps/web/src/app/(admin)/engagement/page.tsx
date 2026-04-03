@@ -63,6 +63,11 @@ interface Challenge {
 }
 
 // ─── Static data for achievements and challenges (config, not DB data) ───
+// TODO: Achievements and challenges are currently static placeholders.
+// These need a gamification engine: an achievements table, a member_achievements
+// join table, and a challenges table with participant tracking. The memberCount
+// and participants fields below are stubs — the UI renders placeholder states
+// until the data pipeline is built.
 const ACHIEVEMENTS: Achievement[] = [
   { id: '100-sessions', name: '100 Sessions', icon: Trophy, color: 'text-emerald-500', iconBg: 'bg-emerald-100', description: 'Reach 100 total visits', criteria: 'Visit 100 times', memberCount: 0 },
   { id: 'streak-warrior', name: 'Streak Warrior', icon: Flame, color: 'text-orange-500', iconBg: 'bg-orange-100', description: 'Maintain a 7-day streak', criteria: '7-day visit streak', memberCount: 0 },
@@ -106,7 +111,7 @@ function RankBadge({ rank }: { rank: number }) {
     )
   }
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-sm font-bold text-gray-500 dark:text-gray-400">
       {rank}
     </div>
   )
@@ -118,7 +123,7 @@ function MemberBadge({ badge }: { badge: string }) {
     Legend: 'bg-amber-50 text-amber-600 border-amber-200',
     Elite: 'bg-violet-50 text-violet-600 border-violet-200',
     Pro: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-    Regular: 'bg-gray-50 text-gray-500 border-gray-200',
+    Regular: 'bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800',
   }
   return (
     <span
@@ -159,23 +164,23 @@ export default function EngagementPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] p-6 lg:p-8">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8">
       {/* Header */}
       <motion.div {...fadeInUp} className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Engagement</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Engagement</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Gamification, leaderboards, and member challenges
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 shadow-sm">
-              <Users className="h-4 w-4 text-gray-400" />
-              <span className="text-sm font-semibold text-gray-900">
+            <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 shadow-sm">
+              <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {activeMemberCount !== null ? activeMemberCount : '\u2014'}
               </span>
-              <span className="text-sm text-gray-500">active members</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">active members</span>
             </div>
           </div>
         </div>
@@ -183,7 +188,7 @@ export default function EngagementPage() {
 
       {/* Pill Tabs */}
       <motion.div {...fadeInUp} className="mb-6">
-        <div className="inline-flex rounded-xl bg-gray-100 p-1">
+        <div className="inline-flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -191,8 +196,8 @@ export default function EngagementPage() {
               className={cn(
                 'rounded-lg px-5 py-2 text-sm font-semibold transition-all',
                 activeTab === tab.key
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               )}
             >
               {tab.label}
@@ -226,6 +231,12 @@ function LeaderboardTab() {
         .order('total_visits', { ascending: false })
         .limit(50)
 
+      // TODO: Streak and referral data pipelines needed.
+      // - currentStreak requires a visit_streaks table or daily aggregation job
+      //   that calculates consecutive-day visit sequences per member.
+      // - referrals requires a referrals table tracking referrer_id -> referred_member_id
+      //   with conversion timestamps. Trainer promo codes exist but member-to-member
+      //   referral tracking is not yet implemented.
       const members: LeaderboardMember[] = (data ?? []).map((m: any, i: number) => {
         const visits = m.total_visits ?? 0
         let badge = 'Regular'
@@ -237,8 +248,8 @@ function LeaderboardTab() {
           rank: i + 1,
           name: m.profiles?.full_name ?? 'Unknown',
           totalVisits: visits,
-          currentStreak: 0, // Not tracked in members table
-          referrals: 0, // Not tracked in members table
+          currentStreak: -1, // -1 signals "not tracked yet" — rendered as "--" in UI
+          referrals: -1, // -1 signals "not tracked yet" — rendered as "--" in UI
           ltv: m.lifetime_value ?? 0,
           badge,
         }
@@ -252,7 +263,7 @@ function LeaderboardTab() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm p-5">
         <div className="space-y-4">
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4">
@@ -269,9 +280,9 @@ function LeaderboardTab() {
 
   if (leaderboard.length === 0) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-12 text-center">
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm p-12 text-center">
         <Trophy className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-        <p className="text-sm text-gray-400">No leaderboard data yet</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">No leaderboard data yet</p>
       </div>
     )
   }
@@ -282,16 +293,16 @@ function LeaderboardTab() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
     >
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
         {/* Table Header */}
-        <div className="grid grid-cols-[56px_1fr_100px_100px_90px_100px_90px] gap-4 border-b border-gray-100 px-5 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Rank</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Name</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Visits</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Streak</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Referrals</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">LTV</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Badge</p>
+        <div className="grid grid-cols-[56px_1fr_100px_100px_90px_100px_90px] gap-4 border-b border-gray-100 dark:border-gray-800 px-5 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Rank</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Name</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Visits</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Streak</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Referrals</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">LTV</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Badge</p>
         </div>
 
         {/* Table Rows */}
@@ -306,7 +317,7 @@ function LeaderboardTab() {
               ease: [0.25, 1, 0.5, 1],
             }}
             className={cn(
-              'grid grid-cols-[56px_1fr_100px_100px_90px_100px_90px] items-center gap-4 border-b border-gray-50 px-5 py-3.5 transition-colors hover:bg-gray-50',
+              'grid grid-cols-[56px_1fr_100px_100px_90px_100px_90px] items-center gap-4 border-b border-gray-50 px-5 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
               member.rank <= 3 && 'bg-gradient-to-r from-amber-50/50 to-transparent'
             )}
           >
@@ -314,24 +325,32 @@ function LeaderboardTab() {
               <RankBadge rank={member.rank} />
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-400">
                 {member.name
                   .split(' ')
                   .map((n) => n[0])
                   .join('')}
               </div>
-              <p className="text-sm font-medium text-gray-900">{member.name}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{member.name}</p>
               {member.rank === 1 && <Crown className="h-4 w-4 text-amber-400" />}
             </div>
-            <p className="text-sm font-semibold tabular-nums text-gray-900">{member.totalVisits}</p>
+            <p className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{member.totalVisits}</p>
             <div className="flex items-center gap-1.5">
               <Flame className="h-3.5 w-3.5 text-orange-400" />
-              <p className="text-sm font-semibold tabular-nums text-gray-900">
-                {member.currentStreak}d
-              </p>
+              {member.currentStreak >= 0 ? (
+                <p className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+                  {member.currentStreak}d
+                </p>
+              ) : (
+                <span className="text-sm text-gray-400 dark:text-gray-500" title="Streak tracking coming soon">--</span>
+              )}
             </div>
-            <p className="text-sm tabular-nums text-gray-600">{member.referrals}</p>
-            <p className="text-sm font-semibold tabular-nums text-gray-900">
+            {member.referrals >= 0 ? (
+              <p className="text-sm tabular-nums text-gray-600 dark:text-gray-400">{member.referrals}</p>
+            ) : (
+              <span className="text-sm text-gray-400 dark:text-gray-500" title="Referral tracking coming soon">--</span>
+            )}
+            <p className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">
               ${member.ltv.toLocaleString()}
             </p>
             <MemberBadge badge={member.badge} />
@@ -358,7 +377,7 @@ function AchievementsTab() {
               delay: i * 0.05,
               ease: [0.25, 1, 0.5, 1],
             }}
-            className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:shadow-md"
+            className="group rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm transition-all hover:shadow-md"
           >
             <div
               className={cn(
@@ -368,13 +387,13 @@ function AchievementsTab() {
             >
               <Icon className={cn('h-6 w-6', achievement.color)} />
             </div>
-            <h3 className="mt-4 text-sm font-semibold text-gray-900">{achievement.name}</h3>
-            <p className="mt-1 text-xs text-gray-500">{achievement.description}</p>
-            <div className="mt-4 rounded-lg bg-gray-50 px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <h3 className="mt-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{achievement.name}</h3>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{achievement.description}</p>
+            <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                 Unlock Criteria
               </p>
-              <p className="mt-0.5 text-xs font-medium text-gray-700">{achievement.criteria}</p>
+              <p className="mt-0.5 text-xs font-medium text-gray-700 dark:text-gray-300">{achievement.criteria}</p>
             </div>
           </motion.div>
         )
@@ -397,7 +416,7 @@ function ChallengesTab() {
             delay: i * 0.05,
             ease: [0.25, 1, 0.5, 1],
           }}
-          className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+          className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm"
         >
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
@@ -406,7 +425,7 @@ function ChallengesTab() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-semibold text-gray-900">{challenge.name}</h3>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{challenge.name}</h3>
                   <span
                     className={cn(
                       'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest',
@@ -418,11 +437,11 @@ function ChallengesTab() {
                     {challenge.status === 'active' ? 'Active' : 'Ongoing'}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-gray-500">{challenge.description}</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{challenge.description}</p>
               </div>
             </div>
             <div className="text-right">
-              <div className="flex items-center gap-1.5 text-gray-400">
+              <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
                 <Clock className="h-3.5 w-3.5" />
                 <span className="text-xs font-medium">{challenge.endDate}</span>
               </div>
@@ -432,14 +451,14 @@ function ChallengesTab() {
           {/* Progress Bar */}
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                 Progress
               </p>
-              <p className="text-xs font-semibold tabular-nums text-gray-700">
+              <p className="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-300">
                 {challenge.progress} / {challenge.total}
               </p>
             </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{
@@ -455,9 +474,9 @@ function ChallengesTab() {
           <div className="mt-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500">
-                  <span className="font-semibold text-gray-700">{challenge.participants}</span>{' '}
+                <Users className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">{challenge.participants}</span>{' '}
                   participants
                 </span>
               </div>

@@ -34,34 +34,34 @@ export default function EmailPreview({
   return (
     <div
       className={cn(
-        'bg-white border border-gray-200 rounded-xl overflow-hidden transition-all duration-300 mx-auto',
+        'bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden transition-all duration-300 mx-auto',
         mode === 'desktop' ? 'max-w-full' : 'max-w-[375px]'
       )}
     >
-      <div className="border-b border-gray-100 px-4 py-3 bg-gray-50/50">
+      <div className="border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-gray-50 dark:bg-gray-900/50">
         <div className="flex items-center gap-2 mb-1">
           <div className="h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center">
             <span className="text-[10px] font-bold text-white">M</span>
           </div>
-          <span className="text-xs font-semibold text-gray-700">The Sauna Guys</span>
-          <span className="text-[10px] text-gray-400 ml-auto">Just now</span>
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">The Sauna Guys</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">Just now</span>
         </div>
-        <p className="text-sm font-semibold text-gray-900 truncate">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
           {renderedSubject || 'No subject'}
         </p>
         {previewText && (
-          <p className="text-xs text-gray-400 truncate mt-0.5">{previewText}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">{previewText}</p>
         )}
       </div>
       <div className="p-4">
         {renderedBody ? (
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+          <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
             {renderedBody}
           </div>
         ) : (
           <div className="text-center py-8">
             <Mail className="h-8 w-8 text-gray-200 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">Start typing to see preview</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Start typing to see preview</p>
           </div>
         )}
       </div>

@@ -142,13 +142,13 @@ export default function NewPostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-[720px] px-6 py-8">
         {/* Back Link */}
         <motion.div {...fadeInUp}>
           <Link
             href="/marketing/content"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Content Hub
@@ -157,13 +157,13 @@ export default function NewPostPage() {
 
         {/* Header */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.05 }} className="mb-8">
-          <h1 className="text-2xl font-black text-gray-900">New Post</h1>
-          <p className="mt-1 text-sm text-gray-500">Create content for your community board</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">New Post</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create content for your community board</p>
         </motion.div>
 
         {/* Post Type Selector */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.1 }} className="mb-6">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Post Type</label>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Post Type</label>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {POST_TYPES.map((type) => {
               const Icon = type.icon
@@ -176,16 +176,16 @@ export default function NewPostPage() {
                     'flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition-all',
                     isSelected
                       ? `border-transparent ${type.bgColor} ring-2 ${type.ringColor} shadow-sm`
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                      : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:border-gray-300 hover:shadow-sm'
                   )}
                 >
                   <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', type.bgColor)}>
                     <Icon className={cn('h-5 w-5', type.color)} />
                   </div>
-                  <span className={cn('text-xs font-semibold', isSelected ? 'text-gray-900' : 'text-gray-700')}>
+                  <span className={cn('text-xs font-semibold', isSelected ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300')}>
                     {type.label}
                   </span>
-                  <span className="text-[10px] text-gray-400 text-center leading-tight">{type.description}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 text-center leading-tight">{type.description}</span>
                   {isSelected && (
                     <motion.div
                       initial={{ scale: 0 }}
@@ -203,35 +203,35 @@ export default function NewPostPage() {
 
         {/* Title */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.15 }} className="mb-6">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
             Title <span className="font-normal text-gray-300">(optional)</span>
           </label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Give your post a title..."
-            className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
         </motion.div>
 
         {/* Content */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.2 }} className="mb-6">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Content</label>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Content</label>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write your post content. Line breaks will be preserved..."
             rows={8}
-            className="mt-2 w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="mt-2 w-full resize-none rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3 text-sm leading-relaxed text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
           <div className="mt-1.5 flex justify-end">
-            <span className="text-[10px] text-gray-400 tabular-nums">{content.length} characters</span>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">{content.length} characters</span>
           </div>
         </motion.div>
 
         {/* Image Upload */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.25 }} className="mb-6">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Image</label>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Image</label>
           {!imagePreview ? (
             <div
               onDragOver={(e) => {
@@ -241,36 +241,36 @@ export default function NewPostPage() {
               onDragLeave={() => setIsDragOver(false)}
               onDrop={handleDrop}
               className={cn(
-                'mt-2 flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white py-10 transition-all',
-                isDragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
+                'mt-2 flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white dark:bg-gray-950 py-10 transition-all',
+                isDragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
               )}
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50 mb-3">
-                <Upload className={cn('h-6 w-6', isDragOver ? 'text-indigo-500' : 'text-gray-400')} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 mb-3">
+                <Upload className={cn('h-6 w-6', isDragOver ? 'text-indigo-500' : 'text-gray-400 dark:text-gray-500')} />
               </div>
-              <p className="text-sm font-medium text-gray-700">Drop an image here, or</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Drop an image here, or</p>
               <button
                 onClick={handleFileSelect}
                 className="mt-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
               >
                 browse to upload
               </button>
-              <p className="mt-2 text-[10px] text-gray-400">Upload to Supabase Storage &middot; PNG, JPG up to 5 MB</p>
+              <p className="mt-2 text-[10px] text-gray-400 dark:text-gray-500">Upload to Supabase Storage &middot; PNG, JPG up to 5 MB</p>
             </div>
           ) : (
-            <div className="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+            <div className="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-3 shadow-sm">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50">
                 <Image className="h-5 w-5 text-indigo-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900 truncate">{imagePreview}</p>
-                <p className="text-[10px] text-gray-400">Image ready to upload</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{imagePreview}</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">Image ready to upload</p>
               </div>
               <button
                 onClick={() => setImagePreview(null)}
-                className="rounded-lg p-1.5 hover:bg-gray-100 transition-colors"
+                className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <X className="h-4 w-4 text-gray-400" />
+                <X className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </button>
             </div>
           )}
@@ -278,7 +278,7 @@ export default function NewPostPage() {
 
         {/* Visibility */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.3 }} className="mb-6">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Visibility</label>
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Visibility</label>
           <div className="mt-3 space-y-2">
             {VISIBILITY_OPTIONS.map((opt) => {
               const Icon = opt.icon
@@ -290,7 +290,7 @@ export default function NewPostPage() {
                     'flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3.5 transition-all',
                     isSelected
                       ? 'border-indigo-500 bg-indigo-50/50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
+                      : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:border-gray-300'
                   )}
                 >
                   <input
@@ -305,14 +305,14 @@ export default function NewPostPage() {
                     'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all',
                     isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'
                   )}>
-                    {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white dark:bg-gray-950" />}
                   </div>
-                  <Icon className={cn('h-4 w-4 shrink-0', isSelected ? 'text-indigo-600' : 'text-gray-400')} />
+                  <Icon className={cn('h-4 w-4 shrink-0', isSelected ? 'text-indigo-600' : 'text-gray-400 dark:text-gray-500')} />
                   <div>
-                    <p className={cn('text-sm font-semibold', isSelected ? 'text-gray-900' : 'text-gray-700')}>
+                    <p className={cn('text-sm font-semibold', isSelected ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300')}>
                       {opt.label}
                     </p>
-                    <p className="text-[10px] text-gray-400">{opt.description}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{opt.description}</p>
                   </div>
                 </label>
               )
@@ -326,7 +326,7 @@ export default function NewPostPage() {
             onClick={() => setPinned(!pinned)}
             className={cn(
               'flex w-full items-center gap-3 rounded-xl border-2 p-3.5 transition-all',
-              pinned ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 bg-white hover:border-gray-300'
+              pinned ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:border-gray-300'
             )}
           >
             <div className={cn(
@@ -335,10 +335,10 @@ export default function NewPostPage() {
             )}>
               {pinned && <Check className="h-3 w-3 text-white" />}
             </div>
-            <Pin className={cn('h-4 w-4 shrink-0', pinned ? 'text-indigo-600' : 'text-gray-400')} />
+            <Pin className={cn('h-4 w-4 shrink-0', pinned ? 'text-indigo-600' : 'text-gray-400 dark:text-gray-500')} />
             <div className="text-left">
-              <p className={cn('text-sm font-semibold', pinned ? 'text-gray-900' : 'text-gray-700')}>Pin this post</p>
-              <p className="text-[10px] text-gray-400">Pinned posts appear at the top of the feed</p>
+              <p className={cn('text-sm font-semibold', pinned ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300')}>Pin this post</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500">Pinned posts appear at the top of the feed</p>
             </div>
           </button>
         </motion.div>
@@ -356,7 +356,7 @@ export default function NewPostPage() {
           <button
             onClick={() => handleSubmit('draft')}
             disabled={saving || !isValid}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save as Draft
@@ -373,7 +373,7 @@ export default function NewPostPage() {
 
         {/* Preview hint */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.45 }} className="mt-4 text-center">
-          <button className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+          <button className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             <Eye className="h-3.5 w-3.5" />
             Preview before publishing
           </button>

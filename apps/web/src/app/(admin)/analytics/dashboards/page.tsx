@@ -43,12 +43,12 @@ const DASHBOARDS = [
 
 export default function DashboardsPage() {
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp}>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboards</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboards</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             Pre-built dashboards for different roles and use cases
           </p>
         </motion.div>
@@ -67,7 +67,7 @@ export default function DashboardsPage() {
                 <Link
                   href={dashboard.href}
                   className={cn(
-                    'block bg-white rounded-2xl border border-gray-200 shadow-sm p-6 transition-all hover:shadow-md group',
+                    'block bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 transition-all hover:shadow-md group',
                     dashboard.borderColor
                   )}
                 >
@@ -80,8 +80,8 @@ export default function DashboardsPage() {
                     <Icon className="w-6 h-6" />
                   </div>
 
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">{dashboard.title}</h2>
-                  <p className="text-sm text-gray-500 leading-relaxed mb-4">{dashboard.description}</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{dashboard.title}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4">{dashboard.description}</p>
 
                   <div className="flex items-center gap-1 text-sm font-semibold text-indigo-600 group-hover:text-indigo-700 transition-colors">
                     View Dashboard

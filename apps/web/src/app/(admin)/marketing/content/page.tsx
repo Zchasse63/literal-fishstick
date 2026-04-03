@@ -92,25 +92,25 @@ function PostCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       className={cn(
-        'rounded-2xl border bg-white shadow-sm transition-all hover:shadow-md',
-        post.pinned ? 'border-indigo-200 ring-1 ring-indigo-100' : 'border-gray-200'
+        'rounded-2xl border bg-white dark:bg-gray-950 shadow-sm transition-all hover:shadow-md',
+        post.pinned ? 'border-indigo-200 ring-1 ring-indigo-100' : 'border-gray-200 dark:border-gray-800'
       )}
     >
       <div className="p-5">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300">
               {post.author.initials}
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900">{post.author.name}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{post.author.name}</span>
                 <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize', ROLE_COLORS[post.author.role])}>
                   {post.author.role}
                 </span>
               </div>
-              <span className="text-xs text-gray-400">{post.createdAt}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{post.createdAt}</span>
             </div>
           </div>
 
@@ -122,7 +122,7 @@ function PostCard({
               </span>
             )}
             {post.status === 'draft' && (
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Draft</span>
+              <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400">Draft</span>
             )}
             <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', typeConfig.bgColor, typeConfig.color)}>
               <TypeIcon className="h-3 w-3" />
@@ -133,9 +133,9 @@ function PostCard({
             <div className="relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="rounded-lg p-1.5 hover:bg-gray-100 transition-colors"
+                className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                <MoreHorizontal className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </button>
               <AnimatePresence>
                 {showMenu && (
@@ -143,21 +143,21 @@ function PostCard({
                     initial={{ opacity: 0, scale: 0.95, y: -4 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                    className="absolute right-0 top-full z-20 mt-1 w-40 rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                    className="absolute right-0 top-full z-20 mt-1 w-40 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-1 shadow-lg"
                   >
                     <button
                       onClick={() => {
                         onTogglePin(post.id)
                         setShowMenu(false)
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       {post.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                       {post.pinned ? 'Unpin' : 'Pin'}
                     </button>
                     <button
                       onClick={() => setShowMenu(false)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       <Edit3 className="h-4 w-4" />
                       Edit
@@ -180,24 +180,24 @@ function PostCard({
         </div>
 
         {/* Content */}
-        {post.title && <h3 className="mb-1.5 text-base font-bold text-gray-900">{post.title}</h3>}
-        <p className="text-sm leading-relaxed text-gray-700 line-clamp-3">{post.content}</p>
+        {post.title && <h3 className="mb-1.5 text-base font-bold text-gray-900 dark:text-gray-100">{post.title}</h3>}
+        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 line-clamp-3">{post.content}</p>
 
         {/* Image preview */}
         {post.imageUrl && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
-            <Image className="h-4 w-4 text-gray-400" />
-            <span className="text-xs text-gray-500">Image attached</span>
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2">
+            <Image className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">Image attached</span>
           </div>
         )}
 
         {/* Engagement */}
-        <div className="mt-4 flex items-center gap-4 border-t border-gray-100 pt-3">
-          <button className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 transition-colors">
+        <div className="mt-4 flex items-center gap-4 border-t border-gray-100 dark:border-gray-800 pt-3">
+          <button className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors">
             <Heart className="h-3.5 w-3.5" />
             <span className="tabular-nums font-medium">{post.likes}</span>
           </button>
-          <button className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-indigo-600 transition-colors">
+          <button className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition-colors">
             <MessageCircle className="h-3.5 w-3.5" />
             <span className="tabular-nums font-medium">{post.comments}</span>
           </button>
@@ -311,13 +311,13 @@ export default function ContentHubPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-[960px] px-6 py-8">
         {/* Header */}
         <motion.div {...fadeInUp} className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-black text-gray-900">Content Hub</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">Content Hub</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {stats.published} published &middot; {stats.totalLikes} likes &middot; {stats.totalComments} comments
             </p>
           </div>
@@ -338,9 +338,9 @@ export default function ContentHubPage() {
             { label: 'Total Likes', value: stats.totalLikes },
             { label: 'Total Comments', value: stats.totalComments },
           ].map((stat) => (
-            <div key={stat.label} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{stat.label}</p>
-              <p className="mt-1 text-[28px] font-black text-gray-900 tabular-nums">{stat.value}</p>
+            <div key={stat.label} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>
+              <p className="mt-1 text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums">{stat.value}</p>
             </div>
           ))}
         </motion.div>
@@ -357,7 +357,7 @@ export default function ContentHubPage() {
                   'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
                   typeFilter === f.value
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
                 )}
               >
                 {f.label}
@@ -371,24 +371,24 @@ export default function ContentHubPage() {
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as AuthorRole | 'all')}
-                className="appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2 pr-8 text-sm text-gray-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="appearance-none rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2 pr-8 text-sm text-gray-700 dark:text-gray-300 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               >
                 <option value="all">All Roles</option>
                 <option value="owner">Owner</option>
                 <option value="manager">Manager</option>
                 <option value="trainer">Trainer</option>
               </select>
-              <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             </div>
 
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search posts..."
-                className="w-48 rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="w-48 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-2 pl-9 pr-3 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               />
             </div>
           </div>
@@ -407,13 +407,13 @@ export default function ContentHubPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white py-16"
+                className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white dark:bg-gray-950 py-16"
               >
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 mb-4">
                   <FileText className="h-7 w-7 text-indigo-400" />
                 </div>
-                <h3 className="text-base font-bold text-gray-900">Start engaging your community</h3>
-                <p className="mt-1 text-sm text-gray-500">Create your first post to connect with members</p>
+                <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Start engaging your community</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create your first post to connect with members</p>
                 <Link
                   href="/marketing/content/new"
                   className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"

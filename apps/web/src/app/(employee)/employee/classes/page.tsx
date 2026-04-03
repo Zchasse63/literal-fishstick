@@ -66,44 +66,44 @@ export default function ClassesPage() {
     <div className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
-        <h1 className="text-2xl font-bold text-gray-900">My Classes</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Manage and track your instructor sessions</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Classes</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage and track your instructor sessions</p>
       </motion.div>
 
       {/* Period Totals */}
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.05 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
       >
-        <h3 className="text-sm font-bold text-gray-900 mb-4">This Period</h3>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">This Period</h3>
         <div className="grid grid-cols-4 gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Classes Led</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Classes Led</p>
             <div className="flex items-center gap-2">
               <Dumbbell className="w-4 h-4 text-indigo-500" />
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{totalClasses}</p>
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{totalClasses}</p>
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Avg Attendance</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Avg Attendance</p>
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-violet-500" />
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">{avgAttendance}</p>
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">{avgAttendance}</p>
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Bonuses Earned</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Bonuses Earned</p>
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-emerald-500" />
               <p className="text-[28px] font-black tabular-nums text-emerald-600 leading-none">${totalBonusEarned}</p>
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Hit Rate</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Hit Rate</p>
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-amber-500" />
-              <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none">
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">
                 {totalClasses > 0 ? Math.round((totalBonuses / totalClasses) * 100) : 0}%
               </p>
             </div>
@@ -115,28 +115,28 @@ export default function ClassesPage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.1 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
       >
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-bold text-gray-900">Upcoming Classes</h3>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Upcoming Classes</h3>
         </div>
         {upcoming.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-gray-400">No upcoming classes</div>
+          <div className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">No upcoming classes</div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-gray-100 dark:border-gray-800">
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Date & Time</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Date & Time</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Type</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Type</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Bookings</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Bookings</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Bonus Status</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Bonus Status</span>
                 </th>
               </tr>
             </thead>
@@ -147,19 +147,19 @@ export default function ClassesPage() {
                 const bonusStatus = cls.booked_count >= bonusThreshold ? 'on-track' : 'needs-more'
                 const status = bonusStatusConfig[bonusStatus]
                 return (
-                  <tr key={cls.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors">
+                  <tr key={cls.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-5 py-4">
-                      <p className="text-sm font-semibold text-gray-900">{date}</p>
-                      <p className="text-xs text-gray-500">{timeRange}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{date}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{timeRange}</p>
                     </td>
                     <td className="px-5 py-4">
-                      <span className="text-sm font-medium text-gray-700">{cls.class_types?.name ?? cls.title}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{cls.class_types?.name ?? cls.title}</span>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold tabular-nums text-gray-900">{cls.booked_count}</span>
-                        <span className="text-xs text-gray-400">/ {cls.capacity}</span>
-                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">{cls.booked_count}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">/ {cls.capacity}</span>
+                        <div className="w-16 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                           <div
                             className={cn(
                               'h-full rounded-full',
@@ -190,28 +190,28 @@ export default function ClassesPage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.15 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
       >
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-bold text-gray-900">Class History</h3>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Class History</h3>
         </div>
         {classLog.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-gray-400">No class history yet</div>
+          <div className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">No class history yet</div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-gray-100 dark:border-gray-800">
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Date & Time</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Date & Time</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Type</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Type</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Check-Ins</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Check-Ins</span>
                 </th>
                 <th className="text-left px-5 py-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Bonus</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Bonus</span>
                 </th>
               </tr>
             </thead>
@@ -228,18 +228,18 @@ export default function ClassesPage() {
                 const capacity = classData?.capacity ?? 12
 
                 return (
-                  <tr key={entry.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors">
+                  <tr key={entry.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-semibold text-gray-900">{date}</p>
-                      <p className="text-xs text-gray-500">{timeRange}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{date}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{timeRange}</p>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-sm font-medium text-gray-700">{typeName}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{typeName}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={cn(
                         'text-sm font-bold tabular-nums',
-                        entry.check_in_count >= bonusThreshold ? 'text-emerald-600' : 'text-gray-500'
+                        entry.check_in_count >= bonusThreshold ? 'text-emerald-600' : 'text-gray-500 dark:text-gray-400'
                       )}>
                         {entry.check_in_count}/{capacity}
                       </span>
@@ -251,7 +251,7 @@ export default function ClassesPage() {
                           +${entry.bonus_amount}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-400">
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-400 dark:text-gray-500">
                           <XCircle className="w-3.5 h-3.5" />
                           Missed
                         </span>

@@ -48,10 +48,10 @@ const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // ─── Helpers ────────────────────────────────────────────────
 const statusConfig: Record<CampaignStatus, { label: string; className: string }> = {
-  draft: { label: 'Draft', className: 'border border-gray-300 text-gray-500 bg-white' },
+  draft: { label: 'Draft', className: 'border border-gray-300 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-950' },
   scheduled: { label: 'Scheduled', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
   sending: { label: 'Sending', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
-  sent: { label: 'Sent', className: 'bg-gray-100 text-gray-600' },
+  sent: { label: 'Sent', className: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
   cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-600 border border-red-200' },
 }
 
@@ -81,8 +81,8 @@ function ChannelIcons({ channels }: { channels: Channel[] }) {
       {channels.map((ch) => {
         const Icon = channelIcon[ch]
         return (
-          <div key={ch} className="h-6 w-6 rounded-lg bg-gray-100 flex items-center justify-center" title={ch}>
-            <Icon className="h-3.5 w-3.5 text-gray-500" />
+          <div key={ch} className="h-6 w-6 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center" title={ch}>
+            <Icon className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
           </div>
         )
       })}
@@ -101,9 +101,9 @@ function ActionDropdown({ campaignId }: { campaignId: string }) {
           e.stopPropagation()
           setOpen(!open)
         }}
-        className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+        className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        <MoreHorizontal className="h-4 w-4 text-gray-400" />
+        <MoreHorizontal className="h-4 w-4 text-gray-400 dark:text-gray-500" />
       </button>
       <AnimatePresence>
         {open && (
@@ -114,7 +114,7 @@ function ActionDropdown({ campaignId }: { campaignId: string }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -4 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-10 z-20 w-44 bg-white rounded-xl border border-gray-200 shadow-lg py-1.5"
+              className="absolute right-0 top-10 z-20 w-44 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg py-1.5"
             >
               <button
                 onClick={(e) => {
@@ -122,9 +122,9 @@ function ActionDropdown({ campaignId }: { campaignId: string }) {
                   e.stopPropagation()
                   setOpen(false)
                 }}
-                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
-                <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 Edit
               </button>
               <button
@@ -133,12 +133,12 @@ function ActionDropdown({ campaignId }: { campaignId: string }) {
                   e.stopPropagation()
                   setOpen(false)
                 }}
-                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
-                <Copy className="h-3.5 w-3.5 text-gray-400" />
+                <Copy className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 Duplicate
               </button>
-              <div className="h-px bg-gray-100 my-1" />
+              <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
               <button
                 onClick={(e) => {
                   e.preventDefault()
@@ -213,16 +213,16 @@ export default function CampaignsPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA]"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Campaigns</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Create, manage, and track email and SMS campaigns</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Campaigns</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Create, manage, and track email and SMS campaigns</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-sm font-semibold hover:border-indigo-200 hover:text-indigo-600 transition-colors shadow-sm">
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:border-indigo-200 hover:text-indigo-600 transition-colors shadow-sm">
             <Sparkles className="h-4 w-4" />
             AI Generate
           </button>
@@ -248,7 +248,7 @@ export default function CampaignsPage() {
                 'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all',
                 statusFilter === filter
                   ? 'bg-indigo-600 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800'
+                  : 'bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 hover:text-gray-800 dark:text-gray-200'
               )}
             >
               {filter}
@@ -258,13 +258,13 @@ export default function CampaignsPage() {
 
         {/* Search */}
         <div className="flex-1 min-w-[200px] max-w-sm relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search campaigns..."
-            className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all"
+            className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all"
           />
         </div>
       </div>
@@ -272,17 +272,17 @@ export default function CampaignsPage() {
       {/* ─── Campaign Table ──────────────────────────────── */}
       <motion.div
         {...fadeInUp}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm"
       >
         {loading ? (
           <div className="py-16 text-center">
             <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">Loading campaigns...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Loading campaigns...</p>
           </div>
         ) : filteredCampaigns.length > 0 ? (
           <>
             {/* Table header */}
-            <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
+            <div className="flex items-center gap-4 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
               <div className="flex-1 min-w-0">Campaign</div>
               <div className="w-[80px]">Status</div>
               <div className="w-[84px]">Channels</div>
@@ -304,14 +304,14 @@ export default function CampaignsPage() {
                 >
                   <Link
                     href={`/marketing/campaigns/${campaign.id}`}
-                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 transition-colors group"
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors group"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-indigo-600 transition-colors">
                         {campaign.name}
                       </p>
                       {campaign.sentDate && (
-                        <p className="text-xs text-gray-400 mt-0.5">Sent {campaign.sentDate}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Sent {campaign.sentDate}</p>
                       )}
                       {campaign.scheduledDate && (
                         <p className="text-xs text-amber-500 mt-0.5">Scheduled for {campaign.scheduledDate}</p>
@@ -324,22 +324,22 @@ export default function CampaignsPage() {
                       <ChannelIcons channels={campaign.channels} />
                     </div>
                     <div className="w-20 text-right">
-                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                         {campaign.recipients > 0 ? campaign.recipients.toLocaleString() : '--'}
                       </p>
                     </div>
                     <div className="w-16 text-right">
-                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                         {campaign.openRate !== null ? `${campaign.openRate}%` : '--'}
                       </p>
                     </div>
                     <div className="w-16 text-right">
-                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                         {campaign.clickRate !== null ? `${campaign.clickRate}%` : '--'}
                       </p>
                     </div>
                     <div className="w-20 text-right">
-                      <p className="text-sm font-medium text-gray-700 tabular-nums">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                         {campaign.revenue !== null ? `$${campaign.revenue.toLocaleString()}` : '--'}
                       </p>
                     </div>
@@ -354,11 +354,11 @@ export default function CampaignsPage() {
         ) : (
           /* Empty state */
           <div className="py-16 text-center">
-            <div className="h-16 w-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
               <Inbox className="h-8 w-8 text-gray-300" />
             </div>
-            <h3 className="text-base font-bold text-gray-900 mb-1">No campaigns found</h3>
-            <p className="text-sm text-gray-400 mb-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">No campaigns found</h3>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
               {searchQuery
                 ? `No results for "${searchQuery}"`
                 : 'Get started by creating your first campaign'}
@@ -377,9 +377,9 @@ export default function CampaignsPage() {
       {/* Table footer with count */}
       {filteredCampaigns.length > 0 && (
         <div className="flex items-center justify-between mt-3 px-1">
-          <p className="text-xs text-gray-400">
-            Showing <span className="font-semibold text-gray-600">{filteredCampaigns.length}</span> of{' '}
-            <span className="font-semibold text-gray-600">{campaigns.length}</span> campaigns
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Showing <span className="font-semibold text-gray-600 dark:text-gray-400">{filteredCampaigns.length}</span> of{' '}
+            <span className="font-semibold text-gray-600 dark:text-gray-400">{campaigns.length}</span> campaigns
           </p>
         </div>
       )}

@@ -90,9 +90,9 @@ function getMetricValue(trainer: Trainer, metric: CompareMetric): number {
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-xs">
-      <p className="font-semibold text-gray-900 mb-0.5">{label}</p>
-      <p className="text-gray-600 tabular-nums">{payload[0].value}</p>
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg p-3 text-xs">
+      <p className="font-semibold text-gray-900 dark:text-gray-100 mb-0.5">{label}</p>
+      <p className="text-gray-600 dark:text-gray-400 tabular-nums">{payload[0].value}</p>
     </div>
   )
 }
@@ -167,7 +167,7 @@ export default function TrainerPerformancePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
@@ -180,26 +180,26 @@ export default function TrainerPerformancePage() {
   }))
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Trainer Performance</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Trainer Performance</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               Track and compare trainer metrics across your team
             </p>
           </div>
           <div className="relative">
             <button
               onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-gray-300 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-gray-300 transition-colors shadow-sm"
             >
               {PERIODS.find((p) => p.value === period)?.label}
-              <ChevronDown className="w-4 h-4 text-gray-400" />
+              <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
             {showPeriodDropdown && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-gray-200 shadow-lg py-1 z-20">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg py-1 z-20">
                 {PERIODS.map((p) => (
                   <button
                     key={p.value}
@@ -211,7 +211,7 @@ export default function TrainerPerformancePage() {
                       'w-full text-left px-4 py-2 text-sm transition-colors',
                       period === p.value
                         ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                     )}
                   >
                     {p.label}
@@ -230,18 +230,18 @@ export default function TrainerPerformancePage() {
         >
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-violet-500" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
               AI Coach&apos;s Notes
             </span>
           </div>
           <div className="space-y-2">
             {COACH_NOTES.length > 0 ? COACH_NOTES.map((note, i) => (
-              <p key={i} className="text-sm text-gray-700 leading-relaxed flex items-start gap-2">
+              <p key={i} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
                 {note}
               </p>
             )) : (
-              <p className="text-sm text-gray-500 italic">AI coaching notes will appear here once trainers have class history.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 italic">AI coaching notes will appear here once trainers have class history.</p>
             )}
           </div>
         </motion.div>
@@ -250,36 +250,36 @@ export default function TrainerPerformancePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
         >
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-amber-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Leaderboard</h2>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Leaderboard</h2>
             </div>
-            <span className="text-xs text-gray-400">{TRAINERS.length} trainers</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{TRAINERS.length} trainers</span>
           </div>
 
           {TRAINERS.length === 0 ? (
             <div className="p-12 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Users className="w-6 h-6 text-gray-400" />
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-6 h-6 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">No trainers yet</h3>
-              <p className="text-sm text-gray-500">Add trainers in the Operations module to see performance data.</p>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">No trainers yet</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Add trainers in the Operations module to see performance data.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 w-12">#</th>
-                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Trainer</th>
-                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Classes Led</th>
-                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Avg Attendance</th>
-                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Bonus Hit Rate</th>
-                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Revenue Attributed</th>
-                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Promo Conversions</th>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 w-12">#</th>
+                    <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Trainer</th>
+                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Classes Led</th>
+                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Avg Attendance</th>
+                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Bonus Hit Rate</th>
+                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Revenue Attributed</th>
+                    <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Promo Conversions</th>
                     <th className="w-10" />
                   </tr>
                 </thead>
@@ -292,7 +292,7 @@ export default function TrainerPerformancePage() {
                     >
                       <tr
                         className={cn(
-                          'border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group',
+                          'border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group',
                           i === 0 && 'bg-amber-50/50 hover:bg-amber-50/80'
                         )}
                       >
@@ -300,7 +300,7 @@ export default function TrainerPerformancePage() {
                           <span
                             className={cn(
                               'text-sm font-black tabular-nums',
-                              i === 0 ? 'text-amber-600' : 'text-gray-400'
+                              i === 0 ? 'text-amber-600' : 'text-gray-400 dark:text-gray-500'
                             )}
                           >
                             {i + 1}
@@ -313,12 +313,12 @@ export default function TrainerPerformancePage() {
                                 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold',
                                 i === 0
                                   ? 'bg-indigo-600 text-white'
-                                  : 'bg-gray-200 text-gray-600'
+                                  : 'bg-gray-200 text-gray-600 dark:text-gray-400'
                               )}
                             >
                               {trainer.avatar}
                             </div>
-                            <span className="text-sm font-semibold text-gray-900">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                               {trainer.name}
                             </span>
                             {i === 0 && (
@@ -329,32 +329,32 @@ export default function TrainerPerformancePage() {
                           </div>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                             {trainer.classesLed}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                             {trainer.avgAttendance}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                             {trainer.bonusHitRate}%
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                             {formatCurrency(trainer.revenueAttributed)}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                             {trainer.promoConversions}
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 dark:text-gray-400 transition-colors" />
                         </td>
                       </tr>
                     </Link>
@@ -369,25 +369,25 @@ export default function TrainerPerformancePage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.15 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">Trainer Comparison</h2>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Trainer Comparison</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                 Compare trainers by selected metric
               </p>
             </div>
             <div className="relative">
               <button
                 onClick={() => setShowMetricDropdown(!showMetricDropdown)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-200 transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition-colors"
               >
                 {COMPARE_METRICS.find((m) => m.value === compareMetric)?.label}
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               </button>
               {showMetricDropdown && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-gray-200 shadow-lg py-1 z-20">
+                <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg py-1 z-20">
                   {COMPARE_METRICS.map((m) => (
                     <button
                       key={m.value}
@@ -399,7 +399,7 @@ export default function TrainerPerformancePage() {
                         'w-full text-left px-4 py-2 text-xs transition-colors',
                         compareMetric === m.value
                           ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                       )}
                     >
                       {m.label}
@@ -412,7 +412,7 @@ export default function TrainerPerformancePage() {
 
           {TRAINERS.length === 0 ? (
             <div className="h-[280px] flex items-center justify-center">
-              <p className="text-sm text-gray-400">No data to display</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">No data to display</p>
             </div>
           ) : (
             <div className="h-[280px]">

@@ -60,7 +60,7 @@ function formatDate(dateStr: string): string {
 }
 
 const STATUS_STYLES: Record<SimulationStatus, string> = {
-  Draft: 'bg-gray-100 text-gray-600',
+  Draft: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
   Analyzed: 'bg-blue-50 text-blue-700',
   Applied: 'bg-emerald-50 text-emerald-700',
   Reverted: 'bg-red-50 text-red-700',
@@ -119,7 +119,7 @@ export default function PricingSimulatorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
@@ -129,8 +129,8 @@ export default function PricingSimulatorPage() {
                 <FlaskConical className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Pricing Simulator</h1>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Pricing Simulator</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   Model pricing scenarios and project revenue impact
                 </p>
               </div>
@@ -156,8 +156,8 @@ export default function PricingSimulatorPage() {
               label: 'Total Simulations',
               value: simulations.length.toString(),
               icon: FileText,
-              iconBg: 'bg-gray-100',
-              iconColor: 'text-gray-600',
+              iconBg: 'bg-gray-100 dark:bg-gray-800',
+              iconColor: 'text-gray-600 dark:text-gray-400',
             },
             {
               label: 'Applied This Month',
@@ -182,17 +182,17 @@ export default function PricingSimulatorPage() {
             return (
               <div
                 key={stat.label}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+                className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
               >
                 <div className="flex items-center gap-3">
                   <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', stat.iconBg)}>
                     <Icon className={cn('w-4.5 h-4.5', stat.iconColor)} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       {stat.label}
                     </p>
-                    <p className="text-[28px] font-black tabular-nums text-gray-900 leading-tight">
+                    <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-tight">
                       {stat.value}
                     </p>
                   </div>
@@ -209,7 +209,7 @@ export default function PricingSimulatorPage() {
         >
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="w-4 h-4 text-violet-500" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
               Saved Simulations
             </span>
           </div>
@@ -226,7 +226,7 @@ export default function PricingSimulatorPage() {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: i * 0.05, duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
                     className={cn(
-                      'bg-white rounded-2xl border border-gray-200 shadow-sm p-5 group',
+                      'bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 group',
                       sim.status === 'Applied' && 'opacity-75'
                     )}
                   >
@@ -234,7 +234,7 @@ export default function PricingSimulatorPage() {
                       {/* Left: Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2.5 mb-1.5">
-                          <h3 className="text-base font-semibold text-gray-900 truncate">
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
                             {sim.name}
                           </h3>
                           <span
@@ -252,11 +252,11 @@ export default function PricingSimulatorPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500 leading-relaxed mb-2">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-2">
                           {sim.description}
                         </p>
                         <div className="flex items-center gap-4">
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
                             Created {formatDate(sim.createdAt)}
                           </span>
                           {sim.projectedRevenueDelta !== undefined && (
@@ -284,12 +284,12 @@ export default function PricingSimulatorPage() {
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <Link
                           href={`/analytics/pricing/${sim.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View
                         </Link>
-                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
                           <Copy className="w-3.5 h-3.5" />
                           Duplicate
                         </button>
@@ -306,7 +306,7 @@ export default function PricingSimulatorPage() {
                               </button>
                               <button
                                 onClick={() => setApplyConfirm(null)}
-                                className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                               >
                                 Cancel
                               </button>
@@ -333,7 +333,7 @@ export default function PricingSimulatorPage() {
                                 </button>
                                 <button
                                   onClick={() => setDeleteConfirm(null)}
-                                  className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                  className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                                 >
                                   Cancel
                                 </button>
@@ -358,15 +358,15 @@ export default function PricingSimulatorPage() {
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center"
+                className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-12 text-center"
               >
-                <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                  <FlaskConical className="w-7 h-7 text-gray-400" />
+                <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                  <FlaskConical className="w-7 h-7 text-gray-400 dark:text-gray-500" />
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-1">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
                   No simulations yet
                 </h3>
-                <p className="text-sm text-gray-500 mb-5">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                   Create one to explore pricing scenarios.
                 </p>
                 <Link

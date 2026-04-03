@@ -213,8 +213,8 @@ const REPORT_TYPES: ReportType[] = [
     name: 'Transaction Log',
     description: 'Full ledger of payments, refunds, and adjustments.',
     icon: FileText,
-    iconColor: 'text-gray-600',
-    iconBg: 'bg-gray-100',
+    iconColor: 'text-gray-600 dark:text-gray-400',
+    iconBg: 'bg-gray-100 dark:bg-gray-800',
     columns: [
       { id: 'date', label: 'Date', default: true },
       { id: 'member', label: 'Member', default: true },
@@ -294,8 +294,8 @@ const REPORT_TYPES: ReportType[] = [
     name: 'Custom Report',
     description: 'Build a custom report from scratch with any columns and filters.',
     icon: Layers,
-    iconColor: 'text-gray-600',
-    iconBg: 'bg-gray-100',
+    iconColor: 'text-gray-600 dark:text-gray-400',
+    iconBg: 'bg-gray-100 dark:bg-gray-800',
     columns: [
       { id: 'date', label: 'Date', default: true },
       { id: 'member', label: 'Member', default: false },
@@ -427,19 +427,19 @@ export default function ReportBuilderPage() {
   const STEP_LABELS = ['Choose Type', 'Configure', 'Preview', 'Save & Schedule']
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         {/* Header */}
         <motion.div {...fadeInUp} className="mb-8 flex items-center gap-3">
           <Link
             href="/analytics/reports"
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+            className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">New Report</h1>
-            <p className="mt-0.5 text-xs text-gray-400">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">New Report</h1>
+            <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
               Build a custom report in 4 steps.
             </p>
           </div>
@@ -473,13 +473,13 @@ export default function ReportBuilderPage() {
                         ? 'bg-indigo-600 text-white'
                         : isCompleted
                           ? 'bg-indigo-50 text-indigo-700 cursor-pointer hover:bg-indigo-100'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                     )}
                   >
                     {isCompleted ? (
                       <Check className="h-3.5 w-3.5" />
                     ) : (
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white dark:bg-gray-950/20 text-[10px] font-bold">
                         {stepNum}
                       </span>
                     )}
@@ -496,7 +496,7 @@ export default function ReportBuilderPage() {
           {/* Step 1: Choose Type */}
           {step === 1 && (
             <motion.div key="step-1" {...stepTransition}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
                 Select Report Type
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -511,10 +511,10 @@ export default function ReportBuilderPage() {
                       transition={{ duration: 0.25, delay: i * 0.025, ease: [0.25, 1, 0.5, 1] }}
                       onClick={() => handleSelectType(type.id)}
                       className={cn(
-                        'group relative flex flex-col items-start rounded-2xl border bg-white p-5 shadow-sm text-left transition hover:shadow-md',
+                        'group relative flex flex-col items-start rounded-2xl border bg-white dark:bg-gray-950 p-5 shadow-sm text-left transition hover:shadow-md',
                         isSelected
                           ? 'border-indigo-400 ring-2 ring-indigo-600/20'
-                          : 'border-gray-200 hover:border-indigo-200'
+                          : 'border-gray-200 dark:border-gray-800 hover:border-indigo-200'
                       )}
                     >
                       {isSelected && (
@@ -530,8 +530,8 @@ export default function ReportBuilderPage() {
                       >
                         <Icon className={cn('h-5 w-5', type.iconColor)} />
                       </div>
-                      <h3 className="text-sm font-semibold text-gray-900">{type.name}</h3>
-                      <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{type.name}</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                         {type.description}
                       </p>
                     </motion.button>
@@ -547,7 +547,7 @@ export default function ReportBuilderPage() {
                     'inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition',
                     selectedType
                       ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                   )}
                 >
                   Continue
@@ -562,32 +562,32 @@ export default function ReportBuilderPage() {
             <motion.div key="step-2" {...stepTransition}>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Left: Column Selector */}
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
                     Columns
                   </p>
-                  <p className="mb-3 text-xs text-gray-500">
+                  <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
                     Select which columns to include in your report.
                   </p>
                   <div className="space-y-2">
                     {selectedReportType.columns.map((col) => (
                       <label
                         key={col.id}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 transition hover:bg-gray-50 cursor-pointer"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 transition hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                       >
                         <div
                           className={cn(
                             'flex h-5 w-5 items-center justify-center rounded-md border-2 transition',
                             selectedColumns.includes(col.id)
                               ? 'border-indigo-600 bg-indigo-600'
-                              : 'border-gray-300 bg-white'
+                              : 'border-gray-300 bg-white dark:bg-gray-950'
                           )}
                         >
                           {selectedColumns.includes(col.id) && (
                             <Check className="h-3 w-3 text-white" />
                           )}
                         </div>
-                        <span className="text-sm text-gray-700">{col.label}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{col.label}</span>
                       </label>
                     ))}
                   </div>
@@ -596,13 +596,13 @@ export default function ReportBuilderPage() {
                 {/* Right: Filters, Time Range, Group By */}
                 <div className="space-y-6">
                   {/* Filters */}
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
                       Filters
                     </p>
 
                     {filters.length === 0 ? (
-                      <p className="mb-3 text-xs text-gray-400">
+                      <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
                         No filters added. All data will be included.
                       </p>
                     ) : (
@@ -615,7 +615,7 @@ export default function ReportBuilderPage() {
                             <select
                               value={filter.field}
                               onChange={(e) => updateFilter(filter.id, 'field', e.target.value)}
-                              className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                              className="flex-1 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                             >
                               {FIELD_OPTIONS.map((f) => (
                                 <option key={f} value={f}>{f}</option>
@@ -624,7 +624,7 @@ export default function ReportBuilderPage() {
                             <select
                               value={filter.operator}
                               onChange={(e) => updateFilter(filter.id, 'operator', e.target.value)}
-                              className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                              className="w-32 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                             >
                               {OPERATOR_OPTIONS.map((o) => (
                                 <option key={o} value={o}>{o}</option>
@@ -635,11 +635,11 @@ export default function ReportBuilderPage() {
                               placeholder="Value..."
                               value={filter.value}
                               onChange={(e) => updateFilter(filter.id, 'value', e.target.value)}
-                              className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                              className="flex-1 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                             />
                             <button
                               onClick={() => removeFilter(filter.id)}
-                              className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition"
+                              className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 hover:bg-red-50 hover:text-red-500 transition"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -650,7 +650,7 @@ export default function ReportBuilderPage() {
 
                     <button
                       onClick={addFilter}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Add Filter
@@ -658,14 +658,14 @@ export default function ReportBuilderPage() {
                   </div>
 
                   {/* Time Range */}
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
                       Time Range
                     </p>
                     <select
                       value={timeRange}
                       onChange={(e) => setTimeRange(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                     >
                       {TIME_RANGE_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -674,14 +674,14 @@ export default function ReportBuilderPage() {
                   </div>
 
                   {/* Group By */}
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
                       Group By
                     </p>
                     <select
                       value={groupBy}
                       onChange={(e) => setGroupBy(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                     >
                       {GROUP_BY_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -694,7 +694,7 @@ export default function ReportBuilderPage() {
               <div className="mt-8 flex justify-between">
                 <button
                   onClick={() => setStep(1)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back
@@ -706,7 +706,7 @@ export default function ReportBuilderPage() {
                     'inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition',
                     selectedColumns.length > 0
                       ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                   )}
                 >
                   Continue
@@ -719,38 +719,38 @@ export default function ReportBuilderPage() {
           {/* Step 3: Preview */}
           {step === 3 && (
             <motion.div key="step-3" {...stepTransition}>
-              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="border-b border-gray-100 px-6 py-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+              <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
+                <div className="border-b border-gray-100 dark:border-gray-800 px-6 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                     Data Preview
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     Showing first 10 rows. Full report will be generated upon save.
                   </p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50/40">
-                        <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
+                        <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Date
                         </th>
-                        <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Class
                         </th>
-                        <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <th className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Trainer
                         </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Bookings
                         </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Check-Ins
                         </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           No-Shows
                         </th>
-                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <th className="px-5 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                           Fill Rate
                         </th>
                       </tr>
@@ -759,12 +759,12 @@ export default function ReportBuilderPage() {
                       {PREVIEW_DATA.map((row, i) => (
                         <tr
                           key={i}
-                          className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition"
+                          className="border-b border-gray-50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
                         >
-                          <td className="px-5 py-3 text-sm text-gray-600">{row.date}</td>
-                          <td className="px-5 py-3 text-sm font-medium text-gray-900">{row.class}</td>
-                          <td className="px-5 py-3 text-sm text-gray-700">{row.trainer}</td>
-                          <td className="px-5 py-3 text-right text-sm tabular-nums font-medium text-gray-900">
+                          <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">{row.date}</td>
+                          <td className="px-5 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{row.class}</td>
+                          <td className="px-5 py-3 text-sm text-gray-700 dark:text-gray-300">{row.trainer}</td>
+                          <td className="px-5 py-3 text-right text-sm tabular-nums font-medium text-gray-900 dark:text-gray-100">
                             {row.bookings}
                           </td>
                           <td className="px-5 py-3 text-right text-sm tabular-nums font-medium text-emerald-600">
@@ -773,7 +773,7 @@ export default function ReportBuilderPage() {
                           <td className="px-5 py-3 text-right text-sm tabular-nums font-medium text-red-500">
                             {row.noShows}
                           </td>
-                          <td className="px-5 py-3 text-right text-sm tabular-nums font-semibold text-gray-900">
+                          <td className="px-5 py-3 text-right text-sm tabular-nums font-semibold text-gray-900 dark:text-gray-100">
                             {row.fillRate}
                           </td>
                         </tr>
@@ -786,7 +786,7 @@ export default function ReportBuilderPage() {
               <div className="mt-8 flex justify-between">
                 <button
                   onClick={() => setStep(2)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Configure
@@ -808,13 +808,13 @@ export default function ReportBuilderPage() {
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Left: Report Info */}
                 <div className="space-y-6">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
                       Report Details
                     </p>
                     <div className="space-y-4">
                       <div>
-                        <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                        <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
                           Report Name <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -822,27 +822,27 @@ export default function ReportBuilderPage() {
                           placeholder="e.g., Weekly Attendance Summary"
                           value={reportName}
                           onChange={(e) => setReportName(e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-600/10"
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-600/10"
                         />
                       </div>
                       <div>
-                        <label className="mb-1.5 block text-xs font-semibold text-gray-700">
-                          Description <span className="text-xs font-normal text-gray-400">(optional)</span>
+                        <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          Description <span className="text-xs font-normal text-gray-400 dark:text-gray-500">(optional)</span>
                         </label>
                         <textarea
                           rows={3}
                           placeholder="Briefly describe what this report tracks..."
                           value={reportDescription}
                           onChange={(e) => setReportDescription(e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-600/10 resize-none"
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-600/10 resize-none"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Default Export Format */}
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
                       Default Export Format
                     </p>
                     <div className="flex gap-3">
@@ -853,7 +853,7 @@ export default function ReportBuilderPage() {
                             'flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 transition',
                             exportFormat === fmt
                               ? 'border-indigo-400 bg-indigo-50 ring-1 ring-indigo-600/20'
-                              : 'border-gray-200 bg-white hover:border-gray-300'
+                              : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:border-gray-300'
                           )}
                         >
                           <div
@@ -868,7 +868,7 @@ export default function ReportBuilderPage() {
                               <div className="h-2 w-2 rounded-full bg-indigo-600" />
                             )}
                           </div>
-                          <span className="text-sm font-semibold text-gray-700 uppercase">
+                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase">
                             {fmt}
                           </span>
                         </label>
@@ -880,8 +880,8 @@ export default function ReportBuilderPage() {
                 {/* Right: Schedule & Recipients */}
                 <div className="space-y-6">
                   {/* Schedule */}
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
                       Schedule
                     </p>
                     <div className="flex flex-wrap gap-2 mb-4">
@@ -900,7 +900,7 @@ export default function ReportBuilderPage() {
                             'rounded-lg border px-4 py-2 text-xs font-semibold transition',
                             scheduleFrequency === opt.key
                               ? 'border-indigo-400 bg-indigo-600 text-white'
-                              : 'border-gray-200 text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
+                              : 'border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-indigo-200 hover:text-indigo-600'
                           )}
                         >
                           {opt.label}
@@ -910,13 +910,13 @@ export default function ReportBuilderPage() {
 
                     {scheduleFrequency === 'weekly' && (
                       <div>
-                        <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                        <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
                           Day of Week
                         </label>
                         <select
                           value={scheduleDay}
                           onChange={(e) => setScheduleDay(e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                         >
                           {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(
                             (d) => (
@@ -929,13 +929,13 @@ export default function ReportBuilderPage() {
 
                     {scheduleFrequency === 'monthly' && (
                       <div>
-                        <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                        <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
                           Day of Month
                         </label>
                         <select
                           value={scheduleDate}
                           onChange={(e) => setScheduleDate(e.target.value)}
-                          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                         >
                           {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
                             <option key={d} value={String(d)}>
@@ -947,15 +947,15 @@ export default function ReportBuilderPage() {
                     )}
 
                     {scheduleFrequency === 'off' && (
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
                         Report will only run when manually triggered.
                       </p>
                     )}
                   </div>
 
                   {/* Recipients */}
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
                       Recipients
                     </p>
                     <div className="flex gap-2 mb-3">
@@ -965,7 +965,7 @@ export default function ReportBuilderPage() {
                         value={newRecipient}
                         onChange={(e) => setNewRecipient(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addRecipient()}
-                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
+                        className="flex-1 rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-600/10"
                       />
                       <button
                         onClick={addRecipient}
@@ -976,7 +976,7 @@ export default function ReportBuilderPage() {
                     </div>
 
                     {recipients.length === 0 ? (
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
                         No recipients added. Reports will only be available in the dashboard.
                       </p>
                     ) : (
@@ -984,15 +984,15 @@ export default function ReportBuilderPage() {
                         {recipients.map((email) => (
                           <div
                             key={email}
-                            className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
+                            className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2"
                           >
                             <div className="flex items-center gap-2">
-                              <Mail className="h-3.5 w-3.5 text-gray-400" />
-                              <span className="text-sm text-gray-700">{email}</span>
+                              <Mail className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{email}</span>
                             </div>
                             <button
                               onClick={() => removeRecipient(email)}
-                              className="rounded p-0.5 text-gray-400 hover:text-red-500 transition"
+                              className="rounded p-0.5 text-gray-400 dark:text-gray-500 hover:text-red-500 transition"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -1014,7 +1014,7 @@ export default function ReportBuilderPage() {
               <div className="mt-8 flex justify-between">
                 <button
                   onClick={() => setStep(3)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back
@@ -1026,7 +1026,7 @@ export default function ReportBuilderPage() {
                     'inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition',
                     reportName.trim() && !saving
                       ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                   )}
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

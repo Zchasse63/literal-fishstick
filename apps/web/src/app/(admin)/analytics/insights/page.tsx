@@ -75,14 +75,14 @@ const TYPE_COLORS: Record<InsightType, { bg: string; text: string }> = {
 }
 
 const URGENCY_STYLES: Record<Urgency, { bg: string; text: string; label: string }> = {
-  info: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Info' },
+  info: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', label: 'Info' },
   suggestion: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Suggestion' },
   attention: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Attention' },
   urgent: { bg: 'bg-red-100', text: 'text-red-700', label: 'Urgent' },
 }
 
 const HISTORY_STATUS_STYLES: Record<HistoryStatus, { bg: string; text: string; label: string }> = {
-  dismissed: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Dismissed' },
+  dismissed: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', label: 'Dismissed' },
   done: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Done' },
 }
 
@@ -223,7 +223,7 @@ export default function AIInsightsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
@@ -233,15 +233,15 @@ export default function AIInsightsPage() {
                 <Sparkles className="w-4.5 h-4.5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">AI Insights</h1>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI Insights</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   Intelligent recommendations powered by your studio data
                 </p>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
+            <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
               <Clock className="w-3.5 h-3.5" />
               <span>{lastGenerated ? `Last generated ${lastGenerated}` : 'Loading...'}</span>
             </div>
@@ -265,7 +265,7 @@ export default function AIInsightsPage() {
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.05 }}
-          className="flex items-center gap-6 border-b border-gray-200"
+          className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-800"
         >
           {(['active', 'history'] as ViewTab[]).map((tab) => (
             <button
@@ -275,7 +275,7 @@ export default function AIInsightsPage() {
                 'pb-3 text-sm font-semibold capitalize transition-all border-b-2 -mb-px',
                 viewTab === tab
                   ? 'text-indigo-600 border-indigo-600'
-                  : 'text-gray-400 border-transparent hover:text-gray-600'
+                  : 'text-gray-400 dark:text-gray-500 border-transparent hover:text-gray-600 dark:hover:text-gray-300'
               )}
             >
               {tab}
@@ -284,7 +284,7 @@ export default function AIInsightsPage() {
                   'ml-2 text-xs px-1.5 py-0.5 rounded-full tabular-nums',
                   viewTab === tab
                     ? 'bg-indigo-100 text-indigo-700'
-                    : 'bg-gray-100 text-gray-500'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                 )}
               >
                 {tab === 'active' ? insights.length : history.length}
@@ -307,7 +307,7 @@ export default function AIInsightsPage() {
                 'px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
                 activeFilter === tab.value
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:text-gray-900'
+                  : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:border-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               )}
             >
               {tab.label}
@@ -328,7 +328,7 @@ export default function AIInsightsPage() {
               {loading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                    <div key={i} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
                       <div className="flex items-start gap-4">
                         <LoadingSkeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
                         <div className="flex-1">
@@ -343,13 +343,13 @@ export default function AIInsightsPage() {
               ) : filteredInsights.length === 0 ? (
                 <motion.div
                   {...fadeInUp}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center"
+                  className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-12 text-center"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                    <Inbox className="w-6 h-6 text-gray-400" />
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                    <Inbox className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-1">No active insights</h3>
-                  <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">No active insights</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
                     {activeFilter !== 'all'
                       ? `No ${activeFilter} insights right now. Try a different filter or generate new insights.`
                       : 'All caught up! Generate new insights to get fresh recommendations.'}
@@ -378,7 +378,7 @@ export default function AIInsightsPage() {
                         duration: 0.25,
                         ease: [0.25, 1, 0.5, 1],
                       }}
-                      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow"
+                      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start gap-4">
                         {/* Icon */}
@@ -394,7 +394,7 @@ export default function AIInsightsPage() {
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-3 mb-1.5">
-                            <h3 className="text-sm font-bold text-gray-900 leading-snug">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-snug">
                               {insight.title}
                             </h3>
                             <span
@@ -408,7 +408,7 @@ export default function AIInsightsPage() {
                             </span>
                           </div>
 
-                          <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-3">
                             {insight.summary}
                           </p>
 
@@ -423,20 +423,20 @@ export default function AIInsightsPage() {
                               </Link>
                               <button
                                 onClick={() => handleMarkDone(insight.id)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg text-xs font-medium transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-500 dark:text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg text-xs font-medium transition-colors"
                               >
                                 <Check className="w-3.5 h-3.5" />
                                 Mark as Done
                               </button>
                               <button
                                 onClick={() => handleDismiss(insight.id)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-xs font-medium transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-xs font-medium transition-colors"
                               >
                                 <X className="w-3.5 h-3.5" />
                                 Dismiss
                               </button>
                             </div>
-                            <span className="text-xs text-gray-400 flex-shrink-0">
+                            <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                               {insight.createdAt}
                             </span>
                           </div>
@@ -458,7 +458,7 @@ export default function AIInsightsPage() {
               {historyLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 opacity-75">
+                    <div key={i} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 opacity-75">
                       <div className="flex items-start gap-4">
                         <LoadingSkeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
                         <div className="flex-1">
@@ -472,13 +472,13 @@ export default function AIInsightsPage() {
               ) : filteredHistory.length === 0 ? (
                 <motion.div
                   {...fadeInUp}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center"
+                  className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-12 text-center"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                    <Clock className="w-6 h-6 text-gray-400" />
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                    <Clock className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-1">No history yet</h3>
-                  <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">No history yet</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
                     {activeFilter !== 'all'
                       ? `No resolved ${activeFilter} insights. Try a different filter.`
                       : 'Dismissed and completed insights will appear here.'}
@@ -500,7 +500,7 @@ export default function AIInsightsPage() {
                         duration: 0.25,
                         ease: [0.25, 1, 0.5, 1],
                       }}
-                      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 opacity-75"
+                      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 opacity-75"
                     >
                       <div className="flex items-start gap-4">
                         <div
@@ -514,7 +514,7 @@ export default function AIInsightsPage() {
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-3 mb-1.5">
-                            <h3 className="text-sm font-bold text-gray-900 leading-snug">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-snug">
                               {insight.title}
                             </h3>
                             <span
@@ -528,11 +528,11 @@ export default function AIInsightsPage() {
                             </span>
                           </div>
 
-                          <p className="text-sm text-gray-500 leading-relaxed mb-2">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-2">
                             {insight.summary}
                           </p>
 
-                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                             <span>Created {insight.createdAt}</span>
                             <span className="w-1 h-1 rounded-full bg-gray-300" />
                             <span>Resolved {insight.resolvedAt}</span>

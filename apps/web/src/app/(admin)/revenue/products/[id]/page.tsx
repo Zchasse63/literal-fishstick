@@ -140,7 +140,7 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center">
         <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
       </div>
     )
@@ -148,11 +148,11 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center">
         <div className="text-center">
           <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-lg font-bold text-gray-700">Product not found</p>
-          <p className="text-sm text-gray-400 mt-1">This product may have been deleted or does not exist.</p>
+          <p className="text-lg font-bold text-gray-700 dark:text-gray-300">Product not found</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">This product may have been deleted or does not exist.</p>
           <Link href="/revenue/products" className="text-sm text-indigo-600 hover:text-indigo-700 mt-2 inline-block">
             Back to Products
           </Link>
@@ -166,12 +166,12 @@ export default function ProductDetailPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA]"
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
     >
       {/* Back link */}
       <Link
         href="/revenue/products"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-indigo-600 transition-colors mb-5"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition-colors mb-5"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Products
@@ -180,11 +180,11 @@ export default function ProductDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">{product.name}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{product.sku}</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{product.name}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{product.sku}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 bg-white text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 bg-white dark:bg-gray-950 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
             <Trash2 className="h-4 w-4" />
             Delete
           </button>
@@ -203,14 +203,14 @@ export default function ProductDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Product Images</p>
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors cursor-pointer">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Product Images</p>
+            <div className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl p-8 text-center hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors cursor-pointer">
               <ImagePlus className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-gray-600">Drag and drop images here</p>
-              <p className="text-xs text-gray-400 mt-1">or click to browse. PNG, JPG up to 5MB each.</p>
-              <button className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Drag and drop images here</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">or click to browse. PNG, JPG up to 5MB each.</p>
+              <button className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <Upload className="h-4 w-4" />
                 Upload Images
               </button>
@@ -221,34 +221,34 @@ export default function ProductDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Product Details</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Product Details</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Product Name</label>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Product Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Description</label>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors resize-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Category</label>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors bg-white"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors bg-white dark:bg-gray-950"
                 >
                   <option value="apparel">Apparel</option>
                   <option value="accessories">Accessories</option>
@@ -266,35 +266,35 @@ export default function ProductDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
-              <DollarSign className="h-4 w-4 text-gray-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Pricing</p>
+              <DollarSign className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Pricing</p>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Price (cents)</label>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Price (cents)</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
                     type="text"
                     value={(priceInCents / 100).toFixed(2)}
                     onChange={(e) => setPriceInCents(Math.round(parseFloat(e.target.value || '0') * 100))}
-                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Compare-at Price (for sales)</label>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Compare-at Price (for sales)</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
                     type="text"
                     value={compareAtPrice ? (compareAtPrice / 100).toFixed(2) : ''}
                     onChange={(e) => setCompareAtPrice(Math.round(parseFloat(e.target.value || '0') * 100))}
                     placeholder="0.00"
-                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 tabular-nums placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 tabular-nums placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                   />
                 </div>
               </div>
@@ -305,49 +305,49 @@ export default function ProductDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
-              <Box className="h-4 w-4 text-gray-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Inventory</p>
+              <Box className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Inventory</p>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Quantity</label>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Quantity</label>
                   <input
                     type="number"
                     value={inventory}
                     onChange={(e) => setInventory(parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Low Stock Alert</label>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Low Stock Alert</label>
                   <input
                     type="number"
                     value={lowStockThreshold}
                     onChange={(e) => setLowStockThreshold(parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">SKU</label>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">SKU</label>
                 <input
                   type="text"
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors font-mono text-xs"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors font-mono text-xs"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Barcode</label>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Barcode</label>
                 <input
                   type="text"
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors font-mono text-xs"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors font-mono text-xs"
                 />
               </div>
             </div>
@@ -357,21 +357,21 @@ export default function ProductDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.15 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center gap-2 mb-4">
-              <Truck className="h-4 w-4 text-gray-400" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Shipping</p>
+              <Truck className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Shipping</p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Weight (oz)</label>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Weight (oz)</label>
               <input
                 type="number"
                 value={weightOz}
                 onChange={(e) => setWeightOz(parseFloat(e.target.value) || 0)}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
               />
-              <p className="text-xs text-gray-400 mt-1.5">Used for shipping rate calculations</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Used for shipping rate calculations</p>
             </div>
           </motion.div>
 
@@ -379,12 +379,12 @@ export default function ProductDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.2 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-gray-900">Product Status</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Product Status</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                   {active ? 'Visible to customers' : 'Hidden from store'}
                 </p>
               </div>
@@ -407,18 +407,18 @@ export default function ProductDetailPage() {
       <motion.div
         {...fadeInUp}
         transition={{ ...fadeInUp.transition, delay: 0.2 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm"
+        className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm"
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
-            <h3 className="text-base font-bold text-gray-900">Recent Orders</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Orders containing this product</p>
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Recent Orders</h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Orders containing this product</p>
           </div>
-          <ShoppingBag className="h-4 w-4 text-gray-400" />
+          <ShoppingBag className="h-4 w-4 text-gray-400 dark:text-gray-500" />
         </div>
 
         {/* Table header */}
-        <div className="flex items-center gap-4 px-5 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
+        <div className="flex items-center gap-4 px-5 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
           <div className="w-24">Order</div>
           <div className="flex-1 min-w-0">Customer</div>
           <div className="w-28">Date</div>
@@ -429,26 +429,26 @@ export default function ProductDetailPage() {
 
         <div className="divide-y divide-gray-50">
           {ORDER_HISTORY.map((order) => (
-            <div key={order.id} className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/80 transition-colors">
+            <div key={order.id} className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors">
               <div className="w-24">
                 <p className="text-sm font-semibold text-indigo-600 tabular-nums">{order.orderId}</p>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{order.customerName}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{order.customerName}</p>
               </div>
               <div className="w-28">
-                <p className="text-sm text-gray-500">{order.date}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{order.date}</p>
               </div>
               <div className="w-12 text-center">
-                <p className="text-sm font-medium text-gray-700 tabular-nums">{order.quantity}</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">{order.quantity}</p>
               </div>
               <div className="w-20 text-right">
-                <p className="text-sm font-semibold text-gray-900 tabular-nums">{formatCents(order.total)}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatCents(order.total)}</p>
               </div>
               <div className="w-24 text-center">
                 <span className={cn(
                   'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                  statusConfig[order.status]?.className ?? 'bg-gray-100 text-gray-600'
+                  statusConfig[order.status]?.className ?? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
                 )}>
                   {statusConfig[order.status]?.label ?? order.status}
                 </span>

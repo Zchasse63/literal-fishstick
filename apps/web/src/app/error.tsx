@@ -14,21 +14,21 @@ export default function Error({
   }, [error])
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-6">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center px-6">
       <div className="text-center max-w-md">
         {/* Logo */}
         <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <span className="text-white font-black text-2xl">M</span>
         </div>
 
-        <h1 className="text-2xl font-black text-gray-900 mb-2">Something went wrong</h1>
-        <p className="text-sm text-gray-500 mb-6">
+        <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 mb-2">Something went wrong</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
           An unexpected error occurred. Please try again.
         </p>
 
         {process.env.NODE_ENV === 'development' && (
-          <details className="mb-6 text-left bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <summary className="text-xs font-semibold text-gray-500 cursor-pointer">
+          <details className="mb-6 text-left bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
+            <summary className="text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer">
               Error details
             </summary>
             <pre className="mt-2 text-xs text-red-600 whitespace-pre-wrap break-words overflow-auto max-h-48">

@@ -58,10 +58,10 @@ interface AtRiskMember {
 function EmptyState({ icon: Icon, message }: { icon: typeof BarChart3; message: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
+      <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
         <Icon className="w-6 h-6 text-gray-300" />
       </div>
-      <p className="text-sm text-gray-400">{message}</p>
+      <p className="text-sm text-gray-400 dark:text-gray-500">{message}</p>
     </div>
   )
 }
@@ -73,13 +73,13 @@ function LoadingSkeleton({ className }: { className?: string }) {
 function MovementTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-xs">
-      <p className="font-semibold text-gray-900 mb-1">{label}</p>
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg p-3 text-xs">
+      <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{label}</p>
       {payload.map((entry: any) => (
         <div key={entry.dataKey} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
-          <span className="text-gray-600 capitalize">{entry.dataKey}:</span>
-          <span className="font-semibold text-gray-900">{Math.abs(entry.value)}</span>
+          <span className="text-gray-600 dark:text-gray-400 capitalize">{entry.dataKey}:</span>
+          <span className="font-semibold text-gray-900 dark:text-gray-100">{Math.abs(entry.value)}</span>
         </div>
       ))}
     </div>
@@ -89,7 +89,7 @@ function MovementTooltip({ active, payload, label }: any) {
 function getRiskBadge(score: number) {
   if (score >= 80) return { label: 'High', color: 'bg-red-50 text-red-600' }
   if (score >= 60) return { label: 'Medium', color: 'bg-amber-50 text-amber-600' }
-  return { label: 'Low', color: 'bg-gray-50 text-gray-500' }
+  return { label: 'Low', color: 'bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400' }
 }
 
 function getTimeAgo(dateStr: string): string {
@@ -268,19 +268,19 @@ export default function GrowthDashboardPage() {
   const cohortKeys = cohortData.length > 0 ? Object.keys(cohortData[0]).filter(k => k !== 'period') : []
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp}>
           <Link
             href="/analytics/dashboards"
-            className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors mb-3"
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mb-3"
           >
             <ArrowLeft className="w-3 h-3" />
             Dashboards
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Growth & Retention</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Growth & Retention</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             Member trends, retention cohorts, at-risk members, and lead pipeline
           </p>
         </motion.div>
@@ -290,11 +290,11 @@ export default function GrowthDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
-            className="lg:col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-12 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">Member Movement</h2>
-              <p className="text-xs text-gray-400 mt-0.5">New vs churned vs net members, last 90 days (weekly)</p>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Member Movement</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">New vs churned vs net members, last 90 days (weekly)</p>
             </div>
 
             {movementLoading ? (
@@ -353,11 +353,11 @@ export default function GrowthDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-7 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">Cohort Retention Comparison</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Latest vs previous cohort</p>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Cohort Retention Comparison</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Latest vs previous cohort</p>
             </div>
 
             {cohortLoading ? (
@@ -387,13 +387,13 @@ export default function GrowthDashboardPage() {
                       content={({ active, payload, label }: any) => {
                         if (!active || !payload?.length) return null
                         return (
-                          <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-xs">
-                            <p className="font-semibold text-gray-900 mb-1">{label}</p>
+                          <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg p-3 text-xs">
+                            <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{label}</p>
                             {payload.map((entry: any) => (
                               <div key={entry.dataKey} className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
-                                <span className="text-gray-600">{entry.dataKey}:</span>
-                                <span className="font-semibold text-gray-900">{entry.value}%</span>
+                                <span className="text-gray-600 dark:text-gray-400">{entry.dataKey}:</span>
+                                <span className="font-semibold text-gray-900 dark:text-gray-100">{entry.value}%</span>
                               </div>
                             ))}
                           </div>
@@ -432,12 +432,12 @@ export default function GrowthDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.14 }}
-            className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-5 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">Lead Pipeline</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Current funnel stages</p>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lead Pipeline</h2>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Current funnel stages</p>
               </div>
               <Link
                 href="/marketing/leads"
@@ -471,17 +471,17 @@ export default function GrowthDashboardPage() {
                     <div key={stage.stage}>
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <StageIcon className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-xs font-medium text-gray-700">{stage.stage}</span>
+                          <StageIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{stage.stage}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {conversionRate !== null && (
-                            <span className="text-[10px] text-gray-400">{conversionRate}%</span>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500">{conversionRate}%</span>
                           )}
-                          <span className="text-sm font-bold text-gray-900 tabular-nums">{stage.count}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">{stage.count}</span>
                         </div>
                       </div>
-                      <div className="w-full h-8 bg-gray-50 rounded-lg overflow-hidden">
+                      <div className="w-full h-8 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden">
                         <div
                           className="h-full rounded-lg flex items-center justify-center transition-all"
                           style={{ width: `${width}%`, background: stage.color }}
@@ -495,9 +495,9 @@ export default function GrowthDashboardPage() {
                   )
                 })}
                 {funnelData.length > 0 && funnelData[0].count > 0 && (
-                  <div className="pt-2 border-t border-gray-100">
+                  <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Overall Conversion</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Overall Conversion</span>
                       <span className="text-sm font-bold text-indigo-600 tabular-nums">
                         {Math.round((funnelData[funnelData.length - 1].count / funnelData[0].count) * 100)}%
                       </span>
@@ -512,12 +512,12 @@ export default function GrowthDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.18 }}
-            className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-7 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">At-Risk Members</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Top 10 by inactivity</p>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">At-Risk Members</h2>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Top 10 by inactivity</p>
               </div>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
@@ -534,11 +534,11 @@ export default function GrowthDashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-left">Member</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-left">Membership</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-left">Last Visit</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-center">Risk</th>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Member</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Membership</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Last Visit</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-center">Risk</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -548,14 +548,14 @@ export default function GrowthDashboardPage() {
                         <tr key={member.name} className="border-b border-gray-50 last:border-0">
                           <td className="py-2.5">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                              <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-400">
                                 {member.name.split(' ').map((n) => n[0]).join('')}
                               </div>
-                              <span className="text-sm font-medium text-gray-900">{member.name}</span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{member.name}</span>
                             </div>
                           </td>
-                          <td className="py-2.5 text-xs text-gray-600">{member.membership}</td>
-                          <td className="py-2.5 text-xs text-gray-500">{member.lastVisit}</td>
+                          <td className="py-2.5 text-xs text-gray-600 dark:text-gray-400">{member.membership}</td>
+                          <td className="py-2.5 text-xs text-gray-500 dark:text-gray-400">{member.lastVisit}</td>
                           <td className="py-2.5 text-center">
                             <span
                               className={cn(
@@ -579,12 +579,12 @@ export default function GrowthDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.22 }}
-            className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-5 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">Trainer Leaderboard</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Top 5 by avg attendance</p>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Trainer Leaderboard</h2>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Top 5 by avg attendance</p>
               </div>
               <Link
                 href="/analytics/trainers"
@@ -619,25 +619,25 @@ export default function GrowthDashboardPage() {
                       <div
                         className={cn(
                           'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-                          i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+                          i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
                         )}
                       >
                         {initials || '??'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{trainer.name}</p>
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{trainer.name}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500">
                           {classes} classes &middot; {bonus}% bonus rate
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-16 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                           <div
                             className={cn('h-full rounded-full', i === 0 ? 'bg-indigo-600' : 'bg-indigo-300')}
                             style={{ width: `${(avg / 12) * 100}%` }}
                           />
                         </div>
-                        <span className="text-sm font-bold tabular-nums text-gray-900 w-8 text-right">
+                        <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 w-8 text-right">
                           {typeof avg === 'number' ? avg.toFixed(1) : avg}
                         </span>
                       </div>

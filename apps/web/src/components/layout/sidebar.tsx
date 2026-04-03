@@ -78,27 +78,27 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300',
+        'fixed left-0 top-0 z-40 h-screen bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300',
         collapsed ? 'w-[72px]' : 'w-[240px]'
       )}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-gray-100">
+      <div className="flex items-center gap-3 px-5 h-16 border-b border-gray-100 dark:border-gray-800">
         <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
           <span className="text-white font-black text-lg">M</span>
         </div>
         {!collapsed && (
-          <span className="font-bold text-gray-900 text-lg">Meridian</span>
+          <span className="font-bold text-gray-900 dark:text-gray-100 text-lg">Meridian</span>
         )}
       </div>
 
       {/* Search */}
       {!collapsed && (
         <div className="px-4 py-3">
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <Search className="w-4 h-4" />
             <span>Search...</span>
-            <kbd className="ml-auto text-[10px] font-medium bg-white border border-gray-200 rounded px-1.5 py-0.5">
+            <kbd className="ml-auto text-[10px] font-medium bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-1.5 py-0.5">
               ⌘K
             </kbd>
           </button>
@@ -119,7 +119,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors group',
                 isActive
                   ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
               )}
             >
               {isActive && (
@@ -134,7 +134,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                   {item.label}
-                  <span className="ml-2 text-gray-400">⌘{item.shortcut}</span>
+                  <span className="ml-2 text-gray-400 dark:text-gray-500">⌘{item.shortcut}</span>
                 </div>
               )}
             </Link>
@@ -143,11 +143,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Bottom */}
-      <div className="border-t border-gray-100 p-3 space-y-2">
+      <div className="border-t border-gray-100 dark:border-gray-800 p-3 space-y-2">
         {/* Dark mode toggle */}
         <button
           onClick={toggleDark}
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-50 w-full transition-colors"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full transition-colors"
         >
           {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
           {!collapsed && <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>}
@@ -160,8 +160,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{userName}</p>
-              <p className="text-xs text-gray-500">{userRole}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{userName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{userRole}</p>
             </div>
           )}
           {!collapsed && (
@@ -173,7 +173,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 window.location.href = '/login'
               }}
               title="Sign out"
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <LogOut className="w-4 h-4" />
             </button>

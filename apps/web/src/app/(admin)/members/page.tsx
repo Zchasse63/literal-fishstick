@@ -138,16 +138,16 @@ function MemberRowSkeleton() {
           <div className="h-9 w-9 rounded-full bg-gray-200 animate-pulse shrink-0" />
           <div className="space-y-1.5">
             <div className="h-3.5 w-28 bg-gray-200 rounded animate-pulse" />
-            <div className="h-3 w-36 bg-gray-100 rounded animate-pulse" />
+            <div className="h-3 w-36 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 hidden md:table-cell"><div className="h-6 w-20 bg-gray-100 rounded-lg animate-pulse" /></td>
-      <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-14 bg-gray-100 rounded animate-pulse" /></td>
-      <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 bg-gray-100 rounded animate-pulse" /></td>
-      <td className="px-4 py-3 hidden md:table-cell text-right"><div className="h-4 w-6 bg-gray-100 rounded animate-pulse ml-auto" /></td>
-      <td className="px-4 py-3 hidden lg:table-cell text-right"><div className="h-4 w-12 bg-gray-100 rounded animate-pulse ml-auto" /></td>
-      <td className="px-4 py-3 text-right"><div className="h-8 w-8 bg-gray-100 rounded-lg animate-pulse ml-auto" /></td>
+      <td className="px-4 py-3 hidden md:table-cell"><div className="h-6 w-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" /></td>
+      <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-14 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /></td>
+      <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /></td>
+      <td className="px-4 py-3 hidden md:table-cell text-right"><div className="h-4 w-6 bg-gray-100 dark:bg-gray-800 rounded animate-pulse ml-auto" /></td>
+      <td className="px-4 py-3 hidden lg:table-cell text-right"><div className="h-4 w-12 bg-gray-100 dark:bg-gray-800 rounded animate-pulse ml-auto" /></td>
+      <td className="px-4 py-3 text-right"><div className="h-8 w-8 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse ml-auto" /></td>
     </tr>
   )
 }
@@ -394,8 +394,8 @@ export default function MembersPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Members</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Members</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {filterCounts.All} total members
               </p>
             </div>
@@ -409,23 +409,23 @@ export default function MembersPage() {
           </div>
 
           {/* Search + Filters */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-            <div className="p-4 border-b border-gray-100">
+          <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 {/* Search */}
                 <div className="relative flex-1 w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
                     placeholder="Search members..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                   />
                   {search && (
                     <button
                       onClick={() => setSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -442,13 +442,13 @@ export default function MembersPage() {
                         'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap',
                         filter === tab
                           ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                       )}
                     >
                       {tab}
                       <span className={cn(
                         'ml-1.5 text-[10px]',
-                        filter === tab ? 'text-indigo-200' : 'text-gray-400'
+                        filter === tab ? 'text-indigo-200' : 'text-gray-400 dark:text-gray-500'
                       )}>
                         {filterCounts[tab]}
                       </span>
@@ -462,27 +462,27 @@ export default function MembersPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100">
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
                     <th className="text-left px-4 py-3">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Member</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Member</span>
                     </th>
                     <th className="text-left px-4 py-3 hidden md:table-cell">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Membership</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Membership</span>
                     </th>
                     <th className="text-left px-4 py-3 hidden sm:table-cell">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</span>
                     </th>
                     <th className="text-left px-4 py-3 hidden lg:table-cell">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Last Visit</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Last Visit</span>
                     </th>
                     <th className="text-right px-4 py-3 hidden md:table-cell">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Credits</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Credits</span>
                     </th>
                     <th className="text-right px-4 py-3 hidden lg:table-cell">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">LTV</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">LTV</span>
                     </th>
                     <th className="text-right px-4 py-3">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Actions</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Actions</span>
                     </th>
                   </tr>
                 </thead>
@@ -502,7 +502,7 @@ export default function MembersPage() {
                             'border-b border-gray-50 cursor-pointer transition-colors group',
                             selectedMember?.id === member.id
                               ? 'bg-indigo-50/60'
-                              : 'hover:bg-gray-50/80'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-800/80'
                           )}
                         >
                           {/* Name + Avatar */}
@@ -515,10 +515,10 @@ export default function MembersPage() {
                                 {member.avatar}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                                   {member.firstName} {member.lastName}
                                 </p>
-                                <p className="text-xs text-gray-500 truncate">{member.email}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.email}</p>
                               </div>
                             </div>
                           </td>
@@ -537,25 +537,25 @@ export default function MembersPage() {
                           <td className="px-4 py-3 hidden sm:table-cell">
                             <div className="flex items-center gap-2">
                               <div className={cn('h-2 w-2 rounded-full', statusDot(member.status))} />
-                              <span className="text-sm text-gray-700">{statusLabel(member.status)}</span>
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{statusLabel(member.status)}</span>
                             </div>
                           </td>
 
                           {/* Last Visit */}
                           <td className="px-4 py-3 hidden lg:table-cell">
-                            <span className="text-sm text-gray-600">{member.lastVisit}</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">{member.lastVisit}</span>
                           </td>
 
                           {/* Credits */}
                           <td className="px-4 py-3 text-right hidden md:table-cell">
-                            <span className="text-sm font-medium text-gray-700 tabular-nums">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                               {member.credits !== null ? member.credits : '\u2014'}
                             </span>
                           </td>
 
                           {/* LTV */}
                           <td className="px-4 py-3 text-right hidden lg:table-cell">
-                            <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                               ${member.ltv.toLocaleString()}
                             </span>
                           </td>
@@ -564,7 +564,7 @@ export default function MembersPage() {
                           <td className="px-4 py-3 text-right">
                             <button
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
@@ -574,7 +574,7 @@ export default function MembersPage() {
 
                       {members.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-500">
+                          <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                             No members found matching your search.
                           </td>
                         </tr>
@@ -586,12 +586,12 @@ export default function MembersPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-xs text-gray-500">
+            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 Showing {members.length} of {filterCounts.All} members
               </span>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-500">Page 1 of 1</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Page 1 of 1</span>
               </div>
             </div>
           </div>

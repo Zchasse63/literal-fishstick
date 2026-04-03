@@ -87,8 +87,8 @@ function formatCurrencyDetailed(value: number): string {
 function SensitivityTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-xs">
-      <p className="font-semibold text-gray-900 mb-1">{label}</p>
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg p-3 text-xs">
+      <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{label}</p>
       <p className={cn('font-bold tabular-nums', payload[0].value >= 0 ? 'text-emerald-600' : 'text-red-600')}>
         {payload[0].value >= 0 ? '+' : ''}{formatCurrency(payload[0].value)}/mo
       </p>
@@ -163,7 +163,7 @@ export default function PricingSimulatorDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] dark:bg-[#0F0F11]">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
@@ -217,24 +217,24 @@ export default function PricingSimulatorDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href="/analytics/pricing"
-              className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+              className="w-9 h-9 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 text-gray-600" />
+              <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </Link>
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl font-bold text-gray-900">{simulation.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{simulation.name}</h1>
                 <span
                   className={cn(
                     'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest',
-                    simulation.status === 'Draft' && 'bg-gray-100 text-gray-600',
+                    simulation.status === 'Draft' && 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
                     simulation.status === 'Analyzed' && 'bg-blue-50 text-blue-700',
                     simulation.status === 'Applied' && 'bg-emerald-50 text-emerald-700',
                     simulation.status === 'Reverted' && 'bg-red-50 text-red-700'
@@ -243,7 +243,7 @@ export default function PricingSimulatorDetailPage() {
                   {simulation.status}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 Created Mar 12, 2026
               </p>
             </div>
@@ -272,7 +272,7 @@ export default function PricingSimulatorDetailPage() {
             </div>
             <button
               onClick={handleRevert}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-white dark:bg-gray-950 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               Revert
@@ -288,21 +288,21 @@ export default function PricingSimulatorDetailPage() {
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
             className="lg:col-span-3 space-y-5"
           >
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
               <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-sm font-semibold text-gray-900">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     Price Adjustments
                   </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                     Set new prices for each plan to model revenue impact
                   </p>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                     Current MRR
                   </span>
-                  <span className="text-lg font-black tabular-nums text-gray-900">
+                  <span className="text-lg font-black tabular-nums text-gray-900 dark:text-gray-100">
                     {formatCurrency(totalCurrentMRR)}
                   </span>
                 </div>
@@ -312,23 +312,23 @@ export default function PricingSimulatorDetailPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3">
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <th className="text-left text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3">
                         Plan
                       </th>
-                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3">
+                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3">
                         Current Price
                       </th>
-                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3">
+                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3">
                         Subscribers
                       </th>
-                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3">
+                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3">
                         MRR
                       </th>
-                      <th className="text-center text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 pl-4">
+                      <th className="text-center text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 pl-4">
                         New Price
                       </th>
-                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3">
+                      <th className="text-right text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3">
                         Delta / Sub
                       </th>
                     </tr>
@@ -340,28 +340,28 @@ export default function PricingSimulatorDetailPage() {
                       return (
                         <tr key={plan.id} className="group">
                           <td className="py-3.5">
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {plan.name}
                             </span>
                           </td>
                           <td className="text-right py-3.5">
-                            <span className="text-sm tabular-nums text-gray-600">
+                            <span className="text-sm tabular-nums text-gray-600 dark:text-gray-400">
                               {formatCurrencyDetailed(plan.currentPrice)}
                             </span>
                           </td>
                           <td className="text-right py-3.5">
-                            <span className="text-sm tabular-nums text-gray-600">
+                            <span className="text-sm tabular-nums text-gray-600 dark:text-gray-400">
                               {plan.subscribers > 0 ? plan.subscribers : '—'}
                             </span>
                           </td>
                           <td className="text-right py-3.5">
-                            <span className="text-sm font-semibold tabular-nums text-gray-900">
+                            <span className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">
                               {formatCurrency(plan.mrrContribution)}
                             </span>
                           </td>
                           <td className="text-center py-3.5 pl-4">
                             <div className="relative inline-flex items-center">
-                              <span className="absolute left-3 text-sm text-gray-400">$</span>
+                              <span className="absolute left-3 text-sm text-gray-400 dark:text-gray-500">$</span>
                               <input
                                 type="text"
                                 value={plan.newPrice}
@@ -371,7 +371,7 @@ export default function PricingSimulatorDetailPage() {
                                   'w-24 pl-7 pr-3 py-2 text-sm font-semibold tabular-nums text-right rounded-xl border transition-colors',
                                   hasChanged
                                     ? 'border-indigo-300 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200'
-                                    : 'border-gray-200 bg-gray-50 text-gray-900',
+                                    : 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100',
                                   isApplied && 'opacity-60 cursor-not-allowed'
                                 )}
                               />
@@ -384,7 +384,7 @@ export default function PricingSimulatorDetailPage() {
                                   'inline-flex items-center gap-1 text-sm font-bold tabular-nums',
                                   delta > 0 && 'text-emerald-600',
                                   delta < 0 && 'text-red-600',
-                                  delta === 0 && 'text-gray-400'
+                                  delta === 0 && 'text-gray-400 dark:text-gray-500'
                                 )}
                               >
                                 {delta > 0 && <ArrowUpRight className="w-3.5 h-3.5" />}
@@ -392,7 +392,7 @@ export default function PricingSimulatorDetailPage() {
                                 {delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${formatCurrencyDetailed(delta)}/mo`}
                               </span>
                             ) : (
-                              <span className="text-sm text-gray-400">—</span>
+                              <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
                             )}
                           </td>
                         </tr>
@@ -400,12 +400,12 @@ export default function PricingSimulatorDetailPage() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-gray-200">
-                      <td className="pt-4 text-sm font-bold text-gray-900" colSpan={3}>
+                    <tr className="border-t-2 border-gray-200 dark:border-gray-800">
+                      <td className="pt-4 text-sm font-bold text-gray-900 dark:text-gray-100" colSpan={3}>
                         Projected Total MRR
                       </td>
                       <td className="pt-4 text-right">
-                        <span className="text-lg font-black tabular-nums text-gray-900">
+                        <span className="text-lg font-black tabular-nums text-gray-900 dark:text-gray-100">
                           {formatCurrency(totalNewMRR)}
                         </span>
                       </td>
@@ -416,7 +416,7 @@ export default function PricingSimulatorDetailPage() {
                             'text-base font-black tabular-nums',
                             totalDelta > 0 && 'text-emerald-600',
                             totalDelta < 0 && 'text-red-600',
-                            totalDelta === 0 && 'text-gray-400'
+                            totalDelta === 0 && 'text-gray-400 dark:text-gray-500'
                           )}
                         >
                           {totalDelta === 0
@@ -431,14 +431,14 @@ export default function PricingSimulatorDetailPage() {
 
               {/* Analyze Button */}
               {!isApplied && (
-                <div className="mt-6 pt-5 border-t border-gray-100">
+                <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800">
                   <button
                     onClick={() => setIsAnalyzed(true)}
                     disabled={isAnalyzed}
                     className={cn(
                       'w-full py-3 rounded-xl text-sm font-semibold transition-all',
                       isAnalyzed
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                         : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
                     )}
                   >
@@ -467,9 +467,9 @@ export default function PricingSimulatorDetailPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.25 }}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+                    className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
                   >
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
                       Monthly Revenue Impact
                     </p>
                     <div className="flex items-center gap-3">
@@ -494,7 +494,7 @@ export default function PricingSimulatorDetailPage() {
                         >
                           {totalDelta >= 0 ? '+' : ''}{formatCurrency(totalDelta)}
                         </p>
-                        <p className="text-xs text-gray-500">per month</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">per month</p>
                       </div>
                     </div>
                   </motion.div>
@@ -505,9 +505,9 @@ export default function PricingSimulatorDetailPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.25, delay: 0.05 }}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+                    className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
                   >
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
                       Estimated Churn Risk
                     </p>
                     <div className="flex items-center gap-3">
@@ -515,10 +515,10 @@ export default function PricingSimulatorDetailPage() {
                         <AlertTriangle className="w-6 h-6 text-orange-500" />
                       </div>
                       <div>
-                        <p className="text-[28px] font-black tabular-nums text-gray-900">
+                        <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">
                           +{churnRisk}%
                         </p>
-                        <p className="text-xs text-gray-500">increase in monthly churn</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">increase in monthly churn</p>
                       </div>
                     </div>
                   </motion.div>
@@ -529,16 +529,16 @@ export default function PricingSimulatorDetailPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.25, delay: 0.1 }}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+                    className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
                   >
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
                       Movement Probability
                     </p>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                          <span className="text-sm text-gray-700">May upgrade</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">May upgrade</span>
                         </div>
                         <span className="text-sm font-bold tabular-nums text-emerald-600">
                           ~{upgradeProb} members
@@ -547,7 +547,7 @@ export default function PricingSimulatorDetailPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <ArrowDownRight className="w-4 h-4 text-red-500" />
-                          <span className="text-sm text-gray-700">May downgrade</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">May downgrade</span>
                         </div>
                         <span className="text-sm font-bold tabular-nums text-red-600">
                           ~{downgradeProb} members
@@ -570,7 +570,7 @@ export default function PricingSimulatorDetailPage() {
                         AI Analysis
                       </p>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                       Reducing the Student Unlimited plan from $99 to $79 targets a price-sensitive segment near USF campus.
                       Historical data shows student sign-ups spike during fall and spring semesters. A 20% price reduction
                       could attract an estimated 8-12 new student members within 60 days, potentially offsetting the per-subscriber
@@ -585,12 +585,12 @@ export default function PricingSimulatorDetailPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.25, delay: 0.2 }}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+                    className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
                   >
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                       Sensitivity Analysis
                     </p>
-                    <p className="text-xs text-gray-400 mb-4">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
                       Revenue impact at various price points
                     </p>
                     <div className="h-[180px]">
@@ -638,15 +638,15 @@ export default function PricingSimulatorDetailPage() {
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gray-50 rounded-2xl border border-gray-200 p-8 text-center"
+                className="bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 text-center"
               >
-                <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                  <BarChart3 className="w-6 h-6 text-gray-400" />
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
+                  <BarChart3 className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                 </div>
-                <p className="text-sm font-medium text-gray-600 mb-1">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Adjust prices and analyze
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 dark:text-gray-500">
                   AI projections will appear here after analysis
                 </p>
               </motion.div>
@@ -659,16 +659,16 @@ export default function PricingSimulatorDetailPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.15 }}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {changedPlansCount > 0
                   ? `${changedPlansCount} plan${changedPlansCount > 1 ? 's' : ''} modified affecting ${totalAffectedSubscribers} subscribers`
                   : 'No changes made yet'}
               </p>
               <div className="flex items-center gap-3">
-                <button className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors border border-gray-200">
+                <button className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors border border-gray-200 dark:border-gray-800">
                   <Save className="w-4 h-4" />
                   Save as Draft
                 </button>
@@ -679,7 +679,7 @@ export default function PricingSimulatorDetailPage() {
                     'inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all',
                     isAnalyzed && changedPlansCount > 0
                       ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                   )}
                 >
                   <Check className="w-4 h-4" />
@@ -705,7 +705,7 @@ export default function PricingSimulatorDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 w-full max-w-md mx-4"
+              className="bg-white dark:bg-gray-950 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-6 w-full max-w-md mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
@@ -713,15 +713,15 @@ export default function PricingSimulatorDetailPage() {
                   <Shield className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-gray-900">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
                     Confirm Pricing Changes
                   </h3>
-                  <p className="text-xs text-gray-500">This action will update live pricing</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">This action will update live pricing</p>
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                <p className="text-sm text-gray-700">
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 mb-4">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
                   This will update pricing for{' '}
                   <span className="font-bold">{changedPlansCount} plan{changedPlansCount > 1 ? 's' : ''}</span>{' '}
                   affecting{' '}
@@ -735,7 +735,7 @@ export default function PricingSimulatorDetailPage() {
                   defaultChecked
                   className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   Migrate existing subscribers to new pricing (prorated via Stripe)
                 </span>
               </label>
@@ -743,7 +743,7 @@ export default function PricingSimulatorDetailPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                  className="flex-1 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>

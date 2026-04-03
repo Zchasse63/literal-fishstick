@@ -23,7 +23,7 @@ export default function StepIndicator({ currentStep }: { currentStep: Step }) {
                   ? 'bg-emerald-500 text-white'
                   : currentStep === step.number
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                  : 'bg-gray-100 text-gray-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
               )}
             >
               {currentStep > step.number ? (
@@ -35,7 +35,7 @@ export default function StepIndicator({ currentStep }: { currentStep: Step }) {
             <span
               className={cn(
                 'text-sm font-semibold transition-colors',
-                currentStep >= step.number ? 'text-gray-900' : 'text-gray-400'
+                currentStep >= step.number ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'
               )}
             >
               {step.label}

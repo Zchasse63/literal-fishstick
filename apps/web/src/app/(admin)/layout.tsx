@@ -1,11 +1,25 @@
 'use client'
 
-import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { CommandPalette } from '@/components/command-palette'
 import { cn } from '@/lib/utils'
+
+/** Keyboard shortcut map: Cmd+{key} -> route */
+const shortcutRoutes: Record<string, string> = {
+  '1': '/',
+  '2': '/schedule',
+  '3': '/members',
+  '4': '/revenue',
+  '5': '/marketing',
+  '6': '/corporate',
+  '7': '/operations',
+  '8': '/analytics',
+  '9': '/segments',
+  '0': '/engagement',
+}
 
 const breadcrumbs: Record<string, string> = {
   '/': 'Command Center',
@@ -53,6 +67,21 @@ export default function AdminLayout({
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+
+  // Wire up Cmd+1 through Cmd+0 keyboard shortcuts for navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      const route = shortcutRoutes[e.key]
+      if (route) {
+        e.preventDefault()
+        router.push(route)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [router])
   const getBreadcrumb = (path: string): string => {
     if (breadcrumbs[path]) return breadcrumbs[path]
     // Dynamic routes

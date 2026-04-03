@@ -30,7 +30,7 @@ const STUDIO_ID = DEFAULT_STUDIO_ID
 // ─── Helpers ──────────────────────────────────────────────────
 
 function getHeatmapColor(value: number, isToday: boolean): string {
-  if (value === 0) return 'bg-gray-50'
+  if (value === 0) return 'bg-gray-50 dark:bg-gray-900'
   if (value < 30) return isToday ? 'bg-indigo-100 ring-1 ring-indigo-300' : 'bg-indigo-100'
   if (value < 50) return isToday ? 'bg-indigo-200 ring-1 ring-indigo-300' : 'bg-indigo-200'
   if (value < 70) return isToday ? 'bg-indigo-300 ring-1 ring-indigo-400' : 'bg-indigo-300'
@@ -41,16 +41,16 @@ function getHeatmapColor(value: number, isToday: boolean): string {
 function getHeatmapTextColor(value: number): string {
   if (value >= 70) return 'text-white'
   if (value === 0) return 'text-gray-300'
-  return 'text-gray-600'
+  return 'text-gray-600 dark:text-gray-400'
 }
 
 function EmptyState({ icon: Icon, message }: { icon: typeof BarChart3; message: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
+      <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
         <Icon className="w-6 h-6 text-gray-300" />
       </div>
-      <p className="text-sm text-gray-400">{message}</p>
+      <p className="text-sm text-gray-400 dark:text-gray-500">{message}</p>
     </div>
   )
 }
@@ -176,7 +176,7 @@ export default function OperationsDashboardPage() {
         'walk_in': { icon: Footprints, color: 'text-amber-500', bg: 'bg-amber-50' },
         'member.created': { icon: UserPlus, color: 'text-violet-500', bg: 'bg-violet-50' },
       }
-      const defaultStyle = { icon: CalendarCheck, color: 'text-gray-500', bg: 'bg-gray-50' }
+      const defaultStyle = { icon: CalendarCheck, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-900' }
 
       const items = (data ?? []).map((entry: any) => {
         const style = ICON_MAP[entry.action] ?? defaultStyle
@@ -236,26 +236,26 @@ export default function OperationsDashboardPage() {
   const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp}>
           <Link
             href="/analytics/dashboards"
-            className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors mb-3"
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mb-3"
           >
             <ArrowLeft className="w-3 h-3" />
             Dashboards
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Daily Operations</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Daily Operations</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {formattedDate} &middot; Real-time studio activity
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">Live</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">Live</span>
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           </div>
@@ -269,7 +269,7 @@ export default function OperationsDashboardPage() {
         >
           {kpiLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+              <div key={i} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
                 <LoadingSkeleton className="h-3 w-16 mb-2" />
                 <LoadingSkeleton className="h-8 w-14 mb-1" />
                 <LoadingSkeleton className="h-3 w-12" />
@@ -281,15 +281,15 @@ export default function OperationsDashboardPage() {
               return (
                 <div
                   key={kpi.label}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4"
+                  className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                       {kpi.label}
                     </span>
                     <Icon className="w-3.5 h-3.5 text-gray-300" />
                   </div>
-                  <p className="text-[28px] font-black tabular-nums text-gray-900 leading-none mb-1">
+                  <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none mb-1">
                     {kpi.value}
                   </p>
                 </div>
@@ -303,11 +303,11 @@ export default function OperationsDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.08 }}
-            className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-7 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">This Week&apos;s Attendance</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Fill rate by hour &middot; Today highlighted</p>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">This Week&apos;s Attendance</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Fill rate by hour &middot; Today highlighted</p>
             </div>
 
             {heatmapLoading ? (
@@ -329,7 +329,7 @@ export default function OperationsDashboardPage() {
                           key={day}
                           className={cn(
                             'text-[10px] font-bold uppercase tracking-widest pb-2 text-center',
-                            i === todayIdx ? 'text-indigo-600' : 'text-gray-400'
+                            i === todayIdx ? 'text-indigo-600' : 'text-gray-400 dark:text-gray-500'
                           )}
                         >
                           {day}
@@ -345,7 +345,7 @@ export default function OperationsDashboardPage() {
                   <tbody>
                     {HOURS.map((hour, rowIdx) => (
                       <tr key={hour}>
-                        <td className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pr-2 py-0.5 text-right whitespace-nowrap">
+                        <td className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pr-2 py-0.5 text-right whitespace-nowrap">
                           {hour}
                         </td>
                         {DAYS.map((day, colIdx) => {
@@ -393,16 +393,16 @@ export default function OperationsDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.12 }}
-            className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-5 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">Recent Activity</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Last 20 events</p>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Recent Activity</h2>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Last 20 events</p>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] text-gray-400">Live</span>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500">Live</span>
               </div>
             </div>
 
@@ -430,8 +430,8 @@ export default function OperationsDashboardPage() {
                         <Icon className={cn('w-3 h-3', item.color)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-gray-700 leading-snug">{item.text}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{item.time}</p>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 leading-snug">{item.text}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{item.time}</p>
                       </div>
                     </div>
                   )
@@ -444,12 +444,12 @@ export default function OperationsDashboardPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.16 }}
-            className="lg:col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            className="lg:col-span-12 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">Today&apos;s Classes</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Fill rates and check-in status per slot</p>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Today&apos;s Classes</h2>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Fill rates and check-in status per slot</p>
               </div>
               <Link
                 href="/schedule"
@@ -471,14 +471,14 @@ export default function OperationsDashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-left">Time</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-left">Class</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-left">Trainer</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-center">Booked</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-center">Checked In</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-center">Fill Rate</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 pb-3 text-center">Status</th>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Time</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Class</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Trainer</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-center">Booked</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-center">Checked In</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-center">Fill Rate</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -488,30 +488,30 @@ export default function OperationsDashboardPage() {
                       const isFull = cls.booked >= cls.capacity
                       return (
                         <tr key={i} className="border-b border-gray-50 last:border-0">
-                          <td className="py-3 text-sm font-semibold text-gray-900 tabular-nums">{cls.time}</td>
+                          <td className="py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{cls.time}</td>
                           <td className="py-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-900">{cls.name}</span>
+                              <span className="text-sm text-gray-900 dark:text-gray-100">{cls.name}</span>
                               <span
                                 className={cn(
                                   'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full',
-                                  cls.type === 'Guided' ? 'bg-violet-50 text-violet-600' : 'bg-gray-100 text-gray-500'
+                                  cls.type === 'Guided' ? 'bg-violet-50 text-violet-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                                 )}
                               >
                                 {cls.type}
                               </span>
                             </div>
                           </td>
-                          <td className="py-3 text-sm text-gray-600">{cls.trainer ?? '\u2014'}</td>
-                          <td className="py-3 text-sm font-semibold text-gray-900 text-center tabular-nums">
+                          <td className="py-3 text-sm text-gray-600 dark:text-gray-400">{cls.trainer ?? '\u2014'}</td>
+                          <td className="py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 text-center tabular-nums">
                             {cls.booked}/{cls.capacity}
                           </td>
-                          <td className="py-3 text-sm font-semibold text-gray-900 text-center tabular-nums">
+                          <td className="py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 text-center tabular-nums">
                             {isPast ? cls.checkedIn : '\u2014'}
                           </td>
                           <td className="py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
-                              <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="w-16 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                                 <div
                                   className={cn(
                                     'h-full rounded-full',
@@ -520,7 +520,7 @@ export default function OperationsDashboardPage() {
                                   style={{ width: `${fillRate}%` }}
                                 />
                               </div>
-                              <span className="text-xs font-semibold tabular-nums text-gray-600 w-8">{fillRate}%</span>
+                              <span className="text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-400 w-8">{fillRate}%</span>
                             </div>
                           </td>
                           <td className="py-3 text-center">
@@ -533,7 +533,7 @@ export default function OperationsDashboardPage() {
                                 Full
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 px-2 py-0.5 rounded-full">
                                 <Clock className="w-3 h-3" /> Upcoming
                               </span>
                             )}

@@ -293,8 +293,8 @@ export default function EmployeeClockPage() {
     <div className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
-        <h1 className="text-2xl font-bold text-gray-900">Clock In/Out</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{formatDate(now)}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Clock In/Out</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{formatDate(now)}</p>
       </motion.div>
 
       <div className="grid grid-cols-3 gap-6">
@@ -304,7 +304,7 @@ export default function EmployeeClockPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.05 }}
-            className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-8 shadow-sm"
           >
             <div className="flex flex-col items-center text-center">
               {/* Status Badge */}
@@ -322,7 +322,7 @@ export default function EmployeeClockPage() {
                   </span>
                 )}
                 {clockStatus === 'clocked-out' && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-500">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400">
                     Not Clocked In
                   </span>
                 )}
@@ -331,15 +331,15 @@ export default function EmployeeClockPage() {
               {/* Elapsed Timer */}
               {clockStatus !== 'clocked-out' && (
                 <div className="mb-6">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Elapsed Time</p>
-                  <p className="mt-1 text-[48px] font-black tabular-nums tracking-tight text-gray-900">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Elapsed Time</p>
+                  <p className="mt-1 text-[48px] font-black tabular-nums tracking-tight text-gray-900 dark:text-gray-100">
                     {formatElapsed(elapsedMs)}
                   </p>
                 </div>
               )}
 
               {/* Current Time */}
-              <p className="text-[28px] font-black tabular-nums text-gray-900">{formatTime(now)}</p>
+              <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">{formatTime(now)}</p>
 
               {/* Action Buttons */}
               <div className="mt-8 flex items-center gap-4">
@@ -351,7 +351,7 @@ export default function EmployeeClockPage() {
                       'inline-flex items-center gap-2.5 rounded-2xl px-8 py-4 text-base font-bold shadow-lg transition-all duration-200 active:scale-95',
                       isWithinRadius && !actionLoading
                         ? 'bg-gradient-to-br from-indigo-600 to-violet-500 text-white hover:from-indigo-700 hover:to-violet-600 hover:shadow-xl'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-gray-200 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                     )}
                   >
                     {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
@@ -396,16 +396,16 @@ export default function EmployeeClockPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Location Verification</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Location Verification</p>
 
             <div className="space-y-3">
               {/* Permission Status */}
-              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <Shield className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Location Permission</span>
+                  <Shield className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Location Permission</span>
                 </div>
                 {locationPermission === 'granted' ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
@@ -472,9 +472,9 @@ export default function EmployeeClockPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.15 }}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Today&apos;s Entries</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Today&apos;s Entries</p>
 
             <div className="relative">
               {/* Timeline line */}
@@ -493,7 +493,7 @@ export default function EmployeeClockPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <span className={cn('text-sm font-semibold', config.color)}>{config.label}</span>
-                            <span className="ml-2 text-sm tabular-nums text-gray-500">{entry.time}</span>
+                            <span className="ml-2 text-sm tabular-nums text-gray-500 dark:text-gray-400">{entry.time}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             {entry.withinRadius ? (
@@ -501,7 +501,7 @@ export default function EmployeeClockPage() {
                             ) : (
                               <AlertTriangle className="h-3 w-3 text-red-500" />
                             )}
-                            <span className="text-[10px] tabular-nums text-gray-400">{entry.distance}m</span>
+                            <span className="text-[10px] tabular-nums text-gray-400 dark:text-gray-500">{entry.distance}m</span>
                           </div>
                         </div>
                       </div>
@@ -512,8 +512,8 @@ export default function EmployeeClockPage() {
                 {entries.length === 0 && (
                   <div className="py-8 text-center">
                     <Clock className="mx-auto h-8 w-8 text-gray-300" />
-                    <p className="mt-2 text-sm font-semibold text-gray-500">No entries today</p>
-                    <p className="text-xs text-gray-400">Clock in to start tracking</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-500 dark:text-gray-400">No entries today</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Clock in to start tracking</p>
                   </div>
                 )}
               </div>
@@ -527,27 +527,27 @@ export default function EmployeeClockPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.1 }}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Weekly Summary</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Weekly Summary</p>
 
             <div className="space-y-5">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Hours</p>
-                <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900">{weeklyHours}h</p>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Total Hours</p>
+                <p className="mt-1 text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">{weeklyHours}h</p>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                   <div
                     className="h-full rounded-full bg-indigo-600 transition-all duration-500"
                     style={{ width: `${Math.min((weeklyHours / 40) * 100, 100)}%` }}
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-400">{weeklyHours} of 40 hours</p>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{weeklyHours} of 40 hours</p>
               </div>
 
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Overtime</p>
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Overtime</p>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <p className="text-[28px] font-black tabular-nums text-gray-900">{weeklyOT}h</p>
+                  <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">{weeklyOT}h</p>
                   {weeklyOT === 0 ? (
                     <span className="text-xs font-semibold text-emerald-600">No overtime</span>
                   ) : (
@@ -556,10 +556,10 @@ export default function EmployeeClockPage() {
                 </div>
               </div>
 
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Today</p>
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Today</p>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <p className="text-[28px] font-black tabular-nums text-gray-900">
+                  <p className="text-[28px] font-black tabular-nums text-gray-900 dark:text-gray-100">
                     {clockStatus !== 'clocked-out' ? `${Math.floor(elapsedMs / 3_600_000)}h ${Math.floor((elapsedMs % 3_600_000) / 60_000)}m` : '0h 0m'}
                   </p>
                 </div>
@@ -571,9 +571,9 @@ export default function EmployeeClockPage() {
           <motion.div
             {...fadeInUp}
             transition={{ ...fadeInUp.transition, delay: 0.15 }}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">This Week</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">This Week</p>
 
             <div className="space-y-2.5">
               {[
@@ -588,22 +588,22 @@ export default function EmployeeClockPage() {
                 <div key={day.day} className="flex items-center gap-3">
                   <span className={cn(
                     'w-8 text-xs font-bold',
-                    day.status === 'active' ? 'text-indigo-600' : day.status === 'upcoming' ? 'text-gray-300' : 'text-gray-600'
+                    day.status === 'active' ? 'text-indigo-600' : day.status === 'upcoming' ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'
                   )}>
                     {day.day}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                     <div
                       className={cn(
                         'h-full rounded-full transition-all duration-500',
-                        day.status === 'active' ? 'bg-indigo-600' : day.status === 'upcoming' ? 'bg-gray-100' : 'bg-gray-400'
+                        day.status === 'active' ? 'bg-indigo-600' : day.status === 'upcoming' ? 'bg-gray-100 dark:bg-gray-800' : 'bg-gray-400'
                       )}
                       style={{ width: `${(day.hours / 8) * 100}%` }}
                     />
                   </div>
                   <span className={cn(
                     'w-10 text-right text-xs font-semibold tabular-nums',
-                    day.status === 'active' ? 'text-indigo-600' : day.status === 'upcoming' ? 'text-gray-300' : 'text-gray-600'
+                    day.status === 'active' ? 'text-indigo-600' : day.status === 'upcoming' ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'
                   )}>
                     {day.hours > 0 ? `${day.hours}h` : '—'}
                   </span>
