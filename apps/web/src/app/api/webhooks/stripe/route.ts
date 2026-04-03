@@ -58,12 +58,32 @@ export async function POST(request: NextRequest) {
   try {
     event = constructWebhookEvent(body, signature, WEBHOOK_SECRET)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error(`Webhook signature verification failed: ${message}`)
-    return NextResponse.json({ error: `Webhook Error: ${message}` }, { status: 400 })
+    console.error('Webhook signature verification failed:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
   }
 
   const supabase = getWebhookSupabase()
+
+  // ─── Idempotency Check ──────────────────────────────────────
+  // Prevent duplicate processing if Stripe retries the same event
+  const { data: existing } = await supabase
+    .from('processed_webhook_events')
+    .select('event_id')
+    .eq('event_id', event.id)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+
+  // Record the event as processed (best-effort — race window is tiny)
+  await supabase.from('processed_webhook_events').insert({
+    event_id: event.id,
+    event_type: event.type,
+    processed_at: new Date().toISOString(),
+  }).then(() => {}, () => {
+    // Ignore insert conflicts (another instance may have inserted first)
+  })
 
   try {
     switch (event.type) {
