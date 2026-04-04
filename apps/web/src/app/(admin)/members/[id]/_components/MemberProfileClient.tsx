@@ -48,6 +48,22 @@ export interface MemberProfile {
   guidedSessions: number
 }
 
+export type EngagementStatus = 'engaged' | 'active' | 'cooling' | 'at_risk' | 'lapsed' | 'never_visited'
+export type BehaviorSegment = 'power_user' | 'classpass_repeat' | 'new_never_booked' | 'one_and_done' | 'regular'
+export type AcquisitionChannel = 'classpass' | 'website' | 'direct' | 'mobile_app'
+
+export interface Member360Data {
+  engagementStatus: EngagementStatus | null
+  behaviorSegment: BehaviorSegment | null
+  acquisitionChannel: AcquisitionChannel | null
+  planName: string | null
+  totalVisits: number
+  daysSinceLastVisit: number | null
+  favoriteClassType: string | null
+  avgVisitsPerMonth: number | null
+  churnRisk: string | null
+}
+
 const PLAN_TIERS = [
   { key: 'unlimited', label: 'Unlimited', price: '$225/mo', tier: 3 },
   { key: '10_class', label: '10-Class Pack', price: '$180/mo', tier: 2 },
@@ -124,6 +140,43 @@ function membershipBadgeColor(type: MemberProfile['membershipType']) {
     'credit-pack': 'bg-violet-50 text-violet-700 border-violet-200',
   }
   return colors[type]
+}
+
+// ─── Member 360 Helpers ────────────────────────────────────
+function acquisitionBadge(channel: AcquisitionChannel | null) {
+  if (!channel) return null
+  const config: Record<AcquisitionChannel, { label: string; classes: string }> = {
+    classpass: { label: 'ClassPass', classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+    website: { label: 'Website', classes: 'bg-gray-50 text-gray-600 border-gray-200' },
+    direct: { label: 'Direct', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    mobile_app: { label: 'Mobile App', classes: 'bg-purple-50 text-purple-700 border-purple-200' },
+  }
+  return config[channel] || null
+}
+
+function engagementConfig(status: EngagementStatus | null) {
+  if (!status) return null
+  const config: Record<EngagementStatus, { label: string; dotColor: string }> = {
+    engaged: { label: 'Engaged', dotColor: 'bg-emerald-500' },
+    active: { label: 'Active', dotColor: 'bg-blue-500' },
+    cooling: { label: 'Cooling Off', dotColor: 'bg-yellow-500' },
+    at_risk: { label: 'At Risk', dotColor: 'bg-orange-500' },
+    lapsed: { label: 'Lapsed', dotColor: 'bg-red-500' },
+    never_visited: { label: 'Never Visited', dotColor: 'bg-gray-400' },
+  }
+  return config[status] || null
+}
+
+function behaviorTag(segment: BehaviorSegment | null) {
+  if (!segment) return null
+  const config: Record<BehaviorSegment, { label: string; classes: string }> = {
+    power_user: { label: 'Power User', classes: 'bg-purple-100 text-purple-700' },
+    classpass_repeat: { label: 'ClassPass Repeat', classes: 'bg-blue-100 text-blue-700' },
+    new_never_booked: { label: 'Never Booked', classes: 'bg-red-100 text-red-700' },
+    one_and_done: { label: 'One & Done', classes: 'bg-orange-100 text-orange-700' },
+    regular: { label: 'Regular', classes: 'bg-emerald-100 text-emerald-700' },
+  }
+  return config[segment] || null
 }
 
 function formatDate(dt: string) {
@@ -303,6 +356,7 @@ function SMSComposePanel({ phone }: { phone: string }) {
 // ─── Page ───────────────────────────────────────────────────
 export interface MemberProfileClientProps {
   member: MemberProfile | null
+  member360: Member360Data | null
   bookings: Booking[]
   transactions: Transaction[]
   tags: string[]
@@ -310,6 +364,7 @@ export interface MemberProfileClientProps {
 
 export default function MemberProfileClient({
   member: initialMember,
+  member360,
   bookings: initialBookings,
   transactions: initialTransactions,
   tags: initialTags,
@@ -362,21 +417,54 @@ export default function MemberProfileClient({
                 {member.avatar}
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {member.firstName} {member.lastName}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                    {member.firstName} {member.lastName}
+                  </h1>
+                  {/* Acquisition channel badge */}
+                  {member360?.acquisitionChannel && (() => {
+                    const acq = acquisitionBadge(member360.acquisitionChannel)
+                    return acq ? (
+                      <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border', acq.classes)}>
+                        {acq.label}
+                      </span>
+                    ) : null
+                  })()}
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={cn(
                     'inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border',
                     membershipBadgeColor(member.membershipType)
                   )}>
-                    {member.membership}
+                    {member360?.planName || member.membership}
                   </span>
                   <div className="flex items-center gap-1">
                     <div className={cn('h-1.5 w-1.5 rounded-full', statusDot(member.status))} />
                     <span className="text-xs text-gray-500 dark:text-gray-400">{statusLabel(member.status)}</span>
                   </div>
                 </div>
+                {/* Engagement status + behavior segment */}
+                {member360 && (member360.engagementStatus || member360.behaviorSegment) && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {member360.engagementStatus && (() => {
+                      const eng = engagementConfig(member360.engagementStatus)
+                      return eng ? (
+                        <div className="flex items-center gap-1">
+                          <div className={cn('h-2 w-2 rounded-full', eng.dotColor)} />
+                          <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">{eng.label}</span>
+                        </div>
+                      ) : null
+                    })()}
+                    {member360.behaviorSegment && (() => {
+                      const seg = behaviorTag(member360.behaviorSegment)
+                      return seg ? (
+                        <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold', seg.classes)}>
+                          {seg.label}
+                        </span>
+                      ) : null
+                    })()}
+                  </div>
+                )}
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Joined {member.joinDate}</p>
               </div>
             </div>
@@ -424,9 +512,9 @@ export default function MemberProfileClient({
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2">
             {[
-              { label: 'Lifetime Value', value: `$${member.ltv.toLocaleString()}`, icon: TrendingUp },
-              { label: 'Total Visits', value: member.totalVisits.toString(), icon: Activity },
-              { label: 'Avg Visits/Wk', value: member.avgVisitsPerWeek.toFixed(1), icon: Flame },
+              { label: 'Lifetime Value', value: `$${member.ltv.toLocaleString()}` },
+              { label: 'Total Visits', value: (member360?.totalVisits ?? member.totalVisits).toString() },
+              { label: 'Avg Visits/Wk', value: member.avgVisitsPerWeek.toFixed(1) },
             ].map((stat) => (
               <div key={stat.label} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-3 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>
@@ -444,9 +532,31 @@ export default function MemberProfileClient({
             </div>
             <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-3 text-center">
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Last Visit</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">{member.lastVisit}</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">
+                {member360?.daysSinceLastVisit != null
+                  ? member360.daysSinceLastVisit === 0 ? 'Today' : `${member360.daysSinceLastVisit}d ago`
+                  : member.lastVisit}
+              </p>
             </div>
           </div>
+
+          {/* Favorite Class + Churn Risk (from member_360) */}
+          {member360 && (member360.favoriteClassType || member360.churnRisk) && (
+            <div className="grid grid-cols-2 gap-2">
+              {member360.favoriteClassType && (
+                <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-3 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Fav. Class</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5 truncate">{member360.favoriteClassType}</p>
+                </div>
+              )}
+              {member360.avgVisitsPerMonth != null && (
+                <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-3 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Visits/Mo</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">{member360.avgVisitsPerMonth.toFixed(1)}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* AI Insights */}
           <div className="rounded-xl p-[1px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">

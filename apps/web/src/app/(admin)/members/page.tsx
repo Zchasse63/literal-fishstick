@@ -12,8 +12,8 @@ import {
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
-import type { FilterTab, ProfileTab, Member, MemberBooking, MemberTransaction } from './_components/types'
-import { statusDot, statusLabel, membershipBadgeColor } from './_components/types'
+import type { FilterTab, ProfileTab, Member, MemberBooking, MemberTransaction, EngagementStatus, AcquisitionChannel } from './_components/types'
+import { statusDot, statusLabel, membershipBadgeColor, engagementDotColor, acquisitionBadgeConfig } from './_components/types'
 import MemberProfilePanel from './_components/MemberProfilePanel'
 import AddMemberModal from './_components/AddMemberModal'
 
@@ -146,6 +146,7 @@ function MemberRowSkeleton() {
       <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-14 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /></td>
       <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /></td>
       <td className="px-4 py-3 hidden md:table-cell text-right"><div className="h-4 w-6 bg-gray-100 dark:bg-gray-800 rounded animate-pulse ml-auto" /></td>
+      <td className="px-4 py-3 hidden md:table-cell text-right"><div className="h-4 w-6 bg-gray-100 dark:bg-gray-800 rounded animate-pulse ml-auto" /></td>
       <td className="px-4 py-3 hidden lg:table-cell text-right"><div className="h-4 w-12 bg-gray-100 dark:bg-gray-800 rounded animate-pulse ml-auto" /></td>
       <td className="px-4 py-3 text-right"><div className="h-8 w-8 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse ml-auto" /></td>
     </tr>
@@ -187,7 +188,7 @@ export default function MembersPage() {
       let query = supabase
         .from('members')
         .select(`
-          id, membership_tier, membership_status, credits_remaining, total_visits,
+          id, profile_id, membership_tier, membership_status, credits_remaining, total_visits,
           join_date, notes, last_visit, lifetime_value,
           profiles!inner ( full_name, email, phone, avatar_url )
         `)
@@ -219,12 +220,28 @@ export default function MembersPage() {
         return
       }
 
+      // Fetch member_360 enrichment data in parallel
+      const profileIds = (data || []).map((row: any) => row.profiles?.id || row.profile_id).filter(Boolean)
+      let m360Map: Record<string, { engagement_status: string | null; acquisition_channel: string | null; behavior_segment: string | null; total_visits: number | null }> = {}
+      if (profileIds.length > 0) {
+        const { data: m360Data } = await supabase
+          .from('member_360')
+          .select('profile_id, engagement_status, acquisition_channel, behavior_segment, total_visits')
+          .in('profile_id', profileIds)
+        if (m360Data) {
+          for (const row of m360Data) {
+            m360Map[(row as any).profile_id] = row as any
+          }
+        }
+      }
+
       const mapped: Member[] = (data || []).map((row: any) => {
         const profile = row.profiles
         const fullName = profile.full_name || 'Unknown'
         const { firstName, lastName } = splitName(fullName)
         const tierInfo = mapTier(row.membership_tier)
         const computedStatus = mapStatus(row.membership_status, row.join_date, row.last_visit, row.credits_remaining ?? 0)
+        const m360 = m360Map[row.profile_id] || null
 
         return {
           id: row.id,
@@ -240,7 +257,7 @@ export default function MembersPage() {
           credits: row.credits_remaining > 0 || tierInfo.membershipType !== 'unlimited' ? row.credits_remaining : null,
           ltv: Math.round((row.lifetime_value || 0) / 100),
           joinDate: formatJoinDate(row.join_date),
-          totalVisits: row.total_visits || 0,
+          totalVisits: m360?.total_visits ?? row.total_visits ?? 0,
           avgVisitsPerWeek: row.total_visits
             ? Math.round((row.total_visits / Math.max(1, Math.ceil((Date.now() - new Date(row.join_date).getTime()) / (7 * 24 * 60 * 60 * 1000)))) * 10) / 10
             : 0,
@@ -251,6 +268,10 @@ export default function MembersPage() {
           guidedSessions: 0,
           avgDuration: '50 min',
           notes: row.notes,
+          // member_360 enrichment
+          engagementStatus: (m360?.engagement_status as EngagementStatus) || null,
+          acquisitionChannel: (m360?.acquisition_channel as AcquisitionChannel) || null,
+          behaviorSegment: m360?.behavior_segment as Member['behaviorSegment'] || null,
         }
       })
 
@@ -476,6 +497,9 @@ export default function MembersPage() {
                       <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Last Visit</span>
                     </th>
                     <th className="text-right px-4 py-3 hidden md:table-cell">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Visits</span>
+                    </th>
+                    <th className="text-right px-4 py-3 hidden md:table-cell">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Credits</span>
                     </th>
                     <th className="text-right px-4 py-3 hidden lg:table-cell">
@@ -505,19 +529,39 @@ export default function MembersPage() {
                               : 'hover:bg-gray-50 dark:hover:bg-gray-800/80'
                           )}
                         >
-                          {/* Name + Avatar */}
+                          {/* Name + Avatar + Engagement Dot */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <div className={cn(
-                                'h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0',
-                                member.avatarColor
-                              )}>
-                                {member.avatar}
+                              <div className="relative shrink-0">
+                                <div className={cn(
+                                  'h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold',
+                                  member.avatarColor
+                                )}>
+                                  {member.avatar}
+                                </div>
+                                {/* Engagement status dot overlay */}
+                                {member.engagementStatus && (
+                                  <div className={cn(
+                                    'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-gray-950',
+                                    engagementDotColor(member.engagementStatus)
+                                  )} title={member.engagementStatus.replace('_', ' ')} />
+                                )}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                                  {member.firstName} {member.lastName}
-                                </p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                    {member.firstName} {member.lastName}
+                                  </p>
+                                  {/* Acquisition channel badge */}
+                                  {member.acquisitionChannel && (() => {
+                                    const acq = acquisitionBadgeConfig(member.acquisitionChannel)
+                                    return acq ? (
+                                      <span className={cn('inline-flex items-center px-1 py-0 rounded text-[9px] font-semibold border leading-tight', acq.classes)}>
+                                        {acq.label}
+                                      </span>
+                                    ) : null
+                                  })()}
+                                </div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.email}</p>
                               </div>
                             </div>
@@ -544,6 +588,13 @@ export default function MembersPage() {
                           {/* Last Visit */}
                           <td className="px-4 py-3 hidden lg:table-cell">
                             <span className="text-sm text-gray-600 dark:text-gray-400">{member.lastVisit}</span>
+                          </td>
+
+                          {/* Visits */}
+                          <td className="px-4 py-3 text-right hidden md:table-cell">
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
+                              {member.totalVisits}
+                            </span>
                           </td>
 
                           {/* Credits */}
@@ -574,7 +625,7 @@ export default function MembersPage() {
 
                       {members.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                          <td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                             No members found matching your search.
                           </td>
                         </tr>

@@ -3,6 +3,7 @@ import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import MemberProfileClient from './_components/MemberProfileClient'
 import type {
   MemberProfile,
+  Member360Data,
   Booking,
   Transaction,
 } from './_components/MemberProfileClient'
@@ -116,6 +117,30 @@ export default async function MemberProfilePage({
     }
   }
 
+  // Fetch member_360 enriched data
+  let member360: Member360Data | null = null
+  if (member && data) {
+    const { data: m360 } = await supabase
+      .from('member_360')
+      .select('*')
+      .eq('profile_id', data.profile_id)
+      .single()
+
+    if (m360) {
+      member360 = {
+        engagementStatus: m360.engagement_status || null,
+        behaviorSegment: m360.behavior_segment || null,
+        acquisitionChannel: m360.acquisition_channel || null,
+        planName: m360.plan_name || null,
+        totalVisits: m360.total_visits ?? member.totalVisits,
+        daysSinceLastVisit: m360.days_since_last_visit ?? null,
+        favoriteClassType: m360.favorite_class_type || null,
+        avgVisitsPerMonth: m360.avg_visits_per_month ?? null,
+        churnRisk: m360.churn_risk || null,
+      }
+    }
+  }
+
   // Fetch related data in parallel (only if member found)
   let bookings: Booking[] = []
   let transactions: Transaction[] = []
@@ -165,6 +190,7 @@ export default async function MemberProfilePage({
   return (
     <MemberProfileClient
       member={member}
+      member360={member360}
       bookings={bookings}
       transactions={transactions}
       tags={tags}

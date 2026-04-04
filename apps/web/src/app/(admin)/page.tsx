@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   Sparkles,
@@ -14,10 +15,13 @@ import {
   ChevronRight,
   XCircle,
   Calendar,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/contexts/auth-context'
+import { createBrowserClient } from '@/lib/supabase/client'
+import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import {
   useCommandCenterData,
   formatEasternTime,
@@ -449,6 +453,91 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
   )
 }
 
+// ─── Engagement Breakdown ───────────────────────────────────
+interface EngagementCounts {
+  engaged: number
+  active: number
+  cooling: number
+  at_risk: number
+  lapsed: number
+  never_visited: number
+}
+
+const ENGAGEMENT_CONFIG: { key: keyof EngagementCounts; label: string; dotColor: string; textColor: string }[] = [
+  { key: 'engaged', label: 'Engaged', dotColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-400' },
+  { key: 'active', label: 'Active', dotColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-400' },
+  { key: 'cooling', label: 'Cooling', dotColor: 'bg-yellow-500', textColor: 'text-yellow-700 dark:text-yellow-400' },
+  { key: 'at_risk', label: 'At Risk', dotColor: 'bg-orange-500', textColor: 'text-orange-700 dark:text-orange-400' },
+  { key: 'lapsed', label: 'Lapsed', dotColor: 'bg-red-500', textColor: 'text-red-700 dark:text-red-400' },
+  { key: 'never_visited', label: 'Never Visited', dotColor: 'bg-gray-400', textColor: 'text-gray-500 dark:text-gray-400' },
+]
+
+function EngagementBreakdown() {
+  const [counts, setCounts] = useState<EngagementCounts | null>(null)
+  const supabase = useRef(createBrowserClient()).current
+
+  useEffect(() => {
+    async function fetchCounts() {
+      const { data } = await supabase
+        .from('member_360')
+        .select('engagement_status')
+
+      if (!data) return
+
+      const result: EngagementCounts = { engaged: 0, active: 0, cooling: 0, at_risk: 0, lapsed: 0, never_visited: 0 }
+      for (const row of data) {
+        const status = (row as any).engagement_status as keyof EngagementCounts | null
+        if (status && status in result) {
+          result[status]++
+        }
+      }
+      setCounts(result)
+    }
+
+    fetchCounts()
+    const interval = setInterval(fetchCounts, 60_000)
+    return () => clearInterval(interval)
+  }, [supabase])
+
+  if (!counts) return null
+
+  const total = Object.values(counts).reduce((a, b) => a + b, 0)
+  if (total === 0) return null
+
+  return (
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm">Member Engagement</h3>
+        </div>
+        <span className="text-xs text-gray-400 dark:text-gray-500">{total} members</span>
+      </div>
+      {/* Stacked bar */}
+      <div className="flex h-2 rounded-full overflow-hidden mb-3">
+        {ENGAGEMENT_CONFIG.map(({ key, dotColor }) => {
+          const pct = total > 0 ? (counts[key] / total) * 100 : 0
+          return pct > 0 ? (
+            <div key={key} className={cn('h-full', dotColor)} style={{ width: `${pct}%` }} />
+          ) : null
+        })}
+      </div>
+      {/* Labels */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {ENGAGEMENT_CONFIG.map(({ key, label, dotColor, textColor }) => (
+          counts[key] > 0 ? (
+            <div key={key} className="flex items-center gap-1.5">
+              <div className={cn('h-2 w-2 rounded-full', dotColor)} />
+              <span className={cn('text-xs font-semibold tabular-nums', textColor)}>{counts[key]}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
+            </div>
+          ) : null
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Command Center Page ─────────────────────────────────────
 export default function CommandCenter() {
   const { profile } = useAuth()
@@ -513,6 +602,9 @@ export default function CommandCenter() {
           trendDirection={noShowsToday === 0 ? 'down' : 'up'}
         />
       </div>
+
+      {/* Engagement Breakdown */}
+      <EngagementBreakdown />
 
       {/* Class Status + Timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">

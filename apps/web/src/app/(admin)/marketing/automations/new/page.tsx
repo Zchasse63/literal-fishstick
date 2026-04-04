@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, Suspense } from 'react'
+import { useState, useCallback, useMemo, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactFlow, {
@@ -21,12 +21,14 @@ import 'reactflow/dist/style.css'
 import { cn } from '@/lib/utils'
 import {
   ArrowLeft,
+  ArrowRight,
   Save,
   Play,
   Zap,
   Mail,
   Clock,
   GitBranch,
+  Loader2,
   Phone,
   Tag,
   Plus,
@@ -35,6 +37,12 @@ import {
   AlertCircle,
   Trash2,
   MessageSquare,
+  Repeat,
+  UserX,
+  TrendingDown,
+  Target,
+  Users,
+  Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -551,15 +559,238 @@ function StepConfigPanel({
   )
 }
 
+// ─── Template category config ─────────────────────────────
+const TEMPLATE_CATEGORIES: Record<string, { label: string; color: string }> = {
+  onboarding: { label: 'Onboarding', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' },
+  retention: { label: 'Retention', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' },
+  upsell: { label: 'Upsell', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300' },
+  engagement: { label: 'Engagement', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' },
+  winback: { label: 'Win-Back', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' },
+  conversion: { label: 'Conversion', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' },
+}
+
+const TRIGGER_ICONS: Record<string, typeof Mail> = {
+  never_booked: UserX,
+  classpass_repeat: Repeat,
+  one_and_done: TrendingDown,
+  cooling_off: AlertCircle,
+  plan_upgrade_candidate: Target,
+  class_type_fan: Sparkles,
+  signup: Users,
+  inactivity: Clock,
+  failed_payment: AlertCircle,
+  churn_risk: Zap,
+}
+
+interface TemplateData {
+  slug: string
+  name: string
+  description: string
+  trigger_type: string
+  category: string
+  steps: unknown[]
+}
+
+// ─── Template Gallery ─────────────────────────────────────
+function TemplateGallery({ onSelectTemplate, onSkip }: { onSelectTemplate: (t: TemplateData) => void; onSkip: () => void }) {
+  const [templates, setTemplates] = useState<TemplateData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filterCategory, setFilterCategory] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchTemplates() {
+      try {
+        const res = await fetch('/api/automations/templates')
+        if (res.ok) {
+          const json = await res.json()
+          if (!cancelled) {
+            setTemplates(json.data ?? [])
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load automation templates:', err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetchTemplates()
+    return () => { cancelled = true }
+  }, [])
+
+  const filteredTemplates = useMemo(() => {
+    if (!filterCategory) return templates
+    return templates.filter((t) => t.category === filterCategory)
+  }, [templates, filterCategory])
+
+  const categories = useMemo(() => {
+    const cats = new Set(templates.map((t) => t.category))
+    return Array.from(cats)
+  }, [templates])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/marketing/automations"
+            className="h-9 w-9 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Choose a Template</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Start with a pre-built automation flow or build from scratch</p>
+          </div>
+        </div>
+        <button
+          onClick={onSkip}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Start from Scratch
+        </button>
+      </div>
+
+      {/* Category Filters */}
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        <button
+          onClick={() => setFilterCategory(null)}
+          className={cn(
+            'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+            !filterCategory
+              ? 'bg-indigo-600 text-white'
+              : 'bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+          )}
+        >
+          All
+        </button>
+        {categories.map((cat) => {
+          const config = TEMPLATE_CATEGORIES[cat]
+          return (
+            <button
+              key={cat}
+              onClick={() => setFilterCategory(cat)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize',
+                filterCategory === cat
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              )}
+            >
+              {config?.label ?? cat}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Templates Grid */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+        </div>
+      ) : filteredTemplates.length === 0 ? (
+        <div className="text-center py-20">
+          <p className="text-sm text-gray-400 dark:text-gray-500">No templates found for this category.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTemplates.map((template) => {
+            const catConfig = TEMPLATE_CATEGORIES[template.category]
+            const TriggerIcon = TRIGGER_ICONS[template.trigger_type] ?? Zap
+
+            return (
+              <div
+                key={template.slug}
+                className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
+                    <TriggerIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
+                      {template.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      {catConfig && (
+                        <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider', catConfig.color)}>
+                          {catConfig.label}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                        {template.steps.length} steps
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4 line-clamp-2">
+                  {template.description}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                    <Zap className="h-3 w-3" />
+                    {template.trigger_type.replace(/_/g, ' ')}
+                  </span>
+                  <button
+                    onClick={() => onSelectTemplate(template)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+                  >
+                    Use Template
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
 // ─── Flow Builder (inner component) ────────────────────────
 function FlowBuilderInner() {
   const searchParams = useSearchParams()
   const templateId = searchParams.get('template')
 
-  const [flowName, setFlowName] = useState(templateId ? getTemplateName(templateId) : 'New Automation')
-  const [triggerType, setTriggerType] = useState<TriggerType>(templateId ? getTemplateTrigger(templateId) : 'signup')
+  // Show template gallery when no template is pre-selected
+  const [showGallery, setShowGallery] = useState(!templateId)
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateData | null>(null)
+
+  const handleSelectTemplate = useCallback((template: TemplateData) => {
+    setSelectedTemplate(template)
+    setShowGallery(false)
+  }, [])
+
+  const handleSkipGallery = useCallback(() => {
+    setShowGallery(false)
+  }, [])
+
+  // Resolve initial name and trigger from template (URL param or gallery selection)
+  const resolvedTemplateName = selectedTemplate?.name ?? (templateId ? getTemplateName(templateId) : 'New Automation')
+  const resolvedTriggerType = (selectedTemplate?.trigger_type as TriggerType) ?? (templateId ? getTemplateTrigger(templateId) : 'signup')
+
+  const [flowName, setFlowName] = useState(resolvedTemplateName)
+  const [triggerType, setTriggerType] = useState<TriggerType>(resolvedTriggerType)
   const [inactivityDays, setInactivityDays] = useState(14)
   const [exitCondition, setExitCondition] = useState('Member books a class or membership becomes active')
+
+  // Update flow name and trigger when template is selected from gallery
+  useEffect(() => {
+    if (selectedTemplate) {
+      setFlowName(selectedTemplate.name)
+      if (selectedTemplate.trigger_type) {
+        setTriggerType(selectedTemplate.trigger_type as TriggerType)
+      }
+    }
+  }, [selectedTemplate])
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges)
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null)
@@ -696,6 +927,16 @@ function FlowBuilderInner() {
     }
     setNodes((nds) => [...nds, newNode])
   }, [setNodes])
+
+  // Show template gallery before the builder
+  if (showGallery) {
+    return (
+      <TemplateGallery
+        onSelectTemplate={handleSelectTemplate}
+        onSkip={handleSkipGallery}
+      />
+    )
+  }
 
   return (
     <motion.div

@@ -5,23 +5,31 @@ import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
+  AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Calendar,
   Check,
   Clock,
+  Loader2,
   Mail,
   Monitor,
   Phone,
+  Repeat,
   Save,
   Send,
   Smartphone,
   Sparkles,
   Split,
+  Thermometer,
   Type,
+  UserMinus,
   Users,
+  UserX,
   Wand2,
   X,
+  Zap,
 } from 'lucide-react'
 import { fadeInUpWithExit as fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
@@ -33,6 +41,26 @@ import TemplateCard from '../_components/TemplateCard'
 import AIGeneratePanel from '../_components/AIGeneratePanel'
 
 const STUDIO_ID = DEFAULT_STUDIO_ID
+
+// ─── Behavior-based segments from member_360 ────────────────
+const BEHAVIOR_SEGMENTS = [
+  { id: 'classpass_repeat', name: 'ClassPass Repeat Visitors', description: 'ClassPass users who visited 2+ times — conversion targets', icon: Repeat, color: 'blue' },
+  { id: 'new_never_booked', name: 'Never Booked', description: 'Signed up but never booked a class', icon: UserX, color: 'red' },
+  { id: 'one_and_done', name: 'One & Done', description: 'Visited once but never returned', icon: AlertCircle, color: 'orange' },
+  { id: 'power_user', name: 'Power Users', description: '8+ visits per month — your most loyal members', icon: Zap, color: 'purple' },
+  { id: 'cooling_off', name: 'Cooling Off', description: 'Active members showing declining attendance', icon: Thermometer, color: 'yellow' },
+  { id: 'at_risk', name: 'At Risk', description: 'No visit in 45-90 days — need re-engagement', icon: AlertTriangle, color: 'red' },
+  { id: 'lapsed', name: 'Lapsed Members', description: 'No visit in 90+ days', icon: UserMinus, color: 'gray' },
+] as const
+
+const SEGMENT_COLORS: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
+  blue: { bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-700 dark:text-blue-300', iconBg: 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' },
+  red: { bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800', text: 'text-red-700 dark:text-red-300', iconBg: 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400' },
+  orange: { bg: 'bg-orange-50 dark:bg-orange-950/30', border: 'border-orange-200 dark:border-orange-800', text: 'text-orange-700 dark:text-orange-300', iconBg: 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400' },
+  purple: { bg: 'bg-purple-50 dark:bg-purple-950/30', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-300', iconBg: 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400' },
+  yellow: { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-300', iconBg: 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400' },
+  gray: { bg: 'bg-gray-50 dark:bg-gray-900/50', border: 'border-gray-200 dark:border-gray-700', text: 'text-gray-700 dark:text-gray-300', iconBg: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+}
 
 // ─── Page ───────────────────────────────────────────────────
 export default function CampaignBuilderPage() {
@@ -65,10 +93,46 @@ export default function CampaignBuilderPage() {
     return () => { cancelled = true }
   }, [])
 
+  // Behavior segment counts from member_360
+  const [behaviorSegmentCounts, setBehaviorSegmentCounts] = useState<Record<string, number>>({})
+  const [behaviorCountsLoading, setBehaviorCountsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createBrowserClient()
+
+    async function loadBehaviorCounts() {
+      setBehaviorCountsLoading(true)
+      const counts: Record<string, number> = {}
+
+      // Fetch counts for each behavior segment in parallel
+      const queries = BEHAVIOR_SEGMENTS.map(async (seg) => {
+        const { count } = await supabase
+          .from('member_360')
+          .select('*', { count: 'exact', head: true })
+          .eq('behavior_segment', seg.id)
+
+        if (!cancelled) {
+          counts[seg.id] = count ?? 0
+        }
+      })
+
+      await Promise.all(queries)
+      if (!cancelled) {
+        setBehaviorSegmentCounts(counts)
+        setBehaviorCountsLoading(false)
+      }
+    }
+
+    loadBehaviorCounts()
+    return () => { cancelled = true }
+  }, [])
+
   // Step 1 state
   const [campaignName, setCampaignName] = useState('')
   const [selectedChannels, setSelectedChannels] = useState<ChannelType[]>(['email'])
   const [selectedSegment, setSelectedSegment] = useState('all')
+  const [selectedBehaviorSegment, setSelectedBehaviorSegment] = useState<string | null>(null)
 
   // Step 2 state
   const [subject, setSubject] = useState('')
@@ -92,8 +156,11 @@ export default function CampaignBuilderPage() {
   const [testSent, setTestSent] = useState(false)
 
   const recipientCount = useMemo(() => {
+    if (selectedBehaviorSegment) {
+      return behaviorSegmentCounts[selectedBehaviorSegment] ?? 0
+    }
     return segments.find((s) => s.id === selectedSegment)?.count ?? 0
-  }, [selectedSegment])
+  }, [selectedSegment, selectedBehaviorSegment, behaviorSegmentCounts, segments])
 
   const toggleChannel = useCallback((ch: ChannelType) => {
     setSelectedChannels((prev) => {
@@ -135,7 +202,8 @@ export default function CampaignBuilderPage() {
       name: campaignName,
       studio_id: STUDIO_ID,
       channel: selectedChannels[0],
-      segment_id: selectedSegment === 'all' ? null : selectedSegment,
+      segment_id: selectedBehaviorSegment ? null : (selectedSegment === 'all' ? null : selectedSegment),
+      behavior_segment: selectedBehaviorSegment || null,
       subject,
       preview_text: previewText,
       body: selectedChannels.includes('email') ? emailBody : smsBody,
@@ -148,7 +216,7 @@ export default function CampaignBuilderPage() {
         ? `${scheduleDate}T${scheduleTime}:00`
         : null,
     }
-  }, [campaignName, selectedChannels, selectedSegment, subject, previewText, emailBody, smsBody, abTestEnabled, variantBSubject, variantBBody, abSplit, scheduleMode, scheduleDate, scheduleTime])
+  }, [campaignName, selectedChannels, selectedSegment, selectedBehaviorSegment, subject, previewText, emailBody, smsBody, abTestEnabled, variantBSubject, variantBBody, abSplit, scheduleMode, scheduleDate, scheduleTime])
 
   const handleSaveDraft = useCallback(async () => {
     if (!campaignName.trim()) return
@@ -321,42 +389,145 @@ export default function CampaignBuilderPage() {
                 </div>
               </div>
 
-              {/* Segment Selection */}
+              {/* Audience Selection */}
               <div className="mb-5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 block">
-                  Target Segment
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 block">
+                  Target Audience
                 </label>
-                <select
-                  value={selectedSegment}
-                  onChange={(e) => setSelectedSegment(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none cursor-pointer"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                  }}
-                >
-                  {segments.map((seg) => (
-                    <option key={seg.id} value={seg.id}>
-                      {seg.name} ({seg.count.toLocaleString()})
-                    </option>
-                  ))}
-                </select>
+
+                {/* Audience Type Tabs */}
+                <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit mb-4">
+                  <button
+                    onClick={() => {
+                      setSelectedBehaviorSegment(null)
+                    }}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all',
+                      !selectedBehaviorSegment
+                        ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    )}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Smart Segments
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedBehaviorSegment(BEHAVIOR_SEGMENTS[0].id)
+                      setSelectedSegment('all')
+                    }}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all',
+                      selectedBehaviorSegment
+                        ? 'bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    )}
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    Behavior Segments
+                  </button>
+                </div>
+
+                {/* Smart Segments (existing dropdown) */}
+                {!selectedBehaviorSegment && (
+                  <select
+                    value={selectedSegment}
+                    onChange={(e) => setSelectedSegment(e.target.value)}
+                    className="w-full h-11 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 text-sm text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none cursor-pointer"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 12px center',
+                    }}
+                  >
+                    {segments.map((seg) => (
+                      <option key={seg.id} value={seg.id}>
+                        {seg.name} ({seg.count.toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Behavior Segments grid */}
+                {selectedBehaviorSegment && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {BEHAVIOR_SEGMENTS.map((seg) => {
+                      const colors = SEGMENT_COLORS[seg.color] ?? SEGMENT_COLORS.gray
+                      const Icon = seg.icon
+                      const isSelected = selectedBehaviorSegment === seg.id
+                      const count = behaviorSegmentCounts[seg.id]
+                      return (
+                        <button
+                          key={seg.id}
+                          onClick={() => setSelectedBehaviorSegment(seg.id)}
+                          className={cn(
+                            'relative flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all',
+                            isSelected
+                              ? `${colors.bg} ${colors.border} ring-2 ring-indigo-200 dark:ring-indigo-800`
+                              : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:border-gray-300 dark:hover:border-gray-700'
+                          )}
+                        >
+                          <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', colors.iconBg)}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={cn('text-sm font-semibold', isSelected ? colors.text : 'text-gray-900 dark:text-gray-100')}>
+                                {seg.name}
+                              </p>
+                              {isSelected && (
+                                <Check className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">{seg.description}</p>
+                            <div className="mt-1.5">
+                              {behaviorCountsLoading ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Loading...
+                                </span>
+                              ) : (
+                                <span className={cn('text-xs font-bold tabular-nums', colors.text)}>
+                                  {(count ?? 0).toLocaleString()} members
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Recipient Count */}
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100">
-                <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-indigo-600" />
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900">
+                <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 dark:text-indigo-500">
                     Estimated Recipients
                   </p>
-                  <p className="text-2xl font-black text-indigo-700 tabular-nums">
-                    {recipientCount.toLocaleString()}
-                  </p>
+                  {behaviorCountsLoading && selectedBehaviorSegment ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                      <span className="text-sm text-indigo-400">Counting...</span>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300 tabular-nums">
+                      {recipientCount.toLocaleString()}
+                    </p>
+                  )}
                 </div>
+                {selectedBehaviorSegment && (
+                  <div className="ml-auto">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      <Zap className="h-3 w-3" />
+                      Behavior
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

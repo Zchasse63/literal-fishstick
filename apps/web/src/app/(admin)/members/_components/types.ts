@@ -3,6 +3,10 @@
 export type FilterTab = 'All' | 'Active' | 'Paused' | 'At Risk' | 'New'
 export type ProfileTab = 'Overview' | 'History' | 'Financials' | 'Communications'
 
+export type EngagementStatus = 'engaged' | 'active' | 'cooling' | 'at_risk' | 'lapsed' | 'never_visited'
+export type BehaviorSegment = 'power_user' | 'classpass_repeat' | 'new_never_booked' | 'one_and_done' | 'regular'
+export type AcquisitionChannel = 'classpass' | 'website' | 'direct' | 'mobile_app'
+
 export interface Member {
   id: string
   firstName: string
@@ -28,6 +32,10 @@ export interface Member {
   guidedSessions: number
   avgDuration: string
   notes: string | null
+  // member_360 enrichment fields
+  engagementStatus?: EngagementStatus | null
+  acquisitionChannel?: AcquisitionChannel | null
+  behaviorSegment?: BehaviorSegment | null
 }
 
 export interface MemberBooking {
@@ -73,6 +81,44 @@ export function membershipBadgeColor(type: Member['membershipType']) {
     'credit-pack': 'bg-violet-50 text-violet-700 border-violet-200',
   }
   return colors[type]
+}
+
+// ─── Member 360 Helpers ────────────────────────────────────
+export function engagementDotColor(status: EngagementStatus | null | undefined): string {
+  if (!status) return 'bg-gray-300'
+  const colors: Record<EngagementStatus, string> = {
+    engaged: 'bg-emerald-500',
+    active: 'bg-blue-500',
+    cooling: 'bg-yellow-500',
+    at_risk: 'bg-orange-500',
+    lapsed: 'bg-red-500',
+    never_visited: 'bg-gray-400',
+  }
+  return colors[status] || 'bg-gray-300'
+}
+
+export function engagementLabel(status: EngagementStatus | null | undefined): string {
+  if (!status) return ''
+  const labels: Record<EngagementStatus, string> = {
+    engaged: 'Engaged',
+    active: 'Active',
+    cooling: 'Cooling Off',
+    at_risk: 'At Risk',
+    lapsed: 'Lapsed',
+    never_visited: 'Never Visited',
+  }
+  return labels[status] || ''
+}
+
+export function acquisitionBadgeConfig(channel: AcquisitionChannel | null | undefined): { label: string; classes: string } | null {
+  if (!channel) return null
+  const config: Record<AcquisitionChannel, { label: string; classes: string }> = {
+    classpass: { label: 'ClassPass', classes: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' },
+    website: { label: 'Website', classes: 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' },
+    direct: { label: 'Direct', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' },
+    mobile_app: { label: 'Mobile App', classes: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' },
+  }
+  return config[channel] || null
 }
 
 // ─── Heatmap Data (simplified GitHub-style) ─────────────────
