@@ -40,11 +40,6 @@ describe('normalizePhone function basics (integration sanity)', () => {
 // ============================================================================
 // Route-level integration tests
 // ============================================================================
-//
-// Strategy: For each route we spy on normalizePhone via vi.mock and verify
-// the Supabase insert/update receives the normalized value. Each route is
-// tested in isolation using dynamic import after mocks are configured.
-// ============================================================================
 
 import { NextRequest } from 'next/server'
 import { createChainableMock } from '@/__tests__/helpers/mock-chainable'
@@ -57,13 +52,65 @@ function makeRequest(url: string, init?: RequestInit): NextRequest {
 const TEST_USER_ID = 'aaaaaaaa-1111-2222-3333-444444444444'
 const TEST_STUDIO_ID = 'bbbbbbbb-1111-2222-3333-444444444444'
 
+// ─── Shared mutable mock holders (hoisted) ──────────────────────────
+// vi.mock factories are hoisted to the top of the file, so they can only
+// reference variables created via vi.hoisted(). Each describe block sets
+// these before running its tests.
+
+const { supabaseMockHolder, requireRoleMockHolder } = vi.hoisted(() => {
+  const supabaseMockHolder: { current: Record<string, unknown> | null } = { current: null }
+  const requireRoleMockHolder: { current: Record<string, unknown> | null } = { current: null }
+  return { supabaseMockHolder, requireRoleMockHolder }
+})
+
+// Single top-level mock for supabase/server — all describe blocks use supabaseMockHolder.current
+vi.mock('@/lib/supabase/server', () => ({
+  createServerClient: vi.fn(() => Promise.resolve(supabaseMockHolder.current)),
+}))
+
+// Single top-level mock for auth/require-role — members route uses this
+vi.mock('@/lib/auth/require-role', () => ({
+  requireRole: vi.fn(() => Promise.resolve(requireRoleMockHolder.current)),
+}))
+
+// Mock validation — pass through body but keep normalizePhone from the real module
+vi.mock('@/lib/validation', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>
+  return {
+    ...actual,
+    validateBody: vi.fn((_schema: unknown, body: unknown) => ({
+      data: body,
+      error: null,
+    })),
+  }
+})
+
+// Mock SMS provider
+vi.mock('@/lib/sms', () => ({
+  createSMSProvider: vi.fn(() => ({
+    sendSMS: vi.fn().mockResolvedValue({
+      success: true,
+      provider_message_id: 'msg-123',
+      segments: 1,
+    }),
+  })),
+}))
+
+// Mock rate limiter
+vi.mock('@/lib/rate-limit', () => ({
+  rateLimit: vi.fn(() => ({ success: true })),
+}))
+
 // ============================================================================
-// 1. POST /api/leads
+// Route-level tests
 // ============================================================================
 
 describe('phone normalization integration', () => {
+  // ========================================================================
+  // 1. POST /api/leads
+  // ========================================================================
+
   describe('POST /api/leads', () => {
-    let supabaseMock: Record<string, unknown>
     let capturedInsert: Record<string, unknown> | null = null
 
     beforeEach(() => {
@@ -71,14 +118,9 @@ describe('phone normalization integration', () => {
       capturedInsert = null
     })
 
-    // Reset module registry for each describe block
-    vi.mock('@/lib/supabase/server', () => ({
-      createServerClient: vi.fn(() => Promise.resolve(supabaseMock)),
-    }))
-
     function setupLeadsMock(opts: { duplicateEmail?: boolean } = {}) {
       let leadsCallCount = 0
-      supabaseMock = {
+      supabaseMockHolder.current = {
         auth: {
           getUser: vi.fn().mockResolvedValue({
             data: { user: { id: TEST_USER_ID } },
@@ -160,17 +202,12 @@ describe('phone normalization integration', () => {
   // ========================================================================
 
   describe('POST /api/members', () => {
-    let requireRoleMockReturn: Record<string, unknown>
     let capturedInsert: Record<string, unknown> | null = null
 
     beforeEach(() => {
       vi.clearAllMocks()
       capturedInsert = null
     })
-
-    vi.mock('@/lib/auth/require-role', () => ({
-      requireRole: vi.fn(() => Promise.resolve(requireRoleMockReturn)),
-    }))
 
     function setupMembersMock(opts: { duplicateEmail?: boolean } = {}) {
       let profilesCallCount = 0
@@ -202,7 +239,7 @@ describe('phone normalization integration', () => {
         }),
       }
 
-      requireRoleMockReturn = {
+      requireRoleMockHolder.current = {
         error: null,
         user: { id: TEST_USER_ID },
         profile: { id: TEST_USER_ID, roles: ['owner'], studio_id: TEST_STUDIO_ID },
@@ -234,7 +271,6 @@ describe('phone normalization integration', () => {
   // ========================================================================
 
   describe('PUT /api/members/[id]', () => {
-    let supabaseMock: Record<string, unknown>
     let capturedUpdate: Record<string, unknown> | null = null
 
     beforeEach(() => {
@@ -244,7 +280,7 @@ describe('phone normalization integration', () => {
 
     function setupMemberUpdateMock() {
       let profilesCallCount = 0
-      supabaseMock = {
+      supabaseMockHolder.current = {
         auth: {
           getUser: vi.fn().mockResolvedValue({
             data: { user: { id: TEST_USER_ID } },
@@ -282,10 +318,6 @@ describe('phone normalization integration', () => {
       }
     }
 
-    vi.mock('@/lib/supabase/server', () => ({
-      createServerClient: vi.fn(() => Promise.resolve(supabaseMock)),
-    }))
-
     it('normalizes phone on member update', async () => {
       setupMemberUpdateMock()
       const { PUT } = await import('@/app/api/members/[id]/route')
@@ -307,7 +339,6 @@ describe('phone normalization integration', () => {
   // ========================================================================
 
   describe('POST /api/staff', () => {
-    let supabaseMock: Record<string, unknown>
     let capturedProfileInsert: Record<string, unknown> | null = null
 
     beforeEach(() => {
@@ -319,7 +350,7 @@ describe('phone normalization integration', () => {
       let profilesCallCount = 0
       let staffCallCount = 0
 
-      supabaseMock = {
+      supabaseMockHolder.current = {
         auth: {
           getUser: vi.fn().mockResolvedValue({
             data: { user: { id: TEST_USER_ID } },
@@ -373,10 +404,6 @@ describe('phone normalization integration', () => {
       }
     }
 
-    vi.mock('@/lib/supabase/server', () => ({
-      createServerClient: vi.fn(() => Promise.resolve(supabaseMock)),
-    }))
-
     it('normalizes phone on staff creation', async () => {
       setupStaffMock()
       const { POST } = await import('@/app/api/staff/route')
@@ -401,7 +428,6 @@ describe('phone normalization integration', () => {
   // ========================================================================
 
   describe('POST /api/corporate', () => {
-    let supabaseMock: Record<string, unknown>
     let capturedInsert: Record<string, unknown> | null = null
 
     beforeEach(() => {
@@ -409,20 +435,8 @@ describe('phone normalization integration', () => {
       capturedInsert = null
     })
 
-    // The corporate route uses validateBody — we let it pass through
-    vi.mock('@/lib/validation', async (importOriginal) => {
-      const actual = await importOriginal() as Record<string, unknown>
-      return {
-        ...actual,
-        validateBody: vi.fn((_schema: unknown, body: unknown) => ({
-          data: body,
-          error: null,
-        })),
-      }
-    })
-
     function setupCorporateMock() {
-      supabaseMock = {
+      supabaseMockHolder.current = {
         auth: {
           getUser: vi.fn().mockResolvedValue({
             data: { user: { id: TEST_USER_ID } },
@@ -453,10 +467,6 @@ describe('phone normalization integration', () => {
       }
     }
 
-    vi.mock('@/lib/supabase/server', () => ({
-      createServerClient: vi.fn(() => Promise.resolve(supabaseMock)),
-    }))
-
     it('normalizes contact_phone on company creation', async () => {
       setupCorporateMock()
       const { POST } = await import('@/app/api/corporate/route')
@@ -481,7 +491,6 @@ describe('phone normalization integration', () => {
   // ========================================================================
 
   describe('POST /api/events', () => {
-    let supabaseMock: Record<string, unknown>
     let capturedInsert: Record<string, unknown> | null = null
 
     beforeEach(() => {
@@ -490,7 +499,7 @@ describe('phone normalization integration', () => {
     })
 
     function setupEventsMock() {
-      supabaseMock = {
+      supabaseMockHolder.current = {
         auth: {
           getUser: vi.fn().mockResolvedValue({
             data: { user: { id: TEST_USER_ID } },
@@ -521,21 +530,6 @@ describe('phone normalization integration', () => {
       }
     }
 
-    vi.mock('@/lib/validation', async (importOriginal) => {
-      const actual = await importOriginal() as Record<string, unknown>
-      return {
-        ...actual,
-        validateBody: vi.fn((_schema: unknown, body: unknown) => ({
-          data: body,
-          error: null,
-        })),
-      }
-    })
-
-    vi.mock('@/lib/supabase/server', () => ({
-      createServerClient: vi.fn(() => Promise.resolve(supabaseMock)),
-    }))
-
     it('normalizes contact_phone on event creation', async () => {
       setupEventsMock()
       const { POST } = await import('@/app/api/events/route')
@@ -561,7 +555,6 @@ describe('phone normalization integration', () => {
   // ========================================================================
 
   describe('POST /api/events/[id]/guests', () => {
-    let supabaseMock: Record<string, unknown>
     let capturedGuestRows: Record<string, unknown>[] | null = null
 
     beforeEach(() => {
@@ -571,7 +564,7 @@ describe('phone normalization integration', () => {
 
     function setupGuestsMock() {
       let eventsCallCount = 0
-      supabaseMock = {
+      supabaseMockHolder.current = {
         auth: {
           getUser: vi.fn().mockResolvedValue({
             data: { user: { id: TEST_USER_ID } },
@@ -611,10 +604,6 @@ describe('phone normalization integration', () => {
       }
     }
 
-    vi.mock('@/lib/supabase/server', () => ({
-      createServerClient: vi.fn(() => Promise.resolve(supabaseMock)),
-    }))
-
     it('normalizes guest_phone in guest list', async () => {
       setupGuestsMock()
       const { POST } = await import('@/app/api/events/[id]/guests/route')
@@ -651,28 +640,12 @@ describe('phone normalization integration', () => {
   // ========================================================================
 
   describe('POST /api/sms/send', () => {
-    let supabaseMock: Record<string, unknown>
-
     beforeEach(() => {
       vi.clearAllMocks()
     })
 
-    vi.mock('@/lib/sms', () => ({
-      createSMSProvider: vi.fn(() => ({
-        sendSMS: vi.fn().mockResolvedValue({
-          success: true,
-          provider_message_id: 'msg-123',
-          segments: 1,
-        }),
-      })),
-    }))
-
-    vi.mock('@/lib/rate-limit', () => ({
-      rateLimit: vi.fn(() => ({ success: true })),
-    }))
-
     function setupSMSMock() {
-      supabaseMock = {
+      supabaseMockHolder.current = {
         auth: {
           getUser: vi.fn().mockResolvedValue({
             data: { user: { id: TEST_USER_ID } },
@@ -690,10 +663,6 @@ describe('phone normalization integration', () => {
         }),
       }
     }
-
-    vi.mock('@/lib/supabase/server', () => ({
-      createServerClient: vi.fn(() => Promise.resolve(supabaseMock)),
-    }))
 
     it('normalizes to field before sending', async () => {
       setupSMSMock()

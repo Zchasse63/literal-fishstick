@@ -72,13 +72,17 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 // Mock the validation module — let it pass by default
-vi.mock("@/lib/validation", () => ({
-  validateBody: vi.fn((_schema: unknown, body: unknown) => ({
-    data: body,
-    error: null,
-  })),
-  corporateCreateSchema: {},
-}));
+vi.mock("@/lib/validation", async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    validateBody: vi.fn((_schema: unknown, body: unknown) => ({
+      data: body,
+      error: null,
+    })),
+    corporateCreateSchema: {},
+  };
+});
 
 const { GET, POST } = await import("@/app/api/corporate/route");
 

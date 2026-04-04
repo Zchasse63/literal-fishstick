@@ -139,7 +139,7 @@ describe('POST /api/webhooks/stripe', () => {
       const { status, body } = await parseResponse(response)
 
       expect(status).toBe(400)
-      expect(body.error).toBe('Webhook Error: Invalid signature')
+      expect(body.error).toBe('Webhook signature verification failed')
     })
 
     it('returns 400 with "Unknown error" when constructWebhookEvent throws a non-Error', async () => {
@@ -152,7 +152,7 @@ describe('POST /api/webhooks/stripe', () => {
       const { status, body } = await parseResponse(response)
 
       expect(status).toBe(400)
-      expect(body.error).toBe('Webhook Error: Unknown error')
+      expect(body.error).toBe('Webhook signature verification failed')
     })
 
     it('passes body, signature, and webhook secret to constructWebhookEvent', async () => {
@@ -615,7 +615,17 @@ describe('POST /api/webhooks/stripe', () => {
 
   describe('processing errors', () => {
     it('returns 500 when a DB operation throws', async () => {
-      mockSupabase.from.mockImplementation(() => {
+      // The idempotency check calls from('processed_webhook_events') before
+      // the try/catch, so we must let those pass and only throw inside the
+      // event handler (e.g., from('members')).
+      let callCount = 0
+      mockSupabase.from.mockImplementation((table: string) => {
+        callCount++
+        if (table === 'processed_webhook_events') {
+          // Return normal chainable for idempotency check/insert
+          return queryBuilder
+        }
+        // Throw for the actual event processing calls (members, ai_cache, etc.)
         throw new Error('DB connection failed')
       })
 

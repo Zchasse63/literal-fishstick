@@ -224,31 +224,41 @@ describe('sendBatchEmails', () => {
     expect(result.error).toBeNull()
   })
 
-  it('returns error on first chunk failure with no partial ids', async () => {
+  it('returns error on first chunk failure after exhausting retries', async () => {
     delete process.env.RESEND_DRY_RUN
     const { sendBatchEmails } = await loadModule()
 
-    mockBatchSend.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Server error' },
-    })
+    // The retry logic calls batch.send 3 times (BATCH_RETRY_ATTEMPTS = 3)
+    mockBatchSend
+      .mockResolvedValueOnce({ data: null, error: { message: 'Server error' } })
+      .mockResolvedValueOnce({ data: null, error: { message: 'Server error' } })
+      .mockResolvedValueOnce({ data: null, error: { message: 'Server error' } })
+
     const result = await sendBatchEmails(makeEmails(50))
-    expect(result.ids).toEqual([])
-    expect(result.error).toBe('Server error')
+    // After all retries, the chunk fills with nulls and continues
+    expect(result.ids).toHaveLength(50)
+    result.ids.forEach((id) => expect(id).toBeNull())
+    expect(result.error).toMatch(/chunk.*failed/i)
   })
 
-  it('returns partial ids when second chunk fails', async () => {
+  it('returns partial ids when second chunk fails after retries', async () => {
     delete process.env.RESEND_DRY_RUN
     const { sendBatchEmails } = await loadModule()
 
     const chunk1Ids = Array.from({ length: 100 }, (_, i) => ({ id: `ok_${i}` }))
+    // Chunk 1 succeeds, then chunk 2 fails all 3 retries
     mockBatchSend
       .mockResolvedValueOnce({ data: { data: chunk1Ids }, error: null })
       .mockResolvedValueOnce({ data: null, error: { message: 'Chunk 2 failed' } })
+      .mockResolvedValueOnce({ data: null, error: { message: 'Chunk 2 failed' } })
+      .mockResolvedValueOnce({ data: null, error: { message: 'Chunk 2 failed' } })
 
     const result = await sendBatchEmails(makeEmails(150))
-    expect(result.ids).toHaveLength(100)
-    expect(result.error).toBe('Chunk 2 failed')
+    // 100 real IDs + 50 nulls for the failed chunk
+    expect(result.ids).toHaveLength(150)
+    expect(result.ids.slice(0, 100).every((id) => id !== null)).toBe(true)
+    expect(result.ids.slice(100).every((id) => id === null)).toBe(true)
+    expect(result.error).toMatch(/chunk.*failed/i)
   })
 
   it('returns synthetic ids for all emails in dry run mode', async () => {

@@ -177,7 +177,7 @@ describe("GET /api/bookings", () => {
     const res = await GET(makeRequest("/api/bookings"));
     expect(res.status).toBe(500);
     const json = await res.json();
-    expect(json.error).toBe("relation does not exist");
+    expect(json.error).toBe("Internal server error");
   });
 });
 

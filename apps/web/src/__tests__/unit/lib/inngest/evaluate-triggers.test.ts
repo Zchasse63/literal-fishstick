@@ -1,55 +1,63 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// FIFO response queue — mirrors helpers.test.ts pattern
+// Hoisted mocks — these are available inside vi.mock factories
 // ---------------------------------------------------------------------------
 
-const responseQueue: Array<{ data: unknown; error: unknown; count: number | null }> = []
+const { mockFrom, mockChain, mockCanEnrollMember, mockInngestSend, responseQueue, enqueue } = vi.hoisted(() => {
+  const responseQueue: Array<{ data: unknown; error: unknown; count: number | null }> = []
 
-function enqueue(data: unknown, error: unknown = null, count: number | null = null) {
-  responseQueue.push({ data, error, count })
-}
+  function enqueue(data: unknown, error: unknown = null, count: number | null = null) {
+    responseQueue.push({ data, error, count })
+  }
 
+  function dequeue() {
+    return responseQueue.shift() ?? { data: null, error: null, count: null }
+  }
+
+  function makeChain(): Record<string, unknown> {
+    const chain: Record<string, unknown> = {}
+    const methods = [
+      'select', 'insert', 'update', 'upsert', 'delete',
+      'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
+      'in', 'is', 'not', 'or', 'and', 'filter',
+      'order', 'limit', 'range', 'offset',
+      'single', 'maybeSingle',
+      'match', 'contains', 'containedBy', 'overlaps',
+      'textSearch', 'csv', 'returns', 'throwOnError',
+      'like',
+    ]
+    for (const m of methods) {
+      chain[m] = vi.fn().mockImplementation(() => {
+        return {
+          ...chain,
+          then(resolve: (v: unknown) => void) {
+            resolve(dequeue())
+          },
+        }
+      })
+    }
+    return chain
+  }
+
+  const mockChain = makeChain()
+  const mockFrom = vi.fn().mockReturnValue(mockChain)
+  const mockCanEnrollMember = vi.fn().mockResolvedValue(true)
+  const mockInngestSend = vi.fn().mockResolvedValue(undefined)
+
+  return { mockFrom, mockChain, mockCanEnrollMember, mockInngestSend, responseQueue, enqueue }
+})
+
+// Dequeue helper (not hoisted — only used in test helpers/beforeEach)
 function dequeue() {
   return responseQueue.shift() ?? { data: null, error: null, count: null }
 }
-
-function makeChain(): Record<string, unknown> {
-  const chain: Record<string, unknown> = {}
-  const methods = [
-    'select', 'insert', 'update', 'upsert', 'delete',
-    'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
-    'in', 'is', 'not', 'or', 'and', 'filter',
-    'order', 'limit', 'range', 'offset',
-    'single', 'maybeSingle',
-    'match', 'contains', 'containedBy', 'overlaps',
-    'textSearch', 'csv', 'returns', 'throwOnError',
-    'like',
-  ]
-  for (const m of methods) {
-    chain[m] = vi.fn().mockImplementation(() => {
-      return {
-        ...chain,
-        then(resolve: (v: unknown) => void) {
-          resolve(dequeue())
-        },
-      }
-    })
-  }
-  return chain
-}
-
-const mockChain = makeChain()
-const mockFrom = vi.fn().mockReturnValue(mockChain)
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
     from: mockFrom,
   })),
 }))
-
-// Mock canEnrollMember — allow enrollment by default
-const mockCanEnrollMember = vi.fn().mockResolvedValue(true)
 
 vi.mock('@/lib/inngest/helpers', () => ({
   getAdminClient: vi.fn(() => ({
@@ -58,12 +66,9 @@ vi.mock('@/lib/inngest/helpers', () => ({
   canEnrollMember: (...args: unknown[]) => mockCanEnrollMember(...args),
 }))
 
-// Mock inngest client for send
-const mockInngestSend = vi.fn().mockResolvedValue(undefined)
-
 vi.mock('@/lib/inngest/client', () => ({
   inngest: {
-    send: mockInngestSend,
+    send: (...args: unknown[]) => mockInngestSend(...args),
     createFunction: vi.fn((_config: unknown, handler: unknown) => {
       // Expose the handler so tests can invoke it directly
       return { _handler: handler, fn: handler }
