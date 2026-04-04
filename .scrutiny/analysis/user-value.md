@@ -1,144 +1,107 @@
 # User Value Analysis
+
 **Agent:** user-value
-**Plan:** Glofox API Migration to Meridian
+**Plan:** Unified Member Data Architecture
 **Complexity:** SIGNIFICANT
-**Date:** 2026-03-31
+**Date:** 2026-04-04
 
 ---
 
 ## Agent Verdict
-**GO** — This migration delivers concrete, high-value outcomes for the studio operator (Zach / The Sauna Guys) and is a necessary prerequisite for Meridian to function as the operating system the product is designed to be. The value is not speculative — it directly removes active operational pain, enables features that are currently blocked, and eliminates a recurring subscription cost. The member experience impact is neutral-to-positive if executed cleanly, or moderately negative if the payment migration is mishandled.
+
+**GO** — with a strong recommendation to sequence delivery to front-load the highest-value work. The plan fixes real, currently broken functionality (automation triggers that silently don't work), enables a segmentation capability that has direct revenue implications (ClassPass conversion), and provides the data foundation Phase 2 marketing features actually require. The user value is high and largely uncontroversial.
 
 ---
 
-## Primary Value Delivered
+## Value Assessment
 
-### Value 1: Meridian Becomes Operationally Real
+### Tier 1: Fixes Broken Things (Immediate Value)
 
-Currently, Meridian is a management dashboard connected to stale, incomplete data (one-time CSV import, 27 fields missing). Staff still lives in Glofox for actual operations. The sync engine transforms Meridian from a reporting dashboard into the actual system of record.
+**total_visits / last_visit backfill**
 
-This is not incremental improvement — it is the enabling condition for every Phase 2, Phase 3, and Phase 4 feature to actually function. Marketing campaigns require accurate consent fields (being added). Churn prediction requires birthday and membership expiry data (being added). The trainer bonus system requires check-ins tracked in Meridian (currently tracked only in Glofox).
+This is not a new feature — it's a bug fix. The milestone automation trigger currently fires for members with 0 visits because total_visits is 0 for everyone. The inactivity trigger's batched query against bookings works correctly, but it's the only trigger doing so. failed_payment never fires because transactions is empty.
 
-**Impact: High. This unlocks the entire product.**
+Until this is fixed, the automation system is partially inoperable. Studio staff cannot trust that automation flows are running correctly, which means:
+- Welcome series triggers may send milestone emails immediately at signup
+- Members who legitimately haven't visited get missed by inactivity flows
+- Failed payment dunning doesn't exist
 
-### Value 2: 27 Missing Fields Become Available
+The business impact of fixing this is proportional to how many automation flows are live. With 0 active flows in production, the immediate business impact is low — but the fix is necessary before any automation can be trusted.
 
-The data enrichment in Phase 1 populates:
-- Birthdays → birthday automation flows (already built in Inngest with `member/birthday` event)
-- Consent fields → legal compliance for email/SMS campaigns (required for Phase 2)
-- Membership expiry dates → accurate churn prediction (Phase 3 AI features)
-- Address data → shipping infrastructure, demographics
-- Emergency contacts → liability/safety (valuable for wellness studio context)
-- Late cancellation / no-show flags → strike system enforcement (already policy-decided)
-- `is_first_booking` → first-time member welcome flows
-
-Several of these directly enable features that are already built but cannot fire without the data. The birthday automation event type already exists in the Inngest client. The churn prediction hook (`use-churn-prediction.ts`) already exists. The data is the last blocker.
-
-**Impact: High. Unlocks built features that are currently inert.**
-
-### Value 3: Eliminates Glofox Subscription Cost
-
-Glofox pricing for fitness studios is typically $110–$150/month for a studio of this size, rising to $200+ at scale. Eliminating this subscription after cutover generates direct savings of $1,320–$2,400/year, plus removes Glofox's payment processing markup (typically 0.5–1% on top of card processing fees).
-
-On $30–50k/month in membership revenue, even a 0.5% payment processing reduction saves $150–$250/month. Combined with the subscription cost, total annual savings are roughly $3,000–$5,000/year.
-
-**Impact: Medium. Meaningful but not transformative at current scale.**
-
-### Value 4: Removes Glofox's Operational Constraints
-
-The CLAUDE.md explicitly documents pain points that Glofox imposes and Meridian is designed to solve. Several of these are blocked until Meridian is the operational system:
-- Self-service membership upgrades (Glofox blocks this — requires contacting studio)
-- Dual-role accounts (trainers who are also members cannot have one email in Glofox)
-- Trainer promo code attribution (not supported in Glofox)
-- "Exclude from analytics" flag for comped members (not supported in Glofox)
-- Proration on upgrades (Glofox explicitly does not support this)
-
-None of these can be fixed while Glofox remains the system of record. The migration is a precondition for delivering the differentiated product.
-
-**Impact: High. Removes known friction points for both operators and members.**
+**Value rating: HIGH (prerequisite to Phase 2 automation)**
 
 ---
 
-## User Impact By Stakeholder
+### Tier 2: New Capability With Revenue Implication
 
-### Studio Owner (Zach)
+**ClassPass acquisition_source tagging**
 
-**Gains:**
-- Single system for all operations (no context-switching between Glofox and Meridian)
-- Full data visibility — AI insights, churn prediction, marketing automation all become real
-- Cost reduction on subscription and payment processing
-- Product becomes SaaS-ready (direct value if future customers adopt Meridian)
+ClassPass members represent a specific conversion opportunity: they've already tried the facility, they have intent, but they're paying ClassPass instead of The Sauna Guys directly. Being able to segment and target these members with a specific offer ("skip ClassPass, get direct member pricing") is a credible revenue lever.
 
-**Risks:**
-- If cutover is botched, operational disruption during the studio's actual business hours
-- Payment migration failure causes member billing failures that require manual remediation
+At 1,199 profiles, even a conservative estimate of 5–15% being ClassPass members (60–180 people) targeted with a conversion campaign has real revenue potential. A single conversion from ClassPass to a monthly membership is worth $80–150/month in direct revenue vs. the fractional ClassPass payout.
 
-**Net value: Very high, contingent on clean execution.**
+The plan correctly identifies this. The acquisition_source field already exists on profiles — this is purely a backfill + campaign targeting enablement.
 
-### Studio Staff (Trainers, Front Desk)
+**Value rating: HIGH (direct revenue conversion opportunity)**
 
-**Gains:**
-- Single system to use instead of split workflow
-- Check-in flow in Meridian (already built: QR check-in, kiosk)
-- Trainer dashboard shows their own class metrics natively
+**member_360 unified view**
 
-**Risks:**
-- Training period requires learning new workflows
-- During parallel mode, confusion about which system is "correct" for any given action
-- Class creation is Glofox-only during transition (no write endpoint), requiring staff to use Glofox for schedule management until cutover
+For staff using the admin dashboard, a member profile page that shows engagement tier, behavior segment, acquisition source, favorite class type, and days since last visit in one place is a significant UX improvement. Currently staff have to infer this from raw booking counts and dates.
 
-**Net value: Positive post-training, friction during transition.**
+The value here is operational efficiency for whoever manages member relationships at The Sauna Guys.
 
-### Members (~1,100)
-
-**Gains:**
-- Eventually: self-service membership upgrades, better booking experience, wellness journey tracking
-- Eventually: magic link auth (no password to remember)
-
-**Risks (this migration specifically):**
-- Required to re-enter payment details before cutover — friction, and risk of non-compliance
-- If cutover timing is bad (mid-billing-cycle failure), members may experience failed charges or booking errors
-- If rollback is needed, members experience system unavailability and confusion
-
-**The member experience during this migration is primarily negative in the short term** — they are asked to do extra work (re-enter payment methods) with limited benefit visible to them until the full member-facing portal launches (Phase 5).
-
-**Net value: Neutral to slightly negative during migration, positive post-Phase 5.**
+**Value rating: MEDIUM (staff efficiency)**
 
 ---
 
-## Value Realization Timeline
+### Tier 3: Foundation Enabling Future Value
 
-```
-Week 1: Schema enriched — birthday/consent/expiry data available immediately
-Week 2-3: Sync engine built — live data starts flowing
-Week 4: Shadow mode — data validation (no user-visible change)
-Week 5-6: Parallel mode — staff begins using Meridian natively
-Week 7-8: Cutover — Meridian is primary; Glofox subscription cancellation begins
-Week 9+: Full value — AI features fire, campaigns use real data, processing cost reduced
-Month 3+: Member-facing value — when Phase 5 portal launches
-```
+**New automation trigger types**
 
-The core business value (single operational system, AI features activated) is realized at cutover. Member-facing improvements are deferred to Phase 5 launch. The two timelines are decoupled.
+never_booked, one_and_done, cooling_off, plan_upgrade_candidate, class_type_fan — these are all automation triggers that don't fire until someone creates a flow that uses them. The value is latent: the triggers themselves have no user-visible impact until flows are built.
 
----
+The plan includes "pre-built automation flow templates" which addresses this — if the templates ship with the triggers, the value is immediate. If the triggers ship without flows, they're invisible.
 
-## Risk to Value Delivery
+**Value rating: MEDIUM (depends on template delivery)**
 
-### Highest risk to value: Payment migration non-collection
+**glofox_plan_map**
 
-If 20–30% of members don't re-enter payment methods, the first post-cutover billing run generates failures. This:
-- Creates immediate manual work for staff
-- Damages member trust if charges fail unexpectedly
-- May cause members to cancel rather than re-enroll
+This fixes UI display issues where plan names show as numeric IDs. For staff reviewing member plans, this is a quality-of-life fix. For members (if plan names appear in member-facing UI), it's more significant — but member-facing surfaces are Phase 5.
 
-Mitigation: proactive communication, sufficient lead time (4 weeks, not 2), multiple reminder touchpoints via email (Resend campaigns are already built), clear explanation of why re-entry is needed.
-
-### Second highest risk to value: Staff training insufficient
-
-If staff are not fluent in Meridian's booking and check-in flows before cutover, operational quality drops. The plan gives 2 weeks of parallel mode for training. For a studio with ~10 staff and a relatively simple operational workflow, this is likely sufficient — but it should not be abbreviated.
+**Value rating: LOW–MEDIUM (staff display quality)**
 
 ---
 
-## Summary
+### Who Experiences the Value
 
-The migration delivers clear, measurable value to the studio owner and is a necessary prerequisite for the entire product roadmap. The member impact during migration is a managed friction point, not a value problem. The plan correctly identifies this as infrastructure work, not a feature. The value case is solid.
+**Studio admin/owner:** Immediately experiences correct automation trigger behavior (once flows are live), ClassPass segment visibility in campaign builder, plan names in UI.
+
+**Studio staff:** More informative member profile pages.
+
+**Members:** No direct value from this plan (all admin-side). Member-facing impact comes in Phase 5.
+
+**Phase 2 Marketing module:** This plan is a prerequisite. Campaign builder segments based on acquisition_source, engagement_status, and behavior_segment require this data to exist and be accurate.
+
+---
+
+### Value-to-Effort Ratio
+
+The SQL backfill (Category 1 from scope analysis) is a few hours of work that fixes broken automation triggers and enables ClassPass segmentation. This has the best value-to-effort ratio of anything in the platform backlog.
+
+The member_360 VIEW and new trigger types are medium effort for medium value.
+
+The Phase B mass pull (transactions, interactions) is higher effort for lower immediate value — primarily populating tables that aren't yet used by live flows.
+
+---
+
+## Risks to Value Delivery
+
+1. **Automation flows are currently inactive.** The plan's automation-related value is zero until flows are created and activated. The trigger fixes are necessary but not sufficient — someone needs to build the flows.
+
+2. **ClassPass conversion campaign requires email content.** Tagging ClassPass members is the prerequisite, but the actual value requires someone to design a conversion campaign in the campaign builder (Phase 2 feature) with compelling copy. The data layer doesn't deliver value by itself.
+
+3. **member_360 query performance.** If the VIEW is slow (as flagged in technical feasibility), UI pages using it will be slow, degrading the staff experience. This inverts the expected value.
+
+---
+
+## Verdict Confidence: HIGH

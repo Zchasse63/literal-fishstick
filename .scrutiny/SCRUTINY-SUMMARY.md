@@ -1,147 +1,118 @@
-# SCRUTINY SUMMARY
-## Glofox API Migration to Meridian
-**Date:** 2026-03-31
-**Mode:** Deep (7 agents)
-**Complexity:** SIGNIFICANT
+# Scrutiny Summary: Unified Member Data Architecture
+
+**Date:** 2026-04-04
+**Verdict:** MODIFY
+**Confidence:** HIGH
+**Complexity Class:** SIGNIFICANT
+**Agents Run:** 7 (technical-feasibility, scope-complexity, user-value, cost-benefit, architecture-impact, edge-cases, competitive-context)
 
 ---
 
-## Overall Verdict: MODIFY
+## Verdict: MODIFY
 
-**The migration is the right move. Proceed — with specific fixes before Phase 2 begins.**
-
-The sync engine architecture is sound. The tooling choices are correct for this codebase. The value case is clear and the cost case is positive. Five concrete bugs in the plan's code samples and six unaddressed edge cases would cause rework if discovered mid-execution rather than now. The 8-week timeline works for the sync engine and admin/staff cutover. It does not work for a full member-facing cutover because the member portal prerequisite has no timeline.
+The plan correctly identifies real problems and the right approach. It should proceed with 5 structural modifications that prevent specific failure modes. This is not a course-correction — it's a "fix 5 things before building."
 
 ---
 
-## Verdict Score
+## What the Analysis Found
 
-| Dimension | Score | Notes |
-|-----------|-------|-------|
-| Technical Feasibility | 7/10 | Sync engine is buildable; 5 code bugs; rate limits unknown |
-| Scope Clarity | 6/10 | Monitoring dashboard unscoped; member portal gap unacknowledged |
-| User Value | 9/10 | Clear, high, unlocks multiple built-but-inert features |
-| Cost-Benefit | 8/10 | ROI positive; payment non-collection is the primary financial risk |
-| Architecture Fit | 8/10 | Clean fit into existing Inngest + Supabase patterns; RLS gap |
-| Edge Case Coverage | 5/10 | 8 unaddressed cases, 3 high-severity |
-| Strategic Alignment | 9/10 | Required for product roadmap; migration tooling is a competitive asset |
+### The Problems Are Real and Urgent
 
----
+The plan is not proposing a nice-to-have. `members.total_visits = 0` for all 1,183 members despite 5,427 bookings existing is a bug, not a gap. The milestone automation trigger is silently misfiring right now. The `failed_payment` trigger reads an empty transactions table. These are live correctness issues.
 
-## Must-Fix Before Phase 2 (Blocking)
+### The Approach Fits the Architecture
 
-These 6 items will cause significant rework if not resolved before Phase 2 code is written:
+The tech stack (Supabase PostgreSQL, Inngest crons, Glofox read-only API) is well-understood and the plan works within all constraints. No architectural violations. No pattern conflicts (with the modifications below). The Glofox-read-only constraint is respected.
 
-### Fix 1: Validate Glofox API Rate Limits
-The sync schedule (bookings every 5 min = 288+ calls/day) was designed for freshness, not for any known rate limit. Obtain rate limit docs or run an empirical burst test in Phase 1. The frequencies may need to change.
+### Phase Sequencing Is the Primary Issue
 
-### Fix 2: Validate Pagination Contract
-The `fetchAll` function assumes `body.has_more` terminates pagination. If wrong, every sync returns only the first 100 records. 1,000 of 1,100 members silently missed. Verify in glofox-api-guide.md and test against a live endpoint.
-
-### Fix 3: Fix 5 Code Bugs in the Plan
-- `pushMemberUpdate` name-splitting has a null-access risk and is semantically wrong (read first/last directly from schema)
-- `glofox_sync_state` table missing `UNIQUE(studio_id, entity_type)` constraint — upserts will fail
-- `sold_by_profile_id` FK will reject transactions from staff without Meridian profiles — make nullable
-- `fetchAll` URL construction drops the `/prod` base path for absolute path arguments — use string concatenation
-- Confirm `POST /Analytics/report` returns individual transaction rows with date filters (not aggregates)
-
-### Fix 4: Specify Outbound Sync Trigger Mechanism + Add Loop Guard
-"Event-driven, triggered by database changes" is not a specification. Confirm: application-level triggering (API routes call `inngest.send()` after writes). Add loop guard: skip outbound sync if `glofox_synced_at` updated within last 60 seconds (prevents Glofox → Meridian → Glofox infinite loop).
-
-### Fix 5: Build the Plan Code → Stripe Price ID Mapping
-Glofox plan codes (e.g., UNLIMITED_MONTHLY) must map to Stripe price IDs before cutover. This mapping is entirely absent from the plan. Without it, subscription migration is manual and error-prone.
-
-### Fix 6: Resolve the Member Portal Prerequisite
-The pre-cutover checklist requires member-facing features. Phase 5 (the member portal) has not started. Choose one:
-- **Option A (recommended):** Scope a minimum member surface (magic link auth + Stripe payment form + account page) as a parallel 2-week workstream, targeting Week 5 completion for payment collection
-- **Option B:** Define this as an admin-only cutover (Glofox member app stays active for members; Glofox subscription continues until Phase 5 launches)
-
-The plan cannot proceed to cutover without choosing.
+The plan treats 4 phases as sequential when the first sprint's work (the SQL backfill) is a standalone migration that can ship today and fixes broken automation triggers immediately. The rest of the plan depends on this but doesn't communicate the urgency.
 
 ---
 
-## Important But Not Blocking
+## 5 Required Modifications
 
-| # | Issue | When to Address |
-|---|-------|----------------|
-| R1 | Add sync monitoring dashboard to Week 3 scope (needs to exist before parallel mode) | Phase 2 |
-| R2 | Check Glofox contract cancellation notice period | Week 1 |
-| R3 | Add credit pack sync to daily full-refresh job | Phase 2 |
-| R4 | Add RLS policies to all 3 new tables | Phase 1 |
-| R5 | Add Glofox event types to `MeridianEvents` type definition | Phase 2 |
-| R6 | Add `UNIQUE` index to `glofox_sync_state` before first upsert | Phase 1 |
-| R7 | Verify all ~10 Glofox staff have Meridian profile mappings | Phase 1 |
-| R8 | Reduce DNS TTL to 300 seconds 48 hours before cutover | Week 7 |
-| R9 | Keep `lib/glofox/` as a permanent reusable library (future SaaS migration tool) | Week 9 cleanup |
+**1. Ship the backfill SQL first, today**
 
----
+Write a single migration file that:
+- Backfills `members.total_visits` from bookings (filter: `checked_in_at IS NOT NULL AND status NOT IN ('cancelled', 'no_show', 'waitlisted')` — the booking status filter is mandatory)
+- Backfills `members.last_visit` from MAX(checked_in_at)
+- Backfills `profiles.acquisition_source = 'classpass'` where `phone = '+10000000000' AND lead_source = 'U' AND acquisition_source IS NULL`
+- Backfills `members.engagement_status` from visit patterns
 
-## Edge Cases That Need Explicit Handling
+Before running: confirm `SELECT count(*) FROM automation_flows WHERE is_active = true` = 0. If active milestone/inactivity flows exist, the backfill will immediately qualify potentially hundreds of members and trigger bulk enrollments.
 
-| Edge Case | Severity | Action |
-|-----------|----------|--------|
-| Members with billing dates within 7 days of cutover | High | Pull billing dates; coordinate manually to prevent double-charge |
-| Credit pack balances not synced from Glofox | High | Add to full-refresh; verify all active credit members before cutover |
-| New members created in Meridian during parallel mode have no glofox_id | Medium | Outbound new-member registration should call `POST /2.0/register` and store returned Glofox ID |
-| Glofox plan code → Stripe price ID mapping | High | See Fix 5 above |
-| Staff profiles without Meridian mapping cause FK failures | Medium | Verify in Phase 1; create missing mappings manually |
-| Class schedule in Glofox during parallel mode | Medium | Classes must be created in Meridian only; Glofox schedule diverges — communicate to staff |
+**2. Update total_visits at check-in time, not via daily cron**
 
----
+The `evaluate-triggers.ts` milestone trigger runs every 10 minutes. If `total_visits` is only updated daily, there is a 0–23 hour lag between a member's visit and the trigger firing. Fix: the check-in handler must increment `members.total_visits` and update `members.last_visit` as part of the same transaction that writes `bookings.checked_in_at`. The daily cron becomes a reconciliation/catch-all, not the primary update path.
 
-## Timeline Assessment
+**3. member_360 VIEW must read pre-computed columns, not re-aggregate**
 
-| Week | Plan Says | Realistic Assessment |
-|------|-----------|---------------------|
-| 1 | Schema prep | Correct; add: rate limit testing, pagination validation, staff profile verification, CSV export |
-| 2–3 | Sync engine build | Correct; add: bug fixes, loop guard, Inngest event types, monitoring dashboard |
-| 4 | Shadow mode | Correct; extend if integrity issues found |
-| 5–6 | Parallel mode + payment collection | Correct; payment collection needs minimum member portal online; start collection 4 weeks before cutover (Week 3) |
-| 7–8 | Cutover | Correct; add DNS TTL prep at Week 7 start |
-| 9+ | Cleanup | Correct; retain lib/glofox/ module |
+The VIEW must JOIN on `members.total_visits` and `members.last_visit` (the stored columns), not recalculate them from the bookings table. Re-aggregating in the VIEW creates two diverging sources of truth and a performance liability. Only fields not worth storing (e.g., `favorite_class_type`) should use a LATERAL subquery in the VIEW — bounded to one row per member, acceptable.
 
-**Revised total: 9–10 calendar weeks if minimum member surface is built in parallel. 8 weeks for admin-only cutover.**
+**4. Specify Phase B scope before starting**
+
+"Activity/history" and "subscriptions" do not map to known GlofoxClient methods. Before Phase B begins, map each planned data source to a specific `GlofoxClient` method. If "activity" means `getInteractions(userId)` (per-member endpoint), it's an N+1 problem requiring 1,199+ API calls — that's a batch job, not an ongoing sync, and needs explicit scoping.
+
+**5. Fix STUDIO_ID hardcoding (MED-001) when touching evaluate-triggers.ts**
+
+The file has an existing TODO: `// Multi-tenancy — query studios table and iterate all active studios instead of hardcoding a single studio ID. See MED-001.` Adding 6 new trigger types without fixing this compoundsthe debt. Fix it while the file is open for the new trigger work.
 
 ---
 
-## What the Plan Gets Right
+## What Needs No Modification
 
-- Inngest is the right choice and fits the existing codebase perfectly
-- Incremental sync via modified-date filters is superior to snapshot-and-cutover
-- Per-field conflict resolution with Glofox-owns-financial-data rule is correct
-- Shadow mode before parallel mode is the right validation sequence
-- "Never delete from Glofox" policy enables clean rollback at any point
-- Supabase PITR + manual snapshot is the right data safety net
-- Sunday night cutover with tiered rollback plan is operationally sound
-- All schema changes are additive and non-destructive
+- The 6 new automation trigger types — correct and extensible
+- glofox_plan_map table design
+- cron-member-enrichment as a reconciliation mechanism
+- UI integration approach
+- Overall phasing concept (just resequence so backfill is immediate)
 
 ---
 
-## Key Assumptions to Validate
+## Sequenced Work Plan
 
-| Assumption | Validation Method | Priority |
-|-----------|------------------|----------|
-| Glofox API rate limits allow 600+ calls/day | Request docs or burst test | Critical |
-| `has_more` pagination field exists in API responses | Check glofox-api-guide.md; test live | Critical |
-| API credentials obtainable | Contact Glofox account manager | Critical |
-| Analytics endpoint returns row-level transaction data | Test with API credentials | High |
-| All 229 tests currently pass | Run test suite now | High |
-| Stripe merchant account is fully verified | Check Stripe dashboard | High |
-| Supabase PITR is enabled | Check Supabase project settings | High |
-| Glofox contract has no 30-day notice requirement | Review contract | Medium |
+**Sprint 1 (1 day, immediate):** Backfill SQL + glofox_plan_map + confirm/trigger transactions backfill
+
+**Sprint 2 (days 2–5):** Check-in handler update + member_360 VIEW + cron-member-enrichment + Phase B endpoint clarification
+
+**Sprint 3 (days 6–10):** Fix MED-001 + 6 new trigger types + exit conditions + pre-built templates
+
+**Sprint 4 (days 11–15):** UI integration (member profile badges, campaign segments, plan name display)
 
 ---
 
-## Files Generated
+## Key Risks
 
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/normalized-plan.md` — Normalized input plan
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/technical-feasibility.md` — Full technical analysis
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/scope-complexity.md` — Scope and timeline analysis
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/user-value.md` — Value delivery analysis
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/cost-benefit.md` — Financial analysis
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/architecture-impact.md` — Architecture analysis
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/edge-cases.md` — Edge case catalog
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/competitive-context.md` — Strategic context
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/verdict.md` — Detailed verdict
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/assumptions.md` — Assumption register
-- `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/scope-decomposition.md` — Revised scope map
+| Risk | Action Required |
+|------|----------------|
+| Backfill triggers bulk automation enrollment | Check active flows before running |
+| member_360 re-aggregation (slow queries) | Implement Modification 3 |
+| total_visits lag for automation triggers | Implement Modification 2 |
+| Phase B stalls on undefined endpoints | Implement Modification 4 |
+
+---
+
+## Assumptions to Validate Before Starting
+
+1. `phase2-migration.sql` has been applied to production (acquisition_source column exists on profiles)
+2. `automation_flows` table has 0 active rows (safe to run backfill)
+3. `glofox-backfill.ts` has been triggered and run at some point (transactions may already be populated)
+4. `+10000000000` is exclusively Glofox's ClassPass placeholder, not a generic "no phone" default
+
+---
+
+## Full Reports
+
+All 7 agent reports are at `/Users/zach/Desktop/literal-fishstick/.scrutiny/analysis/`
+
+- `technical-feasibility.md` — VIEW structure, cron lag, Phase B endpoint gaps
+- `scope-complexity.md` — Sprint restructuring, accurate file count, timeline
+- `user-value.md` — ClassPass conversion opportunity, automation prerequisite value
+- `cost-benefit.md` — 50h estimate, $4–32k/year ClassPass conversion potential
+- `architecture-impact.md` — Convention conflicts, RLS handling, dependency order
+- `edge-cases.md` — 8 specific edge cases, 3 rated HIGH
+- `competitive-context.md` — Glofox differentiation, SaaS positioning
+
+Synthesis verdict: `/Users/zach/Desktop/literal-fishstick/.scrutiny/synthesis/verdict.md`
+Scope decomposition: `/Users/zach/Desktop/literal-fishstick/.scrutiny/planning/scope-decomposition.md`

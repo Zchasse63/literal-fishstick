@@ -1,131 +1,137 @@
-# Edge Cases Analysis
+# Edge Cases & Risk Analysis
+
 **Agent:** edge-cases
-**Plan:** Glofox API Migration to Meridian
+**Plan:** Unified Member Data Architecture
 **Complexity:** SIGNIFICANT
-**Date:** 2026-03-31
+**Date:** 2026-04-04
 
 ---
 
 ## Agent Verdict
-**MODIFY** — The plan addresses happy-path sync scenarios well but has meaningful gaps in failure handling. Several edge cases that will definitely occur in a live migration are either unaddressed or inadequately handled: members who exist in one system but not the other, records modified in both systems within the same sync window, Glofox API partial failures, and the billing cycle edge case at cutover. These are not theoretical — they will happen. The plan needs explicit handling for each.
+
+**MODIFY** — The plan has 6 specific edge cases that will produce incorrect behavior or data corruption if not addressed before implementation. None are blockers, but 3 of them (booking status filter for visit counts, ClassPass false positive logic, and trigger double-enrollment) will cause incorrect automation behavior immediately after deployment.
 
 ---
 
-## Edge Cases the Plan Addresses
+## Edge Case Inventory
 
-**Concurrent booking race conditions:** The plan inherits the atomic insert policy from the CLAUDE.md edge case decisions. Meridian uses atomic inserts for booking races — this carries through to the sync engine's outbound booking creation.
+### EC-01: Booking Status Filter for total_visits Backfill
 
-**Inbound update vs. new insert:** The `syncMembersInbound` function correctly distinguishes between existing records (update) and new records (insert) using `glofox_id` lookup. This is the right pattern.
+**Risk: HIGH — Incorrect visit counts**
 
-**Conflict detection:** The `glofox_sync_conflicts` table and per-field resolution rules handle the case of concurrent modification in both systems.
+The plan says "backfill total_visits from actual booking data." The filter is not specified. If the backfill counts ALL bookings (including cancelled, waitlisted, no_show), total_visits will be inflated.
 
-**Rollback capability:** Supabase PITR + "never delete from Glofox" policy provides a genuine rollback path.
+The correct filter: only count bookings where status IN ('confirmed', 'checked_in') AND checked_in_at IS NOT NULL. A booking that was made but cancelled before check-in should NOT count as a visit. A booking that is 'confirmed' but never checked in is debatable — for visit count purposes, only actual attendance (checked_in_at IS NOT NULL) should count.
 
-**Idempotency:** Inbound sync is inherently idempotent (upsert on glofox_id). Outbound sync stores the resulting Glofox ID back to the Meridian record to prevent duplicates.
+This also affects the engagement_status backfill and all 6 new trigger types that reason about visits.
 
----
-
-## Unaddressed Edge Cases
-
-### Edge Case 1: Members in Meridian With No Glofox ID
-
-After the one-time CSV import, there may be Meridian member records that have no `glofox_id` mapping (e.g., members who were created directly in Meridian, test accounts, or import gaps). The inbound sync skips these (correctly — it only processes Glofox records). But the outbound sync's `pushMemberUpdate` function returns early with `if (!member?.glofox_id) return` — silently dropping the update.
-
-This is correct behavior during transition (Glofox-unmapped members shouldn't push updates to Glofox). But post-cutover, if any member created in Meridian during parallel mode has no `glofox_id`, their data will never have been synced to Glofox, and their booking history in Glofox will be incomplete.
-
-**Scenario:** Staff creates a new member in Meridian during parallel mode → member books a class in Meridian → outbound sync fires → `glofox_id` is null → sync skipped → Glofox booking not created → Glofox's attendance records for that class are incomplete → trainer bonus threshold calculation in Glofox is wrong.
-
-**Recommended handling:** New member registrations in Meridian during parallel mode should trigger a `POST /2.0/register` call to Glofox and store the resulting Glofox user ID back to `profiles.glofox_id`. The plan includes the `sync-member-outbound` function but does not specify that new member creation (not just profile updates) should trigger it.
-
-### Edge Case 2: Records Modified in Both Systems Within One Sync Window
-
-The conflict detection assumes last-modified wins for profile fields. But "last modified" depends on comparing timestamps across two systems with potentially different clock synchronization. If Meridian's server clock and Glofox's clock differ by more than a few seconds (not uncommon across cloud providers), the "last modified" comparison may produce wrong results.
-
-More critically: if the same field (e.g., phone number) is updated in both systems within the same 10-minute sync window, the outcome is: Glofox's value gets pulled in by inbound sync, overwrites Meridian's value, then outbound sync fires and pushes Meridian's now-stale value back to Glofox. The result is that the Glofox update wins even though the Meridian update may have been more recent.
-
-**Recommended handling:** Store the Meridian-side `updated_at` at the time of each sync. When running conflict detection, compare `record.updated_at` vs. `glofox_member.modified_at` using a tolerance window (e.g., if within 60 seconds, flag as a conflict requiring manual review rather than applying last-modified). This is defensive but prevents silent data corruption.
-
-### Edge Case 3: Glofox API Returns Partial Results Mid-Pagination
-
-If the Glofox API times out, returns a 5xx error, or returns an empty page mid-pagination, the `fetchAll` function will either throw (and abort the sync) or return partial results (if error handling catches at a page level). The current implementation throws on non-OK responses, which means the entire sync run fails.
-
-This is acceptable for ad-hoc calls but problematic for large entity types. If the bookings endpoint times out on page 8 of 15 during the 5-minute sync cycle, the sync engine logs an error and the next run will re-attempt from `last_sync_at` — but the next run won't know that pages 1–7 were already processed. If the sync increments `last_sync_at` only on successful completion, pages 1–7 will be re-synced next time (harmless due to upsert). But if `last_sync_at` is updated incrementally as pages are processed, an aborted mid-run could leave a gap.
-
-The code updates `last_sync_at` to `new Date().toISOString()` only after processing all records, which means the next run will re-process all records since the original `last_sync_at`. This is safe but may cause unnecessary reprocessing of up to 10 minutes of records during recovery.
-
-**No change needed** — the current approach is correct. But this should be explicitly documented as the intended behavior, not left implicit.
-
-### Edge Case 4: Billing Cycle Boundary at Cutover
-
-The cutover happens "Sunday night at 22:00." But member billing cycles are individual (they started on different days). Some members will have billing dates that fall Monday or Tuesday — within 48 hours of cutover.
-
-The plan says: "Create Stripe Subscription (set to start on their next billing date)." This is correct — Stripe subscriptions start on the next billing date, so there is no double-charge. But it creates a gap scenario:
-
-- Member's billing date: Monday (Day 1 post-cutover)
-- Stripe subscription created on Saturday (Day -1): starts Monday
-- Glofox processes final charge on Sunday night (before freeze) or not at all
-- If Glofox processes a charge on Sunday and Stripe starts Monday: member may be charged twice in 2 days
-
-**Recommended handling:** Before the cutover freeze, pull all member billing dates from Glofox. For any member whose next billing date is within 7 days of cutover, coordinate manually: either skip the final Glofox charge and start Stripe one cycle earlier, or ensure Stripe subscription starts after the Glofox charge date.
-
-### Edge Case 5: Credit Pack Members at Cutover
-
-The plan states: "Members with credits/packs: no change needed (credits are in Meridian DB)." But are they? If the one-time CSV import was incomplete (27 fields missing), credit pack balances and expiry dates may not have been imported. The sync engine will pull credit pack data from Glofox via `GET /2.0/credits` per member — but this is a per-member endpoint, not a bulk endpoint, meaning enriching credits for all 1,100 members requires 1,100 individual API calls.
-
-The plan does not include credit pack enrichment as part of the inbound sync schedule. If credits are not synced before cutover, members with remaining credits will have incorrect balances in Meridian.
-
-**Recommended handling:** Add a `sync-credits-inbound` function or include credits in the full refresh daily job. Verify credit balances for all active members match before cutover sign-off.
-
-### Edge Case 6: Staff Accounts Without Meridian Profiles
-
-The plan syncs staff from Glofox (`GET /2.0/staff`), and transactions include a `sold_by` field referencing staff. If staff in Glofox do not have corresponding profiles in Meridian (or if staff were not included in the original CSV import), the `sold_by_profile_id` FK insertion will fail.
-
-The plan notes Glofox has ~10 staff. But the dual-role issue documented in CLAUDE.md (trainers who are also members, owners who have personal memberships) suggests the staff records in Glofox may not map cleanly to Meridian's profile records. Some Glofox staff may not have Meridian profiles at all.
-
-**Recommended handling:** Before Phase 2, manually verify all Glofox staff IDs have corresponding Meridian profiles. For any without mappings, create profiles and establish the glofox_id link manually. This should be a Phase 1 task, not a Phase 2 discovery.
-
-### Edge Case 7: Deleted Records in Glofox
-
-The plan's inbound sync handles creates and updates. It does not handle deletes. If a booking is cancelled in Glofox (status changes to "cancelled"), the incremental sync will pull the updated booking and update Meridian's status — this is handled. But if a member record is archived or deleted in Glofox, the `utc_modified_start_date` filter may or may not include it depending on how Glofox handles deleted record visibility in its API.
-
-If Glofox hard-deletes records, they will simply stop appearing in sync results. Meridian will have a record for a member that no longer exists in Glofox, creating a phantom. The daily full reconciliation should detect count discrepancies, but the plan does not specify what action to take when a Meridian record has a `glofox_id` that no longer appears in Glofox's member list.
-
-**Recommended handling:** The daily full reconciliation should include a step: for all Meridian members with `glofox_id IS NOT NULL`, verify the Glofox ID still exists in the Glofox member list. Members missing from Glofox should be flagged for manual review, not automatically deleted.
-
-### Edge Case 8: Membership Plan Mismatch After Cutover
-
-Glofox membership plans (read-only in API) will not exist in Meridian post-cutover. The `glofox_plan_code` column stores the Glofox-internal plan identifier. After cutover, when creating new subscriptions or upgrades, Meridian uses Stripe products/prices — which are different entities.
-
-The mapping between Glofox plan codes and Stripe price IDs must be established before cutover. If a member's `glofox_plan_code` = "UNLIMITED_MONTHLY" and the corresponding Stripe price ID is `price_xyz123`, that mapping needs to be explicit in the codebase. The plan does not include this mapping step.
-
-**Recommended handling:** Create a `membership_plan_mapping` or `plan_catalog` table that maps Glofox plan codes to Stripe price IDs during the transition period. This should be established in Phase 1 or Phase 2, not discovered at cutover.
+**Recommendation:** The migration SQL must explicitly filter: `WHERE checked_in_at IS NOT NULL AND status NOT IN ('cancelled', 'no_show', 'waitlisted')`
 
 ---
 
-## Edge Cases in the Rollback Plan
+### EC-02: ClassPass False Positive Pattern
 
-### Rollback Edge Case: Bookings Created in Meridian During Cutover Window
+**Risk: MEDIUM — Incorrectly tagging real members as ClassPass**
 
-The rollback plan for "within 1 hour" says: "Run reverse sync (Meridian → Glofox for any new bookings)." But outbound booking sync requires a valid `glofox_id` on the class being booked. If any classes were created in Meridian (not synced from Glofox) and have no Glofox equivalent, bookings for those classes cannot be synced to Glofox on rollback.
+The plan identifies ClassPass members as: lead_source='U' + phone='+10000000000'. The phone pattern is a Glofox-generated placeholder, not a real number. However:
+- What if a real member also has lead_source='U' and never provided a phone (leaving Glofox's default)?
+- What if Glofox uses '+10000000000' as the default for phone-not-provided members generally?
 
-The mitigation: no new classes should be created in Meridian during the cutover window. This should be an explicit constraint in the cutover runbook.
+The detection logic should be: phone = '+10000000000' AND lead_source = 'U'. This is a compound condition. But it should also be: acquisition_source should only be SET to 'classpass' where it is currently NULL — never overwriting an already-set value.
 
-### Rollback Edge Case: Members Who Logged Into Meridian During Cutover
+Additionally, if a ClassPass user converts to a direct member (updates their phone number in Glofox), the sync will update their phone — but acquisition_source = 'classpass' will remain set forever. This is probably correct (they originally came via ClassPass), but the business should be aware.
 
-If rollback happens after some members have authenticated with Meridian (magic link) but Glofox is reverted to primary, those members will receive password/login prompts from the old system they no longer expect. This creates member confusion but is manageable with proactive communication.
+**Recommendation:** Backfill query: `WHERE phone = '+10000000000' AND lead_source = 'U' AND acquisition_source IS NULL`. Do not overwrite existing values. Document the permanence of acquisition_source.
 
 ---
 
-## Summary of Edge Cases by Severity
+### EC-03: Trigger Double-Enrollment on Backfill
 
-| Edge Case | Probability | Severity | Addressed? |
-|-----------|------------|----------|------------|
-| Members without glofox_id receiving no outbound sync | High | Medium | No |
-| Concurrent modification within sync window | Medium | Medium | Partial |
-| Billing cycle collision at cutover | Medium | High | No |
-| Credit pack data not synced | Medium | High | No |
-| Staff without Meridian profiles causing FK failures | High | Medium | No |
-| Glofox hard-deleted records creating phantoms | Low | Low | No |
-| Plan code → Stripe price ID mapping missing | High | High | No |
-| API partial failure mid-pagination | Medium | Low | Implicit only |
-| DNS propagation lag causing partial traffic split | Low | Medium | Not mentioned |
+**Risk: HIGH — Automation triggers fire for all members at once**
+
+When total_visits is backfilled from 0 to actual values, every member who has ≥10 visits (or whatever the milestone threshold is) will simultaneously qualify for the milestone trigger. The next evaluate-triggers.ts run after backfill will attempt to enroll all of them.
+
+If there are automation flows with a milestone trigger active at backfill time, this could trigger hundreds of simultaneous enrollments and email sends. The automation_enrollments unique constraint (partial index on active status) prevents duplicate active enrollments — but it doesn't prevent bulk enrollment of everyone who "newly" qualifies.
+
+**Recommendation:** Either (a) run the backfill when no milestone automation flows are active, or (b) add a "trigger suppression" mechanism for backfill scenarios, or (c) use the enrollment cooldown system to prevent immediate re-enrollment. Most pragmatically: ensure no active automation flows use milestone/inactivity triggers before running the backfill.
+
+---
+
+### EC-04: Members Without Bookings
+
+**Risk: LOW — NULL handling in backfill**
+
+Some members will have 0 bookings. The UPDATE query must handle the case where a member has no matching rows in bookings — total_visits should be set to 0 (not NULL) and last_visit should remain NULL (correct). A LEFT JOIN or correlated subquery handles this correctly. A plain JOIN will silently leave unmatched members unchanged.
+
+**Recommendation:** Use `LEFT JOIN` or `COALESCE(count, 0)` in the backfill SQL to ensure all members are updated, not just those with bookings.
+
+---
+
+### EC-05: Plan Code Gaps in glofox_plan_map
+
+**Risk: LOW — Incomplete mapping display**
+
+The Glofox memberships endpoint returns currently active plan definitions. Historical plan codes referenced in members' records may correspond to plans that have been archived or deleted in Glofox. The glofox_plan_map will miss these codes.
+
+For deleted plans, the members.plan_code (or however plan codes are stored) will still reference the old numeric ID, but there will be no row in glofox_plan_map to resolve it.
+
+**Recommendation:** The glofox_plan_map lookup should COALESCE to the raw code when no mapping exists: `COALESCE(gpm.plan_name, members.membership_plan_id::text)`. UI should display "Plan #12345" rather than blank or error for unmapped codes.
+
+---
+
+### EC-06: New Trigger Types Without Exit Conditions
+
+**Risk: MEDIUM — Members stuck in automation flows**
+
+The new trigger types (classpass_repeat, one_and_done, cooling_off) target transient behavioral states. A member classified as "cooling_off" (decreasing visit frequency) may return to normal frequency — they should exit the cooling_off automation flow. But if the flow has no exit condition defined (exit_conditions is JSONB on automation_flows, default '{}'), they remain enrolled until the flow completes all steps.
+
+For behavior-based triggers, exit conditions are more important than for event-based triggers (signup, birthday). A member who converts from ClassPass to direct member should exit any "classpass_repeat" flow immediately.
+
+**Recommendation:** For each new trigger type, define the corresponding exit condition. Document this in the pre-built flow templates. Consider adding a "trigger_resolved" exit condition that the cron checks: re-evaluate the trigger condition for enrolled members and exit if it no longer applies.
+
+---
+
+### EC-07: Favorite Class Type With Tied Counts
+
+**Risk: LOW — Determinism in member_360**
+
+If a member has equal bookings across two class types, favorite_class_type is non-deterministic (depends on query plan or tiebreaker). For a VIEW that surfaces this to the UI, this should be deterministic.
+
+**Recommendation:** Add ORDER BY count DESC, class_type_name ASC (or similar tiebreaker) in any LATERAL subquery computing favorite_class_type. Also handle the case where a member has no bookings (NULL).
+
+---
+
+### EC-08: The "Subscription" Pull Ambiguity
+
+**Risk: MEDIUM — Implementation stall**
+
+Phase B includes "pull subscriptions from Glofox." This term does not map to a known GlofoxClient method. If implementation begins and the developer cannot find a "subscriptions" endpoint, the work stalls while clarification is sought. In a sprint context, this wastes time.
+
+**Recommendation:** Before Phase B begins, explicitly map "activity/history" and "subscriptions" to specific GlofoxClient methods or confirm new methods need to be added. Don't let this be a discovery item mid-sprint.
+
+---
+
+## Edge Cases Inherited from Existing System
+
+**milestone trigger re-firing:** If total_visits is updated via daily cron rather than at check-in, a member could theoretically pass a milestone threshold between cron runs multiple times before the trigger fires. The enrollment unique constraint prevents duplicate active enrollments, but the trigger should also have a "already completed" check. The existing `canEnrollMember` helper handles this via cooldown_days.
+
+**ClassPass members and capacity counts:** ClassPass members who book via the Glofox integration count toward class capacity. This is correct. The acquisition_source tag doesn't affect booking behavior — it's metadata only.
+
+---
+
+## Summary
+
+| Edge Case | Risk | Status |
+|-----------|------|--------|
+| EC-01: Booking status filter | HIGH | Fix before backfill |
+| EC-02: ClassPass false positive | MEDIUM | Fix in backfill SQL |
+| EC-03: Trigger double-enrollment | HIGH | Coordinate with automation team |
+| EC-04: Members without bookings | LOW | Fix in SQL (LEFT JOIN) |
+| EC-05: Plan code gaps | LOW | Handle in VIEW/UI |
+| EC-06: Trigger exit conditions | MEDIUM | Add to pre-built templates |
+| EC-07: Favorite class type ties | LOW | Add tiebreaker |
+| EC-08: Subscription endpoint ambiguity | MEDIUM | Clarify before Phase B |
+
+---
+
+## Verdict Confidence: HIGH

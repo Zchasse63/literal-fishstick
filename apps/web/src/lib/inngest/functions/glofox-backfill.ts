@@ -253,6 +253,59 @@ export const glofoxBackfill = inngest.createFunction(
           result.errors += memberInsertResult.errors
           result.errorDetails.push(...memberInsertResult.errorDetails)
         }
+
+        // ── Post-insert enrichment ─────────────────────────────
+        // 1. Tag ClassPass members: lead_source='U' + phone='+10000000000'
+        // 2. Resolve plan_code → membership_tier
+        try {
+          const memberMap = await buildLookupMap(db, 'members', STUDIO_ID)
+
+          // Load membership_plans for tier resolution
+          const { data: planMapRows } = await db
+            .from('membership_plans')
+            .select('glofox_id, tier, name')
+            .eq('studio_id', STUDIO_ID)
+
+          const planTierMap = new Map<string, string>()
+          for (const row of planMapRows ?? []) {
+            if (row.glofox_id && row.tier) {
+              planTierMap.set(row.glofox_id, row.tier)
+            } else if (row.glofox_id && !row.tier && row.name) {
+              const lower = row.name.toLowerCase()
+              if (lower.includes('unlimited')) planTierMap.set(row.glofox_id, 'unlimited')
+              else if (lower.includes('10')) planTierMap.set(row.glofox_id, '10_class')
+              else if (lower.includes('6')) planTierMap.set(row.glofox_id, '6_class')
+            }
+          }
+
+          for (const t of transformed) {
+            const memberId = memberMap.get(t.profileGlofoxId)
+            if (!memberId) continue
+
+            const enrichUpdates: Record<string, unknown> = {}
+
+            // ClassPass detection
+            if (t.profile.lead_source === 'U' && t.profile.phone === '+10000000000') {
+              enrichUpdates.acquisition_source = 'classpass'
+            }
+
+            // membership_tier from plan_code
+            if (t.member.plan_code && !t.member.membership_tier) {
+              const tier = planTierMap.get(t.member.plan_code)
+              if (tier) enrichUpdates.membership_tier = tier
+            }
+
+            if (Object.keys(enrichUpdates).length > 0) {
+              enrichUpdates.updated_at = new Date().toISOString()
+              await db.from('members').update(enrichUpdates).eq('id', memberId)
+            }
+          }
+        } catch (enrichErr) {
+          // Non-fatal: enrichment failures shouldn't fail the backfill
+          result.errorDetails.push(
+            `enrichment: ${enrichErr instanceof Error ? enrichErr.message : String(enrichErr)}`,
+          )
+        }
       } catch (err) {
         result.errors++
         result.errorDetails.push(`fetch: ${err instanceof Error ? err.message : String(err)}`)
@@ -352,6 +405,56 @@ export const glofoxBackfill = inngest.createFunction(
           result.inserted = r.inserted
           result.errors = r.errors
           result.errorDetails = r.errorDetails
+        }
+
+        // ── Post-insert: compute member visit stats from attended bookings ──
+        try {
+          const attendedBookings = bookingRows.filter(
+            (b) => b && (b as Record<string, unknown>).attended === true,
+          )
+
+          // Aggregate per-member: count of attended bookings + latest checked_in_at
+          const memberVisitAgg = new Map<
+            string,
+            { count: number; lastCheckedIn: string }
+          >()
+          for (const b of attendedBookings) {
+            if (!b) continue
+            const row = b as Record<string, unknown>
+            const memberId = row.member_id as string
+            const checkedInAt = (row.checked_in_at as string) ?? new Date().toISOString()
+
+            const existing = memberVisitAgg.get(memberId)
+            if (existing) {
+              existing.count++
+              if (new Date(checkedInAt) > new Date(existing.lastCheckedIn)) {
+                existing.lastCheckedIn = checkedInAt
+              }
+            } else {
+              memberVisitAgg.set(memberId, { count: 1, lastCheckedIn: checkedInAt })
+            }
+          }
+
+          for (const [memberId, agg] of memberVisitAgg) {
+            await db
+              .from('members')
+              .update({
+                total_visits: agg.count,
+                last_visit: agg.lastCheckedIn,
+                engagement_status: 'engaged',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', memberId)
+          }
+
+          console.log(
+            `[backfill] Updated visit stats for ${memberVisitAgg.size} members`,
+          )
+        } catch (visitErr) {
+          // Non-fatal
+          result.errorDetails.push(
+            `visit-stats: ${visitErr instanceof Error ? visitErr.message : String(visitErr)}`,
+          )
         }
       } catch (err) {
         result.errors++

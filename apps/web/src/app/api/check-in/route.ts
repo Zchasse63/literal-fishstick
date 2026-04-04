@@ -181,6 +181,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Update member visit stats in real-time ──────────────────
+    // After successful check-in, increment total_visits and refresh engagement
+    if (booking.member_id) {
+      try {
+        const { data: currentMember } = await supabase
+          .from("members")
+          .select("total_visits")
+          .eq("id", booking.member_id)
+          .single();
+
+        const currentVisits = (currentMember?.total_visits as number) ?? 0;
+        const now = new Date().toISOString();
+
+        await supabase
+          .from("members")
+          .update({
+            total_visits: currentVisits + 1,
+            last_visit: now,
+            engagement_status: "engaged",
+            updated_at: now,
+          })
+          .eq("id", booking.member_id);
+      } catch (visitErr) {
+        // Non-fatal — log but don't fail the check-in
+        console.error("Failed to update member visit stats:", visitErr);
+      }
+    }
+
     // Fire async Glofox attendance write-back (fire-and-forget).
     // Only attempted if this booking originated from Glofox (has a glofox_id).
     // Supabase is already updated — Glofox failure must never block this response.

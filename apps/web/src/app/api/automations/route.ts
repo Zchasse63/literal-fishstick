@@ -20,6 +20,23 @@ const VALID_TRIGGER_TYPES = [
   "lead_status_changed",
   "credit_pack_low",
   "credit_pack_expired",
+  // Phase 2 triggers (evaluate-triggers.ts cron)
+  "signup",
+  "churn_risk",
+  "credit_expiry",
+  "milestone",
+  "membership_change",
+  "failed_payment",
+  "referral",
+  // Sprint 3B: New automation trigger types
+  "never_booked",
+  "classpass_repeat",
+  "one_and_done",
+  "cooling_off",
+  "plan_upgrade_candidate",
+  "class_type_fan",
+  // Catch-all
+  "custom",
 ];
 
 /**

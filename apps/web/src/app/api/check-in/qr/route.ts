@@ -160,6 +160,31 @@ export async function POST(request: NextRequest) {
       .update({ used_at: checkedInAt })
       .eq("id", tokenRecord.id);
 
+    // ── Update member visit stats in real-time ──────────────────
+    // After successful check-in, increment total_visits and refresh engagement
+    try {
+      const { data: currentMember } = await supabase
+        .from("members")
+        .select("total_visits")
+        .eq("id", member_id)
+        .single();
+
+      const currentVisits = (currentMember?.total_visits as number) ?? 0;
+
+      await supabase
+        .from("members")
+        .update({
+          total_visits: currentVisits + 1,
+          last_visit: checkedInAt,
+          engagement_status: "engaged",
+          updated_at: checkedInAt,
+        })
+        .eq("id", member_id);
+    } catch (visitErr) {
+      // Non-fatal — log but don't fail the check-in
+      console.error("Failed to update member visit stats:", visitErr);
+    }
+
     // Get member info
     const { data: memberInfo } = await supabase
       .from("profiles")

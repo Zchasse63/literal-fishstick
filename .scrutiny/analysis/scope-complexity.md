@@ -1,150 +1,117 @@
 # Scope & Complexity Analysis
+
 **Agent:** scope-complexity
-**Plan:** Glofox API Migration to Meridian
+**Plan:** Unified Member Data Architecture
 **Complexity:** SIGNIFICANT
-**Date:** 2026-03-31
+**Date:** 2026-04-04
 
 ---
 
 ## Agent Verdict
-**MODIFY** — The plan is doing real work and the overall decomposition into phases is reasonable. However, the scope is understated in three material ways: the member-facing portal prerequisite is not scoped at all, the sync monitoring dashboard is mentioned in one sentence without any specification, and the payment migration is presented as a 5-step process when it is actually a multi-week campaign with its own failure modes. The 8-week timeline is achievable for the sync engine and admin cutover. It is not achievable for a full cutover that requires members to interact with Meridian.
+
+**MODIFY** — The plan bundles work that should be sequenced differently. Phases A and B overlap in ways that create false dependencies. Phase B's "mass pull" is actually several distinct workstreams with different risk profiles. The plan as written will take longer than necessary because it treats 4 phases as sequential when most of Phase A can ship in a day and immediately unblock live automation flows.
 
 ---
 
-## Scope Inventory
+## Scope Assessment
 
-### What Is Explicitly Scoped
+### Actual Work Inventory
 
-**Schema work (Week 1):**
-- 11 `ALTER TABLE` statements adding `glofox_id` columns (7 tables)
-- 4 `glofox_synced_at` columns
-- 27 new data fields across 6 tables
-- 3 new tables (`glofox_sync_state`, `glofox_sync_conflicts`, `lead_interactions`)
-- Environment variable setup
+The plan contains three distinct categories of work that should not be treated as a monolithic 4-phase project:
 
-Complexity: Low. All additive, nullable, no destructive changes. Estimated 1 day of actual work.
+**Category 1: One-Time SQL Backfill (hours of work, immediate impact)**
+- UPDATE members SET total_visits, last_visit from bookings
+- UPDATE members SET engagement_status from visit patterns
+- UPDATE profiles SET acquisition_source from lead_source + phone pattern
+- CREATE TABLE glofox_plan_map + populate from existing membership_plans data
 
-**Sync engine (Weeks 2–3):**
-- `GlofoxClient` class with 15+ methods
-- 5 inbound Inngest cron functions
-- 3 outbound event-driven Inngest functions
-- Conflict resolution per-field rules
-- Conflict logging to database
+This is a single migration SQL file. It requires no code changes. It can be written, tested, and deployed in a few hours. The impact is immediate: milestone and inactivity triggers start working, ClassPass members are tagged, plan names are human-readable. This is the highest ROI work in the entire plan.
 
-Complexity: Medium-High. The Inngest pattern is established, but each sync function requires careful field mapping, error handling, and the conflict detection logic is non-trivial. Estimated 8–12 days of focused development.
+**Category 2: Structural Additions (days of work, medium impact)**
+- member_360 VIEW (thin JOIN layer)
+- cron-member-enrichment Inngest function (daily reconciliation)
+- Check-in handler increment for real-time total_visits update
+- New automation trigger types in evaluate-triggers.ts
 
-**Transition period (Weeks 4–6):**
-- Shadow mode monitoring (integrity check queries)
-- Staff training
-- Parallel mode operations
-- Sync monitoring dashboard
+Each item here is independently scoped and deployable. None depend on Category 3.
 
-Complexity: The sync engine work in shadow/parallel mode is operational, not developmental. Staff training and monitoring are real time costs but not engineering scope. The sync monitoring dashboard is new UI that is entirely unscoped.
+**Category 3: Glofox Data Pull Expansion (unknown timeline, variable risk)**
+- Transactions backfill (partially done — backfill function exists, may just need to be triggered)
+- Interactions/activity pull (N+1 problem: 1,199 API calls)
+- "Subscriptions" (unclear what endpoint this maps to)
 
-**Cutover (Weeks 7–8):**
-- Cutover runbook execution
-- DNS switch
-- Stripe activation
-- Post-cutover monitoring
-
-Complexity: Low engineering, high operational risk. One-time execution.
+Category 3 has the most uncertainty. The transactions backfill is likely already done if the Inngest function has been triggered. The interactions pull requires endpoint clarification first.
 
 ---
 
-## Scope Gaps
+### Phase Structure Issues
 
-### Gap 1: Sync Monitoring Dashboard Has Zero Specification
+**Phases A and B have artificial overlap**
 
-Section 3.2 mentions:
+Phase A step 1 (member_360 VIEW) is listed before Phase B step 7 (cron to keep it current). But the VIEW needs the cron to be useful. Shipping the VIEW without the update mechanism creates a static snapshot that becomes stale. The correct grouping puts the VIEW and the enrichment cron in the same deliverable.
 
-> "Monitoring dashboard (new admin page): Last sync time per entity type, records synced in last hour/day, active conflicts needing resolution, error count and last error message"
+**Phase A step 3 is already done**
 
-This is described as a "new admin page" but receives no further specification. It requires:
-- A new page in the admin dashboard (route + component)
-- API route(s) to serve sync state and conflict data
-- Real-time or near-real-time refresh (the sync runs every 5–30 minutes)
-- Conflict resolution UI (staff must be able to mark conflicts as resolved, pick which value wins)
-- Error state display with enough context to debug
+profiles.acquisition_source was added in phase2-migration.sql. The plan should say "backfill acquisition_source" not "add column and backfill." This is a documentation issue but signals the plan may not have been written with full knowledge of what's already been applied.
 
-The conflict resolution UI in particular is non-trivial — it needs to show both values side-by-side, allow selection, and write back to `glofox_sync_conflicts.resolution`. This is probably 2–4 days of UI work that the timeline does not account for. It is needed before Parallel Mode (Week 5), not after.
+**Phase C triggers depend on correct data**
 
-### Gap 2: Member-Facing Portal Is a Prerequisite But Is Not Scoped
-
-The cutover pre-checklist requires "all member-facing features ready." This includes:
-- A web booking portal (members can see schedule, book classes)
-- Authentication for members (magic link / SSO)
-- Stripe payment method capture
-- Account management (membership status, class history)
-
-Per CLAUDE.md, Phase 5 has not started. The plan implicitly assumes this work happens in parallel by a separate team or happens before this migration begins. Neither assumption is stated. Neither has a timeline.
-
-Notably, the payment migration in Week 6 requires members to enter payment details via "Meridian member portal" — which means the member portal needs at minimum a Stripe payment capture form before Week 6, not Week 7+.
-
-**Minimum viable member surface needed before cutover:**
-1. Member auth (magic link login)
-2. Stripe payment method form
-3. Basic account page (membership status, billing info)
-
-This is not a full booking portal, but it is still 1–2 weeks of development that is not on the plan's timeline.
-
-### Gap 3: Glofox Subscription Cancellation Process Is Unspecified
-
-The plan ends with "Cancel Glofox subscription" as a Day 30 task. In practice:
-- Glofox contracts may have notice periods (30–90 days is standard for SaaS)
-- Cancellation may require contacting account management
-- There may be data export requirements or format specifications Glofox imposes
-- The final data archive format is not specified
-
-If Glofox has a 30-day cancellation notice requirement, that notice needs to be given during Week 5–6 (parallel mode), not after cutover. Failing to give notice on time extends the contract and the subscription cost.
-
-### Gap 4: Glofox Event/Schedule Write Limitation Creates Operational Gap
-
-The plan notes Glofox has no write endpoint for classes/schedules. This means:
-- During parallel mode, any new class created in Meridian does NOT sync to Glofox
-- Staff or members using Glofox during parallel mode would not see classes created in Meridian
-- This creates an operational inconsistency that limits how "parallel" the parallel mode can actually be
-
-The plan does not address this. The implication is that class management must move to Meridian-only during Week 5, making the admin portal the single source of truth for scheduling even during "parallel mode." Staff training must cover this specific constraint.
+The new trigger types (never_booked, one_and_done, cooling_off, plan_upgrade_candidate, class_type_fan) all query behavior data that is currently incorrect or missing. They cannot be reliably implemented until Category 1 (backfill SQL) has run. This dependency is implicit in the plan but not stated.
 
 ---
 
-## Timeline Assessment
+### Complexity Drivers
 
-| Week | Work | Estimate | Plan's Estimate | Delta |
-|------|------|----------|----------------|-------|
-| 1 | Schema migrations | 1–2 days | 1 week | Padded — good |
-| 2–3 | Sync engine build | 10–14 days | 2 weeks | Tight but realistic |
-| 4 | Shadow mode + monitoring dashboard UI | 5 days ops + 3 days UI | 1 week | UI work not in plan |
-| 5–6 | Parallel mode + payment collection + staff training | 2 weeks ops | 2 weeks | Reasonable for ops; member portal needed for payment collection |
-| 7–8 | Cutover | 2 days execution | 2 weeks | Very padded; appropriate buffer |
+**High complexity items:**
+- cron-member-enrichment: must handle multi-tenancy (iterate all studios), avoid running during peak hours, and handle partial failures gracefully. The existing cron functions have a TODO about multi-tenancy hardcoding (STUDIO_ID is hardcoded in evaluate-triggers.ts).
+- New trigger types with relational logic: classpass_repeat requires joining profiles.acquisition_source to bookings. plan_upgrade_candidate requires comparing current plan against booking frequency. These are non-trivial queries.
+- member_360 RLS: must be correct for both UI queries and Inngest service-role queries.
 
-**Total engineering work:** Approximately 4–5 weeks of development
-**Total calendar time (with ops phases):** 9–10 weeks if member portal minimum is built in parallel
-
----
-
-## Complexity Drivers
-
-**What makes this harder than it looks:**
-1. Bidirectional sync is inherently more complex than one-way ETL. Every write to either system creates potential for divergence.
-2. Glofox API version fragmentation (2.0, 2.1, 2.2, 2.3, v3.0, Analytics) means different response shapes, error codes, and pagination patterns per endpoint.
-3. The conflict resolution rules are clear in principle but require careful implementation for concurrent modification scenarios (two updates to the same record within one sync window).
-4. Payment migration is a UX problem (getting ~1,100 members to take action) as much as it is a technical problem.
-5. The Analytics/report transaction endpoint is a reporting tool being used as a data sync source — this is an unusual use pattern that may have undocumented limitations.
-
-**What makes this simpler than a typical migration:**
-1. Small data volume (~1,100 members, ~1,300 bookings, ~2,500 transactions)
-2. No data transformation complexity — field names map relatively directly
-3. Glofox writes (outbound sync) are limited to profiles, bookings, and attendance — not the full data model
-4. The business is small (10 staff, one branch) so operational coordination is manageable
-5. Rollback is clean (Supabase PITR + Glofox stays intact)
+**Low complexity items (often overestimated):**
+- Backfill SQL: 1 file, ~30 lines of SQL
+- glofox_plan_map: 1 table, 1 populate query
+- acquisition_source backfill: 1 UPDATE statement
+- UI badges for acquisition_source: 1 component addition
 
 ---
 
-## Recommended Scope Adjustments
+### Files Affected (Estimate)
 
-1. **Add sync monitoring dashboard to Week 3 scope** (before shadow mode begins, not after).
-2. **Explicitly scope the minimum member-facing surface** needed for payment collection (auth + Stripe form + account page) and add it to the timeline or acknowledge it as a separate workstream.
-3. **Check Glofox contract cancellation terms now.** If 30-day notice is required, the clock starts no later than Week 6.
-4. **Add a class-management-in-Meridian-only policy** to the Week 5 staff training, and update the parallel mode description to reflect that schedule management is Meridian-primary, not truly bidirectional.
-5. **Define "full reconciliation"** in the sync-full-refresh function. What constitutes a complete check? What action is taken for orphaned records?
+| Area | Files | Complexity |
+|------|-------|------------|
+| Migration SQL | 1–2 new files | Low |
+| glofox-backfill.ts | 0–1 (may just need triggering) | Low–Medium |
+| evaluate-triggers.ts | 1 (add 6 cases to switch) | Medium |
+| New cron-member-enrichment.ts | 1 new file | Medium |
+| Check-in handler | 1–2 existing files | Low |
+| member_360 VIEW | 1 SQL migration | Low (thin JOIN) / Medium (with aggregation) |
+| UI: member profile | 1–2 existing files | Low |
+| UI: campaign builder | 1–2 existing files | Low–Medium |
+| Types package | 1 (new types for member_360) | Low |
+
+Total: ~10–15 files touched. This is a MODERATE sized implementation, not a large one.
+
+---
+
+### Timeline Estimate
+
+If properly sequenced:
+- **Day 1:** Category 1 SQL + run. Automation triggers start working.
+- **Days 2–4:** Category 2 (VIEW, cron, check-in handler, new triggers).
+- **Days 5–7:** Category 3 + UI integration.
+
+If run as 4 sequential phases as described: 2–3 weeks, with automation triggers broken for the first week unnecessarily.
+
+---
+
+## Recommended Restructure
+
+**Sprint 1 (immediate):** Backfill SQL only — total_visits, last_visit, acquisition_source, engagement_status, plan_map. Ship today.
+
+**Sprint 2:** member_360 VIEW (thin) + cron-member-enrichment + check-in real-time update + existing transactions backfill trigger.
+
+**Sprint 3:** New automation trigger types + pre-built flow templates.
+
+**Sprint 4:** UI integration (badges, campaign segments, member profile enrichment).
+
+Each sprint is independently shippable and independently valuable.

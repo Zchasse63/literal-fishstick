@@ -1,156 +1,133 @@
-# Normalized Plan: Glofox API Migration to Meridian
+# Normalized Plan: Unified Member Data Architecture
 
-**Scrutiny Session:** 2026-03-31
-**Original Document:** glofox-api-migration-plan.md
-**Input Type:** Single plan document (migration strategy)
-**Complexity Classification:** SIGNIFICANT → Deep mode (7 agents)
-
----
-
-## 1. Plan Summary
-
-**What is being proposed:**
-Replace a one-time CSV data import from Glofox with a live two-way API integration, enabling Meridian to become the sole operational system for The Sauna Guys (Tampa-based sauna/recovery studio, ~1,100 members).
-
-**Core goal:** Full system cutover from Glofox to Meridian within 8–9 weeks, with Stripe replacing Glofox's payment processor.
-
-**Why now:** Glofox has granted API access (57 endpoints, two-way read/write). This unblocks enrichment of 27 previously uncaptured data fields and enables live sync.
+## Plan Classification
+- **Complexity Class:** SIGNIFICANT
+- **Analysis Mode:** Deep (all 7 agents)
+- **Type:** Data architecture enhancement + backfill + automation integration
+- **Scrutiny Session:** 2026-04-04
 
 ---
 
-## 2. Scope Breakdown
+## Summary
 
-### Phase 1 — Schema Preparation (Week 1)
-- Add `glofox_id` columns to 7 tables (members, classes, bookings, transactions, credit_packs, leads, membership_plans)
-- Add `glofox_synced_at` timestamps to 4 tables
-- Add 27 new fields across 6 tables (profiles, members, bookings, transactions, classes, credit_packs)
-- Create 3 new tables: `glofox_sync_state`, `glofox_sync_conflicts`, `lead_interactions`
-- Store API credentials in Netlify environment variables
-
-### Phase 2 — Sync Engine Build (Weeks 2–3)
-- Build `GlofoxClient` TypeScript class with paginated fetch helper and 15+ entity methods
-- Build 5 inbound Inngest cron functions (members every 10 min, bookings every 5 min, events every 15 min, transactions every 30 min, full refresh daily 3am)
-- Build 3 outbound event-driven Inngest functions (member updates, booking creates/cancels, attendance check-ins)
-- Per-field conflict resolution logic with 10 field-category rules
-- Logging to `glofox_sync_conflicts` table
-
-### Phase 3 — Transition Period (Weeks 4–6)
-- Week 4: Shadow mode (inbound only, read-only mirror, daily integrity checks)
-- Weeks 5–6: Parallel mode (bidirectional sync, staff uses either system)
-- Staff training checklist
-- Sync monitoring dashboard (new admin page)
-
-### Phase 4 — Cutover (Weeks 7–8)
-- Sunday night cutover sequence (22:00–00:00)
-- DNS switch to Meridian
-- Stripe payment activation
-- Payment migration: create Stripe Customers + Subscriptions for all ~1,100 active recurring members
-- Rollback plan (DNS revert within 1 hour, 24-hour window, fix-forward after 24 hours)
-
-### Phase 5 — Post-Cutover Cleanup (Week 9+)
-- Disable Glofox sync functions
-- Remove API credentials
-- Archive sync tables
-- Switch member classification to Stripe subscription status
-- Cancel Glofox subscription
+Build a unified member data layer in Meridian that surfaces coherent member intelligence from fragmented Glofox-synced data. Currently 1,199 profiles and 5,427 bookings exist but computed fields (total_visits, last_visit, engagement_status) are all null/zero, ClassPass users are untagged, and plan codes are opaque Glofox numeric IDs. The plan adds a queryable member_360 VIEW, backfill jobs, acquisition source detection, new automation trigger types, and UI integration across 4 phases.
 
 ---
 
-## 3. Technical Approach
+## Problem Statement
 
-**Architecture:** Inngest (background job orchestration) + Supabase Postgres + Glofox REST API
-
-**Sync strategy:**
-- Inbound: polling with `utc_modified_start_date` filter for incremental sync; full reconciliation daily
-- Outbound: event-driven (database change triggers Inngest event → Glofox API call)
-- No webhooks (Glofox has none); polling only
-
-**Conflict resolution:** Per-field ownership rules during transition; Glofox wins on financial data, last-modified wins on profile data, Meridian always wins on AI/segments fields
-
-**Payments:** Stripe direct (not Connect); payment methods collected from members 2 weeks before cutover; subscriptions created with next billing date alignment
-
-**Testing:** 229 existing tests must pass after schema migration; unit + integration tests for sync engine; integrity checks during shadow/parallel mode
+1. **Data incoherence:** members.total_visits = 0 and members.last_visit = null despite 5,427 bookings existing in the bookings table. Computed fields are never populated.
+2. **Invisible segments:** ClassPass users are identifiable (lead_source='U' + phone='+10000000000') but not tagged, making them indistinguishable from organic members in campaigns.
+3. **Opaque plan codes:** Glofox plan IDs are numeric strings with no human-readable mapping stored in Meridian.
+4. **Siloed data:** No single query surface joins profiles + members + bookings + classes + membership_plans into actionable member intelligence.
+5. **Stale automation triggers:** evaluate-triggers.ts reads members.total_visits and members.last_visit (both 0/null), so milestone and inactivity triggers never fire correctly. failed_payment reads transactions table which is EMPTY.
+6. **40+ empty tables:** transactions, activity_log, campaigns, automations — Phase B proposes pulling this from Glofox.
 
 ---
 
-## 4. Key Assumptions
+## Proposed Solution (as submitted)
 
-1. Glofox API token and API key are available (currently an open question)
-2. Glofox API rate limits are unknown (docs don't mention them)
-3. The `has_more` pagination field exists in Glofox API responses (inferred from guide, not confirmed)
-4. All 1,100 members will voluntarily re-enter payment methods in Meridian before cutover
-5. Glofox API remains stable and available for 8+ weeks
-6. Glofox will not revoke API access during the migration
-7. Staff (unknown count) can be trained in 2 weeks (Weeks 5–6)
-8. Sunday night is genuinely low-traffic (2-hour cutover window is sufficient)
-9. Member-facing features (booking portal, app) will be ready by Week 7 (pre-cutover checklist item)
-10. The Supabase branch/preview deploy is available for staging dry runs
-11. DNS propagation is fast enough for the cutover sequence (23:00 step)
-12. All 229 existing tests are passing today
-13. Stripe merchant account setup is already done or nearly done
-14. `glofox_id` on profiles table already exists (noted as checkmark in plan)
-15. The analytics transactions endpoint returns enough data for full transaction history
+### Phase A: Database Foundation
+1. Create `member_360` PostgreSQL VIEW joining profiles + members + bookings + classes + membership_plans with computed fields: acquisition_channel, computed_engagement, behavior_segment, favorite_class_type, days_since_last_visit
+2. Create `glofox_plan_map` table mapping Glofox plan codes to human-readable names and types
+3. Add `profiles.acquisition_source` column and backfill from lead_source + phone pattern
+4. Backfill `members.total_visits` and `members.last_visit` from actual booking data
+5. Backfill `members.engagement_status` from visit patterns
 
----
+### Phase B: Mass Glofox Data Pull
+6. Pull ALL available data from Glofox API: transactions, activity/history, subscriptions
+7. Create new `cron-member-enrichment` Inngest function (daily) to keep computed fields current
+8. Create `glofox_plan_map` table and populate from Glofox memberships endpoint
+9. Update Glofox sync pipeline to tag ClassPass acquisition source and resolve plan codes
 
-## 5. Constraints and Dependencies
+### Phase C: Automation Triggers
+9. Add new trigger types to evaluate-triggers.ts: never_booked, classpass_repeat, one_and_done, cooling_off, plan_upgrade_candidate, class_type_fan
+10. Create pre-built automation flow templates
 
-- **Glofox API access:** Granted but credentials not yet in hand
-- **Glofox limitations:** No webhooks, no write endpoints for classes/schedules/membership plans, no direct payment processor access
-- **Phase ordering:** Member-facing features (booking portal, iOS app) must be ready before cutover — but per CLAUDE.md, these are Phase 5 and have not started
-- **Inngest:** Already in use for marketing/analytics cron jobs; Glofox sync adds 8 new functions
-- **Stripe:** Already integrated; merchant account status unclear
-- **Timeline:** 8-week window is aggressive given open questions on API credentials, rate limits, and member payment collection
+### Phase D: UI Integration
+11. Update member profile page to show unified data from member_360
+12. Add acquisition source badges, engagement status indicators
+13. Update campaign builder with behavior-based segments
 
 ---
 
-## 6. Existing System Context
+## Existing System Context
 
-**Codebase:** Turborepo monorepo (Next.js 16 web app, Supabase package, shared types/utils)
+### Tech Stack
+- **Monorepo:** Turborepo (apps/web, packages/types, packages/utils)
+- **Frontend:** Next.js App Router (apps/web), deployed to Netlify
+- **Database:** Supabase (PostgreSQL) with RLS via studio_id isolation
+- **Background jobs:** Inngest (event-driven + cron functions, 13 functions exist)
+- **Glofox API:** Read-only sync client (GlofoxClient class). Has retry/backoff, 200-page safety cap, rate-limit handling.
+- **AI:** Anthropic SDK (Claude Sonnet 4.6)
+- **Email:** Resend
+- **Payments:** Stripe
 
-**Tech stack confirmed:**
-- Next.js 16.2.0 (React 19) on Netlify
-- Supabase (Postgres + Auth + Realtime)
-- Inngest 4.0.2 — already in production with 12 cron/event functions
-- Stripe — integrated (src/lib/stripe.ts exists)
-- Anthropic SDK 0.80.0 — integrated
-- Resend — integrated (email campaigns)
-- SMS — stubbed (Twilio provider exists but not production-ready)
+### Existing Data Infrastructure
+- **profiles table:** 1,199 rows — has glofox_id, lead_source, phone. acquisition_source column ALREADY added in phase2-migration.sql (column exists but not backfilled)
+- **members table:** 1,183 rows — has total_visits (all 0), last_visit (all null), engagement_status, membership_status
+- **bookings table:** 5,427 rows — has member_id (Meridian UUID), class_id, checked_in_at, status
+- **classes table:** 1,645 rows — has trainer_id, class_type_id, start_time
+- **membership_plans table:** populated via glofox backfill (glofox_id stored)
+- **transactions:** EMPTY — backfill exists in glofox-backfill.ts step 5 using POST Analytics/report endpoint
+- **credit_packs:** populated per-member via backfill (per-member API calls required — no bulk endpoint)
+- **leads:** populated via backfill
 
-**Existing Inngest functions (12 total):** executeFlow, evaluateTriggers, cronDailyMetrics, cronCohortRefresh, cronTrainerMetrics, cronAIInsights, cronReportScheduler, cronExportCleanup, cronPayrollReminder, cronInvoiceOverdue, cronContractExpiry, cronCorporateCredits
+### Existing Inngest Functions (relevant)
+- `glofox-backfill.ts`: Full historical import — 9 steps: staff, members, events, bookings, transactions, credit_packs, leads, membership_plans, sync-state. Already handles transactions via Analytics/report.
+- `glofox-sync-hourly.ts`: Incremental delta sync
+- `evaluate-triggers.ts`: 12 trigger types evaluated every 10 minutes. milestone reads members.total_visits (currently 0 — broken). inactivity queries bookings.checked_in_at directly (works). failed_payment reads transactions (empty — broken).
+- `cron-daily-metrics.ts`: Exists (scope unknown)
 
-**Existing API routes:** bookings, members, classes, transactions, staff, leads, segments, campaigns, revenue, check-in, corporate, events, reports, orders, content, automations, and more
+### Existing Migration Files (already applied or planned)
+- `scripts/phase2-migration.sql`: Already adds profiles.acquisition_source column, creates campaigns, automation_flows, automation_enrollments, leads, content, email_preferences tables
+- `scripts/audit-fixes-migration.sql`: Adds check_booking_capacity trigger, fixes automation_enrollments unique constraint to partial index
 
-**Test suite:** Integration tests exist (src/__tests__/integration/) covering inngest-helpers, ai-endpoints, stripe-webhook-effects, auth-flow, api-bookings, supabase-crud. E2E tests via Playwright for all major modules. Plan references 229 tests.
+### Key Schema Patterns
+- Every table has studio_id for multi-tenancy
+- RLS policies use current_setting('app.studio_id')::uuid
+- Inngest functions use service-role client (bypasses RLS), must filter by studio_id explicitly
+- glofox_id stored on profiles, members, classes, bookings — used for sync idempotency
+- Upsert pattern: batchUpsert() with onConflict='glofox_id,studio_id'
 
-**Schema patterns:** studio_id on every table (multi-tenant RLS), UUID primary keys, timestamptz for all timestamps
-
-**Phase status per CLAUDE.md:** Phase 1 (core platform) complete. Phase 2 (Marketing) in progress. Phase 3 (Analytics) and Phase 4 (Corporate) partially built. Phase 5 (member-facing, iOS) not started. The pre-cutover checklist requires member-facing features to be ready — this is a significant dependency gap.
+### Glofox API Constraints
+- Rate limiting: 429 responses handled with retry/backoff in GlofoxClient
+- Safety cap: 200 pages max per fetchAll (20,000 records)
+- Transactions endpoint: POST Analytics/report (not a standard paginated GET — date range required)
+- Credits: Per-member fetch required (no bulk endpoint) — already causes N+1 in backfill
+- Glofox writes: PROHIBITED by project memory (reads only until explicitly approved)
 
 ---
 
-## 7. Success Criteria (from plan)
-
-- Member count within 1% of Glofox after shadow mode
-- All bookings from last 7 days present in both systems
-- Transaction totals match within $1 per day
-- Zero data corruption
-- Staff fully trained and operational on Meridian
-- All Stripe subscriptions created and verified
-- Rollback drill completed successfully
-- 14+ days parallel mode with zero integrity issues before cutover
+## Goals
+1. Fix broken computed fields (total_visits, last_visit) so automation triggers work
+2. Enable ClassPass member segmentation for targeted campaigns
+3. Make plan names human-readable throughout the UI
+4. Provide a single queryable surface (member_360) for member intelligence
+5. Enable 6 new behavior-based automation trigger types
+6. Fill empty tables (primarily transactions) from Glofox historical data
 
 ---
 
-## 8. Risks Called Out in Plan
+## Constraints
+- Glofox is read-only — no writes to Glofox (architectural constraint, enforced in project memory)
+- RLS must be maintained on all new tables/views
+- Inngest is the deployment mechanism for all background jobs
+- Multi-tenancy: single studio today, all new artifacts must include studio_id
+- Phase 2 (Marketing) is the current active phase — this is a data foundation prerequisite
 
-| Risk | Likelihood | Impact |
-|------|-----------|--------|
-| Glofox API rate limiting | Medium | High |
-| Payment gap during cutover | Low | Critical |
-| Data conflict during parallel mode | High | Medium |
-| Glofox API downtime | Low | Medium |
-| Staff resistance | Medium | Medium |
-| Member payment method collection | Medium | High |
-| Glofox revokes API access | Low | Critical |
-| Schema migration breaks existing features | Low | High |
+---
+
+## Risks Identified by Submitter
+1. member_360 VIEW with LATERAL join may be slow at scale
+2. Glofox API rate limits during mass pull
+3. Plan code mapping may be incomplete
+4. acquisition_source detection pattern (lead_source + phone) may have false positives
+
+---
+
+## Out of Scope (Per Plan)
+- Any writes to Glofox API
+- Member-facing surfaces (Phase 5)
+- iOS app changes
+- SMS provider selection (stubbed)

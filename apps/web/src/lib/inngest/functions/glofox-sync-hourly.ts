@@ -183,6 +183,54 @@ export const glofoxSyncHourly = inngest.createFunction(
           }
         }
 
+        // ── Post-upsert enrichment ─────────────────────────────
+        // 1. Tag ClassPass members: lead_source='U' + phone='+10000000000'
+        // 2. Resolve plan_code → membership_tier
+        try {
+          const memberMap = await buildLookupMap(db, 'members', STUDIO_ID)
+
+          for (const t of transformed) {
+            const memberId = memberMap.get(t.profileGlofoxId)
+            if (!memberId) continue
+
+            const enrichUpdates: Record<string, unknown> = {}
+
+            // ClassPass detection
+            if (t.profile.lead_source === 'U' && t.profile.phone === '+10000000000') {
+              enrichUpdates.acquisition_source = 'classpass'
+            }
+
+            // membership_tier from plan_code
+            if (t.member.plan_code && !t.member.membership_tier) {
+              const { data: planRow } = await db
+                .from('membership_plans')
+                .select('tier, name')
+                .eq('glofox_id', t.member.plan_code)
+                .eq('studio_id', STUDIO_ID)
+                .maybeSingle()
+
+              if (planRow?.tier) {
+                enrichUpdates.membership_tier = planRow.tier
+              } else if (planRow?.name) {
+                const lower = planRow.name.toLowerCase()
+                if (lower.includes('unlimited')) enrichUpdates.membership_tier = 'unlimited'
+                else if (lower.includes('10')) enrichUpdates.membership_tier = '10_class'
+                else if (lower.includes('6')) enrichUpdates.membership_tier = '6_class'
+              }
+            }
+
+            if (Object.keys(enrichUpdates).length > 0) {
+              enrichUpdates.updated_at = new Date().toISOString()
+              await db.from('members').update(enrichUpdates).eq('id', memberId)
+            }
+          }
+        } catch (enrichErr) {
+          // Non-fatal: enrichment failures shouldn't fail the sync
+          result.errorDetails.push(
+            `enrichment: ${enrichErr instanceof Error ? enrichErr.message : String(enrichErr)}`,
+          )
+        }
+
         result.updated = syncState.members ? members.length : 0
         result.created = syncState.members ? 0 : members.length
       } catch (err) {
@@ -273,6 +321,63 @@ export const glofoxSyncHourly = inngest.createFunction(
             result.errorDetails.push(`bookings upsert: ${error.message}`)
             return result
           }
+        }
+
+        // ── Post-upsert: update member visit stats for attended bookings ──
+        try {
+          const attendedBookings = bookingRows.filter(
+            (b) => b && (b as Record<string, unknown>).attended === true,
+          )
+
+          // Group by member_id to batch updates
+          const memberVisitUpdates = new Map<string, string>()
+          for (const b of attendedBookings) {
+            if (!b) continue
+            const row = b as Record<string, unknown>
+            const memberId = row.member_id as string
+            const checkedInAt = (row.checked_in_at as string) ?? new Date().toISOString()
+
+            const existing = memberVisitUpdates.get(memberId)
+            if (!existing || new Date(checkedInAt) > new Date(existing)) {
+              memberVisitUpdates.set(memberId, checkedInAt)
+            }
+          }
+
+          for (const [memberId, lastCheckedIn] of memberVisitUpdates) {
+            // Fetch current total_visits to increment
+            const { data: currentMember } = await db
+              .from('members')
+              .select('total_visits, last_visit')
+              .eq('id', memberId)
+              .single()
+
+            if (currentMember) {
+              const currentVisits = (currentMember.total_visits as number) ?? 0
+              const memberAttendedCount = attendedBookings.filter(
+                (b) => b && (b as Record<string, unknown>).member_id === memberId,
+              ).length
+              const currentLastVisit = currentMember.last_visit as string | null
+              const newLastVisit =
+                !currentLastVisit || new Date(lastCheckedIn) > new Date(currentLastVisit)
+                  ? lastCheckedIn
+                  : currentLastVisit
+
+              await db
+                .from('members')
+                .update({
+                  total_visits: currentVisits + memberAttendedCount,
+                  last_visit: newLastVisit,
+                  engagement_status: 'engaged',
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', memberId)
+            }
+          }
+        } catch (visitErr) {
+          // Non-fatal
+          result.errorDetails.push(
+            `visit-stats: ${visitErr instanceof Error ? visitErr.message : String(visitErr)}`,
+          )
         }
 
         result.updated = syncState.bookings ? bookingRows.length : 0

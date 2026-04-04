@@ -1,134 +1,120 @@
 # Architecture Impact Analysis
+
 **Agent:** architecture-impact
-**Plan:** Glofox API Migration to Meridian
+**Plan:** Unified Member Data Architecture
 **Complexity:** SIGNIFICANT
-**Date:** 2026-03-31
+**Date:** 2026-04-04
 
 ---
 
 ## Agent Verdict
-**MODIFY** — The migration introduces 8 new Inngest functions, 3 new tables, 27 new columns, and a new external API client — all of which fit cleanly into the existing architecture. However, two architectural decisions are deferred or unspecified in ways that create ongoing technical debt: the outbound sync trigger mechanism is not defined (creating inconsistency risk), and the `glofox_*` columns/tables become permanent schema artifacts even after Glofox is deprecated. The post-cutover cleanup plan is adequate but needs to be treated as a first-class obligation, not an afterthought.
+
+**MODIFY** — The plan fits the existing architecture well but introduces two patterns that conflict with the system's established conventions: (1) a VIEW as a primary query surface when pre-computed columns are the established pattern, and (2) a daily cron for computed fields when real-time updates are needed for correct trigger behavior. Both are fixable without significant rework. Additionally, the STUDIO_ID hardcoding in evaluate-triggers.ts (already marked as TODO: MED-001) must be addressed before adding more trigger types to avoid compounding the multi-tenancy debt.
 
 ---
 
 ## Architectural Fit Assessment
 
-### Inngest Function Pattern — Clean Fit
+### Patterns That Fit Well
 
-The codebase already runs 12 Inngest functions across marketing, analytics, and operations domains. The proposed 8 Glofox sync functions (5 inbound cron, 3 outbound event-driven) follow the same pattern:
+**Inngest for background jobs**
 
-```
-lib/inngest/functions/
-  cron-daily-metrics.ts        ← existing
-  cron-trainer-metrics.ts      ← existing
-  glofox-sync-members-inbound.ts  ← new
-  glofox-sync-bookings-inbound.ts ← new
-  glofox-sync-outbound-member.ts  ← new
-  ...
-```
+The cron-member-enrichment proposal fits the existing Inngest function pattern perfectly. There are already 13 Inngest functions including cron-daily-metrics, cron-cohort-refresh, and cron-trainer-metrics. A new cron-member-enrichment follows the established pattern: single function, explicit studio_id filtering, service-role client, step-based execution.
 
-These register in `functions/index.ts` and serve through the existing `/api/inngest/route.ts` endpoint. Zero new infrastructure required. The pattern is established, the retry/observability model is proven.
+**batchUpsert pattern for data population**
 
-**Architectural impact: Low. Clean additive fit.**
+The existing batchUpsert helper (500-row batches, onConflict handling, error tracking) is the correct mechanism for populating glofox_plan_map and any other new tables from Glofox data. This pattern is already proven.
 
-### External API Client Layer — New Pattern, Well-Isolated
+**Extending evaluate-triggers.ts**
 
-The `GlofoxClient` class is the first external third-party API client in the codebase that isn't a vetted SDK (Stripe, Anthropic, Supabase, Resend all use official SDKs). It lives at `lib/glofox/client.ts` and is temporary by design (deprecated at cutover).
+The switch statement in evaluate-triggers.ts is explicitly designed for extension. Each trigger type is an independent case. Adding 6 new cases follows the established pattern exactly.
 
-The isolation is appropriate. Nothing in the application should depend on `GlofoxClient` outside the sync functions and the Inngest handlers. If this boundary is respected, removal at cutover is clean.
+**RLS on new tables**
 
-**Risk:** If the client is used in API routes or UI components to power real-time features during parallel mode (e.g., "show me Glofox's live booking count"), it creates entanglement that complicates cleanup.
-
-**Recommendation:** Establish an explicit rule: `GlofoxClient` is only importable from `lib/inngest/functions/glofox-*` and `lib/glofox/sync/*`. Enforce with ESLint if feasible.
-
-**Architectural impact: Low. Cleanly isolated temporary client.**
-
-### Database Schema — Permanent Artifacts
-
-The 27 new columns and 3 new tables have two categories:
-
-**Category A: Permanent data (should stay after cutover)**
-- `birth_date`, `address_*`, `emergency_contact`, `consent_*` on profiles
-- `membership_expiry_date`, `membership_start_date`, `auto_renewal` on members
-- `is_late_cancellation`, `is_from_waitlist`, `is_first_booking` on bookings
-- `waitlist_count`, `description`, `image_url` on classes
-- All `lead_interactions` table data
-
-These fields have intrinsic value to Meridian's data model independent of Glofox. They should be populated from Glofox during the transition and remain populated by Meridian operations afterward.
-
-**Category B: Glofox-specific identifiers (cleanup target)**
-- All `glofox_id` columns (7 tables)
-- All `glofox_synced_at` columns (4 tables)
-- `glofox_plan_code`, `glofox_membership_id`, `glofox_program_id`, `glofox_provider_id`, `glofox_paid`, `glofox_lead_status`, `glofox_sources` (scattered across tables)
-- `glofox_sync_state` table
-- `glofox_sync_conflicts` table
-
-The plan correctly states "keep `glofox_id` columns for historical reference" in Phase 5 cleanup. This is the right call for `glofox_id` (for audit trail of which Glofox record a Meridian record came from). However, the other `glofox_*` fields in the application tables have less justification for permanent retention:
-- `glofox_plan_code` in members: plan codes are Glofox-internal identifiers, meaningless after cutover
-- `glofox_provider_id` in transactions: redundant once Stripe is the processor
-- `glofox_paid` in transactions: boolean field whose only meaning was "was this paid in Glofox's system"
-
-Leaving these fields indefinitely creates schema noise and could confuse future developers. The cleanup plan should explicitly decide which `glofox_*` fields are archived vs. dropped.
-
-**Architectural impact: Low-Medium. New columns are safe but create cleanup obligations.**
-
-### Multi-Tenancy Compliance
-
-All new tables include `studio_id NOT NULL REFERENCES studios(id)` — this is correct and consistent with the codebase's RLS pattern. The `lead_interactions` table has `studio_id` and a cascade delete from `leads`. Row-level security policies need to be added to the three new tables (`glofox_sync_state`, `glofox_sync_conflicts`, `lead_interactions`). The plan does not mention RLS policies for these tables.
-
-For a single-studio deployment (The Sauna Guys), this is not immediately a problem. But if Meridian becomes multi-tenant SaaS, `glofox_sync_state` and `glofox_sync_conflicts` without RLS policies would expose sync metadata across tenants.
-
-**Recommended action:** Add RLS policies to all three new tables at the same time as the migration. Standard pattern: `studio_id = current_setting('app.studio_id')::uuid`.
-
-### TypeScript Type System Impact
-
-The plan adds 27 new columns. The shared `@meridian/types` package (visible in `apps/web/package.json` as a dependency) presumably contains database type definitions. These need to be updated to reflect the new schema. If types are generated from Supabase (common with `supabase gen types typescript`), regenerating after migration will include the new columns automatically. If types are hand-maintained, they need explicit updates.
-
-The plan does not mention type updates. This is a small but real gap — missing types on new columns means TypeScript will treat them as unknown/any in the codebase until updated.
+The plan correctly identifies that new tables need RLS. The existing pattern (ALTER TABLE X ENABLE ROW LEVEL SECURITY + CREATE POLICY X_studio_isolation using current_setting) is well-established. glofox_plan_map should follow this pattern even though it's primarily a reference table.
 
 ---
 
-## Sync Engine Architecture — Deeper Analysis
+### Architectural Conflicts
 
-### The Inngest Event Model Needs Glofox-Specific Events
+**Conflict 1: VIEW as computed data surface vs. pre-computed columns**
 
-The existing `MeridianEvents` type in `lib/inngest/client.ts` does not include Glofox sync events. For outbound sync to be event-driven, new event types are needed:
+The system already has total_visits and last_visit as real columns on the members table. The decision was made that these are stored, not computed. Introducing a VIEW that re-aggregates them from bookings creates two sources of truth:
+- members.total_visits (the stored value, used by triggers)
+- member_360.computed_total_visits (aggregated from bookings in the VIEW)
 
-```typescript
-'glofox/sync_member': { data: { member_id: string; studio_id: string } };
-'glofox/sync_booking': { data: { booking_id: string; studio_id: string } };
-'glofox/sync_attendance': { data: { booking_id: string; studio_id: string } };
-```
+These will diverge. The trigger system reads members.total_visits. The UI would read member_360. When a member checks in, members.total_visits updates immediately (if the check-in handler is fixed), but member_360 reflects the live count. This creates confusion for developers and potential inconsistency bugs.
 
-Without typed events, the Inngest functions will use untyped `any` payloads, losing type safety. The plan's code samples show `inngest.send()` without showing the event type definitions.
+The resolution: member_360 should JOIN on the pre-computed columns (members.total_visits, members.last_visit) rather than re-aggregating from bookings. Complex derived fields not worth storing (favorite_class_type, behavior_segment) can be aggregated in the VIEW — but only if these fields are not used by latency-sensitive paths.
 
-### The Admin Supabase Client
+**Conflict 2: Daily cron for trigger-sensitive computed fields**
 
-The inbound sync code calls `getAdminClient()` — this implies a service-role Supabase client that bypasses RLS. This is the correct choice for background sync functions (which run server-side, outside user request context). The plan should clarify that sync functions use the service role key, not the anon key, and that the service role key must be available in the Inngest/Next.js environment on Netlify.
+evaluate-triggers.ts runs every 10 minutes. milestone trigger reads members.total_visits. If total_visits is updated by a daily cron, there is a 0–1440 minute lag between a member's milestone visit and trigger firing. For a welcome/milestone automation, this is unacceptable.
 
-### Implications for 60-Second Polling Architecture
+The correct architecture: the check-in code path (wherever bookings.checked_in_at is set) must also increment members.total_visits and update members.last_visit. This is a direct write, not deferred to a cron. The daily cron becomes a consistency check/reconciliation tool, not the primary update mechanism.
 
-CLAUDE.md states the current architecture uses 60-second polling for real-time data (WebSocket-ready Phase 2). The sync engine introduces a new polling layer at 5–30 minute intervals that is entirely separate from the UI polling. These are different in purpose (background sync vs. UI refresh) and should not conflict. However, during shadow mode, the UI polling will show Meridian data that lags Glofox by up to 30 minutes for transactions. This is acceptable for a shadow mode but may create confusion during parallel mode if staff expects both systems to agree in real time.
+Looking at the existing codebase, the check-in flow writes to bookings.checked_in_at. That same transaction should update the members row. This is a small addition to the existing check-in handler.
 
----
+**Conflict 3: STUDIO_ID hardcoding in evaluate-triggers.ts**
 
-## Post-Cutover Architecture Cleanliness
+The file explicitly has `// TODO: Multi-tenancy — query studios table and iterate all active studios instead of hardcoding a single studio ID. See MED-001.`
 
-The plan includes a cleanup phase (Week 9+). The architectural obligation is to ensure Meridian's data model fully replaces Glofox's after cutover:
-
-**Member classification logic must change.** Currently, member `engagement_status`, churn classification, and membership status may depend on Glofox-synced data (membership_expiry, booking status). After cutover, these must derive from Stripe subscription status and Meridian's own booking records. The plan mentions this ("update member classification logic to use Stripe subscription status") but it is a non-trivial refactor that needs its own testing.
-
-**The `glofox_synced_at` field becomes semantically wrong.** After cutover, if a record is updated in Meridian, there is no "sync to Glofox" happening. The timestamp loses meaning. It should either be removed or repurposed.
+Adding 6 new trigger types before fixing this hardcoding compounds the debt. When MED-001 is eventually fixed (querying all studios and iterating), every new trigger case must handle multi-studio context correctly. The fix is not complex — wrap the per-flow evaluation in a studio loop — but doing it now before adding 6 more cases is cleaner than retrofitting later.
 
 ---
 
-## Summary
+### New Components Required
 
-The architecture is well-suited to this migration. The plan does not introduce any new infrastructure, picks appropriate patterns for the existing codebase, and limits Glofox-specific code to isolated modules. The main architectural concerns are:
-1. Outbound trigger mechanism unspecified (creates inconsistency risk)
-2. RLS policies missing from new tables
-3. Inngest event types not defined for new sync events
-4. Post-cutover schema cleanup needs to be more precise about which `glofox_*` fields to drop vs. retain
-5. Member classification refactor after cutover is larger than the plan implies
+**glofox_plan_map table**
 
-None of these are blockers to Phase 1. All should be addressed before Phase 2 is considered complete.
+Simple reference table. Needs:
+- studio_id (multi-tenancy)
+- glofox_plan_id (TEXT, the numeric ID)
+- plan_name (TEXT, human-readable)
+- plan_type (TEXT, CHECK constraint)
+- RLS policy
+
+This should live in a new migration file, not appended to existing migrations.
+
+**cron-member-enrichment.ts**
+
+New Inngest function. Must:
+- Query all studios (fixes MED-001 in this function, even if evaluate-triggers.ts isn't fixed yet)
+- For each studio, batch-update members.total_visits, members.last_visit, members.engagement_status from bookings aggregation
+- Update members.acquisition_source from profiles where not yet set
+- Handle partial failures per-studio without failing the entire cron
+- Log results to a reconciliation log or activity_log
+
+**member_360 VIEW**
+
+Should be created as a VIEW (not materialized — Supabase auto-refresh limitations). Must:
+- JOIN profiles + members + membership_plans (thin joins, no aggregation of these)
+- JOIN LATERAL to get favorite class type if needed (acceptable — this is a one-per-member aggregation, bounded)
+- NOT re-aggregate total_visits/last_visit from bookings (use the stored columns)
+- Include studio_id for RLS
+- Document security context (SECURITY INVOKER vs SECURITY DEFINER)
+
+---
+
+### Migration Strategy
+
+**Order of migrations:**
+
+1. `member-data-backfill.sql` — UPDATE members.total_visits, last_visit, engagement_status from bookings. UPDATE profiles.acquisition_source from lead_source/phone pattern. Run immediately.
+2. `glofox_plan_map.sql` — CREATE TABLE + RLS + initial populate. Run immediately.
+3. `member_360_view.sql` — CREATE VIEW. Run after (1) so it reflects accurate data from first query.
+4. `evaluate-triggers-new-types.ts` — Code change, deploy with cron-member-enrichment.ts.
+
+**No schema changes break existing functionality.** The backfill updates existing columns. The new table and VIEW are additive. RLS policies on new objects follow the established pattern.
+
+---
+
+## Long-Term Architecture Implications
+
+This plan correctly treats Glofox as a data source, not as the system of record. Meridian is becoming the system of record with computed, enriched member data. This is the right direction.
+
+The risk: as computed fields proliferate (behavior_segment, favorite_class_type, plan_upgrade_candidate), maintaining consistency between stored columns, VIEW definitions, and the cron reconciliation job becomes harder. The plan should document a clear policy: which fields are stored, which are computed in the VIEW, and what the source of truth is for each.
+
+---
+
+## Verdict Confidence: HIGH

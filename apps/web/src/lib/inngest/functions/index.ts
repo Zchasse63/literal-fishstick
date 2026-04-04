@@ -12,6 +12,7 @@ import { cronTrainerMetrics } from './cron-trainer-metrics';
 import { cronAIInsights } from './cron-ai-insights';
 import { cronReportScheduler } from './cron-report-scheduler';
 import { cronExportCleanup } from './cron-export-cleanup';
+import { cronMemberEnrichment } from './cron-member-enrichment';
 
 // Phase 4: Corporate & Operations
 import { cronPayrollReminder } from './cron-payroll-reminder';
@@ -38,6 +39,7 @@ export const functions = [
   cronAIInsights,
   cronReportScheduler,
   cronExportCleanup,
+  cronMemberEnrichment,
   // Phase 4
   cronPayrollReminder,
   cronInvoiceOverdue,
