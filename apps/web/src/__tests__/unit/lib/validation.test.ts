@@ -249,4 +249,87 @@ describe('normalizePhone', () => {
   it('trims whitespace before normalizing', () => {
     expect(normalizePhone('  (813) 555-1234  ')).toBe('+18135551234')
   })
+
+  // ── Stress test: unusual but valid US formats ─────────────────────
+
+  it('handles +1 (813) 555-1234 with country code and parens', () => {
+    expect(normalizePhone('+1 (813) 555-1234')).toBe('+18135551234')
+  })
+
+  it('handles 1-813-555-1234 with dashes and country code', () => {
+    expect(normalizePhone('1-813-555-1234')).toBe('+18135551234')
+  })
+
+  it('handles 1.813.555.1234 with dots and country code', () => {
+    expect(normalizePhone('1.813.555.1234')).toBe('+18135551234')
+  })
+
+  it('handles +1-813-555-1234', () => {
+    expect(normalizePhone('+1-813-555-1234')).toBe('+18135551234')
+  })
+
+  // ── Edge cases that should return null ────────────────────────────
+
+  it('returns null for partial number 813-555', () => {
+    expect(normalizePhone('813-555')).toBeNull()
+  })
+
+  it('returns null for too-long number 81355512345 (11 digits without leading 1)', () => {
+    // 11 digits where first digit is 8, not 1 — cannot be US
+    expect(normalizePhone('81355512345')).toBeNull()
+  })
+
+  it('returns null for letters mixed in 813-ABC-1234', () => {
+    // After stripping non-digits, only 8131234 remains (7 digits) — not valid
+    expect(normalizePhone('813-ABC-1234')).toBeNull()
+  })
+
+  it('returns null for international +44 7911 123456 (UK)', () => {
+    expect(normalizePhone('+44 7911 123456')).toBeNull()
+  })
+
+  it('returns null for international +61 412 345 678 (AU)', () => {
+    expect(normalizePhone('+61 412 345 678')).toBeNull()
+  })
+
+  it('returns null for extension formats 813-555-1234 x123', () => {
+    // After stripping non-digits, becomes 813555123412​3 (13 digits) — not valid
+    expect(normalizePhone('813-555-1234 x123')).toBeNull()
+  })
+
+  it('returns null for just country code +1', () => {
+    expect(normalizePhone('+1')).toBeNull()
+  })
+
+  // ── Idempotency ──────────────────────────────────────────────────
+
+  it('is idempotent — normalizing already-normalized number returns same', () => {
+    const normalized = normalizePhone('+18135551234')
+    expect(normalizePhone(normalized)).toBe('+18135551234')
+  })
+
+  it('handles multiple normalizations in sequence', () => {
+    const first = normalizePhone('(813) 555-1234')
+    const second = normalizePhone(first)
+    const third = normalizePhone(second)
+    expect(first).toBe('+18135551234')
+    expect(second).toBe('+18135551234')
+    expect(third).toBe('+18135551234')
+  })
+
+  // ── Boundary conditions ──────────────────────────────────────────
+
+  it('handles string of only spaces', () => {
+    expect(normalizePhone('   ')).toBeNull()
+  })
+
+  it('handles string of only special chars (---)', () => {
+    expect(normalizePhone('---')).toBeNull()
+  })
+
+  it('handles zero 0000000000', () => {
+    // 10 digits but not a real phone number — normalizePhone only
+    // validates digit count, not semantic validity, so it adds +1 prefix
+    expect(normalizePhone('0000000000')).toBe('+10000000000')
+  })
 })
