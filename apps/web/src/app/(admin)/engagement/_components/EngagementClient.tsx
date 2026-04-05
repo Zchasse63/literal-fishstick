@@ -5,20 +5,10 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
   Trophy,
-  Medal,
-  Flame,
-  Snowflake,
-  Star,
-  Sun,
-  CalendarCheck,
-  Zap,
   Users,
-  Clock,
-  Gift,
-  Target,
-  TrendingUp,
   Crown,
-  Heart,
+  Sparkles,
+  Target,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
 
@@ -35,50 +25,6 @@ interface LeaderboardMember {
   ltv: number
   badge: string
 }
-
-interface Achievement {
-  id: string
-  name: string
-  icon: React.ElementType
-  color: string
-  iconBg: string
-  description: string
-  criteria: string
-  memberCount: number
-}
-
-interface Challenge {
-  id: string
-  name: string
-  description: string
-  progress: number
-  total: number
-  participants: number
-  endDate: string
-  reward: string
-  status: 'active' | 'ongoing'
-}
-
-// ─── Static data for achievements and challenges (config, not DB data) ───
-// TODO: Achievements and challenges are currently static placeholders.
-// These need a gamification engine: an achievements table, a member_achievements
-// join table, and a challenges table with participant tracking. The memberCount
-// and participants fields below are stubs — the UI renders placeholder states
-// until the data pipeline is built.
-const ACHIEVEMENTS: Achievement[] = [
-  { id: '100-sessions', name: '100 Sessions', icon: Trophy, color: 'text-emerald-500', iconBg: 'bg-emerald-100', description: 'Reach 100 total visits', criteria: 'Visit 100 times', memberCount: 0 },
-  { id: 'streak-warrior', name: 'Streak Warrior', icon: Flame, color: 'text-orange-500', iconBg: 'bg-orange-100', description: 'Maintain a 7-day streak', criteria: '7-day visit streak', memberCount: 0 },
-  { id: 'cold-plunge-pro', name: 'Cold Plunge Pro', icon: Snowflake, color: 'text-teal-500', iconBg: 'bg-teal-100', description: 'Complete 50 cold plunges', criteria: '50 cold plunge sessions', memberCount: 0 },
-  { id: 'community-star', name: 'Community Star', icon: Star, color: 'text-amber-500', iconBg: 'bg-amber-100', description: 'Be a top referrer', criteria: 'Refer 3+ members', memberCount: 0 },
-  { id: 'early-bird', name: 'Early Bird', icon: Sun, color: 'text-indigo-600', iconBg: 'bg-indigo-100', description: 'Morning session regular', criteria: '10 morning sessions', memberCount: 0 },
-  { id: 'consistency-king', name: 'Consistency King', icon: CalendarCheck, color: 'text-violet-500', iconBg: 'bg-violet-100', description: 'Unwavering commitment', criteria: 'Visit every week for 3 months', memberCount: 0 },
-]
-
-const CHALLENGES: Challenge[] = [
-  { id: 'march-madness', name: 'March Madness', description: 'Visit 15 times in March', progress: 0, total: 15, participants: 0, endDate: 'Mar 31', reward: 'Exclusive March Madness badge + free guest pass', status: 'active' },
-  { id: 'bring-a-friend', name: 'Bring a Friend', description: 'Refer 1 new member', progress: 0, total: 1, participants: 0, endDate: 'Ongoing', reward: '$10 credit for each successful referral', status: 'ongoing' },
-  { id: 'guided-explorer', name: 'Guided Explorer', description: 'Try 3 different guided classes', progress: 0, total: 3, participants: 0, endDate: 'Apr 15', reward: 'Free guided session + Guided Explorer badge', status: 'active' },
-]
 
 // ─── Rank Badge ──────────────────────────────────────────────
 function RankBadge({ rank }: { rank: number }) {
@@ -130,6 +76,34 @@ function MemberBadge({ badge }: { badge: string }) {
   )
 }
 
+// ─── Coming Soon Placeholder ────────────────────────────────
+function ComingSoonPlaceholder({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ElementType
+  title: string
+  description: string
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+      className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm p-16 text-center"
+    >
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 mx-auto mb-4">
+        <Icon className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+      </div>
+      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{title}</h3>
+      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+        {description}
+      </p>
+    </motion.div>
+  )
+}
+
 // ─── Props ──────────────────────────────────────────────────
 interface EngagementClientProps {
   initialActiveMemberCount: number
@@ -149,7 +123,7 @@ export default function EngagementClient({ initialActiveMemberCount, initialLead
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8">
+    <div className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp} className="mb-8">
         <div className="flex items-center justify-between">
@@ -193,8 +167,20 @@ export default function EngagementClient({ initialActiveMemberCount, initialLead
 
       {/* Tab Content */}
       {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} />}
-      {activeTab === 'achievements' && <AchievementsTab />}
-      {activeTab === 'challenges' && <ChallengesTab />}
+      {activeTab === 'achievements' && (
+        <ComingSoonPlaceholder
+          icon={Sparkles}
+          title="Coming in Phase 3"
+          description="Achievements will reward members for milestones like visit streaks, cold plunge records, and referral activity. Requires the gamification engine and data pipelines."
+        />
+      )}
+      {activeTab === 'challenges' && (
+        <ComingSoonPlaceholder
+          icon={Target}
+          title="Coming in Phase 3"
+          description="Challenges will let you create time-bound goals for members with progress tracking, participant counts, and reward distribution."
+        />
+      )}
     </div>
   )
 }
@@ -275,136 +261,5 @@ function LeaderboardTab({ leaderboard }: { leaderboard: LeaderboardMember[] }) {
         ))}
       </div>
     </motion.div>
-  )
-}
-
-// ─── Achievements Tab ──────────────────────────────────────────
-function AchievementsTab() {
-  return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-      {ACHIEVEMENTS.map((achievement, i) => {
-        const Icon = achievement.icon
-        return (
-          <motion.div
-            key={achievement.id}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.25,
-              delay: i * 0.05,
-              ease: [0.25, 1, 0.5, 1],
-            }}
-            className="group rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm transition-all hover:shadow-md"
-          >
-            <div
-              className={cn(
-                'flex h-12 w-12 items-center justify-center rounded-full',
-                achievement.iconBg
-              )}
-            >
-              <Icon className={cn('h-6 w-6', achievement.color)} />
-            </div>
-            <h3 className="mt-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{achievement.name}</h3>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{achievement.description}</p>
-            <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                Unlock Criteria
-              </p>
-              <p className="mt-0.5 text-xs font-medium text-gray-700 dark:text-gray-300">{achievement.criteria}</p>
-            </div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ─── Challenges Tab ──────────────────────────────────────────
-function ChallengesTab() {
-  return (
-    <div className="space-y-4">
-      {CHALLENGES.map((challenge, i) => (
-        <motion.div
-          key={challenge.id}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.25,
-            delay: i * 0.05,
-            ease: [0.25, 1, 0.5, 1],
-          }}
-          className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-100">
-                <Target className="h-5 w-5 text-indigo-600" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{challenge.name}</h3>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest',
-                      challenge.status === 'active'
-                        ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-amber-50 text-amber-600'
-                    )}
-                  >
-                    {challenge.status === 'active' ? 'Active' : 'Ongoing'}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{challenge.description}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
-                <Clock className="h-3.5 w-3.5" />
-                <span className="text-xs font-medium">{challenge.endDate}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="mt-5">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                Progress
-              </p>
-              <p className="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-300">
-                {challenge.progress} / {challenge.total}
-              </p>
-            </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{
-                  width: `${(challenge.progress / challenge.total) * 100}%`,
-                }}
-                transition={{ duration: 0.6, delay: i * 0.1, ease: [0.25, 1, 0.5, 1] }}
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
-              />
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">{challenge.participants}</span>{' '}
-                  participants
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5">
-              <Gift className="h-3.5 w-3.5 text-amber-500" />
-              <span className="text-xs font-medium text-amber-700">{challenge.reward}</span>
-            </div>
-          </div>
-        </motion.div>
-      ))}
-    </div>
   )
 }

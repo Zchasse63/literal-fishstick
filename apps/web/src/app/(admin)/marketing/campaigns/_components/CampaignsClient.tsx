@@ -88,7 +88,7 @@ function ActionDropdown({ campaignId }: { campaignId: string }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
-      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open) }} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open) }} aria-label="Campaign actions" className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
         <MoreHorizontal className="h-4 w-4 text-gray-400 dark:text-gray-500" />
       </button>
       <AnimatePresence>
@@ -136,7 +136,7 @@ export default function CampaignsClient({ initialCampaigns }: CampaignsClientPro
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
+      className="space-y-6"
     >
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -163,7 +163,7 @@ export default function CampaignsClient({ initialCampaigns }: CampaignsClientPro
         </div>
         <div className="flex-1 min-w-[200px] max-w-sm relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search campaigns..." className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search campaigns..." aria-label="Search campaigns" className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all" />
         </div>
       </div>
 

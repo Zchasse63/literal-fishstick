@@ -364,7 +364,7 @@ export default function LeadDetailClient({ initialLead, initialMembershipPlans }
 
   if (!lead) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <UserPlus className="h-10 w-10 text-gray-300 mx-auto mb-3" />
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">Lead not found</h3>
@@ -390,7 +390,7 @@ export default function LeadDetailClient({ initialLead, initialMembershipPlans }
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
+    <div className="space-y-6">
       <div className="mx-auto max-w-[1200px] px-6 py-8">
         {/* Back Link */}
         <motion.div {...fadeInUp}>

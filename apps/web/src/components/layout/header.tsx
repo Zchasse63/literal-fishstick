@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import {
   Search,
   Menu,
@@ -12,12 +13,11 @@ import {
 } from 'lucide-react'
 
 interface HeaderProps {
-  breadcrumb: string
   sidebarCollapsed: boolean
   onToggleSidebar: () => void
 }
 
-export function Header({ breadcrumb, sidebarCollapsed, onToggleSidebar }: HeaderProps) {
+export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
@@ -41,31 +41,38 @@ export function Header({ breadcrumb, sidebarCollapsed, onToggleSidebar }: Header
         sidebarCollapsed ? 'left-[72px]' : 'left-[240px]'
       )}
     >
-      {/* Left: Hamburger + Breadcrumb */}
+      {/* Left: Hamburger + Breadcrumbs */}
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleSidebar}
+          aria-label="Toggle sidebar"
           className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <nav className="hidden md:flex items-center text-sm text-gray-500 dark:text-gray-400">
-          <span className="font-medium text-gray-900 dark:text-gray-100">{breadcrumb}</span>
-        </nav>
+        <div className="hidden md:block">
+          <Breadcrumbs />
+        </div>
       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3">
         {/* Search */}
-        <button className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <button
+          aria-label="Open search"
+          className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
           <Search className="w-4 h-4" />
           <span>Search...</span>
           <kbd className="text-[10px] font-medium bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-1.5 py-0.5">⌘K</kbd>
         </button>
 
         {/* Keyboard shortcuts */}
-        <button className="hidden lg:flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        <button
+          aria-label="Keyboard shortcuts"
+          className="hidden lg:flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
           <Keyboard className="w-5 h-5" />
         </button>
 
@@ -84,6 +91,7 @@ export function Header({ breadcrumb, sidebarCollapsed, onToggleSidebar }: Header
         <div ref={notifRef} className="relative">
           <button
             onClick={() => setNotifOpen((prev) => !prev)}
+            aria-label="Notifications"
             className="relative text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <Bell className="w-5 h-5" />

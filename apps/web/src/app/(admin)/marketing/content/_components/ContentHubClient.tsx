@@ -258,8 +258,8 @@ export default function ContentHubClient({ initialPosts }: ContentHubClientProps
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="mx-auto max-w-[960px] px-6 py-8">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <motion.div {...fadeInUp} className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

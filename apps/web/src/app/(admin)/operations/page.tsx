@@ -193,7 +193,7 @@ export default function OperationsPage() {
   }
 
   return (
-    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6">
+    <motion.div {...fadeInUp} className="space-y-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Operations</h1>

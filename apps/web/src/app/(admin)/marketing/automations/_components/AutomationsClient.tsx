@@ -150,7 +150,7 @@ export default function AutomationsClient({ initialAutomations }: AutomationsCli
   const hasAutomations = automations.length > 0
 
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }} className="space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Automations</h1>

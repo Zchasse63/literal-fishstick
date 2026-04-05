@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -332,17 +333,17 @@ export default function CampaignBuilderPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8"
+      className="space-y-6"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <a
-            href="/marketing"
+          <Link
+            href="/marketing/campaigns"
             className="h-9 w-9 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-          </a>
+          </Link>
           <div>
             <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">New Campaign</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Create and send email or SMS campaigns</p>

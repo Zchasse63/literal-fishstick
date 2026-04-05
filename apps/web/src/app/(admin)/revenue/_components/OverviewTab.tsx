@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,19 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
   mrrGrowth: MrrDataPoint[]
   loading: boolean
 }) {
+  // Dark mode detection for Recharts colors
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'))
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+  const gridColor = isDark ? '#374151' : '#F3F4F6'
+  const tickColor = isDark ? '#D1D5DB' : '#9CA3AF'
+
   const AREA_COLORS = ['#4F46E5', '#8B5CF6', '#14B8A6', '#F59E0B', '#10B981']
   const AREA_KEYS = ['Subscriptions', 'Credit Packs', 'Drop-ins', 'Merch', 'Corporate']
 
@@ -131,9 +145,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<CustomTooltip />} />
               {AREA_KEYS.map((key, i) => (
                 <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={AREA_COLORS[i]} strokeWidth={2} fill={`url(#gradient-${i})`} />
@@ -189,9 +203,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
                   <stop offset="100%" stopColor="#4F46E5" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} interval={4} />
-              <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString()}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} interval={4} />
+              <YAxis tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toLocaleString()}`} />
               <Tooltip
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.[0]) return null
@@ -218,9 +232,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
         {loading ? <ChartSkeleton height={260} /> : (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={revenueBySource} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-              <YAxis type="category" dataKey="source" tick={{ fontSize: 12, fill: '#6B7280', fontWeight: 500 }} axisLine={false} tickLine={false} width={100} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <YAxis type="category" dataKey="source" tick={{ fontSize: 12, fill: isDark ? '#D1D5DB' : '#6B7280', fontWeight: 500 }} axisLine={false} tickLine={false} width={100} />
               <Tooltip
                 content={({ active, payload }) => {
                   if (!active || !payload?.[0]) return null
@@ -265,9 +279,9 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
         {loading ? <ChartSkeleton height={260} /> : (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={mrrGrowth} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} domain={['dataMin - 200', 'dataMax + 200']} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} domain={['dataMin - 200', 'dataMax + 200']} />
               <Tooltip
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.[0]) return null

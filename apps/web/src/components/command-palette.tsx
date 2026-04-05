@@ -19,9 +19,9 @@ import {
   DollarSign,
   Megaphone,
   Building2,
+  Settings2,
   BarChart3,
-  Target,
-  Trophy,
+  Settings,
   Plus,
   UserPlus,
   CreditCard,
@@ -29,20 +29,21 @@ import {
   Clock,
   FileText,
   Briefcase,
-  Settings,
 } from 'lucide-react'
+import { NAV_ITEMS } from '@/lib/nav'
 
-const navigationItems = [
-  { label: 'Command Center', icon: LayoutDashboard, href: '/', shortcut: '1' },
-  { label: 'Schedule', icon: Calendar, href: '/schedule', shortcut: '2' },
-  { label: 'Members', icon: Users, href: '/members', shortcut: '3' },
-  { label: 'Revenue', icon: DollarSign, href: '/revenue', shortcut: '4' },
-  { label: 'Marketing', icon: Megaphone, href: '/marketing', shortcut: '5' },
-  { label: 'Operations', icon: Building2, href: '/operations', shortcut: '6' },
-  { label: 'Analytics', icon: BarChart3, href: '/analytics', shortcut: '7' },
-  { label: 'Segments', icon: Target, href: '/segments', shortcut: '8' },
-  { label: 'Engagement', icon: Trophy, href: '/engagement', shortcut: '9' },
-]
+/** Map icon name strings from NAV_ITEMS to actual Lucide components. */
+const ICON_MAP: Record<string, React.ElementType> = {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  DollarSign,
+  Megaphone,
+  Building2,
+  Settings2,
+  BarChart3,
+  Settings,
+}
 
 const quickActions = [
   { label: 'New Class', icon: Plus, href: '/schedule?action=new-class', shortcut: 'N' },
@@ -95,24 +96,27 @@ export function CommandPalette() {
           <CommandEmpty>No results found.</CommandEmpty>
 
           <CommandGroup heading="Navigation">
-            {navigationItems.map((item) => (
-              <CommandItem
-                key={item.href}
-                value={item.label}
-                onSelect={() => runCommand(item.href)}
-                className="data-selected:bg-indigo-50 dark:data-selected:bg-indigo-950/40"
-              >
-                <item.icon className="size-4 text-[#4F46E5]" />
-                <span>{item.label}</span>
-                {item.shortcut && (
-                  <CommandShortcut>
-                    <kbd className="pointer-events-none inline-flex h-5 items-center rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-1.5 font-mono text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                      {item.shortcut}
-                    </kbd>
-                  </CommandShortcut>
-                )}
-              </CommandItem>
-            ))}
+            {NAV_ITEMS.map((item) => {
+              const Icon = ICON_MAP[item.icon] ?? LayoutDashboard
+              return (
+                <CommandItem
+                  key={item.path}
+                  value={item.label}
+                  onSelect={() => runCommand(item.path)}
+                  className="data-selected:bg-indigo-50 dark:data-selected:bg-indigo-950/40"
+                >
+                  <Icon className="size-4 text-[#4F46E5]" />
+                  <span>{item.label}</span>
+                  {item.shortcut && (
+                    <CommandShortcut>
+                      <kbd className="pointer-events-none inline-flex h-5 items-center rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 px-1.5 font-mono text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                        {item.shortcut}
+                      </kbd>
+                    </CommandShortcut>
+                  )}
+                </CommandItem>
+              )
+            })}
           </CommandGroup>
 
           <CommandSeparator />

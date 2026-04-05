@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 import { createBrowserClient } from '@/lib/supabase/client'
 import {
   ArrowLeft,
@@ -203,17 +204,17 @@ export default function CampaignDetailPage({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8"
+      className="space-y-6"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <a
-            href="/marketing"
+          <Link
+            href="/marketing/campaigns"
             className="h-9 w-9 rounded-xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-          </a>
+          </Link>
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
@@ -1127,12 +1128,12 @@ export default function CampaignDetailPage({
               <ArrowRight className="h-4 w-4" />
             </button>
           ) : isReadOnly ? (
-            <a
-              href="/marketing"
+            <Link
+              href="/marketing/campaigns"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm"
             >
-              Back to Marketing
-            </a>
+              Back to Campaigns
+            </Link>
           ) : (
             <button className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm">
               <Send className="h-4 w-4" />

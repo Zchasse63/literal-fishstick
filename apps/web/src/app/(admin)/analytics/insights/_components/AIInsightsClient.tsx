@@ -167,13 +167,13 @@ export function AIInsightsClient({ initialInsights, initialHistory }: AIInsights
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center"><Sparkles className="w-4.5 h-4.5 text-white" /></div>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center"><Sparkles className="w-[18px] h-[18px] text-white" /></div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI Insights</h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Intelligent recommendations powered by your studio data</p>

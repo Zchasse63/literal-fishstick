@@ -1,42 +1,48 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { X, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 
 export default function AddMemberModal({
-  onClose,
+  open,
+  onOpenChange,
   onSuccess,
 }: {
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onSuccess: () => void
 }) {
   const [addForm, setAddForm] = useState({ full_name: '', email: '', phone: '' })
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
 
+  const handleClose = () => {
+    onOpenChange(false)
+    setAddForm({ full_name: '', email: '', phone: '' })
+    setAddError(null)
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.2 }}
-        className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 w-full max-w-md mx-4 p-6"
-        onClick={(e) => e.stopPropagation()}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="sm:max-w-md bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl p-6"
+        showCloseButton
       >
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Add New Member</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <X className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-          </button>
-        </div>
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Add New Member
+          </DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+            Enter the new member&apos;s details below.
+          </DialogDescription>
+        </DialogHeader>
 
         <form
           onSubmit={async (e) => {
@@ -51,8 +57,7 @@ export default function AddMemberModal({
               })
               const json = await res.json()
               if (!res.ok) throw new Error(json.error || 'Failed to add member')
-              onClose()
-              setAddForm({ full_name: '', email: '', phone: '' })
+              handleClose()
               onSuccess()
             } catch (err) {
               setAddError(err instanceof Error ? err.message : 'Something went wrong')
@@ -70,7 +75,7 @@ export default function AddMemberModal({
               value={addForm.full_name}
               onChange={(e) => setAddForm(f => ({ ...f, full_name: e.target.value }))}
               placeholder="Jane Smith"
-              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all bg-white dark:bg-gray-950"
               autoFocus
             />
           </div>
@@ -82,7 +87,7 @@ export default function AddMemberModal({
               value={addForm.email}
               onChange={(e) => setAddForm(f => ({ ...f, email: e.target.value }))}
               placeholder="jane@example.com"
-              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all bg-white dark:bg-gray-950"
             />
           </div>
           <div>
@@ -92,7 +97,7 @@ export default function AddMemberModal({
               value={addForm.phone}
               onChange={(e) => setAddForm(f => ({ ...f, phone: e.target.value }))}
               placeholder="(555) 123-4567"
-              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all bg-white dark:bg-gray-950"
             />
           </div>
 
@@ -103,7 +108,7 @@ export default function AddMemberModal({
           <div className="flex gap-3 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
@@ -122,7 +127,7 @@ export default function AddMemberModal({
             </button>
           </div>
         </form>
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   )
 }

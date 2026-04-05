@@ -142,8 +142,8 @@ export default function NewPostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="mx-auto max-w-[720px] px-6 py-8">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* Back Link */}
         <motion.div {...fadeInUp}>
           <Link

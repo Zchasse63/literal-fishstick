@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
+import { NAV_ITEMS } from '@/lib/nav'
 import {
   LayoutDashboard,
   Calendar,
@@ -13,29 +14,27 @@ import {
   DollarSign,
   Megaphone,
   Building2,
-  Briefcase,
+  Settings2,
   BarChart3,
-  Target,
-  Trophy,
+  Settings,
   Search,
   Sun,
   Moon,
   LogOut,
-  Menu,
 } from 'lucide-react'
 
-const navItems = [
-  { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard, href: '/', shortcut: '1' },
-  { id: 'schedule', label: 'Schedule', icon: Calendar, href: '/schedule', shortcut: '2' },
-  { id: 'members', label: 'Members', icon: Users, href: '/members', shortcut: '3' },
-  { id: 'revenue', label: 'Revenue', icon: DollarSign, href: '/revenue', shortcut: '4' },
-  { id: 'marketing', label: 'Marketing', icon: Megaphone, href: '/marketing', shortcut: '5' },
-  { id: 'corporate', label: 'Corporate', icon: Briefcase, href: '/corporate', shortcut: '6' },
-  { id: 'operations', label: 'Operations', icon: Building2, href: '/operations', shortcut: '7' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/analytics', shortcut: '8' },
-  { id: 'segments', label: 'Segments', icon: Target, href: '/segments', shortcut: '9' },
-  { id: 'engagement', label: 'Engagement', icon: Trophy, href: '/engagement', shortcut: '0' },
-]
+/** Map icon name strings from NAV_ITEMS to actual Lucide components. */
+const ICON_MAP: Record<string, React.ElementType> = {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  DollarSign,
+  Megaphone,
+  Building2,
+  Settings2,
+  BarChart3,
+  Settings,
+}
 
 interface SidebarProps {
   collapsed: boolean
@@ -45,35 +44,20 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const { profile } = useAuth()
-
-  // Dark mode
-  const [isDark, setIsDark] = useState(false)
-  useEffect(() => {
-    const saved = localStorage.getItem('meridian-theme')
-    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setIsDark(true)
-      document.documentElement.classList.add('dark')
-    }
-  }, [])
-  const toggleDark = () => {
-    const next = !isDark
-    setIsDark(next)
-    document.documentElement.classList.toggle('dark')
-    localStorage.setItem('meridian-theme', next ? 'dark' : 'light')
-  }
+  const { isDark, toggle: toggleDark } = useTheme()
 
   // User identity
   const userName = profile?.full_name || 'User'
   const userInitials = userName.split(/\s+/).map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)
   const userRole = profile?.roles?.[0] === 'owner' ? 'Studio Owner' : profile?.roles?.[0] === 'admin' ? 'Admin' : profile?.roles?.[0] || 'Member'
 
-  const getActiveId = () => {
-    if (pathname === '/') return 'dashboard'
+  const getActivePath = () => {
+    if (pathname === '/') return '/'
     const segment = pathname.split('/')[1]
-    return navItems.find(item => item.href === `/${segment}`)?.id ?? 'dashboard'
+    return NAV_ITEMS.find(item => item.path === `/${segment}`)?.path ?? '/'
   }
 
-  const activeId = getActiveId()
+  const activePath = getActivePath()
 
   return (
     <aside
@@ -107,14 +91,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Nav Items */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = activeId === item.id
-          const Icon = item.icon
+        {NAV_ITEMS.map((item) => {
+          const isActive = activePath === item.path
+          const Icon = ICON_MAP[item.icon] ?? LayoutDashboard
 
           return (
             <Link
-              key={item.id}
-              href={item.href}
+              key={item.path}
+              href={item.path}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors group',
                 isActive
@@ -147,10 +131,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Dark mode toggle */}
         <button
           onClick={toggleDark}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full transition-colors"
         >
-          {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-          {!collapsed && <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>}
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          {!collapsed && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
         </button>
 
         {/* User */}
@@ -172,7 +157,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 await supabase.auth.signOut()
                 window.location.href = '/login'
               }}
-              title="Sign out"
+              aria-label="Sign out"
               className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <LogOut className="w-4 h-4" />

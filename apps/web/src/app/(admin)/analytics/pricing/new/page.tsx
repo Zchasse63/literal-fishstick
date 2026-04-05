@@ -149,7 +149,7 @@ export default function NewPricingSimulationPage() {
   const availablePlans = plans.filter((p) => !changes.some((c) => c.plan_id === p.id))
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
+    <div className="space-y-6">
       <div className="max-w-[800px] mx-auto px-6 py-8">
         {/* Back */}
         <motion.div {...fadeInUp}>

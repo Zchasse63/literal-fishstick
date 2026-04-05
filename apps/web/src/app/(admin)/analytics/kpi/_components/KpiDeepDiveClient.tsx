@@ -328,6 +328,21 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
   const [period, setPeriod] = useState<PeriodFilter>('all')
   const [loading, setLoading] = useState(true)
 
+  // Dark mode detection for Recharts colors
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'))
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+  const gridColor = isDark ? '#374151' : '#F3F4F6'
+  const axisColor = isDark ? '#9CA3AF' : '#6B7280'
+  const tickColor = isDark ? '#D1D5DB' : '#9CA3AF'
+  const axisLineColor = isDark ? '#374151' : '#E5E7EB'
+
   // Data states
   const [revenueData, setRevenueData] = useState<MonthlyRevenue[]>([])
   const [attendanceData, setAttendanceData] = useState<MonthlyAttendance[]>([])
@@ -566,8 +581,8 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
   const { current, baselineMonthly } = initialSummary
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -656,11 +671,11 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={filteredRevenue} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                      axisLine={{ stroke: '#E5E7EB' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
+                      axisLine={{ stroke: axisLineColor }}
                       tickLine={false}
                       interval={filteredRevenue.length > 18 ? 2 : filteredRevenue.length > 12 ? 1 : 0}
                       angle={filteredRevenue.length > 12 ? -45 : 0}
@@ -668,7 +683,7 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
                       height={filteredRevenue.length > 12 ? 50 : 30}
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
                       axisLine={false}
                       tickLine={false}
                       width={50}
@@ -707,11 +722,11 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={filteredAttendance} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                      axisLine={{ stroke: '#E5E7EB' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
+                      axisLine={{ stroke: axisLineColor }}
                       tickLine={false}
                       interval={filteredAttendance.length > 18 ? 2 : filteredAttendance.length > 12 ? 1 : 0}
                       angle={filteredAttendance.length > 12 ? -45 : 0}
@@ -719,7 +734,7 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
                       height={filteredAttendance.length > 12 ? 50 : 30}
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
                       axisLine={false}
                       tickLine={false}
                       width={44}
@@ -770,11 +785,11 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={filteredSignups} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                      axisLine={{ stroke: '#E5E7EB' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
+                      axisLine={{ stroke: axisLineColor }}
                       tickLine={false}
                       interval={filteredSignups.length > 18 ? 2 : filteredSignups.length > 12 ? 1 : 0}
                       angle={filteredSignups.length > 12 ? -45 : 0}
@@ -782,7 +797,7 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
                       height={filteredSignups.length > 12 ? 50 : 30}
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
                       axisLine={false}
                       tickLine={false}
                       width={30}
@@ -820,11 +835,11 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={filteredRpv} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                      axisLine={{ stroke: '#E5E7EB' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
+                      axisLine={{ stroke: axisLineColor }}
                       tickLine={false}
                       interval={filteredRpv.length > 18 ? 2 : filteredRpv.length > 12 ? 1 : 0}
                       angle={filteredRpv.length > 12 ? -45 : 0}
@@ -832,7 +847,7 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
                       height={filteredRpv.length > 12 ? 50 : 30}
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
                       axisLine={false}
                       tickLine={false}
                       width={44}
@@ -884,11 +899,11 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={filteredNewReturning} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                      axisLine={{ stroke: '#E5E7EB' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
+                      axisLine={{ stroke: axisLineColor }}
                       tickLine={false}
                       interval={filteredNewReturning.length > 18 ? 2 : filteredNewReturning.length > 12 ? 1 : 0}
                       angle={filteredNewReturning.length > 12 ? -45 : 0}
@@ -896,7 +911,7 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
                       height={filteredNewReturning.length > 12 ? 50 : 30}
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                      tick={{ fontSize: 10, fill: tickColor }}
                       axisLine={false}
                       tickLine={false}
                       width={30}
@@ -949,17 +964,17 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
                       layout="vertical"
                       margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={gridColor} horizontal={false} />
                       <XAxis
                         type="number"
-                        tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                        axisLine={{ stroke: '#E5E7EB' }}
+                        tick={{ fontSize: 10, fill: tickColor }}
+                        axisLine={{ stroke: axisLineColor }}
                         tickLine={false}
                       />
                       <YAxis
                         type="category"
                         dataKey="status"
-                        tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                        tick={{ fontSize: 10, fill: tickColor }}
                         axisLine={false}
                         tickLine={false}
                         width={110}

@@ -43,7 +43,7 @@ export function HeroMetricCard({
   // improvement). The card is agnostic — green = positive, red = negative.
 
   return (
-    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md hover:border-indigo-100 dark:hover:border-indigo-900/40 transition-all cursor-pointer">
+    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 transition-all">
       <div className="flex items-center gap-2 mb-2">
         <Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">

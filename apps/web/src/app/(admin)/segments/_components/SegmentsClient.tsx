@@ -149,7 +149,7 @@ export default function SegmentsClient({ initialSegments }: SegmentsClientProps)
   const [selectedSegment, setSelectedSegment] = useState<DisplaySegment | null>(null)
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8">
+    <div className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp} className="mb-8">
         <div className="flex items-center justify-between">

@@ -107,7 +107,7 @@ export default function CampaignReportClient({ initialCampaign, initialRecipient
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
+      <div className="space-y-6">
         <Link href="/marketing/campaigns" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition-colors mb-4">
           <ArrowLeft className="h-4 w-4" /> Back to Campaigns
         </Link>
@@ -121,7 +121,7 @@ export default function CampaignReportClient({ initialCampaign, initialRecipient
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }} className="space-y-6">
       <Link href="/marketing/campaigns" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition-colors mb-4">
         <ArrowLeft className="h-4 w-4" /> Back to Campaigns
       </Link>
@@ -213,7 +213,7 @@ export default function CampaignReportClient({ initialCampaign, initialRecipient
           </div>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-            <input type="text" value={recipientSearch} onChange={(e) => { setRecipientSearch(e.target.value); setCurrentPage(1) }} placeholder="Search recipients..." className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all" />
+            <input type="text" value={recipientSearch} onChange={(e) => { setRecipientSearch(e.target.value); setCurrentPage(1) }} placeholder="Search recipients..." aria-label="Search recipients" className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all" />
           </div>
         </div>
         <div className="flex items-center gap-4 px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">

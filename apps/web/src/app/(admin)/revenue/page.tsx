@@ -40,6 +40,7 @@ import {
   BarChart,
   Bar,
 } from 'recharts'
+import Link from 'next/link'
 import { fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import OverviewTab from './_components/OverviewTab'
@@ -97,7 +98,7 @@ function MetricCard({ metric, index, loading }: { metric: MetricData; index: num
     <motion.div
       {...fadeInUp}
       transition={{ ...fadeInUp.transition, delay: index * 0.04 }}
-      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer group"
+      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 transition-shadow group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', metric.bgColor)}>
@@ -577,10 +578,26 @@ export default function RevenuePage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Revenue</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Financial overview and transaction management</p>
         </div>
-        <button className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
-          <DollarSign className="w-4 h-4" />
-          Record Payment
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/revenue/products"
+            className="px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center gap-2"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Products
+          </Link>
+          <Link
+            href="/revenue/orders"
+            className="px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center gap-2"
+          >
+            <Tag className="w-4 h-4" />
+            Orders
+          </Link>
+          <button className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+            <DollarSign className="w-4 h-4" />
+            Record Payment
+          </button>
+        </div>
       </div>
 
       {/* Metrics Row */}

@@ -137,7 +137,7 @@ export function ReportViewerClient({ initialRows, reportName, reportId }: Report
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
+    <div className="space-y-6">
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* --- Top Bar --- */}
         <motion.div {...fadeInUp} className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -207,7 +207,7 @@ export function ReportViewerClient({ initialRows, reportName, reportId }: Report
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Data ({filtered.length} rows)</p>
             <div className="relative w-64">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-              <input type="text" placeholder="Filter rows..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} className="w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 py-1.5 pl-8 pr-3 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10" />
+              <input type="text" placeholder="Filter rows..." aria-label="Filter report rows" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} className="w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 py-1.5 pl-8 pr-3 text-xs text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-indigo-300 focus:bg-white dark:bg-gray-950 focus:outline-none focus:ring-1 focus:ring-indigo-600/10" />
             </div>
           </div>
           <div className="overflow-x-auto">

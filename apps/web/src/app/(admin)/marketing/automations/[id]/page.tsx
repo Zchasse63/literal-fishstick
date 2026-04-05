@@ -645,7 +645,7 @@ export default function EditAutomationPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] -m-5 md:-m-7"
+      className="space-y-6"
     >
       {/* Header */}
       <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10">

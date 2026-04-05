@@ -91,7 +91,7 @@ export default function EventDetailClient({ initialEvent, initialGuests }: Event
 
   if (!EVENT) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-3" />
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">Event not found</h3>
@@ -115,7 +115,7 @@ export default function EventDetailClient({ initialEvent, initialGuests }: Event
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
+      className="space-y-6"
     >
       <Link
         href="/corporate/events"

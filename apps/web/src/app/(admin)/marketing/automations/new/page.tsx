@@ -633,7 +633,7 @@ function TemplateGallery({ onSelectTemplate, onSkip }: { onSelectTemplate: (t: T
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6 lg:p-8"
+      className="space-y-6"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -943,7 +943,7 @@ function FlowBuilderInner() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] -m-5 md:-m-7"
+      className="space-y-6"
     >
       {/* Header */}
       <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -1094,7 +1094,7 @@ function getTemplateTrigger(templateId: string): TriggerType {
 export default function NewAutomationPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-pulse flex flex-col items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-indigo-100" />
           <div className="h-4 w-32 rounded bg-gray-200" />

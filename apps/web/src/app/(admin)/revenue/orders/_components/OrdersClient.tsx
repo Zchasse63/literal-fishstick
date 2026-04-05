@@ -266,7 +266,7 @@ export default function OrdersClient({ initialOrders }: OrdersClientProps) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-      className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]"
+      className="space-y-6"
     >
       {/* Shipping Label Modal */}
       <AnimatePresence>

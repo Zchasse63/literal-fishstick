@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   Home,
   Calendar,
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
+import { useTheme } from '@/contexts/theme-context'
 import { useEmployeeProfile, useClockAction } from '@/hooks/use-employee'
 
 const mainNav = [
@@ -46,29 +47,13 @@ export default function EmployeeLayout({
   children: React.ReactNode
 }) {
   const [collapsed, setCollapsed] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
   const pathname = usePathname()
+  const { isDark, toggle: toggleDark } = useTheme()
 
   // Auth + employee data
   const { profile } = useAuth()
   const { employee, fullName, loading: empLoading } = useEmployeeProfile()
   const { isClockedIn, loading: clockLoading, clockIn, clockOut } = useClockAction(employee?.id)
-
-  // Dark mode persistence
-  useEffect(() => {
-    const saved = localStorage.getItem('meridian-theme')
-    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setDarkMode(true)
-      document.documentElement.classList.add('dark')
-    }
-  }, [])
-
-  const toggleDark = () => {
-    const next = !darkMode
-    setDarkMode(next)
-    document.documentElement.classList.toggle('dark')
-    localStorage.setItem('meridian-theme', next ? 'dark' : 'light')
-  }
 
   // Clock toggle handler
   const [clockBusy, setClockBusy] = useState(false)
@@ -99,7 +84,7 @@ export default function EmployeeLayout({
   }
 
   return (
-    <div className={cn('min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]', darkMode && 'dark')}>
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
       {/* Sidebar */}
       <aside
         className={cn(
@@ -196,13 +181,14 @@ export default function EmployeeLayout({
           </Link>
           <button
             onClick={toggleDark}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             className={cn(
               'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full transition-colors',
               collapsed && 'justify-center px-0'
             )}
           >
-            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            {!collapsed && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {!collapsed && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
           </button>
           <div className={cn('flex items-center gap-2.5 px-3 py-2', collapsed && 'justify-center px-0')}>
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center flex-shrink-0">
@@ -222,6 +208,7 @@ export default function EmployeeLayout({
         {/* Collapse Toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 z-50"
         >
           {collapsed ? <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500" /> : <ChevronLeft className="w-3 h-3 text-gray-400 dark:text-gray-500" />}
@@ -257,9 +244,8 @@ export default function EmployeeLayout({
             )}
             {isClockedIn ? 'Clocked In' : 'Clocked Out'}
           </button>
-          <button className="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <button aria-label="Notifications" className="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
           </button>
         </div>
       </header>

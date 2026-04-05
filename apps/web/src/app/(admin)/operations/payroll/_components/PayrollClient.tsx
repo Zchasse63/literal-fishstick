@@ -99,7 +99,7 @@ export default function PayrollClient({ initialPeriods }: PayrollClientProps) {
 
   if (payrollPeriods.length === 0) {
     return (
-      <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6">
+      <motion.div {...fadeInUp} className="space-y-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/operations" className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300">
@@ -127,7 +127,7 @@ export default function PayrollClient({ initialPeriods }: PayrollClientProps) {
   const activePeriod = payrollPeriods[0]
 
   return (
-    <motion.div {...fadeInUp} className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-6">
+    <motion.div {...fadeInUp} className="space-y-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">

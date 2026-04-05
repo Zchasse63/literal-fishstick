@@ -40,8 +40,8 @@ const DASHBOARDS = [
 
 export function DashboardsClient() {
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* --- Header --- */}
         <motion.div {...fadeInUp}>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboards</h1>

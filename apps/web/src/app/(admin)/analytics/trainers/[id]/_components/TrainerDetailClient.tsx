@@ -126,7 +126,7 @@ export function TrainerDetailClient({
 
   if (!TRAINER || !TRAINER.id) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11] p-8">
+      <div className="space-y-6">
         <Link href="/analytics/trainers" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-6">
           <ArrowLeft className="h-4 w-4" />Back to Trainers
         </Link>
@@ -147,8 +147,8 @@ export function TrainerDetailClient({
   const totalCompensation = PAYROLL.basePay + PAYROLL.bonuses + PAYROLL.promoCommission
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* --- Back Link --- */}
         <motion.div {...fadeInUp}>
           <Link

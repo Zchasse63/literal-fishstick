@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/auth-context";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -34,11 +35,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("h-full antialiased", inter.variable)}>
       <body className="min-h-full font-sans">
-        <AuthProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

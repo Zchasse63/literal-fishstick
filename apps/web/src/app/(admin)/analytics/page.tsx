@@ -230,7 +230,21 @@ export default function AnalyticsPage() {
   const [heatmapFilter, setHeatmapFilter] = useState<HeatmapFilter>('All')
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null)
 
-  // ─── Live data state ───────────────────────────────────────
+  // Dark mode detection for Recharts colors
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'))
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+  const gridColor = isDark ? '#374151' : '#F3F4F6'
+  const tickColor = isDark ? '#D1D5DB' : '#9CA3AF'
+  const axisLineColor = isDark ? '#374151' : '#E5E7EB'
+
+  // ─── Live data state ───────────────────────���───────────────
   const [kpiMetrics, setKpiMetrics] = useState<KPIMetric[]>([])
   const [kpiLoading, setKpiLoading] = useState(true)
   const [revenueData, setRevenueData] = useState<RevenueSource[]>([])
@@ -427,8 +441,8 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* ─── Header with Time Range ──────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
           <div>
@@ -459,6 +473,58 @@ export default function AnalyticsPage() {
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           </div>
+        </motion.div>
+
+        {/* ─── Analytics Sub-Pages ───────────────────── */}
+        <motion.div
+          {...fadeInUp}
+          transition={{ ...fadeInUp.transition, delay: 0.02 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        >
+          <Link href="/analytics/kpi" className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-md transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center">
+                <LayoutDashboard className="w-[18px] h-[18px] text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">KPI Dashboard</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">Deep dive metrics</p>
+              </div>
+            </div>
+          </Link>
+          <Link href="/analytics/insights" className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950 flex items-center justify-center">
+                <Sparkles className="w-[18px] h-[18px] text-violet-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-violet-600 transition-colors">AI Insights</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">AI recommendations</p>
+              </div>
+            </div>
+          </Link>
+          <Link href="/analytics/pricing" className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:border-amber-200 dark:hover:border-amber-800 hover:shadow-md transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center">
+                <DollarSign className="w-[18px] h-[18px] text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-amber-600 transition-colors">Pricing Simulator</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">Revenue modeling</p>
+              </div>
+            </div>
+          </Link>
+          <Link href="/analytics/migration" className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-md transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center">
+                <PackageOpen className="w-[18px] h-[18px] text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 transition-colors">Glofox Migration</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">Data import status</p>
+              </div>
+            </div>
+          </Link>
         </motion.div>
 
         {/* ─── KPI Strip ──────────────────────────────── */}
@@ -906,15 +972,15 @@ export default function AnalyticsPage() {
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={memberMovement} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fontSize: 11, fill: '#9CA3AF' }}
-                      axisLine={{ stroke: '#E5E7EB' }}
+                      tick={{ fontSize: 11, fill: tickColor }}
+                      axisLine={{ stroke: axisLineColor }}
                       tickLine={false}
                     />
                     <YAxis
-                      tick={{ fontSize: 11, fill: '#9CA3AF' }}
+                      tick={{ fontSize: 11, fill: tickColor }}
                       axisLine={false}
                       tickLine={false}
                       width={44}
@@ -968,7 +1034,7 @@ export default function AnalyticsPage() {
               className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
             >
               <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center mb-3 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 transition-colors">
-                <TrendingUp className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" />
+                <TrendingUp className="w-[18px] h-[18px] text-indigo-600 dark:text-indigo-400" />
               </div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">KPI Deep Dive</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Revenue, attendance, and member trends with period comparison</p>
@@ -978,7 +1044,7 @@ export default function AnalyticsPage() {
               className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
             >
               <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950 flex items-center justify-center mb-3 group-hover:bg-violet-100 dark:group-hover:bg-violet-900 transition-colors">
-                <LayoutDashboard className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
+                <LayoutDashboard className="w-[18px] h-[18px] text-violet-600 dark:text-violet-400" />
               </div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Dashboards</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Executive, growth, and operations dashboards</p>
@@ -988,7 +1054,7 @@ export default function AnalyticsPage() {
               className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
             >
               <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center mb-3 group-hover:bg-teal-100 dark:group-hover:bg-teal-900 transition-colors">
-                <Trophy className="w-4.5 h-4.5 text-teal-600 dark:text-teal-400" />
+                <Trophy className="w-[18px] h-[18px] text-teal-600 dark:text-teal-400" />
               </div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Trainer Performance</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Individual metrics, bonus rates, and rankings</p>
@@ -998,7 +1064,7 @@ export default function AnalyticsPage() {
               className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
             >
               <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900 transition-colors">
-                <PackageOpen className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+                <PackageOpen className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
               </div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Reports</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Scheduled and on-demand report library</p>

@@ -170,7 +170,7 @@ export default function DataSyncButton() {
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40">
-            <Database className="h-4.5 w-4.5 text-indigo-600 dark:text-indigo-400" />
+            <Database className="h-[18px] w-[18px] text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">

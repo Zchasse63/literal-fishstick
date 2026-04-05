@@ -83,6 +83,7 @@ export default function MemberProfilePanel({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close panel"
             className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
           >
             <X className="h-4 w-4" />

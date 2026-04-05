@@ -80,8 +80,8 @@ export function PricingSimulatorClient({ initialSimulations }: PricingSimulatorC
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0F0F11]">
-      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         {/* --- Header --- */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">
           <div>
@@ -112,7 +112,7 @@ export function PricingSimulatorClient({ initialSimulations }: PricingSimulatorC
               <div key={stat.label} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
                 <div className="flex items-center gap-3">
                   <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', stat.iconBg)}>
-                    <Icon className={cn('w-4.5 h-4.5', stat.iconColor)} />
+                    <Icon className={cn('w-[18px] h-[18px]', stat.iconColor)} />
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>

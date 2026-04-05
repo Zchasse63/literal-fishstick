@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
   Sparkles,
   TrendingUp,
   AlertCircle,
   Briefcase,
-  ArrowUpRight,
-  ArrowDownRight,
   CheckCircle2,
   UserPlus,
   DollarSign,
@@ -190,34 +190,7 @@ function AIBriefingCard({ insights, greeting, firstName }: { insights: AIInsight
   )
 }
 
-// ─── Metric Card ─────────────────────────────────────────────
-interface MetricCardProps {
-  label: string
-  value: string
-  trend: string
-  trendDirection: 'up' | 'down' | 'neutral'
-  subtitle?: string
-}
 
-function MetricCard({ label, value, trend, trendDirection, subtitle }: MetricCardProps) {
-  return (
-    <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md hover:border-indigo-100 transition-all cursor-pointer">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">{label}</p>
-      <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">{value}</p>
-      <div className="flex items-center gap-1.5 mt-2">
-        {trendDirection === 'up' && <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />}
-        {trendDirection === 'down' && <ArrowDownRight className="w-3.5 h-3.5 text-orange-600" />}
-        <span className={cn(
-          'text-xs font-bold',
-          trendDirection === 'up' ? 'text-emerald-600' : trendDirection === 'down' ? 'text-orange-600' : 'text-gray-500 dark:text-gray-400'
-        )}>
-          {trend}
-        </span>
-        {subtitle && <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">{subtitle}</span>}
-      </div>
-    </div>
-  )
-}
 
 // ─── Class Status Board ──────────────────────────────────────
 function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
@@ -265,9 +238,9 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
             </span>
           )}
         </div>
-        <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+        <Link href="/schedule" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
           View All <ChevronRight className="w-3 h-3" />
-        </button>
+        </Link>
       </div>
 
       <div className="space-y-3">
@@ -484,8 +457,8 @@ interface EngagementCounts {
 
 const ENGAGEMENT_CONFIG: { key: keyof EngagementCounts; label: string; dotColor: string; textColor: string }[] = [
   { key: 'subscriber', label: 'Subscriber', dotColor: 'bg-purple-500', textColor: 'text-purple-700 dark:text-purple-400' },
-  { key: 'active', label: 'Active', dotColor: 'bg-green-500', textColor: 'text-green-700 dark:text-green-400' },
-  { key: 'engaged', label: 'Engaged', dotColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-400' },
+  { key: 'active', label: 'Active', dotColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-400' },
+  { key: 'engaged', label: 'Engaged', dotColor: 'bg-indigo-500', textColor: 'text-indigo-700 dark:text-indigo-400' },
   { key: 'cooling', label: 'Cooling', dotColor: 'bg-yellow-500', textColor: 'text-yellow-700 dark:text-yellow-400' },
   { key: 'at_risk', label: 'At Risk', dotColor: 'bg-orange-500', textColor: 'text-orange-700 dark:text-orange-400' },
   { key: 'lapsed_with_credits', label: 'Lapsed (Credits)', dotColor: 'bg-red-500', textColor: 'text-red-700 dark:text-red-400' },
