@@ -96,7 +96,7 @@ export async function rateLimit(
   }
 
   try {
-    const { data, error } = await supabase.rpc("increment_rate_limit", {
+    const { data, error } = await (supabase as any).rpc("increment_rate_limit", {
       p_key: key,
       p_limit: limit,
       p_window_ms: windowMs,

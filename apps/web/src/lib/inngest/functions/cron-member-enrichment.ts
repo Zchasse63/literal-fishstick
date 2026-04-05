@@ -256,9 +256,9 @@ export const cronMemberEnrichment = inngest.createFunction(
         .from('ai_briefings')
         .delete()
         .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .select('*', { count: 'exact', head: true })
 
-      return { evicted: count ?? 0 }
+
+      return { evicted: 'completed' }
     })
 
     return {

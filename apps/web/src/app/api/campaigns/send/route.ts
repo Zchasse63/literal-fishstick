@@ -24,7 +24,7 @@ const DUPLICATE_WINDOW_MINUTES = 5
  */
 export async function POST(request: NextRequest) {
   // ─── Auth (fail-closed) ────────────────────────────────────
-  const auth = await requireRole(['owner', 'admin', 'manager'])
+  const auth = await requireRole(['owner', 'manager'])
   if (auth.error) return auth.error
   const { user, supabase, studioId } = auth
 

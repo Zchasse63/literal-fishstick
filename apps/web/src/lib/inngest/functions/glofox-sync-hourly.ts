@@ -513,10 +513,10 @@ export const glofoxSyncFailureHandler = inngest.createFunction(
     id: 'glofox-sync-hourly-failure',
     name: 'Glofox Sync Failure Handler',
     retries: 0,
+    triggers: [{ event: 'inngest/function.failed' }],
   },
-  { event: 'inngest/function.failed' as const },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async ({ event }: { event: any }) => {
+  async ({ event }: any) => {
     // Only handle failures from our sync function
     const functionId = event?.data?.function_id ?? ''
     if (functionId !== 'glofox-sync-hourly') return
