@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -116,7 +116,7 @@ export async function generateWaitlistMessage(
       `Has been waitlisted before: ${context.has_been_waitlisted_before ? "yes" : "no"}`,
     ].join("\n");
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system: SYSTEM_PROMPT,
@@ -126,7 +126,7 @@ export async function generateWaitlistMessage(
           content: userPrompt,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

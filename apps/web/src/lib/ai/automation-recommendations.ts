@@ -3,7 +3,7 @@
  *
  * Extracted from lib/anthropic.ts (MED-09).
  */
-import { getAnthropicClient, AI_MODEL, extractText } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, withRetry } from "@/lib/ai/client";
 
 export interface AutomationRecommendationInput {
   active_members: number;
@@ -36,7 +36,7 @@ export async function recommendAutomations(
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system:
@@ -47,7 +47,7 @@ export async function recommendAutomations(
           content: `Recommend automations for this studio:\n${JSON.stringify(studioData, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();

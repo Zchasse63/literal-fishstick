@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { generateBriefing, BriefingContext } from "@/lib/anthropic";
+import { generateBriefing, BriefingContext } from "@/lib/ai/briefing";
 import { requireRole } from "@/lib/auth/require-role";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -16,8 +16,8 @@ export async function GET() {
     const { user, supabase, studioId } = auth;
 
     // Rate limit: 20 requests per minute per user
-    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
-    if (!rl.success) {
+    const rl = await rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 

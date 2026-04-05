@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,7 +98,7 @@ export async function analyzeBookingPatterns(
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 2000,
       system: SYSTEM_PROMPT,
@@ -108,7 +108,7 @@ export async function analyzeBookingPatterns(
           content: `Analyze the following 90-day booking data and provide schedule optimization recommendations:\n\n${JSON.stringify(input, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const parsed = parseAIJson<BookingPatternResult>(extractText(message));
 

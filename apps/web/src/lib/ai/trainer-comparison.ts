@@ -1,6 +1,6 @@
 // TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
 // Create /api/ai/trainer-comparison/route.ts to expose team performance comparison.
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,7 +82,7 @@ export async function compareTrainers(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
@@ -92,7 +92,7 @@ export async function compareTrainers(
           content: `Compare these trainers and generate team insights:\n${JSON.stringify(trainers, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

@@ -3,7 +3,7 @@
  *
  * Extracted from lib/anthropic.ts (MED-09).
  */
-import { getAnthropicClient, AI_MODEL, extractText } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, withRetry } from "@/lib/ai/client";
 
 export interface SendTimeInput {
   member_id: string;
@@ -33,7 +33,7 @@ export async function optimizeSendTime(
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 400,
       system:
@@ -44,7 +44,7 @@ export async function optimizeSendTime(
           content: `Determine optimal send time for this member:\n${JSON.stringify(memberData, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();

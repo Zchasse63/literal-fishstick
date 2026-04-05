@@ -63,6 +63,8 @@ const DEFAULT_BASE_URL = 'https://gf-api.aws.glofox.com/prod/'
 const DEFAULT_PAGE_LIMIT = 100
 const MAX_RETRIES = 3
 const INITIAL_RETRY_DELAY_MS = 1000
+/** Minimum delay (ms) between consecutive paginated requests to avoid hitting Glofox rate limits. */
+const RATE_LIMIT_DELAY_MS = 100
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -243,6 +245,11 @@ export class GlofoxClient {
 
       // Safety cap at 200 pages (20,000 records)
       if (page > 200) break
+
+      // Rate-limit delay between paginated requests to avoid 429s
+      if (hasMore) {
+        await sleep(RATE_LIMIT_DELAY_MS)
+      }
     }
 
     console.log(`[glofox] fetchAll ${path}: retrieved ${results.length} records`)

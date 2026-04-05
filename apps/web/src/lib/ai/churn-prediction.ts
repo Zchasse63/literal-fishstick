@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,7 +71,7 @@ export async function predictChurn(
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system: SYSTEM_PROMPT,
@@ -81,7 +81,7 @@ export async function predictChurn(
           content: `Analyze churn risk for this member:\n${JSON.stringify(input, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const parsed = parseAIJson<ChurnPredictionResult>(extractText(message));
 

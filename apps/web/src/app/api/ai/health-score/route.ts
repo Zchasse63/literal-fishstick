@@ -4,7 +4,7 @@ import {
   generateHealthScore,
   HealthScoreInput,
   HealthScoreResult,
-} from "@/lib/anthropic";
+} from "@/lib/ai/health-score";
 import { requireRole } from "@/lib/auth/require-role";
 import { rateLimit } from "@/lib/rate-limit";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
@@ -283,8 +283,8 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = auth;
 
     // Rate limit: 20 requests per minute per user
-    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
-    if (!rl.success) {
+    const rl = await rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
@@ -359,8 +359,8 @@ export async function GET() {
     const { user, supabase } = auth;
 
     // Rate limit: 20 requests per minute per user
-    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
-    if (!rl.success) {
+    const rl = await rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 

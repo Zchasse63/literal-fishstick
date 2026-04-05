@@ -20,6 +20,7 @@ import {
   transformTransaction,
 } from '@/lib/glofox/transformers'
 import { createProgramResolver } from '@/lib/glofox/program-resolver'
+import { sendTransactionalEmail } from '@/lib/resend'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -495,5 +496,101 @@ export const glofoxSyncHourly = inngest.createFunction(
       },
       details: results,
     }
+  },
+)
+
+// ---------------------------------------------------------------------------
+// Failure handler — circuit breaker + alerting
+// ---------------------------------------------------------------------------
+
+/**
+ * Runs after the glofox-sync-hourly function exhausts all retries and fails.
+ * Logs the failure to activity_log and the sync state table, and sends an
+ * alert email to the studio admin via Resend.
+ */
+export const glofoxSyncFailureHandler = inngest.createFunction(
+  {
+    id: 'glofox-sync-hourly-failure',
+    name: 'Glofox Sync Failure Handler',
+    retries: 0,
+  },
+  { event: 'inngest/function.failed' as const },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async ({ event }: { event: any }) => {
+    // Only handle failures from our sync function
+    const functionId = event?.data?.function_id ?? ''
+    if (functionId !== 'glofox-sync-hourly') return
+
+    const db = getAdminClient()
+    const errorMessage =
+      event?.data?.error?.message ?? event?.data?.error ?? 'Unknown error'
+    const failedAt = new Date().toISOString()
+
+    // ── 1. Log failure to activity_log ───────────────────────
+    try {
+      await db.from('activity_log').insert({
+        studio_id: STUDIO_ID,
+        type: 'sync_failure',
+        description: `Glofox hourly sync failed after exhausting all retries: ${errorMessage}`,
+        metadata: {
+          function_id: functionId,
+          error: errorMessage,
+          failed_at: failedAt,
+          event_id: event?.id ?? null,
+        },
+        created_at: failedAt,
+      })
+    } catch (logErr) {
+      console.error('[glofox-sync-failure] Failed to write activity_log:', logErr)
+    }
+
+    // ── 2. Update sync state to reflect the failure ──────────
+    try {
+      const entityTypes = ['members', 'events', 'bookings', 'transactions']
+      for (const entityType of entityTypes) {
+        await db.from('glofox_sync_state').upsert(
+          {
+            studio_id: STUDIO_ID,
+            entity_type: entityType,
+            status: 'failed',
+            error_message: errorMessage,
+            updated_at: failedAt,
+          },
+          { onConflict: 'studio_id,entity_type' },
+        )
+      }
+    } catch (stateErr) {
+      console.error('[glofox-sync-failure] Failed to update sync state:', stateErr)
+    }
+
+    // ── 3. Send alert email to studio admin (best-effort) ────
+    try {
+      // Look up the studio admin email
+      const { data: adminProfile } = await db
+        .from('profiles')
+        .select('email')
+        .eq('studio_id', STUDIO_ID)
+        .contains('roles', ['owner'])
+        .limit(1)
+        .single()
+
+      const adminEmail = adminProfile?.email
+      if (adminEmail) {
+        await sendTransactionalEmail(
+          adminEmail,
+          'Meridian Alert: Glofox Sync Failed',
+          `<h2>Glofox Sync Failure</h2>
+<p>The hourly Glofox sync has failed after exhausting all retries.</p>
+<p><strong>Error:</strong> ${errorMessage}</p>
+<p><strong>Time:</strong> ${failedAt}</p>
+<p>Please check the Glofox sync status in Settings &gt; Integrations, or contact support.</p>`,
+        )
+      }
+    } catch (emailErr) {
+      // Alert email is best-effort — don't let it break the failure handler
+      console.error('[glofox-sync-failure] Failed to send alert email:', emailErr)
+    }
+
+    return { logged: true, alerted: true, error: errorMessage }
   },
 )

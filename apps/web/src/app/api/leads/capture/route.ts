@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limit: 10 requests per minute per IP
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-    const rl = rateLimit(`leads-capture:${ip}`, 10, 60_000);
-    if (!rl.success) {
+    const rl = await rateLimit(`leads-capture:${ip}`, 10, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 

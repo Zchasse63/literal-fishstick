@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,7 +73,7 @@ export async function enrichIntakeProfile(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system: SYSTEM_PROMPT,
@@ -83,7 +83,7 @@ export async function enrichIntakeProfile(
           content: `Analyze this new member's first 2 weeks of behavior:\n${JSON.stringify(data, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

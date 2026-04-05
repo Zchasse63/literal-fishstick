@@ -1,5 +1,9 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  // NOTE (LOW-014): All packages in this monorepo MUST import shared types
+  // from `@meridian/types` (packages/types). Do NOT duplicate type definitions
+  // across apps. If a type is used in more than one app, it belongs in the
+  // shared types package. Enforce via PR review until a lint rule is added.
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

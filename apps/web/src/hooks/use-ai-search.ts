@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { NLSearchResult } from "@/lib/anthropic";
+import type { NLSearchResult } from "@/lib/ai/nl-search";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const DEBOUNCE_MS = 300;

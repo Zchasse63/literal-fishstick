@@ -152,12 +152,14 @@ export function useCommandCenterData(): CommandCenterData {
           .gte('created_at', todayStart)
           .lte('created_at', todayEnd),
 
-        // 3. Revenue today
+        // 3. Revenue today — sum positive completed transactions only
+        //    (excludes refunds which have negative amounts)
         supabase
           .from('transactions')
           .select('amount')
           .eq('studio_id', STUDIO_ID)
           .eq('status', 'completed')
+          .gt('amount', 0)
           .gte('created_at', todayStart)
           .lte('created_at', todayEnd),
 

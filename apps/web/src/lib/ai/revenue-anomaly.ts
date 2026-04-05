@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,7 +74,7 @@ export async function detectRevenueAnomalies(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system: SYSTEM_PROMPT,
@@ -84,7 +84,7 @@ export async function detectRevenueAnomalies(
           content: `Analyze revenue anomalies for this studio:\n\nCurrent week:\n${JSON.stringify(input.current_week, null, 2)}\n\nTrailing 8 weeks:\n${JSON.stringify(input.trailing_8_weeks, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

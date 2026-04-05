@@ -3,7 +3,7 @@
  *
  * Extracted from lib/anthropic.ts (MED-09).
  */
-import { getAnthropicClient, AI_MODEL } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, withRetry } from "@/lib/ai/client";
 
 export interface NLSearchRequest {
   query: string;
@@ -229,7 +229,7 @@ export async function translateToSQL(
       studio_id
     );
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 1024,
       system: prompt,
@@ -239,7 +239,7 @@ export async function translateToSQL(
           content: query,
         },
       ],
-    });
+    }));
 
     const raw =
       message.content[0].type === "text" ? message.content[0].text : "";

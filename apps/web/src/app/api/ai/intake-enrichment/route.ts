@@ -307,8 +307,8 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = auth;
 
     // Rate limit: 20 requests per minute per user
-    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
-    if (!rl.success) {
+    const rl = await rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
@@ -389,8 +389,8 @@ export async function GET() {
     const { user, supabase } = auth;
 
     // Rate limit: 20 requests per minute per user
-    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
-    if (!rl.success) {
+    const rl = await rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 

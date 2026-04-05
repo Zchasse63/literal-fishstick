@@ -3,7 +3,7 @@
  *
  * Extracted from lib/anthropic.ts (MED-09).
  */
-import { getAnthropicClient, AI_MODEL, extractText } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Campaign Copy
@@ -62,7 +62,7 @@ export async function generateCampaignCopy(
       .filter(Boolean)
       .join("\n");
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 1500,
       system:
@@ -73,7 +73,7 @@ export async function generateCampaignCopy(
           content: userPrompt,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
@@ -224,7 +224,7 @@ export async function suggestSubjectLines(
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system:
@@ -235,7 +235,7 @@ export async function suggestSubjectLines(
           content: `Generate 5 subject lines for this campaign:\nCampaign type: ${context.campaign_type}\nAudience: ${context.audience_description}\nTone: ${context.tone}\nKey points: ${context.key_points.join(", ")}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
@@ -339,7 +339,7 @@ export async function summarizeCampaign(
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 600,
       system:
@@ -350,7 +350,7 @@ export async function summarizeCampaign(
           content: `Summarize this campaign's performance:\n${JSON.stringify(data, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();

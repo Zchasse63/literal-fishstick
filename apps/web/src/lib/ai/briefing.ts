@@ -3,7 +3,7 @@
  *
  * Extracted from lib/anthropic.ts (MED-09).
  */
-import { getAnthropicClient, AI_MODEL, extractText } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, withRetry } from "@/lib/ai/client";
 
 export interface BriefingContext {
   today_classes: number;
@@ -33,7 +33,7 @@ export async function generateBriefing(
   }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 500,
       system: `You are Meridian AI, the intelligent assistant for a fitness studio management platform. You provide concise, actionable daily briefings for studio owners. Be direct, data-driven, and highlight what needs attention. Use a confident but warm tone. Never use more than 3-4 bullet points. Format with bullet points using "\u2022" characters.`,
@@ -43,7 +43,7 @@ export async function generateBriefing(
           content: `Generate today's briefing for the studio based on this data:\n${JSON.stringify(context, null, 2)}`,
         },
       ],
-    });
+    }));
 
     return extractText(message);
   } catch (error) {

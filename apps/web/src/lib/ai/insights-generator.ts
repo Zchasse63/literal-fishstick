@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,7 +97,7 @@ export async function generateInsights(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
@@ -107,7 +107,7 @@ export async function generateInsights(
           content: `Generate insights from this studio metrics snapshot:\n${JSON.stringify(context, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

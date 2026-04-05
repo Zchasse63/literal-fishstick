@@ -1,3 +1,16 @@
+/**
+ * DataSyncButton — Glofox ↔ Meridian data synchronization widget.
+ *
+ * Renders a collapsible card that shows per-entity sync status (members,
+ * classes, bookings, transactions, etc.) and provides "Sync Now" and
+ * "Full Historical Backfill" actions. Communicates with three API routes:
+ *   GET  /api/glofox/status   — poll current sync state
+ *   POST /api/glofox/sync     — trigger incremental delta sync
+ *   POST /api/glofox/backfill — trigger full historical re-import
+ *
+ * Placed on the Command Center (dashboard) page inside the Glofox
+ * integration panel. Polls every 15 seconds while a sync is in progress.
+ */
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';

@@ -1,6 +1,6 @@
 // TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
 // Create /api/ai/cross-sell/route.ts to expose cross-sell opportunity detection.
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,7 +84,7 @@ export async function detectCrossSellOpportunities(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
@@ -94,7 +94,7 @@ export async function detectCrossSellOpportunities(
           content: `Identify cross-sell opportunities from this data:\n${JSON.stringify(input, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,7 +98,7 @@ export async function analyzePricingScenario(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
@@ -108,7 +108,7 @@ export async function analyzePricingScenario(
           content: `Analyze this pricing scenario:\n${JSON.stringify(scenario, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

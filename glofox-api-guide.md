@@ -1,3 +1,8 @@
+<!-- LOW-019: Last verified against the official Glofox OpenAPI spec
+     (https://apidocs-plat.aws.glofox.com/openapi.yaml) on 2026-04-05.
+     If Glofox updates their API, re-validate endpoints, methods, and
+     response shapes against the live spec before relying on this guide. -->
+
 # Glofox API Complete Reference Guide
 
 **API Version:** 2.2.0 (OpenAPI 3.1.0)

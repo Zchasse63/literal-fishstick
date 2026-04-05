@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Rate limit: 5 requests per minute per user
-  const rl = rateLimit(`sms:${user.id}`, 5, 60_000);
-  if (!rl.success) {
+  const rl = await rateLimit(`sms:${user.id}`, 5, 60_000);
+  if (!rl.allowed) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 

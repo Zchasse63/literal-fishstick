@@ -1,12 +1,9 @@
 import { NextRequest } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
 import { sendCampaignEmail } from '@/lib/resend'
 import { resolveTemplate, textToHtml, wrapEmailLayout } from '@/lib/email-templates'
 import { randomInt } from 'crypto'
-import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { requireRole } from '@/lib/auth/require-role'
 
-const STUDIO_ID = DEFAULT_STUDIO_ID
-const ALLOWED_ROLES = ['owner', 'admin', 'manager']
 const DEFAULT_BATCH_SIZE = 10
 const SEND_DELAY_MS = 200
 const DUPLICATE_WINDOW_MINUTES = 5
@@ -26,32 +23,20 @@ const DUPLICATE_WINDOW_MINUTES = 5
  * - Supports A/B test variant splitting
  */
 export async function POST(request: NextRequest) {
-  const supabase = await createServerClient()
+  // ─── Auth (fail-closed) ────────────────────────────────────
+  const auth = await requireRole(['owner', 'admin', 'manager'])
+  if (auth.error) return auth.error
+  const { user, supabase, studioId } = auth
 
-  // ─── Auth ──────────────────────────────────────────────────
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  // Check role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('roles')
-    .eq('id', user.id)
-    .single()
-
-  const roles: string[] = profile?.roles ?? []
-  const hasPermission = roles.some((r: string) => ALLOWED_ROLES.includes(r))
-  if (!hasPermission) {
-    return new Response(JSON.stringify({ error: 'Insufficient permissions. Admin or manager role required.' }), {
+  // Fail-closed: if no studio_id on the profile, deny the request
+  if (!studioId) {
+    return new Response(JSON.stringify({ error: 'No studio_id on profile. Access denied.' }), {
       status: 403,
       headers: { 'Content-Type': 'application/json' },
     })
   }
+
+  const STUDIO_ID = studioId
 
   // ─── Parse Body ────────────────────────────────────────────
   const body = await request.json()

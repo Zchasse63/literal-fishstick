@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -168,7 +168,7 @@ export async function generateReplyDraft(
       ? `\nMember context:\n- Membership: ${input.member_context.membership_type ?? "None"}\n- Visits in last 30 days: ${input.member_context.visits_last_30d}\n- Credits remaining: ${input.member_context.credits_remaining}`
       : "";
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system: `You are drafting a reply on behalf of ${input.owner_name} at ${input.studio_name}. Match their voice: warm, professional, knowledgeable about fitness/wellness/sauna. The reply should feel personal, not automated. For complaints, acknowledge the concern and offer to discuss further. For questions about scheduling/pricing, provide helpful answers. Always end with an invitation to book or visit. Return JSON only with these exact keys: draft_reply (string, plain text), tone_analysis (one of: positive, neutral, negative, question, complaint), suggested_subject (string), requires_human_review (boolean — true for complaints, cancellation requests, or if you are unsure), confidence (number 0-100). No markdown fences.`,
@@ -178,7 +178,7 @@ export async function generateReplyDraft(
           content: `Original campaign email:\nSubject: ${input.original_campaign_subject}\nBody: ${input.original_campaign_body}\n\nMember reply from ${input.member_name} (${input.member_email}):\nSubject: ${input.reply_subject}\nBody: ${input.reply_body}${memberContextBlock}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

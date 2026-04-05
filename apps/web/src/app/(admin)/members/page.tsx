@@ -1,3 +1,7 @@
+// LOW-009: This page uses 'use client' because it has heavy interactive state
+// (search, filters, polling, detail panel selection). Converting to an RSC
+// pattern (server query + client component) is planned for Phase 5 when
+// server-side filtering, pagination, and URL-based state are added.
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'

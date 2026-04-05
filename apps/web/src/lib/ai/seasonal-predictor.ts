@@ -1,6 +1,6 @@
 // TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
 // Create /api/ai/seasonal-predictor/route.ts to expose seasonal demand forecasting.
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,7 +97,7 @@ export async function predictSeasonalTrends(
     // Downsample daily metrics to weekly for token efficiency
     const weeklyAggregated = aggregateToWeekly(data.daily_metrics);
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 2500,
       system: SYSTEM_PROMPT,
@@ -107,7 +107,7 @@ export async function predictSeasonalTrends(
           content: `Predict the next 90 days based on this historical data:\n${JSON.stringify({ ...data, daily_metrics: undefined, weekly_metrics: weeklyAggregated }, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

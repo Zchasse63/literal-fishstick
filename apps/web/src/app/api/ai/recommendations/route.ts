@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateRecommendations } from "@/lib/anthropic";
+import { generateRecommendations } from "@/lib/ai/recommendations";
 import { requireRole } from "@/lib/auth/require-role";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     const { user, supabase, studioId } = auth;
 
     // Rate limit: 20 requests per minute per user
-    const rl = rateLimit(`ai:${user.id}`, 20, 60_000);
-    if (!rl.success) {
+    const rl = await rateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 

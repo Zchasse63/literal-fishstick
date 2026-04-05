@@ -3,7 +3,7 @@
  *
  * Extracted from lib/anthropic.ts (MED-09).
  */
-import { getAnthropicClient, AI_MODEL, extractText } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, withRetry } from "@/lib/ai/client";
 
 export interface RecommendationContext {
   type: "scheduling" | "pricing" | "retention" | "general";
@@ -34,7 +34,7 @@ export async function generateRecommendations(
         "You are Meridian AI. Analyze the studio's overall metrics and provide 3-5 actionable recommendations to improve operations. Cover scheduling, revenue, retention, and growth.",
     };
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system: `${systemPrompts[context.type]} Return each recommendation as a separate line starting with a number and period (e.g. "1. "). Be specific and data-driven.`,
@@ -44,7 +44,7 @@ export async function generateRecommendations(
           content: `Generate recommendations based on this data:\n${JSON.stringify(context.metrics, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
     return text

@@ -1,6 +1,6 @@
 // TODO: Phase 3 — This AI module is implemented but has no API route wired up yet.
 // Create /api/ai/report-narrative/route.ts to expose AI-generated report narratives.
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,7 +69,7 @@ export async function generateReportNarrative(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 512,
       system: SYSTEM_PROMPT,
@@ -79,7 +79,7 @@ export async function generateReportNarrative(
           content: `Generate a narrative summary for this report:\n${JSON.stringify(input, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

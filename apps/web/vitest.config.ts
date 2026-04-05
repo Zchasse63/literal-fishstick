@@ -6,7 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/__tests__/setup.ts'],
-    include: ['src/__tests__/unit/**/*.test.ts'],
+    include: ['src/__tests__/unit/**/*.test.ts', 'src/__tests__/unit/**/*.test.tsx'],
     exclude: ['node_modules', '.next', 'e2e/**'],
     coverage: {
       provider: 'v8',
@@ -21,10 +21,10 @@ export default defineConfig({
         'node_modules/**',
       ],
       thresholds: {
-        branches: 30,
-        functions: 30,
-        lines: 30,
-        statements: 30,
+        branches: 50,
+        functions: 50,
+        lines: 50,
+        statements: 50,
       },
     },
     testTimeout: 10000,

@@ -21,7 +21,7 @@ import { cronContractExpiry } from './cron-contract-expiry';
 import { cronCorporateCredits } from './cron-corporate-credits';
 
 // Glofox Sync Engine
-import { glofoxSyncHourly } from './glofox-sync-hourly';
+import { glofoxSyncHourly, glofoxSyncFailureHandler } from './glofox-sync-hourly';
 import { glofoxBackfill } from './glofox-backfill';
 import { glofoxSyncManual } from './glofox-sync-manual';
 
@@ -47,6 +47,7 @@ export const functions = [
   cronCorporateCredits,
   // Glofox Sync
   glofoxSyncHourly,
+  glofoxSyncFailureHandler,
   glofoxBackfill,
   glofoxSyncManual,
   // Glofox Write-back

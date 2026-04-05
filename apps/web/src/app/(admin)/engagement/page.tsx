@@ -22,7 +22,7 @@ export default async function EngagementPage() {
 
   const initialActiveMemberCount = countRes.count ?? 0
 
-  // TODO: Streak and referral data pipelines needed.
+  // NOTE: Streak and referral columns are hidden until Phase 3.
   // - currentStreak requires a visit_streaks table or daily aggregation job
   //   that calculates consecutive-day visit sequences per member.
   // - referrals requires a referrals table tracking referrer_id -> referred_member_id
@@ -39,8 +39,6 @@ export default async function EngagementPage() {
       rank: i + 1,
       name: m.profiles?.full_name ?? 'Unknown',
       totalVisits: visits,
-      currentStreak: -1, // -1 signals "not tracked yet" — rendered as "--" in UI
-      referrals: -1, // -1 signals "not tracked yet" — rendered as "--" in UI
       ltv: m.lifetime_value ?? 0,
       badge,
     }

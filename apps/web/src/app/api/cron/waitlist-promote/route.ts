@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 
+// LOW-012: Production cron security
+// In production, cron endpoints are protected by the x-cron-secret header
+// (validated in middleware). For additional hardening, configure Netlify
+// IP allowlisting to restrict inbound cron requests to your scheduler's
+// static IP range (e.g. Inngest, EasyCron, or GitHub Actions runners).
+// See: https://docs.netlify.com/security/secure-access-to-your-site/
+
 /**
  * GET /api/cron/waitlist-promote
  *

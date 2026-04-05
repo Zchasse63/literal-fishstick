@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { constructWebhookEvent } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminClient } from '@/lib/inngest/helpers'
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!
 
 /**
- * Service-role Supabase client for webhook handlers.
- * Stripe webhooks are server-to-server calls with no user cookies,
- * so we MUST use the service-role key to bypass RLS.
+ * Service-role Supabase client for webhook handlers (LOW-015).
+ * Reuses the singleton from Inngest helpers to avoid creating duplicate
+ * service-role clients. Stripe webhooks are server-to-server calls with
+ * no user cookies, so we MUST use the service-role key to bypass RLS.
  */
 function getWebhookSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  )
+  return getAdminClient()
 }
 
 /**

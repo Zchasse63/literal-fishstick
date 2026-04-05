@@ -1,244 +1,180 @@
 # Medium Findings
 
-Generated: 2026-04-02
-Deduplicated and cross-referenced from 10 layer audit reports.
+**Generated:** 2026-04-05
+**Deduplicated and cross-referenced from 10 layer audit reports.**
 
 ---
 
-## MED-01: `@meridian/supabase` and `@meridian/utils` Packages Are Entirely Unused
+## MED-001: cron-member-enrichment loads all bookings into JavaScript memory
 
-Both shared monorepo packages have zero imports from `apps/web`. `@meridian/types` has only 2 imports out of 391 TypeScript files. The packages provide false confidence about code sharing.
-**Sources**: project-structure HIGH-001/MED-001/MED-002, data-model M-004
-**Effort**: Low-Medium (consolidate or remove)
+**IDs:** DM-005, PERF-001
+**Corroborated by:** data-model, performance-infra (2/10 layers)
 
----
+Full table fetch of all `attended=true` bookings in memory. At scale (100,000+ rows), this will exceed serverless memory limits or cause timeouts.
 
-## MED-02: No `.env.example` File -- Required Secrets Undocumented
-
-27+ environment variables are required across Supabase, Stripe, Anthropic, Resend, Twilio, EasyPost, Inngest, and Glofox. No documentation exists. New developers or deployments cannot self-configure.
-**Sources**: integration I-M3, security SEC-H6
-**Effort**: Low
+**Fix:** Replace with a Postgres `GROUP BY` aggregate: `SELECT member_id, COUNT(*), MAX(checked_in_at) FROM bookings WHERE studio_id=? AND attended=true GROUP BY member_id`
 
 ---
 
-## MED-03: Missing CSP and HSTS Security Headers
+## MED-002: MRR calculation silently excludes members with unmapped plan codes
 
-`netlify.toml` sets X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. Missing: Content-Security-Policy (XSS mitigation), Strict-Transport-Security (HTTPS enforcement).
-**Sources**: api-surface M-5, security SEC-M3
-**Effort**: Low
+**ID:** DM-006
+**Layer:** data-model
 
----
+`SUM(plan_price) WHERE membership_status='active'` skips members where `plan_price IS NULL`. With 20 plan mappings, some Glofox plan codes may not be mapped.
 
-## MED-04: Six AI Modules Hardcode Stale Model Identifier
-
-Six modules use `"claude-sonnet-4-20250514"` instead of the centralized `AI_MODEL` constant. If the model is upgraded, these modules silently continue calling the old model.
-**Source**: ai-layer C-02
-**Effort**: Low (replace strings with `AI_MODEL` import)
+**Fix:** Query for unmapped active members. Add missing entries to `glofox_plan_map`.
 
 ---
 
-## MED-05: Five AI Modules Are Complete But Unreachable Dead Code
+## MED-003: Profiles-Members split creates inconsistent data access patterns
 
-`cross-sell.ts`, `pricing-analyzer.ts`, `seasonal-predictor.ts`, `report-narrative.ts`, `trainer-comparison.ts` have full implementations but no API routes.
-**Sources**: ai-layer C-01, project-structure HIGH-004
-**Effort**: Medium (create API routes or mark as Phase 3)
+**ID:** DM-007
+**Layer:** data-model
 
----
+Different routes access member data via `profiles`, `members`, or the `member_360` view. Edge cases exist for users with a profile but no members row.
 
-## MED-06: Churn Prediction Email Query Uses `full_name` Instead of Email Address
-
-`churn-prediction/route.ts` filters `email_send_log` by `recipient_email` using `profile.full_name`. Always returns zero results, silently degrading every churn prediction score.
-**Source**: ai-layer C-03
-**Effort**: Low (fix the column reference)
+**Fix:** Standardize on `member_360` view or `profiles LEFT JOIN members` pattern across all routes.
 
 ---
 
-## MED-07: `bookings.member_id` FK Join Hint May Reference Wrong Parent Table
+## MED-004: Zod validation inconsistently applied — only 4 schemas for 150 routes
 
-API query uses `profiles!bookings_member_id_fkey` but the FK may point to `members.id`, not `profiles.id`. Could cause booking list to display with null member names.
-**Source**: data-model C-003
-**Effort**: Low (verify FK in Supabase and fix join hint)
+**ID:** SEC-007
+**Layer:** security
 
----
+4 Zod schemas exist; remaining 140+ POST/PUT routes use ad-hoc if-checks. Unexpected input shapes can cause DB errors or logic bugs.
 
-## MED-08: `memberships` Table Join in Member Detail Route -- Likely Non-Existent Table
-
-`/api/members/[id]` selects `memberships(id, type, status, started_at, expires_at)` but no DDL, type, or seed data for a `memberships` table exists.
-**Source**: data-model H-004
-**Effort**: Low (verify table existence; replace with actual member/membership_plan fields)
+**Fix:** Extend Zod validation to all state-mutating routes (POST/PUT/DELETE). Prioritize: members, campaigns, automations, leads.
 
 ---
 
-## MED-09: `lib/anthropic.ts` at 1,699 Lines Needs Decomposition
+## MED-005: getStudioId() utility fails-open with DEFAULT_STUDIO_ID
 
-11 distinct AI features in one file. A purpose-built `lib/ai/` directory exists for exactly this purpose.
-**Sources**: project-structure HIGH-005, ai-layer H-04
-**Effort**: Medium (refactoring with no behavior change)
+**ID:** SEC-004
+**Layer:** security
 
----
+The `getStudioId()` helper returns `DEFAULT_STUDIO_ID` if `studio_id` is null on the profile — fail-open behavior. This becomes a multi-tenancy security hole at Phase 4.
 
-## MED-10: Campaign Send Route Uses Hardcoded Studio ID
-
-`/api/campaigns/send` hardcodes the studio ID. Mass emails to real members via Resend would query/write to the test studio for any non-default tenant.
-**Source**: integration I-M6
-**Effort**: Low
+**Fix:** Add a `required` flag to `getStudioId()` that returns null/throws instead of falling back. Migrate all routes per MED-008.
 
 ---
 
-## MED-11: Stripe `studio_id` Metadata Key Name Mismatch
+## MED-006: EasyPost webhook may lack signature verification
 
-`lib/stripe.ts` writes `studio_id` in metadata. Webhook handler reads `meridian_studio_id`. Fallback lookup always invoked.
-**Source**: integration I-M2
-**Effort**: Low
+**ID:** AS-007, SEC-005
+**Corroborated by:** api-surface, security (2/10 layers)
 
----
+The EasyPost webhook directory exists. Stripe and Resend webhooks have explicit HMAC verification. EasyPost verification was not confirmed.
 
-## MED-12: No Exponential Backoff on Anthropic 429/529 Errors
-
-All AI modules catch errors and immediately fall back to rules-based output. Transient 429s (which resolve in 1-2 seconds) consistently produce lower-quality output when a brief retry would succeed.
-**Source**: ai-layer M-01
-**Effort**: Low
+**Fix:** Implement EasyPost HMAC-SHA256 signature verification.
 
 ---
 
-## MED-13: NL Search Executes AI-Generated SQL Without Enforced LIMIT
+## MED-007: RLS policies not actively enforced for server-side clients
 
-Prompt instructs Claude to limit to 50 rows, but no code-level enforcement. A query returning thousands of rows could exhaust serverless memory.
-**Sources**: ai-layer M-03, security SEC-C3 (related)
-**Effort**: Low
+**ID:** INT-003
+**Layer:** integration
 
----
+Phase 2 RLS policies use `current_setting('app.studio_id')::uuid` but server-side clients never set this. All isolation relies on manual `WHERE studio_id = ?` clauses.
 
-## MED-14: `fadeInUp` Animation Variant Duplicated 55 Times
-
-Same Framer Motion animation object defined in 55 page files instead of shared from a `lib/motion.ts` module.
-**Sources**: ui-ux M-1, C-3 (mega-pages)
-**Effort**: Low
+**Fix:** Document that current RLS policies are not the actual enforcement boundary. Plan RLS rewrite for Phase 5 using `auth.uid()`.
 
 ---
 
-## MED-15: No Form State Management -- Inconsistent Validation
+## MED-008: CSP uses 'unsafe-inline' and 'unsafe-eval' for script-src
 
-Forms use three different patterns (uncontrolled FormData, controlled state, onClick). Zod installed but not used for form validation. Error messages not associated with inputs via `aria-describedby`.
-**Source**: ui-ux M-2
-**Effort**: Medium
+**ID:** SEC-006
+**Layer:** security
 
----
+These flags significantly weaken XSS protections. They may be required by React/Stripe but should be reviewed after Next.js 16 / React 19 upgrade.
 
-## MED-16: Employee Portal Layout Not Mobile-Responsive
-
-Sidebar occupies 72px on all viewports with no mobile drawer or collapse. Employee portal designed for field use (clock in/out on phones) but has no mobile accommodation.
-**Source**: ui-ux M-3
-**Effort**: Medium
+**Fix:** Evaluate if `unsafe-eval` can be removed. Move toward nonce-based CSP where possible.
 
 ---
 
-## MED-17: Hardcoded `thesaunaguys.com` URLs in Email Templates
+## MED-009: Admin layout is a client component — limits RSC conversion benefits
 
-Unsubscribe links, booking CTAs, and privacy policy links in the shared email layout all point to `https://thesaunaguys.com/`. Other studios would send emails with wrong links.
-**Source**: integration I-L4
-**Effort**: Low
+**IDs:** PS-001, UX-003
+**Corroborated by:** project-structure, ui-ux (2/10 layers)
 
----
+`(admin)/layout.tsx` is `'use client'` which makes it the client boundary root for all 32 admin pages. RSC-converted page.tsx files gain only partial benefit.
 
-## MED-18: Hardcoded Glofox Namespace `'thesaunaguys'` in Sync Functions
-
-All three Glofox sync functions hardcode the namespace string. Multi-tenant Glofox sync impossible.
-**Source**: integration I-M1
-**Effort**: Low
+**Fix:** Extract `AdminShell` client component for interactive parts (sidebar toggle, keyboard shortcuts). Make the layout itself a server component.
 
 ---
 
-## MED-19: EasyPost `from_address` Uses Placeholder Data (`123 Main St`)
+## MED-010: Automation cooldown check has race condition for parallel flows
 
-Shipping rate requests use a placeholder address. Live EasyPost API calls will produce inaccurate rates.
-**Source**: integration I-M7
-**Effort**: Low
+**ID:** INT-004
+**Layer:** integration
 
----
+Two flows triggering simultaneously for the same member could both pass the cooldown check before either inserts the cooldown record.
 
-## MED-20: Duplicate GDPR Deletion Functions with Conflicting Behavior
-
-Two Postgres functions for Phase 2 member deletion: one sets `author_id = NULL`, other sets to placeholder UUID that likely violates FK constraint.
-**Sources**: data-model M-001, M-007
-**Effort**: Low
+**Fix:** Move cooldown enforcement to `execute-flow` step with atomic upsert (`ON CONFLICT DO NOTHING`).
 
 ---
 
-## MED-21: Chainable Mock Duplication in 14 Test Files
+## MED-011: Not all AI modules use withRetry() wrapper
 
-Every unit test file defines its own `createChainableMock()`. A shared helper exists but is ignored by 13 of 14 files.
-**Source**: testing-quality M1
-**Effort**: Low
+**ID:** AI-004
+**Layer:** ai-layer
 
----
+Some AI modules call `anthropic.messages.create()` directly, not via `withRetry()`. They throw immediately on 429 rate limit.
 
-## MED-22: 14 Admin Pages Exceed 700 Lines (Largest: 1,562)
-
-Business logic, types, utilities, and sub-components all coexist in single files. Prevents component testing and increases refactoring risk.
-**Sources**: ui-ux C-3
-**Effort**: High (systematic extraction)
+**Fix:** Audit all 22 modules for direct `messages.create()` calls. Wrap in `withRetry()`.
 
 ---
 
-## MED-23: Keyboard Shortcuts Displayed But Not Implemented
+## MED-012: AI briefing imports from deprecated lib/anthropic.ts
 
-Sidebar shows Cmd+1 through Cmd+0 shortcuts. Only Cmd+K is wired. Shortcut numbers inconsistent between sidebar and command palette.
-**Source**: ui-ux H-2
-**Effort**: Low
+**ID:** AI-005
+**Layer:** ai-layer
 
----
+The briefing API route imports from `@/lib/anthropic` instead of `@/lib/ai/briefing`. This means two Anthropic client singletons may exist.
 
-## MED-24: Auth Context Uses `getSession()` Instead of `getUser()`
-
-Client-side auth context reads from local storage without server revalidation. Revoked tokens continue to show user as authenticated.
-**Source**: security SEC-H5
-**Effort**: Low
+**Fix:** Remove `lib/anthropic.ts`. Update briefing route to import from `@/lib/ai/briefing`.
 
 ---
 
-## MED-25: Unsubscribe HMAC Token Has No Expiration Check
+## MED-013: Glofox client has zero tests after 15-method rewrite
 
-Once issued, unsubscribe links are valid forever. No rotation path for the signing secret.
-**Source**: security SEC-H7
-**Effort**: Low
+**ID:** TQ-004
+**Layer:** testing-quality
 
----
+906 lines across 50+ methods, zero unit tests. 15 methods were recently rewritten.
 
-## MED-26: No Coverage Thresholds Enforced in CI
-
-Vitest coverage configured but no thresholds block. `npm test` in CI does not generate coverage. Coverage can drop to 0% without CI failure.
-**Source**: testing-quality H1
-**Effort**: Low
+**Fix:** Add unit tests for the 15 corrected methods using the existing `mock-glofox.ts` helper.
 
 ---
 
-## MED-27: Integration and E2E Tests Cannot Run in CI
+## MED-014: Coverage thresholds at 30% — far below industry standard
 
-Integration tests require live Supabase credentials not present in CI. E2E tests require browser installation not in the workflow. Both suites are manual-run only.
-**Sources**: testing-quality H2, performance-infra PERF-09
-**Effort**: Medium
+**ID:** TQ-005
+**Layer:** testing-quality
 
----
+Coverage thresholds (30% branches/functions/lines) are below the minimum recommended for a financial/member-data platform.
 
-## MED-28: Engagement Page Leaderboard Shows 0 for All Streaks and Referrals
-
-`currentStreak: 0` and `referrals: 0` are hardcoded with comments noting they are "not tracked." Achievements and Challenges tabs are fully static placeholder data.
-**Sources**: user-flow UF-H-5, UF-M-7
-**Effort**: Medium (requires new data tracking or removing misleading displays)
+**Fix:** Raise to 50% near-term, 70% by Phase 2 completion. Prioritize auth layer and payment routes.
 
 ---
 
-## MED-29: Notification Bell is Non-Functional
+## MED-015: Executive dashboard fetches all data client-side despite RSC pattern
 
-Header bell icon has no click handler, no state, no dropdown. Purely decorative with a hardcoded orange dot.
-**Source**: ui-ux M-5
-**Effort**: Low (implement or remove)
+**IDs:** UX-002, PERF-004
+**Corroborated by:** ui-ux, performance-infra (2/10 layers)
+
+`ExecutiveDashboardClient` handles all data fetching because of a misunderstanding about RSC capabilities. All 4+ API calls execute in the browser sequentially.
+
+**Fix:** Move data fetching to RSC page layer using direct Supabase calls. Pass as props.
 
 ---
 
-## MED-30: `transpilePackages` Missing for Workspace Packages in Next.js Config
+## MED-016: Campaign recipient count doesn't account for unsubscribed/bounced members
 
-Monorepo packages not listed in `transpilePackages`. Works incidentally but fragile.
-**Source**: performance-infra PERF-08
-**Effort**: Low
+**ID:** UX-005, UF (user flow)
+**Layer:** ui-ux
+
+Campaign wizard shows segment count; actual delivered count is lower after filtering `email_preferences`. Users see misleading recipient numbers.
+
+**Fix:** Query `email_preferences` when displaying recipient count in the campaign wizard.

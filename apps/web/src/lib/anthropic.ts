@@ -1,5 +1,9 @@
 /**
- * Barrel re-export file for backward compatibility.
+ * @deprecated Import directly from `@/lib/ai/*` sub-modules instead.
+ *
+ * This barrel re-export file exists only for backward compatibility with
+ * test files. All production code has been migrated to direct sub-module
+ * imports (MED-012). New code should NEVER import from `@/lib/anthropic`.
  *
  * The AI functions that previously lived in this 1,700-line file have been
  * decomposed into focused sub-modules under `lib/ai/` (MED-09).

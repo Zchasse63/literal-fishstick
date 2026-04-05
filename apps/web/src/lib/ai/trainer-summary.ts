@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -75,7 +75,7 @@ export async function generateTrainerSummary(
 
   try {
 
-    const message = await anthropic.messages.create({
+    const message = await withRetry(() => anthropic.messages.create({
       model: AI_MODEL,
       max_tokens: 800,
       system: SYSTEM_PROMPT,
@@ -85,7 +85,7 @@ export async function generateTrainerSummary(
           content: `Generate a performance summary for this trainer:\n${JSON.stringify(metrics, null, 2)}`,
         },
       ],
-    });
+    }));
 
     const text = extractText(message);
 

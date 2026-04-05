@@ -1,6 +1,11 @@
 /**
  * Phone Normalization Integration Tests
  *
+ * NOTE: Despite the filename containing "integration", these are UNIT tests.
+ * They run in vitest with mocked Supabase — no real database or network calls.
+ * The "integration" refers to testing how normalizePhone integrates with
+ * the API route handlers, not an integration test environment.
+ *
  * Verifies that normalizePhone is actually called and applied in every API
  * route that accepts a phone number input. Each describe block mocks the route's
  * Supabase client and asserts the normalized value reaches the insert/update.
@@ -98,7 +103,7 @@ vi.mock('@/lib/sms', () => ({
 
 // Mock rate limiter
 vi.mock('@/lib/rate-limit', () => ({
-  rateLimit: vi.fn(() => ({ success: true })),
+  rateLimit: vi.fn(async () => ({ allowed: true, remaining: 10 })),
 }))
 
 // ============================================================================

@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import type {
   CampaignCopyRequest,
   CampaignCopyResult,
-} from "@/lib/anthropic";
+} from "@/lib/ai/campaign";
 
 interface UseAICampaignCopyReturn {
   generate: (request: CampaignCopyRequest) => Promise<void>;

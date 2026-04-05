@@ -63,44 +63,39 @@ export const cronMemberEnrichment = inngest.createFunction(
       let updated = 0
       let checked = 0
 
-      // Query booking aggregates: count attended bookings and max checked_in_at per member
-      const { data: aggregates, error: aggError } = await db
-        .from('bookings')
-        .select('member_id')
-        .eq('studio_id', STUDIO_ID)
-        .eq('attended', true)
+      // Use a server-side aggregate query (GROUP BY) instead of loading all
+      // booking rows into memory. This avoids OOM on studios with large booking
+      // tables. See MED-001.
+      const { data: aggregates, error: aggError } = await db.rpc(
+        'execute_readonly_sql',
+        {
+          query_text: `
+            SELECT
+              b.member_id,
+              COUNT(*)::int AS visit_count,
+              MAX(b.checked_in_at) AS last_visit
+            FROM bookings b
+            JOIN classes c ON b.class_id = c.id
+            WHERE b.studio_id = '${STUDIO_ID}'
+              AND b.attended = true
+            GROUP BY b.member_id
+          `,
+        },
+      )
 
       if (aggError || !aggregates) {
         console.error('[member-enrichment] Failed to query booking aggregates:', aggError?.message)
         return { updated: 0, checked: 0, error: aggError?.message }
       }
 
-      // Aggregate in-memory: count + max checked_in_at per member
-      const memberStats = new Map<string, { count: number }>()
-      for (const row of aggregates) {
+      // Build lookup maps from the aggregate result
+      const memberStats = new Map<string, { count: number; lastVisit: string | null }>()
+      for (const row of aggregates as Array<{ member_id: string; visit_count: number; last_visit: string | null }>) {
         if (!row.member_id) continue
-        const existing = memberStats.get(row.member_id)
-        if (existing) {
-          existing.count++
-        } else {
-          memberStats.set(row.member_id, { count: 1 })
-        }
-      }
-
-      // Also get max checked_in_at per member for last_visit
-      const { data: lastVisits } = await db
-        .from('bookings')
-        .select('member_id, checked_in_at')
-        .eq('studio_id', STUDIO_ID)
-        .eq('attended', true)
-        .not('checked_in_at', 'is', null)
-        .order('checked_in_at', { ascending: false })
-
-      const memberLastVisit = new Map<string, string>()
-      for (const row of lastVisits ?? []) {
-        if (row.member_id && row.checked_in_at && !memberLastVisit.has(row.member_id)) {
-          memberLastVisit.set(row.member_id, row.checked_in_at)
-        }
+        memberStats.set(row.member_id, {
+          count: row.visit_count,
+          lastVisit: row.last_visit,
+        })
       }
 
       // Fetch all members for comparison
@@ -114,8 +109,9 @@ export const cronMemberEnrichment = inngest.createFunction(
       // Compare and update where needed
       for (const member of members) {
         checked++
-        const expectedVisits = memberStats.get(member.id)?.count ?? 0
-        const expectedLastVisit = memberLastVisit.get(member.id) ?? null
+        const stats = memberStats.get(member.id)
+        const expectedVisits = stats?.count ?? 0
+        const expectedLastVisit = stats?.lastVisit ?? null
         const currentVisits = (member.total_visits as number) ?? 0
         const currentLastVisit = member.last_visit as string | null
 
@@ -251,12 +247,27 @@ export const cronMemberEnrichment = inngest.createFunction(
       return { resolved }
     })
 
+    // ── Step 5: Evict stale AI briefings (LOW-006) ──────────────
+    const aiCacheEviction = await step.run('evict-stale-ai-cache', async () => {
+      // AI briefings older than 24 hours are stale and should be regenerated
+      // on next access. This prevents the Command Center from showing outdated
+      // AI insights after member data has been reconciled above.
+      const { count } = await db
+        .from('ai_briefings')
+        .delete()
+        .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .select('*', { count: 'exact', head: true })
+
+      return { evicted: count ?? 0 }
+    })
+
     return {
       status: 'completed',
       visit_reconciliation: visitReconciliation,
       engagement_reconciliation: engagementReconciliation,
       classpass_tagging: classpassTagging,
       tier_resolution: tierResolution,
+      ai_cache_eviction: aiCacheEviction,
     }
   },
 )

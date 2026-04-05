@@ -154,10 +154,15 @@ function RevenueDonutTooltip({ active, payload, revenueTotal }: any) {
 
 // ─── Component ──────────────────────────────────────────────
 
-export function ExecutiveDashboardClient() {
+interface ExecutiveDashboardClientProps {
+  /** Server-fetched KPI metrics to avoid a client-side waterfall (MED-015). */
+  initialKpiMetrics?: KPIMetric[]
+}
+
+export function ExecutiveDashboardClient({ initialKpiMetrics }: ExecutiveDashboardClientProps = {}) {
   // ─── State ─────────────────────────────────────────────────
-  const [kpiMetrics, setKpiMetrics] = useState<KPIMetric[]>([])
-  const [kpiLoading, setKpiLoading] = useState(true)
+  const [kpiMetrics, setKpiMetrics] = useState<KPIMetric[]>(initialKpiMetrics ?? [])
+  const [kpiLoading, setKpiLoading] = useState(!initialKpiMetrics?.length)
   const [monthlyRevenue, setMonthlyRevenue] = useState<{ month: string; revenue: number }[]>([])
   const [revenueChartLoading, setRevenueChartLoading] = useState(true)
   const [revenueData, setRevenueData] = useState<RevenueSource[]>([])

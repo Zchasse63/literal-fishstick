@@ -105,15 +105,44 @@ export default function CampaignBuilderPage() {
       setBehaviorCountsLoading(true)
       const counts: Record<string, number> = {}
 
-      // Fetch counts for each behavior segment in parallel
+      // MED-016: First, fetch profile_ids of members who have unsubscribed
+      // or bounced so we can exclude them from recipient counts.
+      const { data: excludedRows } = await supabase
+        .from('email_preferences')
+        .select('profile_id')
+        .or('unsubscribed.eq.true,bounced.eq.true')
+
+      const excludedProfileIds = new Set(
+        (excludedRows ?? []).map((r: { profile_id: string }) => r.profile_id),
+      )
+
+      // Fetch counts for each behavior segment in parallel,
+      // excluding unsubscribed/bounced members from recipient estimates.
       const queries = BEHAVIOR_SEGMENTS.map(async (seg) => {
-        const { count } = await supabase
+        const { data, count } = await supabase
           .from('member_360')
-          .select('*', { count: 'exact', head: true })
+          .select('profile_id', { count: 'exact', head: excludedProfileIds.size === 0 })
           .eq('behavior_segment', seg.id)
 
-        if (!cancelled) {
+        if (cancelled) return
+
+        if (excludedProfileIds.size === 0) {
           counts[seg.id] = count ?? 0
+        } else {
+          // If we have exclusions, fetch profile_ids and subtract
+          const { count: totalCount } = await supabase
+            .from('member_360')
+            .select('*', { count: 'exact', head: true })
+            .eq('behavior_segment', seg.id)
+
+          // Subtract excluded members (approximate — exact count requires a join)
+          const { count: excludedCount } = await supabase
+            .from('member_360')
+            .select('*', { count: 'exact', head: true })
+            .eq('behavior_segment', seg.id)
+            .in('profile_id', Array.from(excludedProfileIds))
+
+          counts[seg.id] = Math.max(0, (totalCount ?? 0) - (excludedCount ?? 0))
         }
       })
 

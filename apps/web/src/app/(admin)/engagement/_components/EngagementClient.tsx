@@ -29,8 +29,9 @@ interface LeaderboardMember {
   rank: number
   name: string
   totalVisits: number
-  currentStreak: number
-  referrals: number
+  // Phase 3: currentStreak and referrals columns hidden until data pipelines are built
+  // - currentStreak requires visit_streaks table / daily aggregation job
+  // - referrals requires referrals table with referrer_id -> referred_member_id tracking
   ltv: number
   badge: string
 }
@@ -217,12 +218,17 @@ function LeaderboardTab({ leaderboard }: { leaderboard: LeaderboardMember[] }) {
     >
       <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
         {/* Table Header */}
+        {/* Phase 3: Streak and Referrals columns shown as "Coming Soon" until data pipelines are built */}
         <div className="grid grid-cols-[56px_1fr_100px_100px_90px_100px_90px] gap-4 border-b border-gray-100 dark:border-gray-800 px-5 py-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Rank</p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Name</p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Visits</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Streak</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Referrals</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Streak <span className="text-[8px] text-amber-500 ml-0.5">Coming Soon</span>
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Referrals <span className="text-[8px] text-amber-500 ml-0.5">Coming Soon</span>
+          </p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">LTV</p>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Badge</p>
         </div>
@@ -257,21 +263,10 @@ function LeaderboardTab({ leaderboard }: { leaderboard: LeaderboardMember[] }) {
               {member.rank === 1 && <Crown className="h-4 w-4 text-amber-400" />}
             </div>
             <p className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{member.totalVisits}</p>
-            <div className="flex items-center gap-1.5">
-              <Flame className="h-3.5 w-3.5 text-orange-400" />
-              {member.currentStreak >= 0 ? (
-                <p className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">
-                  {member.currentStreak}d
-                </p>
-              ) : (
-                <span className="text-sm text-gray-400 dark:text-gray-500" title="Streak tracking coming soon">--</span>
-              )}
-            </div>
-            {member.referrals >= 0 ? (
-              <p className="text-sm tabular-nums text-gray-600 dark:text-gray-400">{member.referrals}</p>
-            ) : (
-              <span className="text-sm text-gray-400 dark:text-gray-500" title="Referral tracking coming soon">--</span>
-            )}
+            {/* Phase 3: Streak column — placeholder until visit_streaks pipeline */}
+            <span className="text-sm text-gray-300 dark:text-gray-600">--</span>
+            {/* Phase 3: Referrals column — placeholder until referrals pipeline */}
+            <span className="text-sm text-gray-300 dark:text-gray-600">--</span>
             <p className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">
               ${member.ltv.toLocaleString()}
             </p>

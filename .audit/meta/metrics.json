@@ -1,0 +1,31 @@
+{
+  "completed_at": "2026-04-05T00:00:00Z",
+  "agents_executed": [
+    "project-structure",
+    "data-model",
+    "api-surface",
+    "testing-quality",
+    "ui-ux",
+    "user-flow",
+    "ai-layer",
+    "integration",
+    "security",
+    "performance-infra",
+    "audit-synthesizer"
+  ],
+  "agents_skipped": [],
+  "waves_completed": 5,
+  "total_findings": {
+    "critical": 2,
+    "high": 11,
+    "medium": 16,
+    "low": 20,
+    "info": 10,
+    "total_deduplicated": 59
+  },
+  "architecture_health_score": 6.8,
+  "layers_audited": 10,
+  "coverage_gaps_identified": 10,
+  "cross_references_found": 8,
+  "contradictions_resolved": 4
+}

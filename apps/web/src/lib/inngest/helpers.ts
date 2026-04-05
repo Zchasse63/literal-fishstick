@@ -293,6 +293,17 @@ export async function failEnrollment(
 /**
  * Check whether a member can be enrolled in a flow.
  * Enforces UNIQUE enrollment constraint and reenrollment cooldown.
+ *
+ * NOTE ON RACE CONDITION (MED-010): This function performs a read-then-decide
+ * check which is inherently susceptible to TOCTOU races — two parallel trigger
+ * evaluations can both pass canEnrollMember() before either inserts an
+ * enrollment row. This is intentional and accepted because the actual INSERT in
+ * evaluate-triggers.ts uses a UNIQUE constraint on (automation_id, member_id,
+ * studio_id) with status='active'. If a duplicate insert occurs, Postgres
+ * raises error code 23505 (unique_violation) which the caller catches and
+ * silently ignores (the second enrollment is simply discarded). This makes the
+ * enrollment step effectively atomic — canEnrollMember() is an optimistic
+ * pre-check to avoid unnecessary work, not a concurrency gate.
  */
 export async function canEnrollMember(
   flow: {

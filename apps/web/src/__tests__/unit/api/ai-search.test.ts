@@ -75,7 +75,7 @@ vi.mock("@/lib/anthropic", () => ({
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
-  rateLimit: (...args: unknown[]) => mockRateLimit(...args),
+  rateLimit: async (...args: unknown[]) => mockRateLimit(...args),
 }));
 
 const { POST } = await import("@/app/api/ai/search/route");
@@ -84,7 +84,7 @@ const { POST } = await import("@/app/api/ai/search/route");
 describe("POST /api/ai/search", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRateLimit.mockReturnValue({ success: true, remaining: 19 });
+    mockRateLimit.mockReturnValue({ allowed: true, remaining: 19 });
   });
 
   // -- Auth ---------------------------------------------------------------
@@ -129,7 +129,7 @@ describe("POST /api/ai/search", () => {
 
   it("returns 429 when rate limit is exceeded", async () => {
     supabaseMock = buildSupabaseMock({});
-    mockRateLimit.mockReturnValue({ success: false, remaining: 0 });
+    mockRateLimit.mockReturnValue({ allowed: false, remaining: 0 });
     const res = await POST(makeRequest({ query: "show members" }));
     expect(res.status).toBe(429);
   });

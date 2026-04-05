@@ -1,130 +1,110 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-describe('rateLimit', () => {
+// Mock the Supabase client used by the rate limiter.
+// Since the real implementation calls Supabase RPC, we mock the createClient
+// factory to return a controllable stub.
+const mockRpc = vi.fn()
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    rpc: mockRpc,
+  }),
+}))
+
+// Ensure env vars are set so the client gets initialised
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key'
+
+describe('rateLimit (async, Supabase-backed)', () => {
   let rateLimit: typeof import('@/lib/rate-limit').rateLimit
 
   beforeEach(async () => {
-    vi.useFakeTimers()
-    // Reset modules to get fresh module-level state (new Map, new lastCleanup)
     vi.resetModules()
+    mockRpc.mockReset()
     const mod = await import('@/lib/rate-limit')
     rateLimit = mod.rateLimit
   })
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+  it('returns allowed=true when under the limit', async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ current_count: 1, is_allowed: true }],
+      error: null,
+    })
 
-  it('returns success with remaining = limit - 1 on first request', () => {
-    const result = rateLimit('key-a', 5, 60_000)
+    const result = await rateLimit('key-a', 5, 60_000)
 
-    expect(result.success).toBe(true)
+    expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(4)
   })
 
-  it('returns decreasing remaining count for multiple requests up to limit', () => {
-    const limit = 3
-    const results = []
-    for (let i = 0; i < limit; i++) {
-      results.push(rateLimit('key-b', limit, 60_000))
-    }
+  it('returns allowed=false when at or over the limit', async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ current_count: 6, is_allowed: false }],
+      error: null,
+    })
 
-    expect(results[0]).toEqual({ success: true, remaining: 2 })
-    expect(results[1]).toEqual({ success: true, remaining: 1 })
-    expect(results[2]).toEqual({ success: true, remaining: 0 })
-  })
+    const result = await rateLimit('key-b', 5, 60_000)
 
-  it('returns failure after limit is reached', () => {
-    const limit = 2
-    rateLimit('key-c', limit, 60_000)
-    rateLimit('key-c', limit, 60_000)
-
-    const result = rateLimit('key-c', limit, 60_000)
-
-    expect(result.success).toBe(false)
+    expect(result.allowed).toBe(false)
     expect(result.remaining).toBe(0)
   })
 
-  it('resets counter after window expires', () => {
-    const windowMs = 10_000
-    rateLimit('key-d', 1, windowMs)
+  it('passes correct parameters to the RPC', async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ current_count: 1, is_allowed: true }],
+      error: null,
+    })
 
-    // Advance past the window
-    vi.advanceTimersByTime(windowMs + 1)
+    await rateLimit('ai:user-123', 20, 60_000)
 
-    const result = rateLimit('key-d', 1, windowMs)
+    expect(mockRpc).toHaveBeenCalledWith('increment_rate_limit', {
+      p_key: 'ai:user-123',
+      p_limit: 20,
+      p_window_ms: 60_000,
+    })
+  })
 
-    expect(result.success).toBe(true)
+  it('fails open when the RPC returns an error', async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'relation does not exist' },
+    })
+
+    const result = await rateLimit('key-c', 5, 60_000)
+
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(5)
+  })
+
+  it('fails open when the RPC throws a network error', async () => {
+    mockRpc.mockRejectedValue(new Error('Network timeout'))
+
+    const result = await rateLimit('key-d', 5, 60_000)
+
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(5)
+  })
+
+  it('handles non-array RPC response (single object)', async () => {
+    mockRpc.mockResolvedValue({
+      data: { current_count: 3, is_allowed: true },
+      error: null,
+    })
+
+    const result = await rateLimit('key-e', 5, 60_000)
+
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(2)
+  })
+
+  it('remaining never goes below 0', async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ current_count: 100, is_allowed: false }],
+      error: null,
+    })
+
+    const result = await rateLimit('key-f', 5, 60_000)
+
     expect(result.remaining).toBe(0)
-  })
-
-  it('isolates different keys from each other', () => {
-    rateLimit('key-e', 1, 60_000)
-
-    const result = rateLimit('key-f', 1, 60_000)
-
-    expect(result.success).toBe(true)
-    expect(result.remaining).toBe(0)
-  })
-
-  it('cleans up expired entries when cleanup interval elapses', () => {
-    // Create an entry that will expire
-    rateLimit('expired-key', 5, 1_000)
-
-    // Advance past both the entry window AND the cleanup interval (60s)
-    vi.advanceTimersByTime(61_000)
-
-    // This call triggers cleanup() which should remove 'expired-key'
-    // If cleanup works, the next call for 'expired-key' creates a fresh entry
-    const result = rateLimit('expired-key', 5, 1_000)
-
-    expect(result.success).toBe(true)
-    expect(result.remaining).toBe(4) // Fresh entry: limit (5) - 1
-  })
-
-  it('handles limit of 1 correctly (first succeeds, second fails)', () => {
-    const first = rateLimit('key-g', 1, 60_000)
-    const second = rateLimit('key-g', 1, 60_000)
-
-    expect(first).toEqual({ success: true, remaining: 0 })
-    expect(second).toEqual({ success: false, remaining: 0 })
-  })
-
-  it('handles window of 0ms (resets immediately on next call)', () => {
-    rateLimit('key-h', 1, 0)
-
-    // Advance time by just 1ms so Date.now() > resetAt
-    vi.advanceTimersByTime(1)
-
-    const result = rateLimit('key-h', 1, 0)
-
-    expect(result.success).toBe(true)
-    expect(result.remaining).toBe(0)
-  })
-
-  it('does not clean up entries before cleanup interval has passed', () => {
-    rateLimit('persist-key', 2, 1_000)
-
-    // Advance past entry window but NOT past cleanup interval
-    vi.advanceTimersByTime(2_000)
-
-    // Trigger another call (cleanup runs but skips because < 60s from module init)
-    // Actually, 2s < 60s so cleanup skips. The entry IS expired though,
-    // so the rateLimit function itself resets it (line 39-41 of source).
-    const result = rateLimit('persist-key', 2, 1_000)
-
-    // The entry was expired, so it gets a fresh window
-    expect(result.success).toBe(true)
-    expect(result.remaining).toBe(1)
-  })
-
-  it('multiple failed requests after limit still return failure', () => {
-    rateLimit('key-i', 1, 60_000) // uses up the limit
-
-    const second = rateLimit('key-i', 1, 60_000)
-    const third = rateLimit('key-i', 1, 60_000)
-
-    expect(second).toEqual({ success: false, remaining: 0 })
-    expect(third).toEqual({ success: false, remaining: 0 })
   })
 })
