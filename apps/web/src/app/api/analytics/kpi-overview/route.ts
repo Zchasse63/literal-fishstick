@@ -174,8 +174,8 @@ async function newFacesInRange(
     ),
   );
 
-  return currentMemberIds.filter(
-    (id: string) => !priorMemberIds.has(id),
+  return (currentMemberIds as string[]).filter(
+    (id) => !priorMemberIds.has(id),
   ).length;
 }
 
@@ -272,7 +272,7 @@ async function returningMembersInRange(
     ),
   );
 
-  return currentMemberIds.filter((id: string) =>
+  return (currentMemberIds as string[]).filter((id) =>
     priorMemberIds.has(id),
   ).length;
 }
