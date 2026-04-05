@@ -319,7 +319,58 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
     category: 'upsell',
   },
 
-  // ── 6. Engagement: Class Type Fan ─────────────────────────────────────
+  // ── 6. Win-Back: Lapsed with Credits ──────────────────────────────────
+  {
+    slug: 'lapsed-with-credits-reminder',
+    name: 'Win-Back: Lapsed with Credits',
+    description:
+      'Remind members who still have unused credits to come back before they expire. Two-touch email sequence targeting the easiest re-engagement opportunity.',
+    trigger_type: 'lapsed_with_credits',
+    trigger_config: {},
+    steps: [
+      {
+        type: 'email',
+        subject: 'You still have {{credits}} credits waiting!',
+        body: 'Hi {{first_name}},\n\nWe noticed you still have credits on your account, but it\'s been a while since your last visit.\n\nDon\'t let them go to waste! Your credits are ready to use — just pick a time that works:\n\n{{booking_link}}\n\nWe\'d love to see you back. Even one session can make a difference.',
+        preheader: 'Your credits are waiting for you',
+      },
+      {
+        type: 'wait',
+        delay_minutes: 168 * 60, // 7 days
+      },
+      {
+        type: 'condition',
+        condition_type: 'days_since_last_visit',
+        config: { operator: 'lte', value: 7 },
+        true_branch: 5, // they came back — tag and exit
+        false_branch: 3, // send second email
+      },
+      {
+        type: 'email',
+        subject: 'Don\'t let your credits go to waste',
+        body: 'Hi {{first_name}},\n\nJust a friendly reminder — you have {{credits}} credits that are waiting to be used.\n\nYour body will thank you for getting back into the routine. Pick your next session:\n\n{{booking_link}}\n\nHope to see you soon!',
+        preheader: 'Your credits won\'t last forever',
+      },
+      {
+        type: 'wait',
+        delay_minutes: 5 * 24 * 60, // 5 days
+      },
+      {
+        type: 'tag',
+        tag_name: 'lapsed_credits_winback_attempted',
+        action: 'add',
+      },
+    ],
+    exit_conditions: {
+      on_booking: true,
+      conditions: [{ type: 'checked_in' }],
+    },
+    allow_reenrollment: true,
+    reenrollment_cooldown_days: 60,
+    category: 'winback',
+  },
+
+  // ── 7. Engagement: Class Type Fan ─────────────────────────────────────
   {
     slug: 'engagement-class-type-fan',
     name: 'Engagement: Class Type Fan',

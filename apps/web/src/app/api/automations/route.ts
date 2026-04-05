@@ -35,6 +35,8 @@ const VALID_TRIGGER_TYPES = [
   "cooling_off",
   "plan_upgrade_candidate",
   "class_type_fan",
+  // 10-category engagement triggers
+  "lapsed_with_credits",
   // Catch-all
   "custom",
 ];

@@ -63,8 +63,8 @@ describe('POST /api/check-in — visit tracking', () => {
    *   2. bookings   — fetch booking (status: "booked", no trainer)
    *   3. bookings   — update to checked_in
    *   4. activity_log — insert check-in activity
-   *   5. members    — select current total_visits  (visit tracking)
-   *   6. members    — update total_visits, last_visit, engagement_status
+   *   5. members    — select current total_visits, credit_balance  (visit tracking)
+   *   6. members    — update total_visits, last_visit, engagement_status (smart: active/engaged)
    *
    * memberSelectResponse controls what step 5 returns.
    * memberUpdateResponse controls what step 6 returns.
@@ -174,7 +174,7 @@ describe('POST /api/check-in — visit tracking', () => {
     expect(membersCalls.length).toBe(2)
   })
 
-  it('sets engagement_status to engaged after check-in', async () => {
+  it('sets smart engagement_status after check-in (engaged when no credits, active when has credits)', async () => {
     mockSupabase = buildVisitTrackingMock()
 
     const res = await POST(
@@ -185,8 +185,9 @@ describe('POST /api/check-in — visit tracking', () => {
     )
     expect(res.status).toBe(200)
 
-    // The update call to members should include engagement_status: 'engaged'
-    // Since we use chainable mocks, we verify the members table was touched
+    // The update call to members should include engagement_status based on credits.
+    // With default mock (no credit_balance field => 0), status should be 'engaged'.
+    // Since we use chainable mocks, we verify the members table was touched.
     const membersCalls = mockSupabase.from.mock.calls.filter(
       (c: string[]) => c[0] === 'members',
     )

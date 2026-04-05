@@ -161,22 +161,26 @@ export async function POST(request: NextRequest) {
       .eq("id", tokenRecord.id);
 
     // ── Update member visit stats in real-time ──────────────────
-    // After successful check-in, increment total_visits and refresh engagement
+    // After successful check-in, increment total_visits and refresh engagement.
+    // Smart status: if member has credits, set 'active'; otherwise 'engaged'.
+    // The daily cron will reconcile to the correct 10-category status anyway.
     try {
       const { data: currentMember } = await supabase
         .from("members")
-        .select("total_visits")
+        .select("total_visits, credit_balance")
         .eq("id", member_id)
         .single();
 
       const currentVisits = (currentMember?.total_visits as number) ?? 0;
+      const memberCredits = (currentMember?.credit_balance as number) ?? 0;
+      const newStatus = memberCredits > 0 ? 'active' : 'engaged';
 
       await supabase
         .from("members")
         .update({
           total_visits: currentVisits + 1,
           last_visit: checkedInAt,
-          engagement_status: "engaged",
+          engagement_status: newStatus,
           updated_at: checkedInAt,
         })
         .eq("id", member_id);

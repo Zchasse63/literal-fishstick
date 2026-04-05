@@ -455,21 +455,29 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
 
 // ─── Engagement Breakdown ───────────────────────────────────
 interface EngagementCounts {
-  engaged: number
+  subscriber: number
   active: number
+  engaged: number
   cooling: number
   at_risk: number
+  lapsed_with_credits: number
   lapsed: number
-  never_visited: number
+  churned: number
+  new_unused: number
+  lead_only: number
 }
 
 const ENGAGEMENT_CONFIG: { key: keyof EngagementCounts; label: string; dotColor: string; textColor: string }[] = [
-  { key: 'engaged', label: 'Engaged', dotColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-400' },
-  { key: 'active', label: 'Active', dotColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-400' },
+  { key: 'subscriber', label: 'Subscriber', dotColor: 'bg-purple-500', textColor: 'text-purple-700 dark:text-purple-400' },
+  { key: 'active', label: 'Active', dotColor: 'bg-green-500', textColor: 'text-green-700 dark:text-green-400' },
+  { key: 'engaged', label: 'Engaged', dotColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-400' },
   { key: 'cooling', label: 'Cooling', dotColor: 'bg-yellow-500', textColor: 'text-yellow-700 dark:text-yellow-400' },
   { key: 'at_risk', label: 'At Risk', dotColor: 'bg-orange-500', textColor: 'text-orange-700 dark:text-orange-400' },
-  { key: 'lapsed', label: 'Lapsed', dotColor: 'bg-red-500', textColor: 'text-red-700 dark:text-red-400' },
-  { key: 'never_visited', label: 'Never Visited', dotColor: 'bg-gray-400', textColor: 'text-gray-500 dark:text-gray-400' },
+  { key: 'lapsed_with_credits', label: 'Lapsed (Credits)', dotColor: 'bg-red-500', textColor: 'text-red-700 dark:text-red-400' },
+  { key: 'lapsed', label: 'Lapsed', dotColor: 'bg-gray-500', textColor: 'text-gray-600 dark:text-gray-400' },
+  { key: 'churned', label: 'Churned', dotColor: 'bg-gray-800', textColor: 'text-gray-700 dark:text-gray-500' },
+  { key: 'new_unused', label: 'New (Unused)', dotColor: 'bg-sky-500', textColor: 'text-sky-700 dark:text-sky-400' },
+  { key: 'lead_only', label: 'Lead Only', dotColor: 'bg-slate-400', textColor: 'text-slate-500 dark:text-slate-400' },
 ]
 
 function EngagementBreakdown() {
@@ -484,7 +492,7 @@ function EngagementBreakdown() {
 
       if (!data) return
 
-      const result: EngagementCounts = { engaged: 0, active: 0, cooling: 0, at_risk: 0, lapsed: 0, never_visited: 0 }
+      const result: EngagementCounts = { subscriber: 0, active: 0, engaged: 0, cooling: 0, at_risk: 0, lapsed_with_credits: 0, lapsed: 0, churned: 0, new_unused: 0, lead_only: 0 }
       for (const row of data) {
         const status = (row as any).engagement_status as keyof EngagementCounts | null
         if (status && status in result) {

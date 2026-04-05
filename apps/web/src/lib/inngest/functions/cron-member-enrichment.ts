@@ -21,20 +21,52 @@ import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 // instead of hardcoding a single studio ID. See MED-001.
 const STUDIO_ID = process.env.DEFAULT_STUDIO_ID || DEFAULT_STUDIO_ID
 
-// ─── Engagement Status Thresholds ────────────────────────────
-// Based on days since last visit
-function computeEngagementStatus(lastVisit: string | null): string {
-  if (!lastVisit) return 'never_visited'
+// ─── Engagement Status (10-category system) ─────────────────
+// Statuses: subscriber, active, engaged, cooling, at_risk,
+// lapsed_with_credits, lapsed, churned, new_unused, lead_only
+//
+// This function is used for the daily reconciliation cron.
+// It mirrors the SQL CASE in the recompute-engagement-status step.
+interface MemberEnrichmentInput {
+  lastVisit: string | null
+  creditBalance: number
+  bookingCount: number
+  membershipTier: string | null
+  membershipStatus: string | null
+}
 
-  const daysSinceVisit = Math.floor(
-    (Date.now() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24),
-  )
+function computeEngagementStatus(input: MemberEnrichmentInput): string {
+  const { lastVisit, creditBalance, bookingCount, membershipTier, membershipStatus } = input
 
-  if (daysSinceVisit <= 7) return 'engaged'
-  if (daysSinceVisit <= 21) return 'active'
-  if (daysSinceVisit <= 45) return 'cooling'
-  if (daysSinceVisit <= 90) return 'at_risk'
-  return 'lapsed'
+  // 1. Active unlimited subscriber
+  if (membershipTier === 'unlimited' && membershipStatus === 'active') return 'subscriber'
+
+  if (lastVisit) {
+    const daysSinceVisit = Math.floor(
+      (Date.now() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24),
+    )
+
+    // 2-3. Visited within 30 days
+    if (daysSinceVisit <= 30) {
+      return creditBalance > 0 ? 'active' : 'engaged'
+    }
+    // 4. Cooling: 31-60 days
+    if (daysSinceVisit <= 60) return 'cooling'
+    // 5. At risk: 61-90 days
+    if (daysSinceVisit <= 90) return 'at_risk'
+    // 6. Lapsed with credits: >90 days but has credits
+    if (creditBalance > 0) return 'lapsed_with_credits'
+    // 7. Churned: >365 days, no credits
+    if (daysSinceVisit > 365) return 'churned'
+    // 8. Lapsed: >90 days, no credits
+    return 'lapsed'
+  }
+
+  // 9. Never visited but has credits or bookings
+  if (creditBalance > 0 || bookingCount > 0) return 'new_unused'
+
+  // 10. Profile only
+  return 'lead_only'
 }
 
 // ─── Membership Tier Inference ───────────────────────────────
@@ -134,20 +166,26 @@ export const cronMemberEnrichment = inngest.createFunction(
       return { updated, checked }
     })
 
-    // ── Step 2: Recompute engagement_status ────────────────────
+    // ── Step 2: Recompute engagement_status (10-category) ───────
     const engagementReconciliation = await step.run('recompute-engagement-status', async () => {
       let updated = 0
 
       const { data: members } = await db
         .from('members')
-        .select('id, last_visit, engagement_status')
+        .select('id, last_visit, engagement_status, credit_balance, total_visits, membership_tier, membership_status')
         .eq('studio_id', STUDIO_ID)
 
       if (!members) return { updated: 0 }
 
       for (const member of members) {
-        const expected = computeEngagementStatus(member.last_visit as string | null)
-        const current = (member.engagement_status as string) ?? 'never_visited'
+        const expected = computeEngagementStatus({
+          lastVisit: member.last_visit as string | null,
+          creditBalance: (member.credit_balance as number) ?? 0,
+          bookingCount: (member.total_visits as number) ?? 0,
+          membershipTier: (member.membership_tier as string) ?? null,
+          membershipStatus: (member.membership_status as string) ?? null,
+        })
+        const current = (member.engagement_status as string) ?? 'lead_only'
 
         if (expected !== current) {
           await db

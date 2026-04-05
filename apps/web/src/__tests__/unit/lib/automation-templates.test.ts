@@ -14,8 +14,8 @@ import {
 } from '@/lib/automation-templates'
 
 describe('AUTOMATION_TEMPLATES', () => {
-  it('has exactly 6 templates', () => {
-    expect(AUTOMATION_TEMPLATES).toHaveLength(6)
+  it('has exactly 7 templates', () => {
+    expect(AUTOMATION_TEMPLATES).toHaveLength(7)
   })
 
   it.each(AUTOMATION_TEMPLATES)('$name has all required fields', (template: AutomationTemplate) => {
@@ -68,6 +68,7 @@ describe('AUTOMATION_TEMPLATES', () => {
       'cooling_off',
       'plan_upgrade_candidate',
       'class_type_fan',
+      'lapsed_with_credits',
     ]
     for (const t of AUTOMATION_TEMPLATES) {
       expect(validTypes).toContain(t.trigger_type)

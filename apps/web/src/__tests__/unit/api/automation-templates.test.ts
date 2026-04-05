@@ -190,6 +190,8 @@ describe('AUTOMATION_TEMPLATES structure', () => {
     // New behavioral triggers
     'never_booked', 'classpass_repeat', 'one_and_done',
     'cooling_off', 'plan_upgrade_candidate', 'class_type_fan',
+    // 10-category engagement triggers
+    'lapsed_with_credits',
   ]
 
   const VALID_STEP_TYPES = ['email', 'wait', 'condition', 'sms', 'tag', 'update_field']
@@ -325,7 +327,7 @@ describe('AUTOMATION_TEMPLATES structure', () => {
   })
 
   it('all 6 templates are present', () => {
-    expect(AUTOMATION_TEMPLATES).toHaveLength(6)
+    expect(AUTOMATION_TEMPLATES).toHaveLength(7)
 
     const expectedSlugs = [
       'welcome-never-booked-nudge',
@@ -333,6 +335,7 @@ describe('AUTOMATION_TEMPLATES structure', () => {
       'winback-one-and-done',
       'retention-cooling-off',
       'upsell-plan-upgrade',
+      'lapsed-with-credits-reminder',
       'engagement-class-type-fan',
     ]
 

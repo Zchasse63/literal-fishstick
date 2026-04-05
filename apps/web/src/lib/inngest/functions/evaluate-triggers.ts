@@ -493,6 +493,17 @@ async function findQualifyingMembers(
       return (data ?? []).map((r) => r.profile_id);
     }
 
+    // ── Lapsed with credits: has unused credits, >90 days absent ─
+    case 'lapsed_with_credits': {
+      const { data } = await db
+        .from('members')
+        .select('profile_id')
+        .eq('studio_id', studioId)
+        .eq('engagement_status', 'lapsed_with_credits');
+
+      return (data ?? []).map((r) => r.profile_id);
+    }
+
     // ── Plan upgrade candidate: class-pack / drop-in members with high recent visits ─
     case 'plan_upgrade_candidate': {
       const minMonthlyVisits = (config.min_monthly_visits as number) ?? 8;

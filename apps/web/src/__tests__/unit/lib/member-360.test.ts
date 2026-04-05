@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest'
 // ─────────────────────────────────────────────────────────────
 
 // ─── Types ───────────────────────────────────────────────────
-type EngagementStatus = 'engaged' | 'active' | 'cooling' | 'at_risk' | 'lapsed' | 'never_visited'
+type EngagementStatus = 'subscriber' | 'active' | 'engaged' | 'cooling' | 'at_risk' | 'lapsed_with_credits' | 'lapsed' | 'churned' | 'new_unused' | 'lead_only'
 type BehaviorSegment = 'power_user' | 'classpass_repeat' | 'new_never_booked' | 'one_and_done' | 'regular' | 'inactive' | 'never_booked'
 type AcquisitionChannel = 'classpass' | 'website' | 'direct' | 'unknown'
 
@@ -84,28 +84,51 @@ function computeBehaviorSegment(input: BehaviorInput): BehaviorSegment | null {
   return null
 }
 
-// ─── Helper: Compute Engagement Status ───────────────────────
+// ─── Helper: Compute Engagement Status (10-category) ─────────
 // Replicates the SQL CASE and the cron-member-enrichment.ts logic.
-// Thresholds (days since last visit):
-//   engaged:       0–7
-//   active:        8–21
-//   cooling:       22–45
-//   at_risk:       46–90
-//   lapsed:        >90
-//   never_visited: null last_visit
+// 10 statuses: subscriber, active, engaged, cooling, at_risk,
+// lapsed_with_credits, lapsed, churned, new_unused, lead_only
 
-function computeEngagementStatus(lastVisit: string | null): EngagementStatus {
-  if (!lastVisit) return 'never_visited'
+interface EngagementInput {
+  lastVisit: string | null
+  creditBalance: number
+  bookingCount: number
+  membershipTier: string | null
+  membershipStatus: string | null
+}
 
-  const daysSinceVisit = Math.floor(
-    (Date.now() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24),
-  )
+function computeEngagementStatus(input: EngagementInput): EngagementStatus {
+  const { lastVisit, creditBalance, bookingCount, membershipTier, membershipStatus } = input
 
-  if (daysSinceVisit <= 7) return 'engaged'
-  if (daysSinceVisit <= 21) return 'active'
-  if (daysSinceVisit <= 45) return 'cooling'
-  if (daysSinceVisit <= 90) return 'at_risk'
-  return 'lapsed'
+  // 1. Active unlimited subscriber
+  if (membershipTier === 'unlimited' && membershipStatus === 'active') return 'subscriber'
+
+  if (lastVisit) {
+    const daysSinceVisit = Math.floor(
+      (Date.now() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24),
+    )
+
+    // 2-3. Visited within 30 days
+    if (daysSinceVisit <= 30) {
+      return creditBalance > 0 ? 'active' : 'engaged'
+    }
+    // 4. Cooling: 31-60 days
+    if (daysSinceVisit <= 60) return 'cooling'
+    // 5. At risk: 61-90 days
+    if (daysSinceVisit <= 90) return 'at_risk'
+    // 6. Lapsed with credits: >90 days but has credits
+    if (creditBalance > 0) return 'lapsed_with_credits'
+    // 7. Churned: >365 days, no credits
+    if (daysSinceVisit > 365) return 'churned'
+    // 8. Lapsed: >90 days, no credits
+    return 'lapsed'
+  }
+
+  // 9. Never visited but has credits or bookings
+  if (creditBalance > 0 || bookingCount > 0) return 'new_unused'
+
+  // 10. Profile only
+  return 'lead_only'
 }
 
 // ─── Helper: Derive Acquisition Channel ──────────────────────
@@ -360,62 +383,162 @@ describe('member_360 behavior segment logic', () => {
   })
 })
 
-// ─── Engagement Status ─────────────────────────────────────
+// ─── Engagement Status (10-category) ──────────────────────
 
-describe('member_360 engagement status logic', () => {
-  it('engaged: last visit within 7 days', () => {
-    expect(computeEngagementStatus(daysAgo(0))).toBe('engaged')
-    expect(computeEngagementStatus(daysAgo(3))).toBe('engaged')
-    expect(computeEngagementStatus(daysAgo(7))).toBe('engaged')
+// Helper to build engagement input with defaults
+function engInput(overrides: Partial<EngagementInput> = {}): EngagementInput {
+  return {
+    lastVisit: null,
+    creditBalance: 0,
+    bookingCount: 0,
+    membershipTier: null,
+    membershipStatus: null,
+    ...overrides,
+  }
+}
+
+describe('member_360 engagement status logic (10-category)', () => {
+  // ── subscriber ──
+  it('subscriber: unlimited membership with active status', () => {
+    expect(computeEngagementStatus(engInput({
+      membershipTier: 'unlimited',
+      membershipStatus: 'active',
+      lastVisit: daysAgo(5),
+    }))).toBe('subscriber')
   })
 
-  it('active: last visit 8-21 days ago', () => {
-    expect(computeEngagementStatus(daysAgo(8))).toBe('active')
-    expect(computeEngagementStatus(daysAgo(14))).toBe('active')
-    expect(computeEngagementStatus(daysAgo(21))).toBe('active')
+  it('subscriber takes priority even with old last visit', () => {
+    expect(computeEngagementStatus(engInput({
+      membershipTier: 'unlimited',
+      membershipStatus: 'active',
+      lastVisit: daysAgo(100),
+    }))).toBe('subscriber')
   })
 
-  it('cooling: last visit 22-45 days ago', () => {
-    expect(computeEngagementStatus(daysAgo(22))).toBe('cooling')
-    expect(computeEngagementStatus(daysAgo(30))).toBe('cooling')
-    expect(computeEngagementStatus(daysAgo(45))).toBe('cooling')
+  it('non-active unlimited is NOT subscriber', () => {
+    expect(computeEngagementStatus(engInput({
+      membershipTier: 'unlimited',
+      membershipStatus: 'paused',
+      lastVisit: daysAgo(5),
+    }))).not.toBe('subscriber')
   })
 
-  it('at_risk: last visit 46-90 days ago', () => {
-    expect(computeEngagementStatus(daysAgo(46))).toBe('at_risk')
-    expect(computeEngagementStatus(daysAgo(60))).toBe('at_risk')
-    expect(computeEngagementStatus(daysAgo(90))).toBe('at_risk')
+  // ── active (has credits, visited within 30 days) ──
+  it('active: has credits and visited within 30 days', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(5),
+      creditBalance: 3,
+    }))).toBe('active')
   })
 
-  it('lapsed: last visit >90 days ago', () => {
-    expect(computeEngagementStatus(daysAgo(91))).toBe('lapsed')
-    expect(computeEngagementStatus(daysAgo(180))).toBe('lapsed')
-    expect(computeEngagementStatus(daysAgo(365))).toBe('lapsed')
+  it('active: has credits and visited exactly 30 days ago', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(30),
+      creditBalance: 1,
+    }))).toBe('active')
   })
 
-  it('never_visited: null last_visit', () => {
-    expect(computeEngagementStatus(null)).toBe('never_visited')
+  // ── engaged (no credits, visited within 30 days) ──
+  it('engaged: no credits but visited recently', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(3),
+      creditBalance: 0,
+    }))).toBe('engaged')
   })
 
-  // Boundary tests
-  it('boundary: 7 days is engaged, 8 days is active', () => {
-    expect(computeEngagementStatus(daysAgo(7))).toBe('engaged')
-    expect(computeEngagementStatus(daysAgo(8))).toBe('active')
+  it('engaged: visited today, no credits', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(0),
+      creditBalance: 0,
+    }))).toBe('engaged')
   })
 
-  it('boundary: 21 days is active, 22 days is cooling', () => {
-    expect(computeEngagementStatus(daysAgo(21))).toBe('active')
-    expect(computeEngagementStatus(daysAgo(22))).toBe('cooling')
+  // ── cooling (31-60 days) ──
+  it('cooling: last visit 31-60 days ago', () => {
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(35) }))).toBe('cooling')
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(60) }))).toBe('cooling')
   })
 
-  it('boundary: 45 days is cooling, 46 days is at_risk', () => {
-    expect(computeEngagementStatus(daysAgo(45))).toBe('cooling')
-    expect(computeEngagementStatus(daysAgo(46))).toBe('at_risk')
+  it('boundary: 30 days is active/engaged, 31 is cooling', () => {
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(30), creditBalance: 1 }))).toBe('active')
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(31) }))).toBe('cooling')
   })
 
-  it('boundary: 90 days is at_risk, 91 days is lapsed', () => {
-    expect(computeEngagementStatus(daysAgo(90))).toBe('at_risk')
-    expect(computeEngagementStatus(daysAgo(91))).toBe('lapsed')
+  // ── at_risk (61-90 days) ──
+  it('at_risk: last visit 61-90 days ago', () => {
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(65) }))).toBe('at_risk')
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(90) }))).toBe('at_risk')
+  })
+
+  it('boundary: 60 days is cooling, 61 is at_risk', () => {
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(60) }))).toBe('cooling')
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(61) }))).toBe('at_risk')
+  })
+
+  // ── lapsed_with_credits (>90 days, has credits) ──
+  it('lapsed_with_credits: >90 days absent but has credits', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(120),
+      creditBalance: 5,
+    }))).toBe('lapsed_with_credits')
+  })
+
+  // ── churned (>365 days, no credits) ──
+  it('churned: >365 days, no credits', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(400),
+      creditBalance: 0,
+    }))).toBe('churned')
+  })
+
+  it('boundary: 365 days with no credits is lapsed, 366 is churned', () => {
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(365) }))).toBe('lapsed')
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(366) }))).toBe('churned')
+  })
+
+  // ── lapsed (>90 days, no credits, <=365 days) ──
+  it('lapsed: >90 days, no credits', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(100),
+      creditBalance: 0,
+    }))).toBe('lapsed')
+    expect(computeEngagementStatus(engInput({
+      lastVisit: daysAgo(200),
+      creditBalance: 0,
+    }))).toBe('lapsed')
+  })
+
+  it('boundary: 90 days is at_risk, 91 is lapsed (no credits)', () => {
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(90) }))).toBe('at_risk')
+    expect(computeEngagementStatus(engInput({ lastVisit: daysAgo(91) }))).toBe('lapsed')
+  })
+
+  // ── new_unused (never visited, has credits or bookings) ──
+  it('new_unused: never visited but has credits', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: null,
+      creditBalance: 5,
+    }))).toBe('new_unused')
+  })
+
+  it('new_unused: never visited but has bookings', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: null,
+      bookingCount: 1,
+    }))).toBe('new_unused')
+  })
+
+  // ── lead_only (profile only, no purchases, no visits) ──
+  it('lead_only: no visits, no credits, no bookings', () => {
+    expect(computeEngagementStatus(engInput({
+      lastVisit: null,
+      creditBalance: 0,
+      bookingCount: 0,
+    }))).toBe('lead_only')
+  })
+
+  it('lead_only: completely empty profile', () => {
+    expect(computeEngagementStatus(engInput())).toBe('lead_only')
   })
 })
 

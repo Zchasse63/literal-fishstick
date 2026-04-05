@@ -48,7 +48,7 @@ export interface MemberProfile {
   guidedSessions: number
 }
 
-export type EngagementStatus = 'engaged' | 'active' | 'cooling' | 'at_risk' | 'lapsed' | 'never_visited'
+export type EngagementStatus = 'subscriber' | 'active' | 'engaged' | 'cooling' | 'at_risk' | 'lapsed_with_credits' | 'lapsed' | 'churned' | 'new_unused' | 'lead_only'
 export type BehaviorSegment = 'power_user' | 'classpass_repeat' | 'new_never_booked' | 'one_and_done' | 'regular'
 export type AcquisitionChannel = 'classpass' | 'website' | 'direct' | 'mobile_app'
 
@@ -156,13 +156,17 @@ function acquisitionBadge(channel: AcquisitionChannel | null) {
 
 function engagementConfig(status: EngagementStatus | null) {
   if (!status) return null
-  const config: Record<EngagementStatus, { label: string; dotColor: string }> = {
-    engaged: { label: 'Engaged', dotColor: 'bg-emerald-500' },
-    active: { label: 'Active', dotColor: 'bg-blue-500' },
-    cooling: { label: 'Cooling Off', dotColor: 'bg-yellow-500' },
-    at_risk: { label: 'At Risk', dotColor: 'bg-orange-500' },
-    lapsed: { label: 'Lapsed', dotColor: 'bg-red-500' },
-    never_visited: { label: 'Never Visited', dotColor: 'bg-gray-400' },
+  const config: Record<EngagementStatus, { label: string; dotColor: string; description: string }> = {
+    subscriber: { label: 'Subscriber', dotColor: 'bg-purple-500', description: 'Active recurring membership' },
+    active: { label: 'Active', dotColor: 'bg-green-500', description: 'Has credits, visited recently' },
+    engaged: { label: 'Engaged', dotColor: 'bg-blue-500', description: 'Visiting regularly' },
+    cooling: { label: 'Cooling Off', dotColor: 'bg-yellow-500', description: 'Attendance declining' },
+    at_risk: { label: 'At Risk', dotColor: 'bg-orange-500', description: '61-90 days since last visit' },
+    lapsed_with_credits: { label: 'Lapsed (Has Credits)', dotColor: 'bg-red-500', description: 'Has unused credits, >90 days absent' },
+    lapsed: { label: 'Lapsed', dotColor: 'bg-gray-500', description: 'No credits, >90 days absent' },
+    churned: { label: 'Churned', dotColor: 'bg-gray-800', description: 'No activity in 365+ days' },
+    new_unused: { label: 'New (Unused)', dotColor: 'bg-sky-500', description: 'Has credits but never attended' },
+    lead_only: { label: 'Lead Only', dotColor: 'bg-slate-400', description: 'Profile only, no purchases' },
   }
   return config[status] || null
 }

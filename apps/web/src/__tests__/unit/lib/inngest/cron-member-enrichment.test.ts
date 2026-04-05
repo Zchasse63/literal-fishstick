@@ -250,12 +250,12 @@ describe('cron-member-enrichment', () => {
       enqueue([]) // all members
     }
 
-    it('sets engaged for visit within 7 days', async () => {
+    it('sets engaged for visit within 30 days, no credits', async () => {
       skipVisitReconciliation()
 
       const recentVisit = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
       enqueue([
-        { id: 'member-1', last_visit: recentVisit, engagement_status: 'cooling' },
+        { id: 'member-1', last_visit: recentVisit, engagement_status: 'cooling', credit_balance: 0, total_visits: 5, membership_tier: null, membership_status: null },
       ])
       enqueue(null) // update
 
@@ -267,12 +267,12 @@ describe('cron-member-enrichment', () => {
       expect(result.engagement_reconciliation.updated).toBe(1)
     })
 
-    it('sets lapsed for visit >90 days ago', async () => {
+    it('sets lapsed for visit >90 days ago, no credits', async () => {
       skipVisitReconciliation()
 
       const oldVisit = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
       enqueue([
-        { id: 'member-1', last_visit: oldVisit, engagement_status: 'active' },
+        { id: 'member-1', last_visit: oldVisit, engagement_status: 'active', credit_balance: 0, total_visits: 5, membership_tier: null, membership_status: null },
       ])
       enqueue(null) // update
 
@@ -284,11 +284,11 @@ describe('cron-member-enrichment', () => {
       expect(result.engagement_reconciliation.updated).toBe(1)
     })
 
-    it('sets never_visited for null last_visit', async () => {
+    it('sets lead_only for null last_visit, no credits or bookings', async () => {
       skipVisitReconciliation()
 
       enqueue([
-        { id: 'member-1', last_visit: null, engagement_status: 'active' },
+        { id: 'member-1', last_visit: null, engagement_status: 'active', credit_balance: 0, total_visits: 0, membership_tier: null, membership_status: null },
       ])
       enqueue(null) // update
 
@@ -305,7 +305,7 @@ describe('cron-member-enrichment', () => {
 
       const recentVisit = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
       enqueue([
-        { id: 'member-1', last_visit: recentVisit, engagement_status: 'engaged' },
+        { id: 'member-1', last_visit: recentVisit, engagement_status: 'engaged', credit_balance: 0, total_visits: 5, membership_tier: null, membership_status: null },
       ])
 
       enqueue([])

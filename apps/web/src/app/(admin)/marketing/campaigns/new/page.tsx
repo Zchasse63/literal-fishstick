@@ -12,6 +12,9 @@ import {
   Calendar,
   Check,
   Clock,
+  CreditCard,
+  Crown,
+  Gift,
   Loader2,
   Mail,
   Monitor,
@@ -24,6 +27,7 @@ import {
   Split,
   Thermometer,
   Type,
+  User,
   UserMinus,
   Users,
   UserX,
@@ -44,13 +48,18 @@ const STUDIO_ID = DEFAULT_STUDIO_ID
 
 // ─── Behavior-based segments from member_360 ────────────────
 const BEHAVIOR_SEGMENTS = [
+  { id: 'subscriber', name: 'Active Subscribers', description: 'Unlimited monthly members', icon: Crown, color: 'purple' },
   { id: 'classpass_repeat', name: 'ClassPass Repeat Visitors', description: 'ClassPass users who visited 2+ times — conversion targets', icon: Repeat, color: 'blue' },
   { id: 'new_never_booked', name: 'Never Booked', description: 'Signed up but never booked a class', icon: UserX, color: 'red' },
+  { id: 'new_unused', name: 'New & Unused', description: 'Bought credits but never attended', icon: Gift, color: 'sky' },
   { id: 'one_and_done', name: 'One & Done', description: 'Visited once but never returned', icon: AlertCircle, color: 'orange' },
   { id: 'power_user', name: 'Power Users', description: '8+ visits per month — your most loyal members', icon: Zap, color: 'purple' },
   { id: 'cooling_off', name: 'Cooling Off', description: 'Active members showing declining attendance', icon: Thermometer, color: 'yellow' },
-  { id: 'at_risk', name: 'At Risk', description: 'No visit in 45-90 days — need re-engagement', icon: AlertTriangle, color: 'red' },
-  { id: 'lapsed', name: 'Lapsed Members', description: 'No visit in 90+ days', icon: UserMinus, color: 'gray' },
+  { id: 'at_risk', name: 'At Risk', description: 'No visit in 61-90 days — need re-engagement', icon: AlertTriangle, color: 'orange' },
+  { id: 'lapsed_with_credits', name: 'Lapsed with Credits', description: 'Has unused credits — your easiest re-engagement targets', icon: CreditCard, color: 'red' },
+  { id: 'lapsed', name: 'Lapsed Members', description: 'No visit in 90+ days, no credits', icon: UserMinus, color: 'gray' },
+  { id: 'churned', name: 'Churned (365+ days)', description: 'No activity in over a year', icon: UserX, color: 'gray' },
+  { id: 'lead_only', name: 'Lead Only', description: 'Profile exists but never purchased', icon: User, color: 'slate' },
 ] as const
 
 const SEGMENT_COLORS: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
@@ -60,6 +69,8 @@ const SEGMENT_COLORS: Record<string, { bg: string; border: string; text: string;
   purple: { bg: 'bg-purple-50 dark:bg-purple-950/30', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-300', iconBg: 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400' },
   yellow: { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-300', iconBg: 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400' },
   gray: { bg: 'bg-gray-50 dark:bg-gray-900/50', border: 'border-gray-200 dark:border-gray-700', text: 'text-gray-700 dark:text-gray-300', iconBg: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+  sky: { bg: 'bg-sky-50 dark:bg-sky-950/30', border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-700 dark:text-sky-300', iconBg: 'bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400' },
+  slate: { bg: 'bg-slate-50 dark:bg-slate-900/50', border: 'border-slate-200 dark:border-slate-700', text: 'text-slate-700 dark:text-slate-300', iconBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' },
 }
 
 // ─── Page ───────────────────────────────────────────────────

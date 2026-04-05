@@ -3,7 +3,7 @@
 export type FilterTab = 'All' | 'Active' | 'Paused' | 'At Risk' | 'New'
 export type ProfileTab = 'Overview' | 'History' | 'Financials' | 'Communications'
 
-export type EngagementStatus = 'engaged' | 'active' | 'cooling' | 'at_risk' | 'lapsed' | 'never_visited'
+export type EngagementStatus = 'subscriber' | 'active' | 'engaged' | 'cooling' | 'at_risk' | 'lapsed_with_credits' | 'lapsed' | 'churned' | 'new_unused' | 'lead_only'
 export type BehaviorSegment = 'power_user' | 'classpass_repeat' | 'new_never_booked' | 'one_and_done' | 'regular'
 export type AcquisitionChannel = 'classpass' | 'website' | 'direct' | 'mobile_app'
 
@@ -87,12 +87,16 @@ export function membershipBadgeColor(type: Member['membershipType']) {
 export function engagementDotColor(status: EngagementStatus | null | undefined): string {
   if (!status) return 'bg-gray-300'
   const colors: Record<EngagementStatus, string> = {
-    engaged: 'bg-emerald-500',
-    active: 'bg-blue-500',
+    subscriber: 'bg-purple-500',
+    active: 'bg-green-500',
+    engaged: 'bg-blue-500',
     cooling: 'bg-yellow-500',
     at_risk: 'bg-orange-500',
-    lapsed: 'bg-red-500',
-    never_visited: 'bg-gray-400',
+    lapsed_with_credits: 'bg-red-500',
+    lapsed: 'bg-gray-500',
+    churned: 'bg-gray-800',
+    new_unused: 'bg-sky-500',
+    lead_only: 'bg-slate-400',
   }
   return colors[status] || 'bg-gray-300'
 }
@@ -100,12 +104,16 @@ export function engagementDotColor(status: EngagementStatus | null | undefined):
 export function engagementLabel(status: EngagementStatus | null | undefined): string {
   if (!status) return ''
   const labels: Record<EngagementStatus, string> = {
-    engaged: 'Engaged',
+    subscriber: 'Subscriber',
     active: 'Active',
+    engaged: 'Engaged',
     cooling: 'Cooling Off',
     at_risk: 'At Risk',
+    lapsed_with_credits: 'Lapsed (Has Credits)',
     lapsed: 'Lapsed',
-    never_visited: 'Never Visited',
+    churned: 'Churned',
+    new_unused: 'New (Unused)',
+    lead_only: 'Lead Only',
   }
   return labels[status] || ''
 }

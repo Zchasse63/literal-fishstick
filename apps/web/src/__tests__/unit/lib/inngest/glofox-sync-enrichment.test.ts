@@ -412,8 +412,9 @@ describe('glofox-sync-hourly enrichment', () => {
       expect(newLastVisit).toBe('2026-04-01T10:00:00.000Z')
     })
 
-    it('sets engagement_status to engaged', () => {
-      // After incrementing visits, the code always sets engagement_status='engaged'
+    it('sets engagement_status to engaged after sync check-in', () => {
+      // After incrementing visits via Glofox sync, sets engagement_status='engaged' as default.
+      // The daily cron reconciles to the correct 10-category status (active, subscriber, etc.).
       const updatePayload = {
         total_visits: 6,
         last_visit: '2026-03-15T14:00:00.000Z',
