@@ -16,6 +16,7 @@ import {
   XCircle,
   Calendar,
   Users,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -30,6 +31,9 @@ import {
   type ClassData,
   type ActivityItem,
 } from '@/hooks/use-command-center-data'
+import { useKpiData } from '@/hooks/use-kpi-data'
+import { HeroMetricCard } from './_components/HeroMetricCard'
+import { WeeklyReviewBar } from './_components/WeeklyReviewBar'
 import { fadeInUp } from '@/lib/motion'
 
 // ─── Icon map for AI insights ───────────────────────────────
@@ -79,15 +83,26 @@ function CommandCenterSkeleton() {
         </div>
       </div>
 
-      {/* Metrics strip skeleton */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {[1, 2, 3, 4, 5].map((i) => (
+      {/* Hero metrics skeleton */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
           <div key={i} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
-            <Skeleton className="h-3 w-20 mb-3" />
-            <Skeleton className="h-8 w-16 mb-2" />
-            <Skeleton className="h-3 w-24" />
+            <div className="flex items-center gap-2 mb-3">
+              <Skeleton className="w-4 h-4 rounded" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <Skeleton className="h-9 w-24 mb-2" />
+            <Skeleton className="h-3 w-28" />
           </div>
         ))}
+      </div>
+
+      {/* Weekly review skeleton */}
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-4" />
+        </div>
       </div>
 
       {/* Class Status + Timeline skeleton */}
@@ -567,6 +582,8 @@ export default function CommandCenter() {
     isLoading,
   } = useCommandCenterData()
 
+  const kpiData = useKpiData()
+
   if (isLoading) {
     return <CommandCenterSkeleton />
   }
@@ -576,40 +593,44 @@ export default function CommandCenter() {
       {/* AI Briefing */}
       <AIBriefingCard insights={aiInsights} greeting={greeting} firstName={firstName} />
 
-      {/* Metrics Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <MetricCard
-          label="Bookings Today"
-          value={String(bookingsToday)}
-          trend={bookingsToday > 0 ? `${bookingsToday} total` : 'No bookings'}
-          trendDirection={bookingsToday > 0 ? 'up' : 'neutral'}
-        />
-        <MetricCard
-          label="Current Session"
-          value={`${currentSessionBooked}/${currentSessionCapacity}`}
-          trend={currentSessionLive ? 'Live' : 'No active session'}
-          trendDirection={currentSessionLive ? 'up' : 'neutral'}
-          subtitle={currentSessionLive ? 'In progress' : undefined}
-        />
-        <MetricCard
+      {/* Hero Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <HeroMetricCard
           label="Revenue Today"
-          value={formatCurrency(revenueToday)}
-          trend={revenueToday > 0 ? 'Today' : 'No revenue yet'}
-          trendDirection={revenueToday > 0 ? 'up' : 'neutral'}
+          value={kpiData.hero?.revenue.value ?? formatCurrency(revenueToday)}
+          delta={kpiData.hero?.revenue.delta ?? 0}
+          deltaLabel={kpiData.hero?.revenue.deltaLabel}
+          icon={DollarSign}
+          isLoading={kpiData.isLoading}
         />
-        <MetricCard
-          label="Walk-Ins"
-          value={String(walkInsToday)}
-          trend={walkInsToday > 0 ? `${walkInsToday} today` : 'None today'}
-          trendDirection={walkInsToday > 0 ? 'up' : 'neutral'}
+        <HeroMetricCard
+          label="Attendance Today"
+          value={kpiData.hero?.attendance.value ?? String(bookingsToday)}
+          delta={kpiData.hero?.attendance.delta ?? 0}
+          deltaLabel={kpiData.hero?.attendance.deltaLabel}
+          icon={Users}
+          isLoading={kpiData.isLoading}
         />
-        <MetricCard
-          label="No-Shows"
-          value={String(noShowsToday)}
-          trend={noShowsToday === 0 ? 'None' : `${noShowsToday} today`}
-          trendDirection={noShowsToday === 0 ? 'down' : 'up'}
+        <HeroMetricCard
+          label="Fill Rate"
+          value={kpiData.hero?.fillRate.value ?? '0%'}
+          delta={kpiData.hero?.fillRate.delta ?? 0}
+          deltaLabel={kpiData.hero?.fillRate.deltaLabel}
+          icon={BarChart3}
+          isLoading={kpiData.isLoading}
+        />
+        <HeroMetricCard
+          label="New Faces"
+          value={kpiData.hero?.newFaces.value ?? '0'}
+          delta={kpiData.hero?.newFaces.delta ?? 0}
+          deltaLabel={kpiData.hero?.newFaces.deltaLabel}
+          icon={UserPlus}
+          isLoading={kpiData.isLoading}
         />
       </div>
+
+      {/* Weekly Review */}
+      <WeeklyReviewBar week={kpiData.week} isLoading={kpiData.isLoading} />
 
       {/* Engagement Breakdown */}
       <EngagementBreakdown />

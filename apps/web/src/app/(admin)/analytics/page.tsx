@@ -950,6 +950,61 @@ export default function AnalyticsPage() {
             )}
           </motion.div>
         </div>
+
+        {/* ─── Quick Access ────────────────────────────── */}
+        <motion.div
+          {...fadeInUp}
+          transition={{ ...fadeInUp.transition, delay: 0.35 }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <LayoutDashboard className="w-4 h-4 text-indigo-500" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+              Quick Access
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link
+              href="/analytics/kpi"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+            >
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center mb-3 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 transition-colors">
+                <TrendingUp className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">KPI Deep Dive</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Revenue, attendance, and member trends with period comparison</p>
+            </Link>
+            <Link
+              href="/analytics/dashboards"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+            >
+              <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950 flex items-center justify-center mb-3 group-hover:bg-violet-100 dark:group-hover:bg-violet-900 transition-colors">
+                <LayoutDashboard className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Dashboards</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Executive, growth, and operations dashboards</p>
+            </Link>
+            <Link
+              href="/analytics/trainers"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+            >
+              <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center mb-3 group-hover:bg-teal-100 dark:group-hover:bg-teal-900 transition-colors">
+                <Trophy className="w-4.5 h-4.5 text-teal-600 dark:text-teal-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Trainer Performance</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Individual metrics, bonus rates, and rankings</p>
+            </Link>
+            <Link
+              href="/analytics/reports"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+            >
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center mb-3 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900 transition-colors">
+                <PackageOpen className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">Reports</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">Scheduled and on-demand report library</p>
+            </Link>
+          </div>
+        </motion.div>
       </div>
     </div>
   )
