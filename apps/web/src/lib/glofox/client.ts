@@ -265,10 +265,10 @@ export class GlofoxClient {
 
   /**
    * Register a new member in Glofox.
-   * POST 2.0/members
+   * POST 2.0/register
    */
   async registerMember(data: GlofoxRegisterMemberRequest): Promise<GlofoxRegisterMemberResponse> {
-    return this.request<GlofoxRegisterMemberResponse>('POST', '2.0/members', { body: data })
+    return this.request<GlofoxRegisterMemberResponse>('POST', '2.0/register', { body: data })
   }
 
   /**
@@ -281,22 +281,28 @@ export class GlofoxClient {
 
   /**
    * Search members by email for deduplication.
-   * GET 2.0/members with email filter
+   * GET 2.1/branches/{branchId}/users?filters[email]=...
+   * Emails in Glofox are unique per studio. Requires exact match.
    */
-  async searchMembersByEmail(email: string): Promise<GlofoxSearchMembersResponse> {
-    return this.request<GlofoxSearchMembersResponse>('GET', '2.0/members', {
-      params: { email },
-    })
+  async searchMembersByEmail(email: string, branchId?: string): Promise<GlofoxSearchMembersResponse> {
+    const branch = branchId ?? this.branchId
+    return this.request<GlofoxSearchMembersResponse>(
+      'GET',
+      `2.1/branches/${branch}/users`,
+      { params: { 'filters[email]': email } },
+    )
   }
 
   /**
-   * Request a password reset for a member.
-   * POST 2.0/members/{userId}/password-reset
+   * Request a password reset link for a member.
+   * POST 2.0/reset
+   * Sends a reset email from no-reply@glofox.com.
    */
-  async requestPasswordReset(userId: string): Promise<{ status?: string; message?: string }> {
+  async requestPasswordReset(email: string): Promise<{ status?: string; message?: string }> {
     return this.request<{ status?: string; message?: string }>(
       'POST',
-      `2.0/members/${userId}/password-reset`,
+      '2.0/reset',
+      { body: { email } },
     )
   }
 
@@ -407,20 +413,44 @@ export class GlofoxClient {
 
   // ─── Programs ──────────────────────────────────────────────
 
-  async getPrograms(): Promise<GlofoxProgram[]> {
-    return this.fetchAll<GlofoxProgram>('2.0/programs')
+  /**
+   * Search programs for a location.
+   * POST v3.0/locations/{locationId}/search-programs
+   */
+  async getPrograms(locationId?: string): Promise<GlofoxProgram[]> {
+    const locId = locationId ?? this.branchId
+    const response = await this.request<{ data?: GlofoxProgram[] }>(
+      'POST',
+      `v3.0/locations/${locId}/search-programs`,
+      { body: {} },
+    )
+    return response.data ?? []
   }
 
   // ─── Facilities ───────────────────────────────────────────
 
-  async getFacilities(): Promise<GlofoxFacility[]> {
-    return this.fetchAll<GlofoxFacility>('2.0/facilities')
+  /**
+   * Get facilities for a location.
+   * GET 3.0/locations/{locationId}/facilities
+   */
+  async getFacilities(locationId?: string): Promise<GlofoxFacility[]> {
+    const locId = locationId ?? this.branchId
+    return this.fetchAll<GlofoxFacility>(`3.0/locations/${locId}/facilities`)
   }
 
   // ─── Branches ─────────────────────────────────────────────
 
+  /**
+   * Retrieve locations/branches for the integrator's allowed namespaces.
+   * POST v3.0/locations/retrieve
+   */
   async getBranches(): Promise<GlofoxBranch[]> {
-    return this.fetchAll<GlofoxBranch>('2.0/branches')
+    const response = await this.request<{ data?: GlofoxBranch[] }>(
+      'POST',
+      'v3.0/locations/retrieve',
+      { body: {} },
+    )
+    return response.data ?? []
   }
 
   // ─── Categories ───────────────────────────────────────────
@@ -441,8 +471,13 @@ export class GlofoxClient {
 
   // ─── Courses ──────────────────────────────────────────────
 
-  async getCourses(): Promise<GlofoxCourse[]> {
-    return this.fetchAll<GlofoxCourse>('2.0/courses')
+  /**
+   * Get courses for a location.
+   * GET 3.0/locations/{locationId}/courses
+   */
+  async getCourses(locationId?: string): Promise<GlofoxCourse[]> {
+    const locId = locationId ?? this.branchId
+    return this.fetchAll<GlofoxCourse>(`3.0/locations/${locId}/courses`)
   }
 
   // ─── Events / Classes ──────────────────────────────────────
@@ -494,17 +529,35 @@ export class GlofoxClient {
     startDate: string,
     endDate: string,
   ): Promise<GlofoxTransaction[]> {
-    const response = await this.request<{ data: GlofoxTransaction[] }>('POST', 'Analytics/report', {
+    // Analytics/report requires:
+    // - model: "TransactionsList" (required)
+    // - start/end: UNIX timestamp STRINGS (not ISO dates)
+    // - secondStart/secondEnd: integer UNIX timestamps (for comparison range)
+    // - Response wraps in TransactionsList.details[] (not data[])
+    // - amount is in DOLLARS not cents
+    const startUnix = String(isoToUnix(startDate))
+    const endUnix = String(isoToUnix(endDate))
+
+    const response = await this.request<{
+      TransactionsList?: { details?: GlofoxTransaction[] }
+      data?: GlofoxTransaction[]
+    }>('POST', 'Analytics/report', {
       body: {
+        model: 'TransactionsList',
         branch_id: branchId,
         namespace,
-        start: startDate,
-        end: endDate,
+        start: startUnix,
+        end: endUnix,
         secondStart: isoToUnix(startDate),
         secondEnd: isoToUnix(endDate),
+        filter: {
+          ReportByMembers: false,
+          CompareToRanges: false,
+        },
       },
     })
-    return response.data ?? []
+    // Response is TransactionsList.details[], with fallback to data[] for safety
+    return response.TransactionsList?.details ?? response.data ?? []
   }
 
   // ─── Memberships ───────────────────────────────────────────
@@ -515,40 +568,70 @@ export class GlofoxClient {
 
   /**
    * Purchase a membership for a member in Glofox.
-   * POST 2.0/memberships/purchase
+   * POST 2.2/branches/{branchId}/users/{userId}/memberships/{membershipId}/plans/{planCode}/purchase
    */
   async purchaseMembership(
     data: GlofoxPurchaseMembershipRequest,
   ): Promise<GlofoxPurchaseMembershipResponse> {
+    const branchId = (data as any).branch_id ?? this.branchId
+    const userId = (data as any).user_id
+    const membershipId = (data as any).membership_id
+    const planCode = (data as any).plan_code
     return this.request<GlofoxPurchaseMembershipResponse>(
       'POST',
-      '2.0/memberships/purchase',
+      `2.2/branches/${branchId}/users/${userId}/memberships/${membershipId}/plans/${planCode}/purchase`,
       { body: data },
     )
   }
 
   /**
    * Cancel a member's membership in Glofox.
-   * POST 2.0/memberships/cancel
+   * POST v3.0/memberships/{userMembershipId}/cancel
+   * Requires x-glofox-impersonated-member-id header (set via data.user_id).
    */
   async cancelMembership(
     data: GlofoxCancelMembershipRequest,
   ): Promise<GlofoxCancelMembershipResponse> {
-    return this.request<GlofoxCancelMembershipResponse>(
-      'POST',
-      '2.0/memberships/cancel',
-      { body: data },
-    )
+    const userMembershipId = (data as any).user_membership_id ?? (data as any).membership_id
+    const memberId = (data as any).user_id
+    // The v3.0 cancel endpoint requires x-glofox-impersonated-member-id header
+    // We pass the cancellation body (when, local_date, reason) directly
+    const body: Record<string, unknown> = {}
+    if ((data as any).when) body.when = (data as any).when
+    if ((data as any).local_date) body.local_date = (data as any).local_date
+    if ((data as any).reason) body.reason = (data as any).reason
+
+    // Override headers for this request to include impersonation
+    const url = `${this.baseUrl}v3.0/memberships/${userMembershipId}/cancel`
+    const headers = {
+      ...this.headers,
+      'x-glofox-impersonated-member-id': memberId ?? '',
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'unknown')
+      throw new Error(`Glofox API error: ${response.status} ${response.statusText} — ${errorBody}`)
+    }
+
+    return (await response.json()) as GlofoxCancelMembershipResponse
   }
 
   /**
-   * Get payment methods for a member.
-   * GET 2.0/members/{userId}/payment-methods
+   * Get payment methods available for a branch.
+   * GET 2.1/branches/{branchId}/payment-methods
    */
-  async getPaymentMethods(userId: string): Promise<GlofoxPaymentMethod[]> {
+  async getPaymentMethods(branchId?: string): Promise<GlofoxPaymentMethod[]> {
+    const branch = branchId ?? this.branchId
     const response = await this.request<{ data?: GlofoxPaymentMethod[] }>(
       'GET',
-      `2.0/members/${userId}/payment-methods`,
+      `2.1/branches/${branch}/payment-methods`,
+      { params: { includes: 'provider,iframe' } },
     )
     return response.data ?? []
   }
@@ -635,45 +718,70 @@ export class GlofoxClient {
 
   // ─── CRM / Interactions (Phase 7) ─────────────────────────
 
-  async getInteractions(userId: string): Promise<GlofoxInteraction[]> {
+  /**
+   * Get interactions for a user in a branch.
+   * GET 2.1/branches/{branchId}/leads/{userId}/interactions?page=1
+   */
+  async getInteractions(userId: string, branchId?: string, page = 1): Promise<GlofoxInteraction[]> {
+    const branch = branchId ?? this.branchId
     const response = await this.request<{ data?: GlofoxInteraction[] }>(
       'GET',
-      `2.0/members/${userId}/interactions`,
+      `2.1/branches/${branch}/leads/${userId}/interactions`,
+      { params: { page, limit: 100 } },
     )
     return response.data ?? []
   }
 
+  /**
+   * Add an interaction/note for a user.
+   * POST 2.1/branches/{branchId}/leads/{userId}/interactions
+   */
   async createInteraction(data: GlofoxCreateInteractionRequest): Promise<GlofoxInteraction> {
+    const branchId = (data as any).branch_id ?? this.branchId
     return this.request<GlofoxInteraction>(
       'POST',
-      `2.0/members/${data.user_id}/interactions`,
-      { body: { type: data.type, notes: data.notes } },
+      `2.1/branches/${branchId}/leads/${data.user_id}/interactions`,
+      { body: { user_id: data.user_id, type: data.type, description: data.notes } },
     )
   }
 
-  async getContactSources(): Promise<GlofoxContactSource[]> {
+  /**
+   * Get contact sources for a branch.
+   * GET 2.3/branches/{branchId}/leads/contact-sources
+   */
+  async getContactSources(branchId?: string): Promise<GlofoxContactSource[]> {
+    const branch = branchId ?? this.branchId
     const response = await this.request<{ data?: GlofoxContactSource[] }>(
       'GET',
-      '2.0/contact-sources',
+      `2.3/branches/${branch}/leads/contact-sources`,
     )
     return response.data ?? []
   }
 
-  async getMarketingSources(): Promise<GlofoxMarketingSource[]> {
+  /**
+   * Get marketing sources for a branch.
+   * GET 2.3/branches/{branchId}/leads/marketing-sources
+   */
+  async getMarketingSources(branchId?: string): Promise<GlofoxMarketingSource[]> {
+    const branch = branchId ?? this.branchId
     const response = await this.request<{ data?: GlofoxMarketingSource[] }>(
       'GET',
-      '2.0/marketing-sources',
+      `2.3/branches/${branch}/leads/marketing-sources`,
     )
     return response.data ?? []
   }
 
   // ─── Agreements (Phase 8) ─────────────────────────────────
 
+  /**
+   * Send a document to a user for signature.
+   * POST 2.2/branches/{branchId}/users/{userId}/agreements/send
+   */
   async sendAgreement(data: GlofoxSendAgreementRequest): Promise<{ status?: string }> {
     return this.request<{ status?: string }>(
       'POST',
-      `2.2/branches/${this.branchId}/users/${data.user_id}/agreements`,
-      { body: { document_id: data.document_id } },
+      `2.2/branches/${this.branchId}/users/${data.user_id}/agreements/send`,
+      { body: { trigger: data.document_id } },
     )
   }
 
@@ -687,27 +795,39 @@ export class GlofoxClient {
 
   // ─── Appointments (Phase 9) ───────────────────────────────
 
+  /**
+   * Get appointments by querying events with timeslot filter.
+   * Appointments are retrieved via GET /2.0/events?filter=timeslot&model=appointments
+   */
   async getAppointments(options?: {
     modifiedSince?: string
     start?: number
     end?: number
   }): Promise<GlofoxAppointment[]> {
-    const params: Record<string, string | number | boolean | undefined> = {}
+    const params: Record<string, string | number | boolean | undefined> = {
+      filter: 'timeslot',
+      model: 'appointments',
+    }
     if (options?.modifiedSince) params.utc_modified_start_date = options.modifiedSince
     if (options?.start !== undefined) params.start = options.start
     if (options?.end !== undefined) params.end = options.end
-    return this.fetchAll<GlofoxAppointment>('2.0/appointments', params)
+    return this.fetchAll<GlofoxAppointment>('2.0/events', params)
   }
 
+  /**
+   * Retrieve all available appointments for a branch.
+   * GET 2.1/branches/{branchId}/appointments-availability
+   */
   async getAppointmentAvailability(
-    trainerId: string,
-    start: number,
-    end: number,
+    branchId?: string,
+    start?: number,
+    end?: number,
   ): Promise<GlofoxAppointmentAvailabilityResponse> {
+    const branch = branchId ?? this.branchId
     return this.request<GlofoxAppointmentAvailabilityResponse>(
       'GET',
-      '2.0/appointments/availability',
-      { params: { trainer_id: trainerId, start, end } },
+      `2.1/branches/${branch}/appointments-availability`,
+      { params: { start, end } },
     )
   }
 
@@ -720,10 +840,14 @@ export class GlofoxClient {
 
   // ─── Access Records (Phase 10) ────────────────────────────
 
+  /**
+   * Create an access/check-in event.
+   * POST 2.0/access
+   */
   async createAccessRecord(data: GlofoxAccessRecordRequest): Promise<{ status?: string }> {
     return this.request<{ status?: string }>(
       'POST',
-      '2.0/access-records',
+      '2.0/access',
       { body: data },
     )
   }
