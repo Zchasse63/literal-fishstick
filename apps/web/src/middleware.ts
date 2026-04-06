@@ -14,6 +14,9 @@ const PUBLIC_API_ROUTES = [
   "/api/webhooks/easypost",    // EasyPost webhook
   "/api/webhooks/twilio",      // Twilio webhook
   "/api/openapi",              // API docs (public read)
+  "/api/health",               // Health check (uptime monitoring)
+  "/api/glofox/sync",          // Glofox sync (secured by CRON_SECRET header, not user auth)
+  "/api/glofox/backfill",      // Glofox backfill (secured by CRON_SECRET header)
 ];
 
 // Cron endpoints are secured by x-cron-secret header, not user auth
