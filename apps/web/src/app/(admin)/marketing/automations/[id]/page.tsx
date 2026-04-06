@@ -696,7 +696,7 @@ export default function EditAutomationPage() {
             </div>
           </div>
 
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 transition-colors">
+          <button onClick={() => window.alert('Automation saving coming in Phase 2')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 transition-colors">
             <Save className="h-4 w-4" />
             Save Draft
           </button>

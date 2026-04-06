@@ -96,14 +96,14 @@ function ActionDropdown({ campaignId }: { campaignId: string }) {
           <>
             <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -4 }} transition={{ duration: 0.15 }} className="absolute right-0 top-10 z-20 w-44 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg py-1.5">
-              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <Link href={`/marketing/campaigns/${campaignId}`} onClick={(e) => { e.stopPropagation(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" /> Edit
-              </button>
-              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              </Link>
+              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); window.alert('Campaign duplication coming in Phase 2') }} className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <Copy className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" /> Duplicate
               </button>
               <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
-              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false) }} className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); window.alert('Campaign deletion coming in Phase 2') }} className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
                 <Trash2 className="h-3.5 w-3.5 text-red-400" /> Delete
               </button>
             </motion.div>

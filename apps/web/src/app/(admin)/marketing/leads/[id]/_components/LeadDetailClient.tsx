@@ -658,11 +658,11 @@ export default function LeadDetailClient({ initialLead, initialMembershipPlans }
             {/* Quick Actions */}
             <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 shadow-sm space-y-2.5">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Quick Actions</h3>
-              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <button onClick={() => window.alert('Activity logging coming in Phase 2')} className="flex w-full items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <PhoneCall className="h-4 w-4 text-violet-500" />
                 Log Call
               </button>
-              <button className="flex w-full items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <button onClick={() => { if (lead?.email) window.location.href = `mailto:${lead.email}`; else window.alert('No email available') }} className="flex w-full items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <Send className="h-4 w-4 text-indigo-500" />
                 Send Email
               </button>

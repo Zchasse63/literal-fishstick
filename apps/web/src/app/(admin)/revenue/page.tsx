@@ -43,6 +43,8 @@ import {
 import Link from 'next/link'
 import { fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { useToast } from '@/hooks/use-toast'
+import { ToastNotification } from '@/components/ui/toast-notification'
 import OverviewTab from './_components/OverviewTab'
 import type { DailyRevenue, RevenueByType, RevenueBySource, MrrDataPoint } from './_components/OverviewTab'
 import TransactionsTab from './_components/TransactionsTab'
@@ -197,6 +199,7 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 // REMOVED: inline OverviewTab, MembershipsTab, TransactionsTab — now imported from _components/
 
 export default function RevenuePage() {
+  const { toast, showToast } = useToast()
   const [activeTab, setActiveTab] = useState<Tab>('Overview')
   const [loading, setLoading] = useState(true)
 
@@ -330,14 +333,14 @@ export default function RevenuePage() {
 
       // Churn: simplified — members with status != 'active' who were active before
       // For now, show a percentage based on total vs active
-      const churnRate = activeMemberCount > 0 ? '3.2%' : '0%'
+      const churnRate = '\u2014' // Real churn calculation coming in Phase 3
 
       setMetrics([
         {
           label: 'MRR',
           value: `$${mrr.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-          trend: '+12%',
-          trendDirection: 'up',
+          trend: '\u2014',
+          trendDirection: 'neutral',
           icon: DollarSign,
           color: 'text-indigo-600',
           bgColor: 'bg-indigo-50',
@@ -345,8 +348,8 @@ export default function RevenuePage() {
         {
           label: 'ARPM',
           value: `$${arpm}`,
-          trend: '+8%',
-          trendDirection: 'up',
+          trend: '\u2014',
+          trendDirection: 'neutral',
           icon: Users,
           color: 'text-violet-600',
           bgColor: 'bg-violet-50',
@@ -354,8 +357,8 @@ export default function RevenuePage() {
         {
           label: 'Churn Rate',
           value: churnRate,
-          trend: '-15%',
-          trendDirection: 'down',
+          trend: '\u2014',
+          trendDirection: 'neutral',
           trendGood: true,
           icon: TrendingDown,
           color: 'text-emerald-600',
@@ -364,8 +367,8 @@ export default function RevenuePage() {
         {
           label: 'Revenue Today',
           value: `$${(todayFromDaily / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-          trend: '+8.2%',
-          trendDirection: 'up',
+          trend: '\u2014',
+          trendDirection: 'neutral',
           icon: BarChart3,
           color: 'text-indigo-600',
           bgColor: 'bg-indigo-50',
@@ -593,7 +596,10 @@ export default function RevenuePage() {
             <Tag className="w-4 h-4" />
             Orders
           </Link>
-          <button className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+          <button
+            onClick={() => showToast('Manual payment recording coming in Phase 2')}
+            className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2"
+          >
             <DollarSign className="w-4 h-4" />
             Record Payment
           </button>
@@ -644,6 +650,8 @@ export default function RevenuePage() {
           />
         )}
       </AnimatePresence>
+
+      <ToastNotification message={toast} />
     </motion.div>
   )
 }

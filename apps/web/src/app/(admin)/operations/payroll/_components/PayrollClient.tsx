@@ -115,7 +115,7 @@ export default function PayrollClient({ initialPeriods }: PayrollClientProps) {
           <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-base font-semibold text-gray-900 dark:text-gray-100">No payroll periods yet</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create your first pay period to start tracking payroll.</p>
-          <button className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
+          <button onClick={() => window.alert('Payroll period creation coming in Phase 4')} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
             <Plus className="h-4 w-4" />
             New Period
           </button>

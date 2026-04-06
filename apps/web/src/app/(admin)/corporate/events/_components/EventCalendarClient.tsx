@@ -83,13 +83,17 @@ export default function EventCalendarClient({ initialEvents }: EventCalendarClie
   const [allEvents] = useState<CalendarEvent[]>(initialEvents)
   const [filter, setFilter] = useState<FilterType>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('month')
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
 
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  const monthName = now.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+  const year = currentMonth.getFullYear()
+  const month = currentMonth.getMonth()
+  const monthName = currentMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const daysInMonth = getDaysInMonth(year, month)
   const firstDay = getFirstDayOfMonth(year, month)
+  const now = new Date()
 
   const filteredEvents = allEvents.filter((e) => filter === 'all' || e.eventType === filter)
 
@@ -118,7 +122,7 @@ export default function EventCalendarClient({ initialEvents }: EventCalendarClie
           <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Events</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage corporate events, parties, and bookings</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
+        <button onClick={() => window.alert('Event creation coming in Phase 4')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
           <Plus className="h-4 w-4" />
           New Event
         </button>
@@ -173,11 +177,17 @@ export default function EventCalendarClient({ initialEvents }: EventCalendarClie
           className="lg:col-span-3 bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <button className="h-8 w-8 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <button
+              onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+              className="h-8 w-8 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
               <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </button>
             <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{monthName}</h3>
-            <button className="h-8 w-8 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <button
+              onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+              className="h-8 w-8 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
               <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>

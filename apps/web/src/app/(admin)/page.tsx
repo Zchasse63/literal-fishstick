@@ -160,7 +160,40 @@ function CommandCenterSkeleton() {
 }
 
 // ─── AI Briefing Card ────────────────────────────────────────
+const AI_ACTION_ROUTES: Record<string, string> = {
+  'Add Class': '/schedule',
+  'Send Campaign': '/marketing/campaigns/new',
+  'Contact Account': '/corporate',
+  'View Members': '/members',
+  'View Analytics': '/analytics',
+  'View Revenue': '/revenue',
+}
+
 function AIBriefingCard({ insights, greeting, firstName }: { insights: AIInsight[]; greeting: string; firstName: string }) {
+  const router = useRouter()
+
+  function handleActionClick(action: string) {
+    // Match known action routes, or fall back to a best-guess based on keywords
+    const route = AI_ACTION_ROUTES[action]
+    if (route) {
+      router.push(route)
+      return
+    }
+    // Keyword-based fallback
+    const lowerAction = action.toLowerCase()
+    if (lowerAction.includes('class') || lowerAction.includes('schedule')) {
+      router.push('/schedule')
+    } else if (lowerAction.includes('campaign') || lowerAction.includes('marketing')) {
+      router.push('/marketing')
+    } else if (lowerAction.includes('contact') || lowerAction.includes('corporate') || lowerAction.includes('account')) {
+      router.push('/corporate')
+    } else if (lowerAction.includes('member')) {
+      router.push('/members')
+    } else if (lowerAction.includes('revenue') || lowerAction.includes('payment')) {
+      router.push('/revenue')
+    }
+  }
+
   return (
     <div className="ai-border rounded-2xl p-6">
       <div className="bg-gradient-to-br from-indigo-500/[0.04] to-violet-500/[0.04] -m-6 p-6 rounded-2xl">
@@ -176,7 +209,10 @@ function AIBriefingCard({ insights, greeting, firstName }: { insights: AIInsight
                 <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', insight.color)} />
                 <div>
                   <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{insight.text}</p>
-                  <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1">
+                  <button
+                    onClick={() => handleActionClick(insight.action)}
+                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1"
+                  >
                     {insight.action}
                     <ChevronRight className="w-3 h-3" />
                   </button>
@@ -395,6 +431,33 @@ function TodaysTimeline({ classes }: { classes: ClassData[] }) {
 
 // ─── Activity Feed ───────────────────────────────────────────
 function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
+  const router = useRouter()
+
+  function handleActivityClick(activity: ActivityItem) {
+    switch (activity.type) {
+      case 'payment':
+        router.push('/revenue')
+        break
+      case 'check_in': {
+        const memberId = activity.metadata?.member_id as string | undefined
+        if (memberId) {
+          router.push(`/members/${memberId}`)
+        } else {
+          router.push('/members')
+        }
+        break
+      }
+      case 'booking':
+        router.push('/schedule')
+        break
+      case 'cancellation':
+        router.push('/schedule')
+        break
+      default:
+        break
+    }
+  }
+
   if (activities.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5">
@@ -426,7 +489,11 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
           const detail = parts.slice(1).join(' — ')
 
           return (
-            <div key={activity.id} className="flex items-start gap-3 py-2 px-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors cursor-pointer">
+            <div
+              key={activity.id}
+              onClick={() => handleActivityClick(activity)}
+              className="flex items-start gap-3 py-2 px-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors cursor-pointer"
+            >
               <Icon className={cn('w-5 h-5 mt-0.5 flex-shrink-0', color)} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{mainText}</p>
@@ -474,19 +541,26 @@ function EngagementBreakdown() {
 
   useEffect(() => {
     async function fetchCounts() {
-      const { data } = await supabase
-        .from('member_360')
-        .select('engagement_status')
+      // Query each engagement status count individually to avoid the 1000-row default limit
+      const statuses: (keyof EngagementCounts)[] = [
+        'subscriber', 'active', 'engaged', 'cooling', 'at_risk',
+        'lapsed_with_credits', 'lapsed', 'churned', 'new_unused', 'lead_only',
+      ]
 
-      if (!data) return
+      const results = await Promise.all(
+        statuses.map((status) =>
+          supabase
+            .from('member_360')
+            .select('id', { count: 'exact', head: true })
+            .eq('engagement_status', status)
+        )
+      )
 
       const result: EngagementCounts = { subscriber: 0, active: 0, engaged: 0, cooling: 0, at_risk: 0, lapsed_with_credits: 0, lapsed: 0, churned: 0, new_unused: 0, lead_only: 0 }
-      for (const row of data) {
-        const status = (row as any).engagement_status as keyof EngagementCounts | null
-        if (status && status in result) {
-          result[status]++
-        }
-      }
+      statuses.forEach((status, i) => {
+        result[status] = results[i].count ?? 0
+      })
+
       setCounts(result)
     }
 

@@ -33,6 +33,7 @@ export default function MemberProfilePanel({
   memberTransactions,
   memberTags,
   detailLoading,
+  onShowToast,
 }: {
   member: Member
   onClose: () => void
@@ -42,7 +43,9 @@ export default function MemberProfilePanel({
   memberTransactions: MemberTransaction[]
   memberTags: string[]
   detailLoading: boolean
+  onShowToast?: (msg: string) => void
 }) {
+  const notify = onShowToast ?? ((msg: string) => { /* no-op if not passed */ })
   return (
     <motion.div
       key={member.id}
@@ -92,11 +95,17 @@ export default function MemberProfilePanel({
 
         {/* Contact Row */}
         <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-200 transition-colors">
+          <button
+            onClick={() => { if (member.email) window.location.href = `mailto:${member.email}` }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-200 transition-colors"
+          >
             <Mail className="h-3 w-3" />
             Email
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-200 transition-colors">
+          <button
+            onClick={() => { if (member.phone) window.location.href = `tel:${member.phone}` }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-200 transition-colors"
+          >
             <Phone className="h-3 w-3" />
             Call
           </button>
@@ -210,7 +219,10 @@ export default function MemberProfilePanel({
                               ? `Visit frequency dropped ${member.avgVisitsPerWeek < 1 ? '68%' : '42%'} over 3 weeks. Churn probability: ${member.avgVisitsPerWeek < 1 ? '73%' : '55%'}. Consider a personal re-engagement.`
                               : `Strong retention pattern. ${member.avgVisitsPerWeek >= 3 ? 'Power user' : 'Consistent visitor'} — ${member.avgVisitsPerWeek >= 3 ? 'candidate for referral program' : 'trending toward upgrade'}.`}
                           </p>
-                          <button className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors">
+                          <button
+                            onClick={() => notify('AI detail view coming in Phase 3')}
+                            className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors"
+                          >
                             {member.status === 'at-risk' ? 'Send re-engagement' : 'View details'}
                             <ArrowUpRight className="h-3 w-3" />
                           </button>
@@ -227,7 +239,10 @@ export default function MemberProfilePanel({
                               ? `${member.guidedSessions} guided sessions attended. High affinity for instructor-led experiences — prime candidate for workshop invitations.`
                               : `Primarily uses open sessions. Consider introducing to guided classes — members who try guided have 40% higher retention.`}
                           </p>
-                          <button className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors">
+                          <button
+                            onClick={() => notify('AI detail view coming in Phase 3')}
+                            className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors"
+                          >
                             {member.guidedSessions > 10 ? 'Invite to workshop' : 'Suggest guided class'}
                             <ArrowUpRight className="h-3 w-3" />
                           </button>
@@ -257,12 +272,18 @@ export default function MemberProfilePanel({
                     </div>
                     <div className="flex items-center gap-2 pt-1.5">
                       {member.status !== 'paused' && (
-                        <button className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <button
+                          onClick={() => notify('Membership pause coming in Phase 2')}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
                           <Pause className="h-3 w-3" />
                           Pause
                         </button>
                       )}
-                      <button className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors">
+                      <button
+                        onClick={() => notify('Membership upgrade coming in Phase 2')}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
+                      >
                         <ArrowUp className="h-3 w-3" />
                         Upgrade
                       </button>

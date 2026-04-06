@@ -137,8 +137,7 @@ export default function NewPostPage() {
   }
 
   const handleFileSelect = () => {
-    // Mock image preview
-    setImagePreview('uploaded-image.jpg')
+    window.alert('Image upload coming in Phase 2')
   }
 
   return (

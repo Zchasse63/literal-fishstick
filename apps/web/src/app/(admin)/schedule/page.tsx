@@ -24,6 +24,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useClasses, useSupabase } from '@/hooks/use-supabase'
 import type { ClassInstance } from '@meridian/types'
 import { fadeInUp } from '@/lib/motion'
+import { useToast } from '@/hooks/use-toast'
+import { ToastNotification } from '@/components/ui/toast-notification'
 
 // ─── Types ──────────────────────────────────────────────────
 type ViewMode = 'Day' | 'Week' | 'Month'
@@ -348,11 +350,19 @@ function ClassDetailPanel({
   attendees,
   loadingAttendees,
   onClose,
+  onCheckInAll,
+  checkingInAll,
+  onSendReminder,
+  onEditClass,
 }: {
   cls: ClassBlock
   attendees: Attendee[]
   loadingAttendees: boolean
   onClose: () => void
+  onCheckInAll: () => void
+  checkingInAll: boolean
+  onSendReminder: () => void
+  onEditClass: () => void
 }) {
   const fillPercent = Math.round((cls.booked / cls.capacity) * 100)
   const typeBadgeColor = cls.type === 'guided' ? 'bg-violet-100 text-violet-700' : 'bg-indigo-100 text-indigo-700'
@@ -451,16 +461,26 @@ function ClassDetailPanel({
 
       {/* Actions */}
       <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors">
-          <UserCheck className="w-4 h-4" />
-          Check In All
+        <button
+          onClick={onCheckInAll}
+          disabled={checkingInAll}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+        >
+          {checkingInAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+          {checkingInAll ? 'Checking In...' : 'Check In All'}
         </button>
-        <button className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        <button
+          onClick={onSendReminder}
+          className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
           <Send className="w-4 h-4" />
           Send Reminder
         </button>
       </div>
-      <button className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+      <button
+        onClick={onEditClass}
+        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      >
         <Edit3 className="w-4 h-4" />
         Edit Class
       </button>
@@ -471,12 +491,14 @@ function ClassDetailPanel({
 // ─── Schedule Page ──────────────────────────────────────────
 export default function SchedulePage() {
   const supabase = useSupabase()
+  const { toast, showToast } = useToast()
   const [viewMode, setViewMode] = useState<ViewMode>('Week')
   const [activeFilter, setActiveFilter] = useState<ClassFilter>('All Classes')
   const [selectedClass, setSelectedClass] = useState<ClassBlock | null>(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [attendees, setAttendees] = useState<Attendee[]>([])
   const [loadingAttendees, setLoadingAttendees] = useState(false)
+  const [checkingInAll, setCheckingInAll] = useState(false)
 
   const viewModes: ViewMode[] = ['Day', 'Week', 'Month']
   const filters: ClassFilter[] = ['All Classes', 'Open Sauna', 'Guided', 'Private']
@@ -606,6 +628,33 @@ export default function SchedulePage() {
     }
   }
 
+  const handleCheckInAll = useCallback(async () => {
+    if (!selectedClass) return
+    setCheckingInAll(true)
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: 'checked_in',
+          attended: true,
+          checked_in_at: new Date().toISOString(),
+        })
+        .eq('class_id', selectedClass.id)
+        .in('status', ['booked', 'confirmed'])
+
+      if (error) throw error
+
+      showToast(`All attendees checked in for ${selectedClass.name}`)
+      // Refresh attendee list
+      fetchAttendees(selectedClass.id)
+    } catch (err) {
+      console.error('Failed to check in all:', err)
+      showToast('Failed to check in all attendees')
+    } finally {
+      setCheckingInAll(false)
+    }
+  }, [supabase, selectedClass, fetchAttendees, showToast])
+
   // ─── Stats ──────────────────────────────────────────────────
   const totalBookings = classBlocks.reduce((sum, c) => sum + c.booked, 0)
   const avgCapacity = classBlocks.length > 0
@@ -681,7 +730,10 @@ export default function SchedulePage() {
           ))}
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm">
+        <button
+          onClick={() => showToast('Class creation coming in Phase 2')}
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm"
+        >
           <Plus className="w-4 h-4" />
           New Class
         </button>
@@ -748,7 +800,10 @@ export default function SchedulePage() {
                                 </div>
                               ) : (
                                 <div className="h-16 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                  <button className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-800 hover:border-indigo-300 hover:bg-indigo-50/30 flex items-center justify-center transition-colors">
+                                  <button
+                                    onClick={() => showToast('Class creation coming in Phase 2')}
+                                    className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-800 hover:border-indigo-300 hover:bg-indigo-50/30 flex items-center justify-center transition-colors"
+                                  >
                                     <Plus className="w-4 h-4 text-gray-300" />
                                   </button>
                                 </div>
@@ -797,11 +852,17 @@ export default function SchedulePage() {
                   setSelectedClass(null)
                   setAttendees([])
                 }}
+                onCheckInAll={handleCheckInAll}
+                checkingInAll={checkingInAll}
+                onSendReminder={() => showToast('Reminders coming in Phase 2')}
+                onEditClass={() => showToast('Class editing coming in Phase 2')}
               />
             </div>
           )}
         </AnimatePresence>
       </div>
+
+      <ToastNotification message={toast} />
     </motion.div>
   )
 }

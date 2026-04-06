@@ -58,9 +58,12 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3">
-        {/* Search */}
+        {/* Search — opens command palette */}
         <button
           aria-label="Open search"
+          onClick={() => {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
+          }}
           className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <Search className="w-4 h-4" />
@@ -68,9 +71,12 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
           <kbd className="text-[10px] font-medium bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-1.5 py-0.5">⌘K</kbd>
         </button>
 
-        {/* Keyboard shortcuts */}
+        {/* Keyboard shortcuts — opens command palette */}
         <button
           aria-label="Keyboard shortcuts"
+          onClick={() => {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
+          }}
           className="hidden lg:flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           <Keyboard className="w-5 h-5" />

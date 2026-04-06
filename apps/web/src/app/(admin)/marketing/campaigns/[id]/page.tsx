@@ -26,6 +26,8 @@ import {
 } from 'lucide-react'
 import { fadeInUpWithExit as fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { useToast } from '@/hooks/use-toast'
+import { ToastNotification } from '@/components/ui/toast-notification'
 import type { Step, ChannelType, PreviewMode, CampaignStatus, MockCampaign, Segment, Template } from '../_components/types'
 import { TEMPLATES, MERGE_TAGS, AI_SUBJECT_SUGGESTIONS, statusConfig } from '../_components/constants'
 import StepIndicator from '../_components/StepIndicator'
@@ -49,6 +51,7 @@ export default function CampaignDetailPage({
     return '1'
   })
 
+  const { toast: toastMsg, showToast } = useToast()
   const [segments, setSegments] = useState<Segment[]>([])
   const [campaignLoaded, setCampaignLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -1135,13 +1138,18 @@ export default function CampaignDetailPage({
               Back to Campaigns
             </Link>
           ) : (
-            <button className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm">
+            <button
+              onClick={() => showToast(scheduleMode === 'schedule' ? 'Campaign scheduling coming in Phase 2' : 'Campaign sending coming in Phase 2')}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm"
+            >
               <Send className="h-4 w-4" />
               {scheduleMode === 'schedule' ? 'Schedule Campaign' : 'Send Campaign'}
             </button>
           )}
         </div>
       </div>
+
+      <ToastNotification message={toastMsg} />
     </motion.div>
   )
 }

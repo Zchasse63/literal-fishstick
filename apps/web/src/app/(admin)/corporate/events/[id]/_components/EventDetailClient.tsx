@@ -154,7 +154,7 @@ export default function EventDetailClient({ initialEvent, initialGuests }: Event
           </div>
         </div>
         {action && (
-          <button className={cn('inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm', action.className)}>
+          <button onClick={() => window.alert('Event management coming in Phase 4')} className={cn('inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm', action.className)}>
             {action.label}
           </button>
         )}
@@ -262,7 +262,7 @@ export default function EventDetailClient({ initialEvent, initialGuests }: Event
             <div className="px-5 pt-5 pb-3">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Guest List</h3>
-                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors">
+                <button onClick={() => window.alert('Guest management coming in Phase 4')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors">
                   <UserPlus className="h-3 w-3" />
                   Add Guest
                 </button>
@@ -324,7 +324,7 @@ export default function EventDetailClient({ initialEvent, initialGuests }: Event
               View Invoice
             </Link>
           ) : (
-            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
+            <button onClick={() => window.alert('Invoice creation from events coming in Phase 4')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
               <DollarSign className="h-3.5 w-3.5" />
               Create Invoice from Event
             </button>

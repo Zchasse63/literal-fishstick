@@ -108,7 +108,7 @@ export default function MembershipsTab({ loading, membershipPlans, promoCodes }:
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Trainer Promo Codes</p>
               <p className="text-lg font-bold text-gray-900 dark:text-gray-100">Referral Attribution</p>
             </div>
-            <button className="px-3.5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-1.5">
+            <button onClick={() => window.alert('Promo code creation coming in Phase 2')} className="px-3.5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5" />
               New Code
             </button>
@@ -137,7 +137,7 @@ export default function MembershipsTab({ loading, membershipPlans, promoCodes }:
                     <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2.5 py-1 rounded-lg text-sm font-mono font-semibold">
                       {promo.code}
                     </code>
-                    <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    <button onClick={() => { navigator.clipboard.writeText(promo.code) }} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                   </div>

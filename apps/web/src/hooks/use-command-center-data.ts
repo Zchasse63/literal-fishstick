@@ -74,19 +74,57 @@ const MOCK_INSIGHTS: AIInsight[] = [
 ]
 
 // ─── Helpers ────────────────────────────────────────────────
+
+/** Get the current Eastern Time UTC offset string (e.g. "-04:00" for EDT, "-05:00" for EST). */
+function getEasternOffset(): string {
+  // Format a timestamp in Eastern time and extract the GMT offset
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    timeZoneName: 'longOffset',
+  })
+  const parts = fmt.formatToParts(new Date())
+  const tzPart = parts.find((p) => p.type === 'timeZoneName')
+  // tzPart.value is like "GMT-04:00" or "GMT-05:00"
+  const match = tzPart?.value?.match(/GMT([+-]\d{2}:\d{2})/)
+  return match ? match[1] : '-05:00' // fallback to EST
+}
+
 function todayDateString(): string {
   // Get today in Eastern time as YYYY-MM-DD
-  const eastern = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  return eastern
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 }
 
 function formatEasternTime(isoString: string): string {
-  return new Date(isoString).toLocaleTimeString('en-US', {
+  const date = new Date(isoString)
+  const now = new Date()
+
+  // Get date strings in Eastern time for comparison
+  const dateET = date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const todayET = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+
+  // Calculate yesterday in Eastern time
+  const yesterdayDate = new Date(now.getTime() - 86_400_000)
+  const yesterdayET = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+
+  const timeStr = date.toLocaleTimeString('en-US', {
     timeZone: 'America/New_York',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
   })
+
+  if (dateET === todayET) {
+    return `Today ${timeStr}`
+  } else if (dateET === yesterdayET) {
+    return `Yesterday ${timeStr}`
+  } else {
+    const monthDay = date.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short',
+      day: 'numeric',
+    })
+    return `${monthDay} ${timeStr}`
+  }
 }
 
 function formatCurrency(cents: number): string {
@@ -119,8 +157,9 @@ export function useCommandCenterData(): CommandCenterData {
   const fetchData = useCallback(async () => {
     const supabase = supabaseRef.current
     const today = todayDateString()
-    const todayStart = `${today}T00:00:00-05:00`
-    const todayEnd = `${today}T23:59:59-05:00`
+    const offset = getEasternOffset() // Dynamic: "-04:00" EDT or "-05:00" EST
+    const todayStart = `${today}T00:00:00${offset}`
+    const todayEnd = `${today}T23:59:59${offset}`
     const now = new Date().toISOString()
 
     try {
@@ -309,7 +348,7 @@ export function useCommandCenterData(): CommandCenterData {
         const [recentBookings, recentTransactions] = await Promise.all([
           supabase
             .from('bookings')
-            .select('id, status, is_walk_in, checked_in_at, created_at, members(profiles(full_name))')
+            .select('id, member_id, status, is_walk_in, checked_in_at, created_at, members(profiles(full_name))')
             .eq('studio_id', STUDIO_ID)
             .order('created_at', { ascending: false })
             .limit(5),
@@ -325,7 +364,8 @@ export function useCommandCenterData(): CommandCenterData {
         const bookingActivities: ActivityItem[] = (recentBookings.data || []).map((b: Record<string, unknown>) => {
           const member = b.members as Record<string, unknown> | null
           const profile = member?.profiles as Record<string, unknown> | null
-          const name = (profile?.full_name as string) || 'Unknown'
+          const name = (profile?.full_name as string) || 'A member'
+          const memberId = member ? (b.member_id as string || '') : ''
           const status = b.status as string
           let type = 'booking'
           let description = `${name} booked a class`
@@ -341,19 +381,31 @@ export function useCommandCenterData(): CommandCenterData {
             type,
             description,
             created_at: b.created_at as string,
-            metadata: null,
+            metadata: memberId ? { member_id: memberId } : null,
           }
         })
 
         const txActivities: ActivityItem[] = (recentTransactions.data || []).map((t: Record<string, unknown>) => {
           const member = t.members as Record<string, unknown> | null
           const profile = member?.profiles as Record<string, unknown> | null
-          const name = (profile?.full_name as string) || 'Unknown'
+          const name = (profile?.full_name as string) || ''
           const amount = formatCurrency((t.amount as number) || 0)
+          const txDesc = (t.description as string) || ''
+
+          // Build description: show member name if available, otherwise just show the transaction detail
+          let description: string
+          if (name) {
+            description = `Payment received: ${amount} — ${name}${txDesc ? ` — ${txDesc}` : ''}`
+          } else if (txDesc) {
+            description = `Payment received: ${amount} — ${txDesc}`
+          } else {
+            description = `Payment received: ${amount}`
+          }
+
           return {
             id: t.id as string,
             type: 'payment',
-            description: `Payment received: ${amount} — ${name}${t.description ? ` — ${t.description}` : ''}`,
+            description,
             created_at: t.created_at as string,
             metadata: null,
           }

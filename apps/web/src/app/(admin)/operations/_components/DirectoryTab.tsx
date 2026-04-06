@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -7,6 +8,8 @@ import {
   Plus,
   Download,
   MoreHorizontal,
+  User,
+  Pencil,
 } from 'lucide-react'
 import type { Employee, RoleFilter, DetailTab } from './types'
 import { ROLE_FILTERS, roleBadgeClasses } from './types'
@@ -49,11 +52,11 @@ export default function DirectoryTab({
               className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none transition-colors focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
-          <button className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+          <button onClick={() => window.alert('Employee creation coming in Phase 4')} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
             <Plus className="h-4 w-4" />
             Add Employee
           </button>
-          <button className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+          <button onClick={() => window.alert('Payroll export coming in Phase 4')} className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
             <Download className="h-4 w-4" />
             Export Payroll
           </button>
@@ -164,12 +167,10 @@ export default function DirectoryTab({
                       )}
                     </td>
                     <td className="px-5 py-3.5">
-                      <button
-                        onClick={e => e.stopPropagation()}
-                        className="rounded-lg p-1 text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
+                      <EmployeeActionDropdown
+                        employee={emp}
+                        onViewProfile={() => { setSelectedEmployee(emp); setDetailTab('overview') }}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -199,6 +200,41 @@ export default function DirectoryTab({
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function EmployeeActionDropdown({ employee, onViewProfile }: { employee: Employee; onViewProfile: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(!open) }}
+        className="rounded-lg p-1 text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={e => { e.stopPropagation(); setOpen(false) }} />
+          <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 py-1 text-left">
+            <button
+              onClick={e => { e.stopPropagation(); setOpen(false); onViewProfile() }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              <User className="h-3.5 w-3.5" />
+              View Profile
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); setOpen(false); window.alert('Employee editing coming in Phase 4') }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

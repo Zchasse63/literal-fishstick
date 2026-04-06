@@ -2,41 +2,58 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 
 // ─── Helpers ───────────────────────────────────────────────────
+
+/** Get the current Eastern Time UTC offset string (e.g. "-04:00" for EDT, "-05:00" for EST). */
+function getEasternOffset(): string {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    timeZoneName: "longOffset",
+  });
+  const parts = fmt.formatToParts(new Date());
+  const tzPart = parts.find((p) => p.type === "timeZoneName");
+  const match = tzPart?.value?.match(/GMT([+-]\d{2}:\d{2})/);
+  return match ? match[1] : "-05:00";
+}
+
+/** Today's date in Eastern Time as YYYY-MM-DD. */
 function todayDateStr(): string {
-  // YYYY-MM-DD for the server's current date
-  return new Date().toISOString().split("T")[0]!;
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
 }
 
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  // Parse as a plain calendar date (noon UTC avoids any rollover issues)
+  const d = new Date(dateStr + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().split("T")[0]!;
 }
 
-/** Monday 00:00 of the ISO week containing `dateStr`. */
+/** Monday 00:00 of the ISO week containing `dateStr` (Eastern Time). */
 function weekStart(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(dateStr + "T12:00:00Z");
   const day = d.getUTCDay(); // 0 = Sun
   const diff = day === 0 ? -6 : 1 - day; // shift to Monday
   d.setUTCDate(d.getUTCDate() + diff);
   return d.toISOString().split("T")[0]!;
 }
 
+/** Current day name in Eastern Time. */
 function dayName(): string {
-  return [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ][new Date().getDay()]!;
+  return new Date().toLocaleDateString("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+  });
 }
 
 function pctDelta(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+/** Convert a date string + offset to a full ISO timestamp for range queries. */
+function rangeTs(dateStr: string, offset: string): string {
+  return `${dateStr}T00:00:00${offset}`;
 }
 
 // ─── Revenue helper (sum positive completed txns in a range) ──
@@ -46,14 +63,15 @@ async function revenueInRange(
   start: string,
   endExclusive: string,
 ): Promise<number> {
+  const offset = getEasternOffset();
   const { data } = await supabase
     .from("transactions")
     .select("amount")
     .eq("studio_id", studioId)
     .eq("status", "completed")
     .gt("amount", 0)
-    .gte("created_at", start + "T00:00:00")
-    .lt("created_at", endExclusive + "T00:00:00");
+    .gte("created_at", rangeTs(start, offset))
+    .lt("created_at", rangeTs(endExclusive, offset));
   return (data ?? []).reduce(
     (sum: number, row: { amount: number }) => sum + (row.amount ?? 0),
     0,
@@ -67,13 +85,14 @@ async function attendanceInRange(
   start: string,
   endExclusive: string,
 ): Promise<number> {
+  const offset = getEasternOffset();
   // First get class ids in range
   const { data: classes } = await supabase
     .from("classes")
     .select("id")
     .eq("studio_id", studioId)
-    .gte("starts_at", start + "T00:00:00")
-    .lt("starts_at", endExclusive + "T00:00:00");
+    .gte("starts_at", rangeTs(start, offset))
+    .lt("starts_at", rangeTs(endExclusive, offset));
   if (!classes || classes.length === 0) return 0;
   const classIds = classes.map((c: { id: string }) => c.id);
   const { count } = await supabase
@@ -92,12 +111,13 @@ async function fillRateInRange(
   start: string,
   endExclusive: string,
 ): Promise<number> {
+  const offset = getEasternOffset();
   const { data: classes } = await supabase
     .from("classes")
     .select("booked_count, capacity")
     .eq("studio_id", studioId)
-    .gte("starts_at", start + "T00:00:00")
-    .lt("starts_at", endExclusive + "T00:00:00");
+    .gte("starts_at", rangeTs(start, offset))
+    .lt("starts_at", rangeTs(endExclusive, offset));
   if (!classes || classes.length === 0) return 0;
   let totalFill = 0;
   let count = 0;
@@ -118,13 +138,14 @@ async function newFacesInRange(
   endExclusive: string,
   lookbackStart: string,
 ): Promise<number> {
+  const offset = getEasternOffset();
   // Get class ids in this range
   const { data: classes } = await supabase
     .from("classes")
     .select("id")
     .eq("studio_id", studioId)
-    .gte("starts_at", start + "T00:00:00")
-    .lt("starts_at", endExclusive + "T00:00:00");
+    .gte("starts_at", rangeTs(start, offset))
+    .lt("starts_at", rangeTs(endExclusive, offset));
   if (!classes || classes.length === 0) return 0;
   const classIds = classes.map((c: { id: string }) => c.id);
 
@@ -148,8 +169,8 @@ async function newFacesInRange(
     .from("classes")
     .select("id")
     .eq("studio_id", studioId)
-    .gte("starts_at", lookbackStart + "T00:00:00")
-    .lt("starts_at", start + "T00:00:00");
+    .gte("starts_at", rangeTs(lookbackStart, offset))
+    .lt("starts_at", rangeTs(start, offset));
 
   if (!lookbackClasses || lookbackClasses.length === 0) {
     // No prior classes means everyone is a new face
@@ -186,12 +207,13 @@ async function cancellationsInRange(
   start: string,
   endExclusive: string,
 ): Promise<{ cancelled: number; total: number }> {
+  const offset = getEasternOffset();
   const { data: classes } = await supabase
     .from("classes")
     .select("id")
     .eq("studio_id", studioId)
-    .gte("starts_at", start + "T00:00:00")
-    .lt("starts_at", endExclusive + "T00:00:00");
+    .gte("starts_at", rangeTs(start, offset))
+    .lt("starts_at", rangeTs(endExclusive, offset));
   if (!classes || classes.length === 0) return { cancelled: 0, total: 0 };
   const classIds = classes.map((c: { id: string }) => c.id);
 
@@ -222,13 +244,14 @@ async function returningMembersInRange(
   start: string,
   endExclusive: string,
 ): Promise<number> {
+  const offset = getEasternOffset();
   // Get class ids in this range
   const { data: classes } = await supabase
     .from("classes")
     .select("id")
     .eq("studio_id", studioId)
-    .gte("starts_at", start + "T00:00:00")
-    .lt("starts_at", endExclusive + "T00:00:00");
+    .gte("starts_at", rangeTs(start, offset))
+    .lt("starts_at", rangeTs(endExclusive, offset));
   if (!classes || classes.length === 0) return 0;
   const classIds = classes.map((c: { id: string }) => c.id);
 
@@ -252,7 +275,7 @@ async function returningMembersInRange(
     .from("classes")
     .select("id")
     .eq("studio_id", studioId)
-    .lt("starts_at", start + "T00:00:00");
+    .lt("starts_at", rangeTs(start, offset));
   if (!priorClasses || priorClasses.length === 0) return 0;
   const priorClassIds = priorClasses.map(
     (c: { id: string }) => c.id,
@@ -284,12 +307,14 @@ async function signupsInRange(
   start: string,
   endExclusive: string,
 ): Promise<number> {
+  const offset = getEasternOffset();
+  // Use join_date (actual membership start) instead of created_at (Glofox sync timestamp)
   const { count } = await supabase
     .from("members")
     .select("id", { count: "exact", head: true })
     .eq("studio_id", studioId)
-    .gte("created_at", start + "T00:00:00")
-    .lt("created_at", endExclusive + "T00:00:00");
+    .gte("join_date", rangeTs(start, offset))
+    .lt("join_date", rangeTs(endExclusive, offset));
   return count ?? 0;
 }
 

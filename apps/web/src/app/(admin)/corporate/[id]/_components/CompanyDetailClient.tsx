@@ -277,7 +277,7 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
             </div>
           </div>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+        <button onClick={() => window.alert('Company editing coming in Phase 2')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
           <Edit3 className="h-4 w-4" />
           Edit
         </button>
@@ -385,7 +385,7 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
               <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Linked Members</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{MEMBERS.length} members</p>
             </div>
-            <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
+            <button onClick={() => window.alert('Member linking coming in Phase 4')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
               <Users className="h-3.5 w-3.5" />
               Add Member
             </button>
@@ -415,7 +415,7 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
                   <p className="text-xs text-gray-400 dark:text-gray-500">{member.addedDate}</p>
                 </div>
                 <div className="w-16 flex justify-center">
-                  <button className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors">
+                  <button onClick={() => window.alert('Member removal coming in Phase 4')} className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors">
                     <Trash2 className="h-3.5 w-3.5 text-red-500" />
                   </button>
                 </div>
@@ -483,7 +483,7 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
               <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Invoices</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{INVOICES.length} invoices</p>
             </div>
-            <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
+            <button onClick={() => window.alert('Invoice creation coming in Phase 4')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
               <FileText className="h-3.5 w-3.5" />
               New Invoice
             </button>

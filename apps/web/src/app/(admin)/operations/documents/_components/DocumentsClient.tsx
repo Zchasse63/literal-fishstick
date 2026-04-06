@@ -246,18 +246,18 @@ export default function DocumentsClient({ initialDocuments, initialEmployees }: 
                     <td className="px-6 py-3.5 text-sm text-gray-500 dark:text-gray-400">{doc.expiresDate ?? '—'}</td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-1">
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300" title="View">
+                        <button onClick={() => window.alert('Document viewing coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300" title="View">
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300" title="Download">
+                        <button onClick={() => window.alert('Document download coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300" title="Download">
                           <Download className="h-4 w-4" />
                         </button>
                         {doc.status === 'pending' && (
                           <>
-                            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700" title="Approve">
+                            <button onClick={() => window.alert('Document approval coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700" title="Approve">
                               <CheckCircle2 className="h-4 w-4" />
                             </button>
-                            <button className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-50 hover:text-red-600" title="Reject">
+                            <button onClick={() => window.alert('Document rejection coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-50 hover:text-red-600" title="Reject">
                               <XCircle className="h-4 w-4" />
                             </button>
                           </>
@@ -353,7 +353,7 @@ export default function DocumentsClient({ initialDocuments, initialEmployees }: 
             {isDragging ? 'Drop file here' : 'Drag and drop a file here'}
           </p>
           <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">or click to browse &middot; PDF, DOCX, JPG, PNG up to 10MB</p>
-          <button className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+          <button onClick={() => window.alert('File upload coming in Phase 4')} className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
             Browse Files
           </button>
         </div>

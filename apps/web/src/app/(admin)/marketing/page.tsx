@@ -5,6 +5,8 @@ import { createBrowserClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { useToast } from '@/hooks/use-toast'
+import { ToastNotification } from '@/components/ui/toast-notification'
 import {
   Megaphone,
   Mail,
@@ -193,12 +195,14 @@ function SkeletonPulse({ className }: { className?: string }) {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function MarketingPage() {
+  const { toast, showToast } = useToast()
   const [campaigns, setCampaigns] = useState<RecentCampaign[]>([])
   const [leadCounts, setLeadCounts] = useState<{ new: number; contacted: number; trial: number; converted: number }>({ new: 0, contacted: 0, trial: 0, converted: 0 })
   const [automationCount, setAutomationCount] = useState(0)
   const [scheduledCampaigns, setScheduledCampaigns] = useState<{ id: string; name: string; date: string; channel: Channel }[]>([])
   const [navCounts, setNavCounts] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [aiDismissed, setAiDismissed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -490,7 +494,7 @@ export default function MarketingPage() {
       {/* ─── AI Recommendation + Upcoming Scheduled ────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* AI Recommendation */}
-        <motion.div
+        {!aiDismissed && (<motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.2 }}
           className="lg:col-span-2 relative overflow-hidden rounded-2xl border shadow-sm"
@@ -525,14 +529,17 @@ export default function MarketingPage() {
                     <Zap className="h-3.5 w-3.5" />
                     Create Automation
                   </Link>
-                  <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 text-sm font-semibold hover:border-gray-300 hover:text-gray-800 dark:text-gray-200 transition-colors">
+                  <button
+                    onClick={() => setAiDismissed(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 text-sm font-semibold hover:border-gray-300 hover:text-gray-800 dark:text-gray-200 transition-colors"
+                  >
                     Dismiss
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </motion.div>
+        </motion.div>)}
 
         {/* Upcoming Scheduled */}
         <motion.div
@@ -580,6 +587,8 @@ export default function MarketingPage() {
           </div>
         </motion.div>
       </div>
+
+      <ToastNotification message={toast} />
     </motion.div>
   )
 }

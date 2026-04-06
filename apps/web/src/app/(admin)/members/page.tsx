@@ -13,8 +13,13 @@ import {
   Plus,
   MoreHorizontal,
   X,
+  User,
+  Mail,
+  Trash2,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
+import { useToast } from '@/hooks/use-toast'
+import { ToastNotification } from '@/components/ui/toast-notification'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import type { FilterTab, ProfileTab, Member, MemberBooking, MemberTransaction, EngagementStatus, AcquisitionChannel } from './_components/types'
 import { statusDot, statusLabel, membershipBadgeColor, engagementDotColor, acquisitionBadgeConfig } from './_components/types'
@@ -159,6 +164,7 @@ function MemberRowSkeleton() {
 
 // ─── Component ──────────────────────────────────────────────
 export default function MembersPage() {
+  const { toast, showToast } = useToast()
   const [filter, setFilter] = useState<FilterTab>('All')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -167,6 +173,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [filterCounts, setFilterCounts] = useState<Record<FilterTab, number>>({
     All: 0, Active: 0, Paused: 0, 'At Risk': 0, New: 0,
   })
@@ -618,12 +625,58 @@ export default function MembersPage() {
 
                           {/* Actions */}
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
+                            <div className="relative inline-block">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenDropdownId(openDropdownId === member.id ? null : member.id)
+                                }}
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                              {openDropdownId === member.id && (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdownId(null) }} />
+                                  <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 py-1 text-left">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setOpenDropdownId(null)
+                                        setSelectedMember(member)
+                                        setProfileTab('Overview')
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                    >
+                                      <User className="h-3.5 w-3.5" />
+                                      View Profile
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setOpenDropdownId(null)
+                                        if (member.email) window.location.href = `mailto:${member.email}`
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                    >
+                                      <Mail className="h-3.5 w-3.5" />
+                                      Email
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setOpenDropdownId(null)
+                                        showToast('Member removal coming in Phase 2')
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Remove
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -665,6 +718,7 @@ export default function MembersPage() {
               memberTransactions={memberTransactions}
               memberTags={memberTags}
               detailLoading={detailLoading}
+              onShowToast={showToast}
             />
           )}
         </AnimatePresence>
@@ -677,6 +731,8 @@ export default function MembersPage() {
         onOpenChange={setShowAddModal}
         onSuccess={() => { fetchMembers(); fetchCounts() }}
       />
+
+      <ToastNotification message={toast} />
     </motion.div>
   )
 }

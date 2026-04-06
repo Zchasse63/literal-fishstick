@@ -121,7 +121,7 @@ function AutomationCard({ automation, delay }: { automation: Automation; delay: 
         <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" /><span className="text-xs text-gray-500 dark:text-gray-400">Last triggered {automation.lastTriggered}</span></div>
         <div className="flex items-center gap-2">
           <Link href={`/marketing/automations/${automation.id}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 transition-colors"><Pencil className="h-3 w-3" />Edit</Link>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors"><Eye className="h-3 w-3" />Enrollments</button>
+          <button onClick={() => window.alert('Enrollment view coming in Phase 2')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors"><Eye className="h-3 w-3" />Enrollments</button>
         </div>
       </div>
     </motion.div>

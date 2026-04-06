@@ -329,7 +329,7 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
               </p>
             </div>
           </div>
-          <button className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+          <button onClick={() => window.alert('Migration error details coming in Phase 4')} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" />
             View {dataType.invalidRows ?? 3} Errors
           </button>
