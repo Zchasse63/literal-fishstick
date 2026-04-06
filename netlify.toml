@@ -12,11 +12,13 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Extended timeout for Glofox sync (default is 10s, need 60s for full sync)
+# Extended timeout for all serverless functions (Pro plan supports up to 60s)
 [functions]
   node_bundler = "esbuild"
+  external_node_modules = ["@supabase/supabase-js"]
 
-[functions."glofox-sync"]
+# The Next.js server handler timeout (applies to all API routes)
+[functions."___netlify-server-handler"]
   timeout = 60
 
 # Security headers
