@@ -22,3 +22,38 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=(self)"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co https://*.stripe.com; font-src 'self'; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.anthropic.com https://api.resend.com https://inn.gs; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'"
+
+# ─── Glofox Sync Cron ─────────────────────────────────────────────
+#
+# The Glofox sync runs hourly via POST /api/glofox/sync.
+# Auth: CRON_SECRET environment variable (set in Netlify dashboard).
+#
+# OPTION 1: Netlify Scheduled Functions (recommended)
+# Netlify scheduled functions require a separate function file at
+# netlify/functions/glofox-sync.mts (NOT inside the Next.js app).
+# Create this file:
+#
+#   // netlify/functions/glofox-sync.mts
+#   import type { Config } from "@netlify/functions";
+#
+#   export default async () => {
+#     const siteUrl = process.env.URL || process.env.DEPLOY_PRIME_URL;
+#     const res = await fetch(`${siteUrl}/api/glofox/sync`, {
+#       method: "POST",
+#       headers: {
+#         "Authorization": `Bearer ${process.env.CRON_SECRET}`,
+#         "Content-Type": "application/json",
+#       },
+#     });
+#     const data = await res.json();
+#     console.log("[glofox-sync]", JSON.stringify(data));
+#   };
+#
+#   export const config: Config = {
+#     schedule: "0 * * * *",  // Every hour
+#   };
+#
+# OPTION 2: External cron service (EasyCron, cron-job.org, GitHub Actions)
+# Point a POST request at https://YOUR_SITE/api/glofox/sync
+# with header: Authorization: Bearer YOUR_CRON_SECRET
+# Schedule: every 60 minutes
