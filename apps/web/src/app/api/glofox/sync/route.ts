@@ -139,6 +139,9 @@ function verifyCronAuth(request: NextRequest): boolean {
   return provided === expectedSecret
 }
 
+// ─── Route config — extend serverless function timeout ──────────
+export const maxDuration = 60 // seconds (Netlify Pro allows up to 26s on free, 60s on Pro)
+
 // ─── GET handler (health check / cron providers that only do GET) ─
 
 export async function GET(request: NextRequest) {

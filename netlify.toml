@@ -12,6 +12,13 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Extended timeout for Glofox sync (default is 10s, need 60s for full sync)
+[functions]
+  node_bundler = "esbuild"
+
+[functions."glofox-sync"]
+  timeout = 60
+
 # Security headers
 [[headers]]
   for = "/*"
