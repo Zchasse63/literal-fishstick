@@ -51,27 +51,83 @@ export interface CommandCenterData {
   error: string | null
 }
 
-// ─── Fallback mock data ─────────────────────────────────────
-const MOCK_INSIGHTS: AIInsight[] = [
-  {
-    icon: 'trending',
-    text: 'Wednesday 7pm Guided class hit 10/12 capacity 3 weeks straight — consider adding a Thursday session',
-    action: 'Add Class',
-    color: 'text-indigo-600',
-  },
-  {
-    icon: 'alert',
-    text: "9 members haven't booked in 14+ days — churn risk campaign ready",
-    action: 'Send Campaign',
-    color: 'text-orange-600',
-  },
-  {
-    icon: 'briefcase',
-    text: 'Tampa Tech corporate account is 3 sessions from their monthly cap',
-    action: 'Contact Account',
-    color: 'text-amber-600',
-  },
-]
+// ─── Computed insights from real data ───────────────────────
+function computeInsights(data: {
+  classes: ClassData[]
+  revenueToday: number
+  bookingsToday: number
+  walkInsToday: number
+}): AIInsight[] {
+  const insights: AIInsight[] = []
+
+  // Find highest-fill class
+  const fullestClass = data.classes.reduce<ClassData | null>(
+    (max, c) => (c.booked_count > (max?.booked_count || 0) ? c : max),
+    data.classes[0] ?? null
+  )
+  if (fullestClass && fullestClass.capacity > 0 && fullestClass.booked_count >= fullestClass.capacity * 0.75) {
+    const time = formatEasternTime(fullestClass.starts_at).replace(/^Today /, '')
+    insights.push({
+      icon: 'trending',
+      text: `${fullestClass.title} at ${time} is ${fullestClass.booked_count}/${fullestClass.capacity} — nearly full`,
+      action: 'View Schedule',
+      color: 'text-indigo-600',
+    })
+  }
+
+  // Revenue update
+  if (data.revenueToday > 0) {
+    insights.push({
+      icon: 'trending',
+      text: `$${(data.revenueToday / 100).toFixed(0)} revenue so far today from ${data.bookingsToday} booking${data.bookingsToday !== 1 ? 's' : ''}`,
+      action: 'View Revenue',
+      color: 'text-emerald-600',
+    })
+  }
+
+  // If no classes today
+  if (data.classes.length === 0) {
+    insights.push({
+      icon: 'alert',
+      text: 'No classes scheduled for today — check if the schedule needs updating',
+      action: 'View Schedule',
+      color: 'text-orange-600',
+    })
+  }
+
+  // Low attendance warning
+  const lowFill = data.classes.filter((c) => c.capacity > 0 && c.booked_count / c.capacity < 0.25)
+  if (lowFill.length > 0) {
+    insights.push({
+      icon: 'alert',
+      text: `${lowFill.length} class${lowFill.length > 1 ? 'es' : ''} under 25% capacity — consider sending reminders`,
+      action: 'Send Reminders',
+      color: 'text-orange-600',
+    })
+  }
+
+  // Walk-ins note
+  if (data.walkInsToday > 0) {
+    insights.push({
+      icon: 'briefcase',
+      text: `${data.walkInsToday} walk-in${data.walkInsToday !== 1 ? 's' : ''} today — check if any are conversion opportunities`,
+      action: 'View Members',
+      color: 'text-amber-600',
+    })
+  }
+
+  // Fallback if nothing interesting
+  if (insights.length === 0) {
+    insights.push({
+      icon: 'trending',
+      text: 'All systems running smoothly — no alerts right now',
+      action: 'View Analytics',
+      color: 'text-emerald-600',
+    })
+  }
+
+  return insights.slice(0, 3) // Max 3 insights
+}
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -148,7 +204,7 @@ export function useCommandCenterData(): CommandCenterData {
     noShowsToday: 0,
     classes: [],
     activities: [],
-    aiInsights: MOCK_INSIGHTS,
+    aiInsights: computeInsights({ classes: [], revenueToday: 0, bookingsToday: 0, walkInsToday: 0 }),
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -348,7 +404,7 @@ export function useCommandCenterData(): CommandCenterData {
         const [recentBookings, recentTransactions] = await Promise.all([
           supabase
             .from('bookings')
-            .select('id, member_id, status, is_walk_in, checked_in_at, created_at, members(profiles(full_name))')
+            .select('id, member_id, status, is_walk_in, checked_in_at, created_at, members(profiles(full_name)), classes(title)')
             .eq('studio_id', STUDIO_ID)
             .order('created_at', { ascending: false })
             .limit(5),
@@ -366,21 +422,23 @@ export function useCommandCenterData(): CommandCenterData {
           const profile = member?.profiles as Record<string, unknown> | null
           const name = (profile?.full_name as string) || 'A member'
           const memberId = member ? (b.member_id as string || '') : ''
+          const classInfo = b.classes as Record<string, unknown> | null
+          const className = (classInfo?.title as string) || ''
           const status = b.status as string
           let type = 'booking'
-          let description = `${name} booked a class`
+          let description = className ? `${name} booked — ${className}` : `${name} booked a class`
           if (status === 'checked_in') {
             type = 'check_in'
-            description = `${name} checked in`
+            description = className ? `${name} checked in — ${className}` : `${name} checked in`
           } else if (status === 'cancelled' || status === 'late_cancelled') {
             type = 'cancellation'
-            description = `${name} cancelled booking`
+            description = className ? `${name} cancelled — ${className}` : `${name} cancelled booking`
           }
           return {
             id: b.id as string,
             type,
             description,
-            created_at: b.created_at as string,
+            created_at: (status === 'checked_in' && b.checked_in_at ? b.checked_in_at : b.created_at) as string,
             metadata: memberId ? { member_id: memberId } : null,
           }
         })
@@ -392,14 +450,16 @@ export function useCommandCenterData(): CommandCenterData {
           const amount = formatCurrency((t.amount as number) || 0)
           const txDesc = (t.description as string) || ''
 
-          // Build description: show member name if available, otherwise just show the transaction detail
+          // Format: "$104 — Monthly Recurring (Parker Lee)"
           let description: string
-          if (name) {
-            description = `Payment received: ${amount} — ${name}${txDesc ? ` — ${txDesc}` : ''}`
+          if (txDesc && name) {
+            description = `${amount} — ${txDesc} (${name})`
+          } else if (name) {
+            description = `${amount} — ${name}`
           } else if (txDesc) {
-            description = `Payment received: ${amount} — ${txDesc}`
+            description = `${amount} — ${txDesc}`
           } else {
-            description = `Payment received: ${amount}`
+            description = `${amount}`
           }
 
           return {
@@ -417,7 +477,7 @@ export function useCommandCenterData(): CommandCenterData {
       }
 
       // --- AI Briefing ---
-      let aiInsights = MOCK_INSIGHTS
+      let aiInsights = computeInsights({ classes, revenueToday, bookingsToday, walkInsToday })
       if (aiBriefingResult.status === 'fulfilled' && aiBriefingResult.value?.insights) {
         aiInsights = aiBriefingResult.value.insights
       }

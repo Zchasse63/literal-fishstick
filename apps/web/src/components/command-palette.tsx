@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CommandDialog,
@@ -31,6 +31,7 @@ import {
   Briefcase,
 } from 'lucide-react'
 import { NAV_ITEMS } from '@/lib/nav'
+import { useCommandPalette } from '@/contexts/command-palette-context'
 
 /** Map icon name strings from NAV_ITEMS to actual Lucide components. */
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -60,20 +61,20 @@ const employeePortalItems = [
 ]
 
 export function CommandPalette() {
-  const [open, setOpen] = useState(false)
+  const { open, setOpen } = useCommandPalette()
   const router = useRouter()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        setOpen((prev) => !prev)
+        setOpen(!open)
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [open, setOpen])
 
   const runCommand = useCallback(
     (href: string) => {

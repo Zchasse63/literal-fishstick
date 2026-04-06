@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { useCommandPalette } from '@/contexts/command-palette-context'
 import {
   Search,
   Menu,
@@ -18,6 +19,7 @@ interface HeaderProps {
 }
 
 export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
+  const { setOpen: openCommandPalette } = useCommandPalette()
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
@@ -61,9 +63,7 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
         {/* Search — opens command palette */}
         <button
           aria-label="Open search"
-          onClick={() => {
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
-          }}
+          onClick={() => openCommandPalette(true)}
           className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <Search className="w-4 h-4" />
@@ -74,9 +74,7 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
         {/* Keyboard shortcuts — opens command palette */}
         <button
           aria-label="Keyboard shortcuts"
-          onClick={() => {
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
-          }}
+          onClick={() => openCommandPalette(true)}
           className="hidden lg:flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           <Keyboard className="w-5 h-5" />
@@ -119,10 +117,7 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
 
         {/* Quick Create — opens command palette */}
         <button
-          onClick={() => {
-            // Dispatch Cmd+K keyboard shortcut to open the command palette
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
-          }}
+          onClick={() => openCommandPalette(true)}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm"
         >
           <Plus className="w-4 h-4" />

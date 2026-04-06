@@ -17,7 +17,6 @@ import {
   Settings2,
   BarChart3,
   Settings,
-  Search,
   Sun,
   Moon,
   LogOut,
@@ -75,19 +74,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <span className="font-bold text-gray-900 dark:text-gray-100 text-lg">Meridian</span>
         )}
       </div>
-
-      {/* Search */}
-      {!collapsed && (
-        <div className="px-4 py-3">
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <Search className="w-4 h-4" />
-            <span>Search...</span>
-            <kbd className="ml-auto text-[10px] font-medium bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-1.5 py-0.5">
-              ⌘K
-            </kbd>
-          </button>
-        </div>
-      )}
 
       {/* Nav Items */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">

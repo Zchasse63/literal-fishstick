@@ -163,10 +163,12 @@ function CommandCenterSkeleton() {
 const AI_ACTION_ROUTES: Record<string, string> = {
   'Add Class': '/schedule',
   'Send Campaign': '/marketing/campaigns/new',
+  'Send Reminders': '/marketing',
   'Contact Account': '/corporate',
   'View Members': '/members',
   'View Analytics': '/analytics',
   'View Revenue': '/revenue',
+  'View Schedule': '/schedule',
 }
 
 function AIBriefingCard({ insights, greeting, firstName }: { insights: AIInsight[]; greeting: string; firstName: string }) {
@@ -611,7 +613,9 @@ function EngagementBreakdown() {
 // ─── Command Center Page ─────────────────────────────────────
 export default function CommandCenter() {
   const { profile } = useAuth()
-  const firstName = profile?.full_name?.split(' ')[0] || 'there'
+  // Extract a real first name — avoid greeting with articles from business names like "The Sauna Guys"
+  const rawFirst = profile?.full_name?.split(' ')[0] || ''
+  const firstName = rawFirst && !['The', 'A', 'An'].includes(rawFirst) ? rawFirst : 'there'
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
