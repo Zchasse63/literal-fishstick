@@ -148,18 +148,10 @@ export async function GET(request: NextRequest) {
   return POST(request)
 }
 
-// ─── POST handler ────────────────────────────────────────────────
+// ─── POST handler (streaming NDJSON to prevent Netlify inactivity timeout) ──
 
 export async function POST(request: NextRequest) {
-  const syncStart = Date.now()
-  const log: string[] = []
-  const logLine = (msg: string) => {
-    const ts = new Date().toISOString()
-    log.push(`[${ts}] ${msg}`)
-    console.log(`[glofox-sync] ${msg}`)
-  }
-
-  // ── 0. Auth ────────────────────────────────────────────────────
+  // ── 0. Auth (must happen before streaming starts) ──────────────
   if (!verifyCronAuth(request)) {
     return NextResponse.json(
       { error: 'Unauthorized. Provide Authorization: Bearer <CRON_SECRET> or x-cron-secret header.' },
@@ -206,6 +198,26 @@ export async function POST(request: NextRequest) {
       { status: 503 },
     )
   }
+
+  // ── Streaming response to prevent Netlify inactivity timeout ──
+  // We use a TransformStream to send NDJSON progress lines while the sync runs.
+  const encoder = new TextEncoder()
+  const { readable, writable } = new TransformStream()
+  const writer = writable.getWriter()
+  const syncStart = Date.now()
+  const log: string[] = []
+  const logLine = (msg: string) => {
+    const ts = new Date().toISOString()
+    const line = `[${ts}] ${msg}`
+    log.push(line)
+    console.log(`[glofox-sync] ${msg}`)
+    // Write progress line to keep the connection alive
+    writer.write(encoder.encode(JSON.stringify({ progress: msg }) + '\n')).catch(() => {})
+  }
+
+  // Run the sync in background, writing to the stream as we go
+  ;(async () => {
+    try {
 
   logLine('Sync started')
 
@@ -654,7 +666,8 @@ export async function POST(request: NextRequest) {
 
   logLine(`Sync complete in ${totalDuration}ms: ${totalFetched} fetched, ${totalCreated} created, ${totalUpdated} updated, ${totalSkipped} skipped, ${totalErrors} errors`)
 
-  return NextResponse.json({
+  // Write final summary as the last line
+  const finalResult = {
     status: totalErrors > 0 ? 'completed_with_errors' : 'completed',
     sync_started_at: syncStartedAt,
     duration_ms: totalDuration,
@@ -667,5 +680,24 @@ export async function POST(request: NextRequest) {
     },
     steps: results,
     log,
+  }
+  await writer.write(encoder.encode(JSON.stringify({ result: finalResult }) + '\n'))
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      logLine(`FATAL: ${errorMsg}`)
+      await writer.write(encoder.encode(JSON.stringify({ error: errorMsg }) + '\n'))
+    } finally {
+      await writer.close()
+    }
+  })()
+
+  // Return the streaming response immediately — Netlify sees bytes flowing
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'application/x-ndjson',
+      'Cache-Control': 'no-cache',
+      'Transfer-Encoding': 'chunked',
+    },
   })
 }
