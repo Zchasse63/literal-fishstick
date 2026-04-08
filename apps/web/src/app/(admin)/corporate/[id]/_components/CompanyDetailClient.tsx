@@ -277,7 +277,20 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
             </div>
           </div>
         </div>
-        <button onClick={() => window.alert('Company editing coming in Phase 2')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+        <button onClick={() => {
+          const name = prompt('Company name:', COMPANY.name)
+          if (name === null) return
+          const email = prompt('Contact email:', COMPANY.email)
+          if (email === null) return
+          const phone = prompt('Phone:', COMPANY.phone)
+          if (phone === null) return
+          fetch(`/api/corporate/${COMPANY.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, phone }),
+          }).then(r => r.ok ? window.location.reload() : r.json().then(d => alert(d.error || 'Failed to update company')))
+            .catch(() => alert('Failed to update company'))
+        }} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
           <Edit3 className="h-4 w-4" />
           Edit
         </button>
@@ -385,7 +398,16 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
               <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Linked Members</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{MEMBERS.length} members</p>
             </div>
-            <button onClick={() => window.alert('Member linking coming in Phase 4')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
+            <button onClick={() => {
+              const memberId = prompt('Enter member ID to link:')
+              if (!memberId) return
+              fetch(`/api/corporate/${COMPANY.id}/members`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ member_id: memberId }),
+              }).then(r => r.ok ? window.location.reload() : r.json().then(d => alert(d.error || 'Failed to link member')))
+                .catch(() => alert('Failed to link member'))
+            }} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
               <Users className="h-3.5 w-3.5" />
               Add Member
             </button>
@@ -415,7 +437,15 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
                   <p className="text-xs text-gray-400 dark:text-gray-500">{member.addedDate}</p>
                 </div>
                 <div className="w-16 flex justify-center">
-                  <button onClick={() => window.alert('Member removal coming in Phase 4')} className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors">
+                  <button onClick={() => {
+                    if (!confirm(`Remove ${member.name} from this company?`)) return
+                    fetch(`/api/corporate/${COMPANY.id}/members`, {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ member_id: member.id }),
+                    }).then(r => r.ok ? window.location.reload() : r.json().then(d => alert(d.error || 'Failed to remove member')))
+                      .catch(() => alert('Failed to remove member'))
+                  }} className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors">
                     <Trash2 className="h-3.5 w-3.5 text-red-500" />
                   </button>
                 </div>
@@ -483,7 +513,18 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
               <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Invoices</h3>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{INVOICES.length} invoices</p>
             </div>
-            <button onClick={() => window.alert('Invoice creation coming in Phase 4')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
+            <button onClick={() => {
+              const amount = prompt('Invoice amount ($):')
+              if (!amount) return
+              const description = prompt('Description:', `Invoice for ${COMPANY.name}`)
+              if (description === null) return
+              fetch('/api/invoices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: COMPANY.id, amount: parseFloat(amount), description }),
+              }).then(r => r.ok ? window.location.reload() : r.json().then(d => alert(d.error || 'Failed to create invoice')))
+                .catch(() => alert('Failed to create invoice'))
+            }} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
               <FileText className="h-3.5 w-3.5" />
               New Invoice
             </button>

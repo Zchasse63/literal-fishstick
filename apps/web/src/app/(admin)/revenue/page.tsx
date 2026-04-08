@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { createBrowserClient } from '@/lib/supabase/client'
@@ -41,6 +41,7 @@ import {
   Bar,
 } from 'recharts'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import { useToast } from '@/hooks/use-toast'
@@ -50,6 +51,7 @@ import type { DailyRevenue, RevenueByType, RevenueBySource, MrrDataPoint } from 
 import TransactionsTab from './_components/TransactionsTab'
 import type { TransactionRow } from './_components/TransactionsTab'
 import MembershipsTab from './_components/MembershipsTab'
+import RecordPaymentModal from './_components/RecordPaymentModal'
 
 const STUDIO_ID = DEFAULT_STUDIO_ID
 
@@ -198,10 +200,25 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 
 // REMOVED: inline OverviewTab, MembershipsTab, TransactionsTab — now imported from _components/
 
+const VALID_TABS: Tab[] = ['Overview', 'Memberships', 'Transactions']
+function parseTab(param: string | null): Tab {
+  if (param && VALID_TABS.includes(param as Tab)) return param as Tab
+  return 'Overview'
+}
+
 export default function RevenuePage() {
   const { toast, showToast } = useToast()
-  const [activeTab, setActiveTab] = useState<Tab>('Overview')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const activeTab = useMemo(() => parseTab(searchParams.get('tab')), [searchParams])
+  const setActiveTab = useCallback((tab: Tab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.replace(`/revenue?${params.toString()}`, { scroll: false })
+  }, [searchParams, router])
   const [loading, setLoading] = useState(true)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [churnRateValue, setChurnRateValue] = useState<string>('\u2014')
 
   // Metric data
   const [metrics, setMetrics] = useState<MetricData[]>([])
@@ -331,10 +348,6 @@ export default function RevenuePage() {
       const arpm = Math.round(mrr / activeMemberCount)
       const failedCount = failedRes.count || 0
 
-      // Churn: simplified — members with status != 'active' who were active before
-      // For now, show a percentage based on total vs active
-      const churnRate = '\u2014' // Real churn calculation coming in Phase 3
-
       setMetrics([
         {
           label: 'MRR',
@@ -356,7 +369,7 @@ export default function RevenuePage() {
         },
         {
           label: 'Churn Rate',
-          value: churnRate,
+          value: churnRateValue,
           trend: '\u2014',
           trendDirection: 'neutral',
           trendGood: true,
@@ -568,6 +581,18 @@ export default function RevenuePage() {
     return () => clearInterval(interval)
   }, [fetchData])
 
+  // Fetch churn rate from API
+  useEffect(() => {
+    fetch('/api/analytics/churn-rate')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.churn_rate != null) {
+          setChurnRateValue(`${data.churn_rate}%`)
+        }
+      })
+      .catch(() => { /* leave as dash */ })
+  }, [])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -597,7 +622,7 @@ export default function RevenuePage() {
             Orders
           </Link>
           <button
-            onClick={() => showToast('Manual payment recording coming in Phase 2')}
+            onClick={() => setPaymentModalOpen(true)}
             className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2"
           >
             <DollarSign className="w-4 h-4" />
@@ -652,6 +677,12 @@ export default function RevenuePage() {
       </AnimatePresence>
 
       <ToastNotification message={toast} />
+
+      <RecordPaymentModal
+        open={paymentModalOpen}
+        onOpenChange={setPaymentModalOpen}
+        onSuccess={() => { showToast('Payment recorded successfully'); fetchData() }}
+      />
     </motion.div>
   )
 }

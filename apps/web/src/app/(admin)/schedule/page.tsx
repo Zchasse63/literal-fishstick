@@ -26,6 +26,7 @@ import type { ClassInstance } from '@meridian/types'
 import { fadeInUp } from '@/lib/motion'
 import { useToast } from '@/hooks/use-toast'
 import { ToastNotification } from '@/components/ui/toast-notification'
+import ClassFormModal from './_components/ClassFormModal'
 
 // ─── Types ──────────────────────────────────────────────────
 type ViewMode = 'Day' | 'Week' | 'Month'
@@ -499,6 +500,8 @@ export default function SchedulePage() {
   const [attendees, setAttendees] = useState<Attendee[]>([])
   const [loadingAttendees, setLoadingAttendees] = useState(false)
   const [checkingInAll, setCheckingInAll] = useState(false)
+  const [classFormOpen, setClassFormOpen] = useState(false)
+  const [editClassData, setEditClassData] = useState<Parameters<typeof ClassFormModal>[0]['editData']>(null)
 
   const viewModes: ViewMode[] = ['Day', 'Week', 'Month']
   const filters: ClassFilter[] = ['All Classes', 'Open Sauna', 'Guided', 'Private']
@@ -731,7 +734,7 @@ export default function SchedulePage() {
         </div>
 
         <button
-          onClick={() => showToast('Class creation coming in Phase 2')}
+          onClick={() => { setEditClassData(null); setClassFormOpen(true) }}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -855,7 +858,25 @@ export default function SchedulePage() {
                 onCheckInAll={handleCheckInAll}
                 checkingInAll={checkingInAll}
                 onSendReminder={() => showToast('Reminders coming in Phase 2')}
-                onEditClass={() => showToast('Class editing coming in Phase 2')}
+                onEditClass={() => {
+                  if (selectedClass) {
+                    // Find the raw class data to populate the edit modal
+                    const raw = rawClasses?.find((c: any) => c.id === selectedClass.id)
+                    if (raw) {
+                      setEditClassData({
+                        id: raw.id,
+                        class_type_id: raw.class_type_id ?? '',
+                        title: raw.title ?? null,
+                        starts_at: raw.starts_at,
+                        ends_at: raw.ends_at,
+                        capacity: raw.capacity,
+                        trainer_id: raw.trainer_id,
+                        description: (raw as any).description ?? null,
+                      })
+                      setClassFormOpen(true)
+                    }
+                  }
+                }}
               />
             </div>
           )}
@@ -863,6 +884,13 @@ export default function SchedulePage() {
       </div>
 
       <ToastNotification message={toast} />
+
+      <ClassFormModal
+        open={classFormOpen}
+        onOpenChange={setClassFormOpen}
+        onSuccess={() => showToast('Class saved successfully')}
+        editData={editClassData}
+      />
     </motion.div>
   )
 }

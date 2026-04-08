@@ -159,7 +159,7 @@ export function PricingSimulatorClient({ initialSimulations }: PricingSimulatorC
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <Link href={`/analytics/pricing/${sim.id}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><Eye className="w-3.5 h-3.5" />View</Link>
-                        <button onClick={() => window.alert('Simulation duplication coming in Phase 3')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><Copy className="w-3.5 h-3.5" />Duplicate</button>
+                        <button onClick={() => fetch(`/api/pricing-simulator/${sim.id}/duplicate`, { method: 'POST' }).then(r => r.ok ? window.location.reload() : alert('Failed to duplicate'))} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><Copy className="w-3.5 h-3.5" />Duplicate</button>
                         {sim.status === 'Analyzed' && (
                           applyConfirm === sim.id ? (
                             <div className="flex items-center gap-1">

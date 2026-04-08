@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   Settings,
@@ -94,8 +94,66 @@ function FieldRow({
   )
 }
 
+// ─── Save Utility ──────────────────────────────────────────
+async function saveSettingsToApi(
+  data: Record<string, unknown>,
+  setSaving: (v: boolean) => void,
+  setStatus: (v: 'idle' | 'saved' | 'error') => void,
+) {
+  setSaving(true)
+  setStatus('idle')
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      setStatus('error')
+      return
+    }
+    setStatus('saved')
+    setTimeout(() => setStatus('idle'), 2000)
+  } catch {
+    setStatus('error')
+  } finally {
+    setSaving(false)
+  }
+}
+
+function SaveButton({ saving, status, onClick }: { saving: boolean; status: 'idle' | 'saved' | 'error'; onClick: () => void }) {
+  return (
+    <div className="flex items-center justify-end gap-3">
+      {status === 'saved' && (
+        <span className="text-sm font-medium text-emerald-600 flex items-center gap-1">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Saved
+        </span>
+      )}
+      {status === 'error' && (
+        <span className="text-sm font-medium text-red-600">Failed to save</span>
+      )}
+      <Button
+        onClick={onClick}
+        disabled={saving}
+        className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+      >
+        <Save className="w-4 h-4" />
+        {saving ? 'Saving...' : 'Save Changes'}
+      </Button>
+    </div>
+  )
+}
+
 // ─── General Tab ────────────────────────────────────────────
 function GeneralTab() {
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [studioName, setStudioName] = useState('The Sauna Guys')
+  const [address, setAddress] = useState('Tampa, FL')
+  const [phone, setPhone] = useState('(813) 555-0100')
+  const [email, setEmail] = useState('hello@thesaunaguys.com')
+  const [timezone, setTimezone] = useState('America/New_York')
   const [operatingHours, setOperatingHours] = useState<OperatingHour[]>([
     { day: 'Monday', open: '08:00', close: '21:00', enabled: true },
     { day: 'Tuesday', open: '08:00', close: '21:00', enabled: true },
@@ -114,6 +172,17 @@ function GeneralTab() {
     })
   }
 
+  const handleSave = useCallback(() => {
+    saveSettingsToApi({
+      name: studioName,
+      address,
+      phone,
+      email,
+      timezone,
+      operating_hours: operatingHours,
+    }, setSaving, setStatus)
+  }, [studioName, address, phone, email, timezone, operatingHours])
+
   return (
     <div className="space-y-8">
       {/* Studio Information */}
@@ -127,19 +196,23 @@ function GeneralTab() {
         </CardHeader>
         <CardContent className="space-y-0">
           <FieldRow label="Studio Name">
-            <Input defaultValue="The Sauna Guys" />
+            <Input value={studioName} onChange={(e) => setStudioName(e.target.value)} />
           </FieldRow>
           <FieldRow label="Address">
-            <Input defaultValue="Tampa, FL" />
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} />
           </FieldRow>
           <FieldRow label="Phone">
-            <Input type="tel" defaultValue="(813) 555-0100" />
+            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </FieldRow>
           <FieldRow label="Email">
-            <Input type="email" defaultValue="hello@thesaunaguys.com" />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </FieldRow>
           <FieldRow label="Timezone">
-            <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
+            <select
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
               <option value="America/New_York">Eastern (ET)</option>
               <option value="America/Chicago">Central (CT)</option>
               <option value="America/Denver">Mountain (MT)</option>
@@ -240,20 +313,42 @@ function GeneralTab() {
       </Card>
 
       {/* Save */}
-      <div className="flex justify-end">
-        <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </Button>
-      </div>
+      <SaveButton saving={saving} status={status} onClick={handleSave} />
     </div>
   )
 }
 
 // ─── Booking Rules Tab ──────────────────────────────────────
 function BookingRulesTab() {
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [strikeSystemEnabled, setStrikeSystemEnabled] = useState(true)
   const [unlimitedWarningOnly, setUnlimitedWarningOnly] = useState(true)
+  const [lateCancelWindow, setLateCancelWindow] = useState(8)
+  const [strike2Penalty, setStrike2Penalty] = useState(5)
+  const [strike3Penalty, setStrike3Penalty] = useState(10)
+  const [rollingWindow, setRollingWindow] = useState(30)
+  const [capacityPerSession, setCapacityPerSession] = useState(12)
+  const [coldPlungeCount, setColdPlungeCount] = useState(6)
+  const [waitlistClaimWindow, setWaitlistClaimWindow] = useState(30)
+  const [creditGracePeriod, setCreditGracePeriod] = useState(7)
+
+  const handleSave = useCallback(() => {
+    saveSettingsToApi({
+      booking_rules: {
+        late_cancellation_window_hours: lateCancelWindow,
+        strike_system_enabled: strikeSystemEnabled,
+        strike_2_penalty: strike2Penalty,
+        strike_3_penalty: strike3Penalty,
+        rolling_window_days: rollingWindow,
+        unlimited_warning_only: unlimitedWarningOnly,
+        capacity_per_session: capacityPerSession,
+        cold_plunge_count: coldPlungeCount,
+        waitlist_claim_window_minutes: waitlistClaimWindow,
+        credit_grace_period_days: creditGracePeriod,
+      },
+    }, setSaving, setStatus)
+  }, [strikeSystemEnabled, unlimitedWarningOnly, lateCancelWindow, strike2Penalty, strike3Penalty, rollingWindow, capacityPerSession, coldPlungeCount, waitlistClaimWindow, creditGracePeriod])
 
   return (
     <div className="space-y-8">
@@ -274,7 +369,7 @@ function BookingRulesTab() {
             description="Hours before class start when cancellation incurs a strike"
           >
             <div className="flex items-center gap-2">
-              <Input type="number" defaultValue={8} min={1} max={48} className="w-20" />
+              <Input type="number" value={lateCancelWindow} onChange={(e) => setLateCancelWindow(Number(e.target.value))} min={1} max={48} className="w-20" />
               <span className="text-sm text-gray-500 dark:text-gray-400">hours</span>
             </div>
           </FieldRow>
@@ -295,7 +390,7 @@ function BookingRulesTab() {
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500 dark:text-gray-400">$</span>
-                  <Input type="number" defaultValue={5} min={0} className="w-20" />
+                  <Input type="number" value={strike2Penalty} onChange={(e) => setStrike2Penalty(Number(e.target.value))} min={0} className="w-20" />
                 </div>
               </FieldRow>
               <FieldRow
@@ -304,7 +399,7 @@ function BookingRulesTab() {
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500 dark:text-gray-400">$</span>
-                  <Input type="number" defaultValue={10} min={0} className="w-20" />
+                  <Input type="number" value={strike3Penalty} onChange={(e) => setStrike3Penalty(Number(e.target.value))} min={0} className="w-20" />
                 </div>
               </FieldRow>
               <FieldRow
@@ -312,7 +407,7 @@ function BookingRulesTab() {
                 description="Days over which strikes are counted before resetting"
               >
                 <div className="flex items-center gap-2">
-                  <Input type="number" defaultValue={30} min={7} max={90} className="w-20" />
+                  <Input type="number" value={rollingWindow} onChange={(e) => setRollingWindow(Number(e.target.value))} min={7} max={90} className="w-20" />
                   <span className="text-sm text-gray-500 dark:text-gray-400">days</span>
                 </div>
               </FieldRow>
@@ -347,7 +442,7 @@ function BookingRulesTab() {
             description="Maximum number of members per time slot"
           >
             <div className="flex items-center gap-2">
-              <Input type="number" defaultValue={12} min={1} max={100} className="w-20" />
+              <Input type="number" value={capacityPerSession} onChange={(e) => setCapacityPerSession(Number(e.target.value))} min={1} max={100} className="w-20" />
               <span className="text-sm text-gray-500 dark:text-gray-400">members</span>
             </div>
           </FieldRow>
@@ -357,7 +452,7 @@ function BookingRulesTab() {
           >
             <div className="flex items-center gap-2">
               <Droplets className="w-4 h-4 text-sky-500" />
-              <Input type="number" defaultValue={6} min={0} max={50} className="w-20" />
+              <Input type="number" value={coldPlungeCount} onChange={(e) => setColdPlungeCount(Number(e.target.value))} min={0} max={50} className="w-20" />
             </div>
           </FieldRow>
           <FieldRow
@@ -365,7 +460,7 @@ function BookingRulesTab() {
             description="Minutes a promoted member has to confirm their spot"
           >
             <div className="flex items-center gap-2">
-              <Input type="number" defaultValue={30} min={5} max={120} className="w-20" />
+              <Input type="number" value={waitlistClaimWindow} onChange={(e) => setWaitlistClaimWindow(Number(e.target.value))} min={5} max={120} className="w-20" />
               <span className="text-sm text-gray-500 dark:text-gray-400">minutes</span>
             </div>
           </FieldRow>
@@ -387,7 +482,7 @@ function BookingRulesTab() {
             description="Additional days after credit expiry before they become unusable"
           >
             <div className="flex items-center gap-2">
-              <Input type="number" defaultValue={7} min={0} max={30} className="w-20" />
+              <Input type="number" value={creditGracePeriod} onChange={(e) => setCreditGracePeriod(Number(e.target.value))} min={0} max={30} className="w-20" />
               <span className="text-sm text-gray-500 dark:text-gray-400">days</span>
             </div>
           </FieldRow>
@@ -395,12 +490,7 @@ function BookingRulesTab() {
       </Card>
 
       {/* Save */}
-      <div className="flex justify-end">
-        <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </Button>
-      </div>
+      <SaveButton saving={saving} status={status} onClick={handleSave} />
     </div>
   )
 }
@@ -561,18 +651,15 @@ function MembershipPricingTab() {
       </Card>
 
       {/* Save */}
-      <div className="flex justify-end">
-        <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </Button>
-      </div>
+      <SaveButton saving={false} status="idle" onClick={() => window.alert('Membership plan management requires dedicated API — coming soon')} />
     </div>
   )
 }
 
 // ─── Notifications Tab ──────────────────────────────────────
 function NotificationsTab() {
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [notifications, setNotifications] = useState({
     bookingConfirmation: true,
     bookingReminder: true,
@@ -587,6 +674,10 @@ function NotificationsTab() {
   const toggleNotification = (key: keyof typeof notifications) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
   }
+
+  const handleSave = useCallback(() => {
+    saveSettingsToApi({ notification_settings: notifications }, setSaving, setStatus)
+  }, [notifications])
 
   return (
     <div className="space-y-8">
@@ -680,12 +771,7 @@ function NotificationsTab() {
       </Card>
 
       {/* Save */}
-      <div className="flex justify-end">
-        <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </Button>
-      </div>
+      <SaveButton saving={saving} status={status} onClick={handleSave} />
     </div>
   )
 }
@@ -852,12 +938,7 @@ function IntegrationsTab() {
       </Card>
 
       {/* Save */}
-      <div className="flex justify-end">
-        <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </Button>
-      </div>
+      <SaveButton saving={false} status="idle" onClick={() => window.alert('Integration settings are managed via environment variables')} />
     </div>
   )
 }

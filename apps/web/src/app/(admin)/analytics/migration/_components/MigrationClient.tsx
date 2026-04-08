@@ -329,7 +329,25 @@ function UploadFlow({ dataType, onClose }: UploadFlowProps) {
               </p>
             </div>
           </div>
-          <button onClick={() => window.alert('Migration error details coming in Phase 4')} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+          <button onClick={() => {
+            const supabase = createBrowserClient()
+            supabase
+              .from('migration_errors')
+              .select('*')
+              .eq('data_type', dataType.name)
+              .order('created_at', { ascending: false })
+              .limit(20)
+              .then(({ data, error }) => {
+                if (error || !data?.length) {
+                  alert(`Migration errors for ${dataType.name}:\n\nNo detailed error records found. Check the migration_errors table or server logs.`)
+                  return
+                }
+                const summary = data.map((e: any, i: number) =>
+                  `${i + 1}. Row ${e.row_number ?? '?'}: ${e.message ?? e.error ?? 'Unknown error'}`
+                ).join('\n')
+                alert(`Migration errors for ${dataType.name} (${data.length} shown):\n\n${summary}`)
+              })
+          }} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" />
             View {dataType.invalidRows ?? 3} Errors
           </button>

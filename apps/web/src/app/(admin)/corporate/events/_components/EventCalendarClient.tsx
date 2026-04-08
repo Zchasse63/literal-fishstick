@@ -122,10 +122,10 @@ export default function EventCalendarClient({ initialEvents }: EventCalendarClie
           <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Events</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage corporate events, parties, and bookings</p>
         </div>
-        <button onClick={() => window.alert('Event creation coming in Phase 4')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
+        <Link href="/corporate/events/new" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
           <Plus className="h-4 w-4" />
           New Event
-        </button>
+        </Link>
       </div>
 
       <div className="flex items-center justify-between mb-4">

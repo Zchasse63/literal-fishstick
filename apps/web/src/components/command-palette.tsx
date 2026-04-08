@@ -29,6 +29,8 @@ import {
   Clock,
   FileText,
   Briefcase,
+  Zap,
+  Filter,
 } from 'lucide-react'
 import { NAV_ITEMS } from '@/lib/nav'
 import { useCommandPalette } from '@/contexts/command-palette-context'
@@ -51,13 +53,15 @@ const quickActions = [
   { label: 'Add Member', icon: UserPlus, href: '/members?action=add-member', shortcut: 'M' },
   { label: 'Record Payment', icon: CreditCard, href: '/revenue?action=record-payment' },
   { label: 'New Campaign', icon: Mail, href: '/marketing?action=new-campaign' },
+  { label: 'Smart Segments', icon: Filter, href: '/segments' },
+  { label: 'Engagement', icon: Zap, href: '/engagement' },
 ]
 
 const employeePortalItems = [
-  { label: 'Clock In / Out', icon: Clock, href: '/operations/clock' },
+  { label: 'Clock In / Out', icon: Clock, href: '/employee/clock' },
   { label: 'Payroll', icon: FileText, href: '/operations/payroll' },
-  { label: 'Staff Directory', icon: Briefcase, href: '/operations/staff' },
-  { label: 'Settings', icon: Settings, href: '/operations/settings' },
+  { label: 'Staff Directory', icon: Briefcase, href: '/operations?tab=directory' },
+  { label: 'Settings', icon: Settings, href: '/settings' },
 ]
 
 export function CommandPalette() {

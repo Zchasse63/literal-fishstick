@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { createBrowserClient } from '@/lib/supabase/client'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   Loader2 as Spinner,
   Users,
@@ -48,8 +49,21 @@ function getInitials(name: string): string {
 }
 
 // ─── Component ──────────────────────────────────────────────
+const VALID_MAIN_TABS: MainTab[] = ['directory', 'schedule', 'payroll', 'permissions']
+function parseMainTab(param: string | null): MainTab {
+  if (param && VALID_MAIN_TABS.includes(param as MainTab)) return param as MainTab
+  return 'directory'
+}
+
 export default function OperationsPage() {
-  const [activeTab, setActiveTab] = useState<MainTab>('directory')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const activeTab = useMemo(() => parseMainTab(searchParams.get('tab')), [searchParams])
+  const setActiveTab = useCallback((tab: MainTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.replace(`/operations?${params.toString()}`, { scroll: false })
+  }, [searchParams, router])
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)

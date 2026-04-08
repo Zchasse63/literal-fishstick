@@ -14,6 +14,7 @@ import {
 import type { Employee, RoleFilter, DetailTab } from './types'
 import { ROLE_FILTERS, roleBadgeClasses } from './types'
 import EmployeeDetailPanel from './EmployeeDetailPanel'
+import EmployeeFormModal from './EmployeeFormModal'
 
 export default function DirectoryTab({
   employees,
@@ -36,6 +37,12 @@ export default function DirectoryTab({
   detailTab: DetailTab
   setDetailTab: (t: DetailTab) => void
 }) {
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false)
+  const [employeeEditData, setEmployeeEditData] = useState<{
+    id: string; name: string; email: string; phone: string;
+    role: string; employmentType: string; hireDate: string; payRate: string;
+  } | null>(null)
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       {/* Main Table Area */}
@@ -52,7 +59,7 @@ export default function DirectoryTab({
               className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none transition-colors focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
-          <button onClick={() => window.alert('Employee creation coming in Phase 4')} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+          <button onClick={() => { setEmployeeEditData(null); setEmployeeModalOpen(true) }} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
             <Plus className="h-4 w-4" />
             Add Employee
           </button>
@@ -170,6 +177,19 @@ export default function DirectoryTab({
                       <EmployeeActionDropdown
                         employee={emp}
                         onViewProfile={() => { setSelectedEmployee(emp); setDetailTab('overview') }}
+                        onEdit={() => {
+                          setEmployeeEditData({
+                            id: emp.id,
+                            name: emp.name,
+                            email: '',
+                            phone: '',
+                            role: emp.role,
+                            employmentType: emp.employmentType,
+                            hireDate: emp.hireDate,
+                            payRate: emp.payRate ?? '',
+                          })
+                          setEmployeeModalOpen(true)
+                        }}
                       />
                     </td>
                   </tr>
@@ -200,11 +220,18 @@ export default function DirectoryTab({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <EmployeeFormModal
+        open={employeeModalOpen}
+        onOpenChange={setEmployeeModalOpen}
+        onSuccess={() => window.location.reload()}
+        editData={employeeEditData}
+      />
     </div>
   )
 }
 
-function EmployeeActionDropdown({ employee, onViewProfile }: { employee: Employee; onViewProfile: () => void }) {
+function EmployeeActionDropdown({ employee, onViewProfile, onEdit }: { employee: Employee; onViewProfile: () => void; onEdit: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
@@ -226,7 +253,7 @@ function EmployeeActionDropdown({ employee, onViewProfile }: { employee: Employe
               View Profile
             </button>
             <button
-              onClick={e => { e.stopPropagation(); setOpen(false); window.alert('Employee editing coming in Phase 4') }}
+              onClick={e => { e.stopPropagation(); setOpen(false); onEdit() }}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Pencil className="h-3.5 w-3.5" />

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -20,7 +21,11 @@ import {
   Mail,
   Phone,
   Loader2,
+  ExternalLink,
 } from 'lucide-react'
+import Link from 'next/link'
+import MemberUpgradeModal from './MemberUpgradeModal'
+import MemberPauseModal from './MemberPauseModal'
 import type { Member, MemberBooking, MemberTransaction, ProfileTab } from './types'
 import { statusDot, statusLabel, membershipBadgeColor, heatmapData, heatmapColor } from './types'
 
@@ -46,6 +51,8 @@ export default function MemberProfilePanel({
   onShowToast?: (msg: string) => void
 }) {
   const notify = onShowToast ?? ((msg: string) => { /* no-op if not passed */ })
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [pauseOpen, setPauseOpen] = useState(false)
   return (
     <motion.div
       key={member.id}
@@ -113,6 +120,17 @@ export default function MemberProfilePanel({
             <Tag className="h-2.5 w-2.5" />
             10% Member Discount
           </span>
+        </div>
+
+        {/* View Full Profile */}
+        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+          <Link
+            href={`/members/${member.id}`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            View Full Profile
+          </Link>
         </div>
 
         {/* Tags */}
@@ -273,7 +291,7 @@ export default function MemberProfilePanel({
                     <div className="flex items-center gap-2 pt-1.5">
                       {member.status !== 'paused' && (
                         <button
-                          onClick={() => notify('Membership pause coming in Phase 2')}
+                          onClick={() => setPauseOpen(true)}
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                         >
                           <Pause className="h-3 w-3" />
@@ -281,11 +299,30 @@ export default function MemberProfilePanel({
                         </button>
                       )}
                       <button
-                        onClick={() => notify('Membership upgrade coming in Phase 2')}
+                        onClick={() => setUpgradeOpen(true)}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
                       >
                         <ArrowUp className="h-3 w-3" />
                         Upgrade
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Are you sure you want to archive ${member.firstName} ${member.lastName}? This action cannot be undone.`)) return
+                          try {
+                            const res = await fetch(`/api/members/${member.id}`, { method: 'DELETE' })
+                            if (res.ok) {
+                              onClose()
+                              notify('Member archived')
+                            } else {
+                              notify('Failed to archive member')
+                            }
+                          } catch {
+                            notify('Network error')
+                          }
+                        }}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Archive
                       </button>
                     </div>
                   </div>
@@ -518,6 +555,23 @@ export default function MemberProfilePanel({
           </AnimatePresence>
         </div>
       </div>
+
+      <MemberUpgradeModal
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        memberId={member.id}
+        memberName={`${member.firstName} ${member.lastName}`}
+        currentTier={member.membership}
+        onSuccess={() => notify('Membership upgraded successfully')}
+      />
+
+      <MemberPauseModal
+        open={pauseOpen}
+        onOpenChange={setPauseOpen}
+        memberId={member.id}
+        memberName={`${member.firstName} ${member.lastName}`}
+        onSuccess={() => notify('Membership paused successfully')}
+      />
     </motion.div>
   )
 }

@@ -151,13 +151,14 @@ function PostCard({
                       {post.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                       {post.pinned ? 'Unpin' : 'Pin'}
                     </button>
-                    <button
-                      onClick={() => { setShowMenu(false); window.alert('Content editing coming in Phase 2') }}
+                    <Link
+                      href={`/marketing/content/${post.id}/edit`}
+                      onClick={() => setShowMenu(false)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       <Edit3 className="h-4 w-4" />
                       Edit
-                    </button>
+                    </Link>
                     <button
                       onClick={() => {
                         onDelete(post.id)

@@ -142,17 +142,33 @@ export function AIInsightsClient({ initialInsights, initialHistory }: AIInsights
   const handleDismiss = async (id: string) => {
     const insight = insights.find((i) => i.id === id)
     if (!insight) return
-    try { await fetch(`/api/ai/insights/${id}/dismiss`, { method: 'POST' }) } catch {}
+    // Optimistic update
     setInsights((prev) => prev.filter((i) => i.id !== id))
     setHistory((prev) => [{ ...insight, status: 'dismissed' as const, resolvedAt: 'Just now' }, ...prev])
+    try {
+      const res = await fetch(`/api/ai/insights/${id}/dismiss`, { method: 'POST' })
+      if (!res.ok) throw new Error('dismiss failed')
+    } catch {
+      // Rollback on failure
+      setInsights((prev) => [...prev, insight].sort((a, b) => a.createdAt.localeCompare(b.createdAt)))
+      setHistory((prev) => prev.filter((i) => i.id !== id))
+    }
   }
 
   const handleMarkDone = async (id: string) => {
     const insight = insights.find((i) => i.id === id)
     if (!insight) return
-    try { await fetch(`/api/ai/insights/${id}/action`, { method: 'POST' }) } catch {}
+    // Optimistic update
     setInsights((prev) => prev.filter((i) => i.id !== id))
     setHistory((prev) => [{ ...insight, status: 'done' as const, resolvedAt: 'Just now' }, ...prev])
+    try {
+      const res = await fetch(`/api/ai/insights/${id}/action`, { method: 'POST' })
+      if (!res.ok) throw new Error('action failed')
+    } catch {
+      // Rollback on failure
+      setInsights((prev) => [...prev, insight].sort((a, b) => a.createdAt.localeCompare(b.createdAt)))
+      setHistory((prev) => prev.filter((i) => i.id !== id))
+    }
   }
 
   const handleGenerate = async () => {

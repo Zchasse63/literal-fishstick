@@ -47,12 +47,35 @@ export default function PayrollTab({
         </div>
         <div className="flex items-center gap-2">
           {currentPayPeriod.rows.some(r => r.status === 'Pending Review') && (
-            <button onClick={() => window.alert('Payroll approval coming in Phase 4')} className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-600">
+            <button
+              onClick={async () => {
+                if (!confirm('Approve all pending payroll items for this period?')) return
+                try {
+                  const res = await fetch(`/api/payroll/periods/${selectedPeriod}/approve`, { method: 'POST' })
+                  if (res.ok) window.location.reload()
+                  else window.alert('Failed to approve payroll')
+                } catch { window.alert('Network error') }
+              }}
+              className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
+            >
               <CheckCircle2 className="h-4 w-4" />
               Approve All
             </button>
           )}
-          <button onClick={() => window.alert('Payroll export coming in Phase 4')} className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch(`/api/payroll/periods/${selectedPeriod}/export`, { method: 'POST' })
+                if (!res.ok) { window.alert('Export failed'); return }
+                const text = await res.text()
+                const blob = new Blob([text], { type: 'text/csv' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a'); a.href = url; a.download = `payroll-${selectedPeriod}.csv`; a.click()
+                URL.revokeObjectURL(url)
+              } catch { window.alert('Network error') }
+            }}
+            className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
             <Download className="h-4 w-4" />
             Export
           </button>

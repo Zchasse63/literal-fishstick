@@ -35,12 +35,17 @@ function isPublicRoute(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   // Refresh the auth session on every request
   //
-  // TODO(RLS): Phase 2+ tables use `current_setting('app.studio_id')::uuid` in
-  // RLS policies, but server-side route handlers use a service-role client that
-  // bypasses RLS entirely. All queries already filter by studio_id manually.
-  // When client-side access is added in Phase 5, RLS policies must be rewritten
-  // to use `auth.uid()` or `current_setting('app.studio_id')` must be set via
-  // a Supabase `set_config` call before each request.
+  // RLS STATUS: 11 Phase 2 tables (campaigns, leads, content_posts, etc.) use
+  // `current_setting('app.studio_id')::uuid` in RLS policies. Server-side
+  // route handlers use the anon key (not service-role), so RLS IS enforced.
+  // All queries already filter by studio_id manually as a defense-in-depth
+  // measure. A `setRlsContext()` helper is available in @/lib/supabase/server
+  // for routes that need to set the context explicitly. Phase 5 requires
+  // creating a `set_studio_context(uuid)` Postgres function via migration:
+  //
+  //   CREATE OR REPLACE FUNCTION set_studio_context(studio_id uuid)
+  //   RETURNS void LANGUAGE plpgsql AS $$
+  //   BEGIN SET LOCAL app.studio_id = studio_id::text; END; $$;
   //
   const response = await updateSession(request);
 
