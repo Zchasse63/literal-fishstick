@@ -170,15 +170,15 @@ export default function EngagementClient({ initialActiveMemberCount, initialLead
       {activeTab === 'achievements' && (
         <ComingSoonPlaceholder
           icon={Sparkles}
-          title="Coming in Phase 3"
-          description="Achievements will reward members for milestones like visit streaks, cold plunge records, and referral activity. Requires the gamification engine and data pipelines."
+          title="Member Achievements"
+          description="Achievements will reward members for milestones like visit streaks, cold plunge records, and referral activity. Requires the gamification engine and visit streak / referral data pipelines to be built."
         />
       )}
       {activeTab === 'challenges' && (
         <ComingSoonPlaceholder
           icon={Target}
-          title="Coming in Phase 3"
-          description="Challenges will let you create time-bound goals for members with progress tracking, participant counts, and reward distribution."
+          title="Studio Challenges"
+          description="Challenges will let you create time-bound goals for members with progress tracking, participant counts, and reward distribution. Requires the challenge engine and enrollment tracking pipelines."
         />
       )}
     </div>

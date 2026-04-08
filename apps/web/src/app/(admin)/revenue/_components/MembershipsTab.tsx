@@ -108,7 +108,7 @@ export default function MembershipsTab({ loading, membershipPlans, promoCodes }:
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Trainer Promo Codes</p>
               <p className="text-lg font-bold text-gray-900 dark:text-gray-100">Referral Attribution</p>
             </div>
-            <button onClick={() => window.alert('Promo code creation coming in Phase 2')} className="px-3.5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-1.5">
+            <button onClick={() => { const code = prompt('Enter promo code (uppercase, no spaces):'); if (!code) return; const trainerId = prompt('Trainer ID (optional):'); fetch('/api/promo-codes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.toUpperCase(), trainer_id: trainerId || null, discount_type: 'percent', discount_value: 10 }) }).then(r => r.ok ? window.location.reload() : alert('Failed to create promo code')).catch(() => alert('Network error')) }} className="px-3.5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5" />
               New Code
             </button>

@@ -1,70 +1,40 @@
-# Contradictions Between Auditors
+# Synthesis: Contradictions Between Layers
 
-**Generated:** 2026-04-05
-**Source layers:** 10
-
----
-
-## Method
-
-A contradiction is identified when two agents make conflicting assessments about the same artifact, or when one agent's finding is inconsistent with another agent's characterization of the same system.
+**Date:** 2026-04-08
 
 ---
 
-## Contradictions Found
+## CON-001: "CRIT-AS-001 Events DEFAULT_STUDIO_ID" Severity
+**Layers in tension:** api-surface (CRITICAL), security (HIGH)
 
-### CONTRA-001: AI briefing revenue source — agents disagree on correctness
+api-surface classifies the Events API DEFAULT_STUDIO_ID as CRITICAL (multi-tenancy breach). Security classifies it as HIGH. The difference: api-surface views it as a data isolation failure even in single-studio deployments (bypasses the multi-tenant isolation pattern), while security views it as only becoming a data access control failure in multi-studio scenarios (which haven't launched yet). 
 
-**Agents in tension:** data-model vs. ai-layer
-
-- **data-model (DM-001)** states: "Every revenue metric on dashboards reading from `daily_metrics` is incorrect"
-- **ai-layer (AI-002)** states: "The briefing route appears to fetch live transaction data correctly — document this clearly"
-
-**Resolution:** Both agents are partially right. The `GET /api/ai/briefing` route queries `transactions` directly for `revenue_today` and `revenue_mtd` (live data). However, dashboard components like the executive dashboard and revenue trend charts read from `daily_metrics` (wrong data). The AI briefing's revenue context is likely correct; the dashboard charts are not.
-
-**Verdict:** The data-model agent overstated the scope. The AI briefing's raw revenue is probably correct. The dashboard visualizations are wrong.
+**Resolution:** CRITICAL classification is correct. Even for current single-studio use, the hardcoded constant bypasses established architectural patterns and will cause a silent data leak the moment a second studio is onboarded. Fix should be done before Phase 3.
 
 ---
 
-### CONTRA-002: Rate limiter characterization — severity framing differs
+## CON-002: Supabase anon key (NEXT_PUBLIC_ prefix) — Risk Level
+**Layers in tension:** project-structure (MEDIUM — non-standard naming), security (INFO — intentional per Supabase design)
 
-**Agents in tension:** api-surface vs. security
+project-structure flags `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` as a concern (non-standard name may cause auth failures). security notes that the `NEXT_PUBLIC_` prefix is intentional — the Supabase anon key is meant to be client-side.
 
-- **api-surface (AS-001)** calls the rate limiter "effectively non-functional"
-- **security (SEC-002)** classifies it as a cost attack vector
-
-Both are correct but describe different risk dimensions. The api-surface agent focuses on technical correctness (per-instance counter); the security agent focuses on the business impact (Anthropic API cost). These are complementary, not contradictory.
-
-**Verdict:** No true contradiction. Both characterizations are accurate from their respective lenses.
+**Resolution:** Both concerns are valid but independent. (1) The non-standard variable name is a naming inconsistency that could cause configuration mistakes — worth fixing to `NEXT_PUBLIC_SUPABASE_ANON_KEY` for clarity. (2) The key being in the client bundle is intentional and correct per Supabase architecture. RLS enforces data access regardless of key exposure.
 
 ---
 
-### CONTRA-003: RSC conversion scope — ps vs. ui-ux differ on pages converted
+## CON-003: Glofox Sync Timeout Workaround
+**Layers in tension:** project-structure (MED-PS-001 — cron not configured), performance-infra (HIGH-PI-002 — streaming workaround inadequate), integration (MED-INT-002 — no circuit breaker)
 
-**Agents in tension:** project-structure vs. ui-ux
+Each layer views the Glofox sync problem from a different angle: project-structure sees it as an incomplete infrastructure setup, performance-infra sees it as a timeout workaround that will fail at scale, integration sees it as a reliability concern.
 
-- **project-structure (PS-001)** notes the `(admin)/layout.tsx` is `'use client'` which limits RSC benefits "for all 32 admin pages"
-- **ui-ux (UX-006)** specifically identifies the members directory as NOT converted to RSC
-
-**Resolution:** These are consistent. The project-structure agent correctly identifies the layout as the limiting factor. The ui-ux agent found that even at the page level, some pages like members directory are still full client components. The 32-page RSC conversion was partial — some pages were converted (`[id]/page.tsx`, automations, engagement) while others (`members/page.tsx`) were not.
-
-**Verdict:** Not a contradiction. The ui-ux agent's finding is a refinement of the project-structure finding, not an opposition.
+**Resolution:** These are complementary, not contradictory. The root cause is architectural: Glofox sync should be an Inngest background function (not an HTTP endpoint), which would solve all three concerns simultaneously — no timeout limit, proper retry/backoff, and scheduled execution via Inngest's cron.
 
 ---
 
-### CONTRA-004: Glofox write-back — integration vs. memory file
+## CON-004: CSP "unsafe-eval" Assessment
+**Layers in tension:** security (HIGH-SEC-001 — disables XSS mitigation), project-structure (noted in next.config.ts comments with Phase 5 plan)
 
-**Agents in tension:** integration agent description vs. project memory
+Security flags `unsafe-eval` in CSP as HIGH risk. The project-structure layer notes this is a documented temporary decision with a concrete Phase 5 remediation plan (nonce-based CSP). 
 
-- **integration (INT-007)** treats Glofox write-back (createBooking, markAttendance, cancelBooking) as approved behavior
-- **Memory file** (`feedback_glofox_no_writes.md`): "Never write to Glofox in tests or code until explicitly approved"
+**Resolution:** Both are accurate. The risk is real (HIGH severity) AND there's an existing mitigation plan. The finding should be labeled HIGH but with the Phase 5 timeline noted. It is not an oversight — it's a tracked technical debt item.
 
-**Resolution:** The memory file says "until explicitly approved" — these specific write-back operations have been approved for production use. The memory note applies to tests and new code, not existing approved write-backs.
-
-**Verdict:** Not a contradiction. The integration agent correctly identified that write-backs are intentionally implemented for specific actions.
-
----
-
-## Summary
-
-No material contradictions found across the 10 audit layers. The minor tensions identified are cases of different agents characterizing the same facts from different perspectives, which is expected and healthy in a multi-agent audit. All resolutions are documented above.

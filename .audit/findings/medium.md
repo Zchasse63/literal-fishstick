@@ -1,180 +1,79 @@
 # Medium Findings
 
-**Generated:** 2026-04-05
-**Deduplicated and cross-referenced from 10 layer audit reports.**
+**Date:** 2026-04-08
 
 ---
 
-## MED-001: cron-member-enrichment loads all bookings into JavaScript memory
-
-**IDs:** DM-005, PERF-001
-**Corroborated by:** data-model, performance-infra (2/10 layers)
-
-Full table fetch of all `attended=true` bookings in memory. At scale (100,000+ rows), this will exceed serverless memory limits or cause timeouts.
-
-**Fix:** Replace with a Postgres `GROUP BY` aggregate: `SELECT member_id, COUNT(*), MAX(checked_in_at) FROM bookings WHERE studio_id=? AND attended=true GROUP BY member_id`
+## MEDIUM-1: wallet_balance Denormalization Without Transaction Safety
+Data-model layer. Wallet balance is stored denormalized on the members row. If a wallet transaction write succeeds but the member row update fails, the wallet will be inconsistent.
 
 ---
 
-## MED-002: MRR calculation silently excludes members with unmapped plan codes
-
-**ID:** DM-006
-**Layer:** data-model
-
-`SUM(plan_price) WHERE membership_status='active'` skips members where `plan_price IS NULL`. With 20 plan mappings, some Glofox plan codes may not be mapped.
-
-**Fix:** Query for unmapped active members. Add missing entries to `glofox_plan_map`.
+## MEDIUM-2: No Index on members(studio_id, membership_status)
+Data-model / performance-infra. Member directory filtering by status runs without index support.
 
 ---
 
-## MED-003: Profiles-Members split creates inconsistent data access patterns
-
-**ID:** DM-007
-**Layer:** data-model
-
-Different routes access member data via `profiles`, `members`, or the `member_360` view. Edge cases exist for users with a profile but no members row.
-
-**Fix:** Standardize on `member_360` view or `profiles LEFT JOIN members` pattern across all routes.
+## MEDIUM-3: Dark Mode Preference Not Persisted
+UI/UX layer. The `useTheme()` context loses dark mode preference on page refresh (no localStorage or cookie backing).
 
 ---
 
-## MED-004: Zod validation inconsistently applied — only 4 schemas for 150 routes
-
-**ID:** SEC-007
-**Layer:** security
-
-4 Zod schemas exist; remaining 140+ POST/PUT routes use ad-hoc if-checks. Unexpected input shapes can cause DB errors or logic bugs.
-
-**Fix:** Extend Zod validation to all state-mutating routes (POST/PUT/DELETE). Prioritize: members, campaigns, automations, leads.
+## MEDIUM-4: Command Palette Quick Actions URL Params May Not Be Consumed
+User-flow layer. Quick actions navigate to routes like `/schedule?action=new-class` but destination pages may not consume these params to open modals.
 
 ---
 
-## MED-005: getStudioId() utility fails-open with DEFAULT_STUDIO_ID
-
-**ID:** SEC-004
-**Layer:** security
-
-The `getStudioId()` helper returns `DEFAULT_STUDIO_ID` if `studio_id` is null on the profile — fail-open behavior. This becomes a multi-tenancy security hole at Phase 4.
-
-**Fix:** Add a `required` flag to `getStudioId()` that returns null/throws instead of falling back. Migrate all routes per MED-008.
+## MEDIUM-5: Employee Portal Trainer Nav Shows for All Roles
+User-flow / ui-ux. The trainer nav section (My Classes, Performance, Promo Code) renders for all employees regardless of whether they have the `trainer` role.
 
 ---
 
-## MED-006: EasyPost webhook may lack signature verification
-
-**ID:** AS-007, SEC-005
-**Corroborated by:** api-surface, security (2/10 layers)
-
-The EasyPost webhook directory exists. Stripe and Resend webhooks have explicit HMAC verification. EasyPost verification was not confirmed.
-
-**Fix:** Implement EasyPost HMAC-SHA256 signature verification.
+## MEDIUM-6: AI Responses Not Validated Against Zod Schema
+AI-layer. LLM JSON responses are parsed with `parseAIJson<T>()` but no Zod validation is performed on the parsed result. Schema changes in Claude responses propagate as silent TypeScript type mismatches.
 
 ---
 
-## MED-007: RLS policies not actively enforced for server-side clients
-
-**ID:** INT-003
-**Layer:** integration
-
-Phase 2 RLS policies use `current_setting('app.studio_id')::uuid` but server-side clients never set this. All isolation relies on manual `WHERE studio_id = ?` clauses.
-
-**Fix:** Document that current RLS policies are not the actual enforcement boundary. Plan RLS rewrite for Phase 5 using `auth.uid()`.
+## MEDIUM-7: /segments and /engagement Not in Navigation
+User-flow. These implemented modules are inaccessible from the primary navigation, effectively hiding finished features from users.
 
 ---
 
-## MED-008: CSP uses 'unsafe-inline' and 'unsafe-eval' for script-src
-
-**ID:** SEC-006
-**Layer:** security
-
-These flags significantly weaken XSS protections. They may be required by React/Stripe but should be reviewed after Next.js 16 / React 19 upgrade.
-
-**Fix:** Evaluate if `unsafe-eval` can be removed. Move toward nonce-based CSP where possible.
+## MEDIUM-8: Glofox Cron Not Configured in Infrastructure
+Project-structure / integration. No Netlify scheduled function or external cron is configured in the repo to trigger the hourly Glofox sync. The sync only runs if manually triggered or by an external service not documented in the codebase.
 
 ---
 
-## MED-009: Admin layout is a client component — limits RSC conversion benefits
-
-**IDs:** PS-001, UX-003
-**Corroborated by:** project-structure, ui-ux (2/10 layers)
-
-`(admin)/layout.tsx` is `'use client'` which makes it the client boundary root for all 32 admin pages. RSC-converted page.tsx files gain only partial benefit.
-
-**Fix:** Extract `AdminShell` client component for interactive parts (sidebar toggle, keyboard shortcuts). Make the layout itself a server component.
+## MEDIUM-9: DEFAULT_STUDIO_ID Used in Stripe Customer Creation
+Integration. `getOrCreateCustomer()` in `lib/stripe.ts` uses `DEFAULT_STUDIO_ID` in Stripe metadata. For multi-studio deployments, all Stripe customers would be tagged to the same studio.
 
 ---
 
-## MED-010: Automation cooldown check has race condition for parallel flows
-
-**ID:** INT-004
-**Layer:** integration
-
-Two flows triggering simultaneously for the same member could both pass the cooldown check before either inserts the cooldown record.
-
-**Fix:** Move cooldown enforcement to `execute-flow` step with atomic upsert (`ON CONFLICT DO NOTHING`).
+## MEDIUM-10: CSP unsafe-inline + unsafe-eval (Planned Phase 5 Fix)
+Security. The current CSP allows inline scripts and eval, neutralizing most XSS mitigation. Documented as a technical debt item with a Phase 5 nonce-based CSP plan.
 
 ---
 
-## MED-011: Not all AI modules use withRetry() wrapper
-
-**ID:** AI-004
-**Layer:** ai-layer
-
-Some AI modules call `anthropic.messages.create()` directly, not via `withRetry()`. They throw immediately on 429 rate limit.
-
-**Fix:** Audit all 22 modules for direct `messages.create()` calls. Wrap in `withRetry()`.
+## MEDIUM-11: No Client-Side Caching Layer
+Performance-infra. Every page navigation re-fetches all data from the server. Adding React Query or SWR would significantly improve perceived performance and reduce database load.
 
 ---
 
-## MED-012: AI briefing imports from deprecated lib/anthropic.ts
-
-**ID:** AI-005
-**Layer:** ai-layer
-
-The briefing API route imports from `@/lib/anthropic` instead of `@/lib/ai/briefing`. This means two Anthropic client singletons may exist.
-
-**Fix:** Remove `lib/anthropic.ts`. Update briefing route to import from `@/lib/ai/briefing`.
+## MEDIUM-12: Integration Tests Not Running in CI
+Performance-infra / testing-quality. Integration tests are implemented but commented out in CI. They require a dedicated Supabase test instance that hasn't been provisioned.
 
 ---
 
-## MED-013: Glofox client has zero tests after 15-method rewrite
-
-**ID:** TQ-004
-**Layer:** testing-quality
-
-906 lines across 50+ methods, zero unit tests. 15 methods were recently rewritten.
-
-**Fix:** Add unit tests for the 15 corrected methods using the existing `mock-glofox.ts` helper.
+## MEDIUM-13: Glofox Sync Has No Circuit Breaker
+Integration. When Glofox is down, the hourly sync continues triggering with no exponential backoff at the schedule level.
 
 ---
 
-## MED-014: Coverage thresholds at 30% — far below industry standard
-
-**ID:** TQ-005
-**Layer:** testing-quality
-
-Coverage thresholds (30% branches/functions/lines) are below the minimum recommended for a financial/member-data platform.
-
-**Fix:** Raise to 50% near-term, 70% by Phase 2 completion. Prioritize auth layer and payment routes.
+## MEDIUM-14: Stripe API Version Uses Non-Standard Suffix
+Integration. `'2026-02-25.clover'` is unusual. Standard Stripe API versions use `YYYY-MM-DD` format without suffixes. Verify this is intentional.
 
 ---
 
-## MED-015: Executive dashboard fetches all data client-side despite RSC pattern
+## MEDIUM-15: AI Module Tests Coverage at 0%
+Testing-quality. 22 of 23 AI library modules have no direct unit tests. These modules implement critical business logic (churn scoring, health scoring) and should have happy-path + error-handling coverage.
 
-**IDs:** UX-002, PERF-004
-**Corroborated by:** ui-ux, performance-infra (2/10 layers)
-
-`ExecutiveDashboardClient` handles all data fetching because of a misunderstanding about RSC capabilities. All 4+ API calls execute in the browser sequentially.
-
-**Fix:** Move data fetching to RSC page layer using direct Supabase calls. Pass as props.
-
----
-
-## MED-016: Campaign recipient count doesn't account for unsubscribed/bounced members
-
-**ID:** UX-005, UF (user flow)
-**Layer:** ui-ux
-
-Campaign wizard shows segment count; actual delivered count is lower after filtering `email_preferences`. Users see misleading recipient numbers.
-
-**Fix:** Query `email_preferences` when displaying recipient count in the campaign wizard.

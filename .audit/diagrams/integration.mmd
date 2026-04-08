@@ -1,68 +1,41 @@
-graph TD
-    APP["Meridian\n(Next.js 16 / Netlify)"]
+graph TB
+    subgraph MERIDIAN["Meridian Application"]
+        API["Next.js API Routes"]
+        INNGEST_FN["Inngest Functions\n(background)"]
+    end
 
-    %% Databases & Auth
-    SUPA["Supabase\n(PostgreSQL + Auth + RLS)"]
-    SUPAB["Supabase\n(Service Role / Inngest)"]
+    subgraph CORE["Core Services"]
+        SUPA["Supabase\nPostgres + Auth + RLS"]
+        ANTHROPIC["Anthropic API\n30s timeout, retry 3x"]
+    end
 
-    %% Payments
-    STRIPE["Stripe\n(subscriptions, checkout,\nwebhooks)"]
+    subgraph PAYMENTS["Payment Services"]
+        STRIPE["Stripe\nSubscriptions + Webhooks\nAPI v2026-02-25.clover"]
+    end
 
-    %% AI
-    ANTHROPIC["Anthropic\n(Claude Sonnet 4.6\n13 AI endpoints)"]
+    subgraph COMMS["Communication Services"]
+        RESEND["Resend\nEmail (batch + transactional)\nsvix webhook verification"]
+        TWILIO["Twilio\nSMS (stub — not active)"]
+    end
 
-    %% Email
-    RESEND["Resend\n(transactional + campaigns\n+ tracking webhooks via Svix)"]
-    SVIX["Svix\n(webhook verification\nfor Resend)"]
+    subgraph LEGACY["Legacy Integration"]
+        GLOFOX["Glofox API\nRead-only + write-back\n100ms rate limit, 3 retries"]
+    end
 
-    %% SMS
-    TWILIO["Twilio\n(SMS — stubbed,\nTwilioProvider ready)"]
+    subgraph BACKGROUND["Background Services"]
+        INNGEST_EXT["Inngest Cloud\nEvent-driven background jobs"]
+        EASYPOST["EasyPost\nShipping (inactive Phase 1)\nNo webhook verification"]
+    end
 
-    %% Background Jobs
-    INNGEST["Inngest\n(19 functions:\ncrons + automation\n+ Glofox write-back)"]
-
-    %% Glofox
-    GLOFOX["Glofox API\n(read + write-back\nGlofox REST v2.x)"]
-
-    %% Shipping
-    EASYPOST["EasyPost\n(shipping rates + labels\ntracking webhooks)"]
-
-    %% Social embed
-    SNAPWIDGET["SnapWidget\n(Instagram embed\nno API key)"]
-
-    %% Data flow — primary
-    APP -->|"cookie-auth RLS queries"| SUPA
-    INNGEST -->|"service-role queries\n(bypass RLS)"| SUPAB
-    APP -->|"Stripe SDK\ncheckout, subscriptions,\nproration"| STRIPE
-    STRIPE -->|"webhook POST\nsignature verified"| APP
-    APP -->|"Anthropic SDK\nmessages.create\nno timeout set"| ANTHROPIC
-    APP -->|"Resend SDK\ntransactional + batch"| RESEND
-    RESEND -->|"Svix-signed\nwebhook POST\ndelivered/opened/\nbounced/clicked"| APP
-    SVIX -.->|"signs Resend webhooks"| RESEND
-    APP -->|"SMSProvider factory\n(stub default)"| TWILIO
-    TWILIO -->|"POST webhook\nauth conditional\non env var"| APP
-    APP -->|"inngest.send()\nevents"| INNGEST
-    INNGEST -->|"crons + async\nflow execution"| INNGEST
-    INNGEST -->|"GlofoxClient\nhourly sync +\nwrite-back"| GLOFOX
-    GLOFOX -->|"incremental sync\nread-only + write-back\n(attendance, booking)"| INNGEST
-    APP -->|"EasyPost API\nshipping rates\n(if EASYPOST_API_KEY set)"| EASYPOST
-    EASYPOST -->|"tracker.updated webhook\nHMAC conditional\non env var"| APP
-    APP -.->|"iframe embed\nno backend touch"| SNAPWIDGET
-
-    %% Color coding
-    classDef green fill:#10B981,stroke:#065F46,color:#fff
-    classDef yellow fill:#F59E0B,stroke:#92400E,color:#fff
-    classDef red fill:#EF4444,stroke:#991B1B,color:#fff
-    classDef purple fill:#7C3AED,stroke:#4C1D95,color:#fff
-    classDef gray fill:#9CA3AF,stroke:#4B5563,color:#fff
-
-    class APP green
-    class SUPA,SUPAB green
-    class STRIPE green
-    class RESEND,SVIX green
-    class ANTHROPIC yellow
-    class INNGEST green
-    class GLOFOX yellow
-    class TWILIO yellow
-    class EASYPOST red
-    class SNAPWIDGET gray
+    API --> SUPA
+    API --> ANTHROPIC
+    API --> STRIPE
+    API --> RESEND
+    API --> TWILIO
+    INNGEST_FN --> SUPA
+    INNGEST_FN --> ANTHROPIC
+    INNGEST_FN --> RESEND
+    INNGEST_FN --> GLOFOX
+    API --> INNGEST_EXT
+    INNGEST_FN --> INNGEST_EXT
+    API --> EASYPOST

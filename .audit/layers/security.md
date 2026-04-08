@@ -1,205 +1,186 @@
 # Layer Report: Security
 
-**Audit Date:** 2026-04-05
 **Agent:** security
-**Severity Scale:** Critical / High / Medium / Low / Info
+**Date:** 2026-04-08
+**Status:** Complete
 
 ---
 
 ## Executive Summary
 
-Meridian's security posture is solid for a Phase 1 platform targeting a single studio. Authentication uses Supabase JWTs with role-based access via a centralized `requireRole()` helper. Webhook handlers verify signatures. Secrets are env-var based. Content Security Policy is configured in Netlify headers. No hardcoded API keys or plaintext secrets were found in source code.
-
-Critical/High issues: (1) the AI natural language search executes AI-generated SQL against production data without confirmed DB-layer read-only enforcement; (2) the rate limiter is non-functional for cross-instance protection; (3) two API routes bypass `requireRole()` and use inline auth with `DEFAULT_STUDIO_ID` fallbacks; (4) the EasyPost webhook may lack signature verification. These issues are compounded by the fact that 10 AI routes have no rate limiting, creating an unauthenticated cost exposure vector if session tokens are stolen.
-
-Note: This is heuristic analysis, not a substitute for dedicated security tooling (SAST, DAST, penetration testing).
+Meridian's security posture is generally solid for an admin-only Phase 1+2 system. Authentication uses Supabase magic link (passwordless), role-based access is enforced by the `requireRole()` middleware helper, and webhook integrity is verified via cryptographic signatures (Stripe, Resend). The most serious issues are: (1) an LLM-generated SQL execution path with no server-side query validation (already identified in ai-layer), (2) the events API bypasses multi-tenant isolation using a hardcoded `DEFAULT_STUDIO_ID`, (3) the CSP uses `unsafe-inline` and `unsafe-eval` in both `next.config.ts` and `netlify.toml`, and (4) `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` exposes the Supabase anon key with a NEXT_PUBLIC_ prefix, making it available in client JavaScript bundles.
 
 ---
 
-## Security Architecture
+## Authentication & Authorization
 
-```mermaid
-flowchart TD
-    subgraph PERIMETER["Network Perimeter"]
-        NETLIFY["Netlify CDN\nHSTS + CSP headers\nDDoS protection"]
-    end
+### Authentication
+- **Mechanism:** Supabase magic link / OTP — passwordless per design
+- **Session management:** `@supabase/ssr` cookie-based sessions, refreshed on every request via `updateSession()` in middleware
+- **Middleware coverage:** All routes protected by default; public allowlist is explicit and documented
+- **Admin/Employee routing:** Separate route groups `(admin)` and `(employee)` with no additional role checks at the layout level — role enforcement is in individual API routes
 
-    subgraph AUTH["Authentication Layer"]
-        MW["middleware.ts\nAuth guard for all non-public routes"]
-        RR["requireRole()\nJWT verify + roles[] check\nUsed by ~90% of routes"]
-        INLINE["Inline Auth\n/api/campaigns/send\n/api/members/[id]\n~10% of routes"]
-        PUBLIC["Public Routes\n/api/leads/capture\n/api/webhooks/*\n/api/health"]
-    end
+### Authorization
+- **`requireRole()` helper** — canonical pattern, covers ~75% of routes
+- **Role aliases:** `"admin"` treated as alias for `"owner"` — handles legacy profiles
+- **Profile lookup:** 2 DB calls per authenticated request (getUser + profiles select)
+- **DB-level RLS:** Phase 2 tables use `current_setting('app.studio_id')::uuid` in RLS policies
+- **Defense-in-depth:** Manual `studio_id` filter on every query, even with RLS active
+- **Gap:** Corporate and Events routes use inline auth (see api-surface CRIT-AS-001 and HIGH-AS-001)
 
-    subgraph WEBHOOKS["Webhook Security"]
-        STRIPE_SIG["Stripe\nconstructWebhookEvent()"]
-        RESEND_SIG["Resend\nSvix HMAC"]
-        TWILIO_SIG["Twilio\nSvix HMAC"]
-        EASYPOST_SIG["EasyPost\n(unconfirmed)"]
-    end
+### Public Endpoints
+Correctly allowlisted in middleware:
+- Lead capture (form submission)
+- Email unsubscribe (token-based HMAC)
+- Webhook endpoints (signature-verified)
+- Inngest (signing key)
+- Health check
+- Glofox sync (CRON_SECRET header)
+- API docs
 
-    subgraph DATA["Data Security"]
-        RLS["Supabase RLS\nPhase 2 tables\n(policies defined but not\nactively enforced server-side)"]
-        STUDIO_ID["Manual studio_id filtering\n(actual isolation mechanism)"]
-        VALIDATION["Zod validation\nCore schemas: bookings, checkout,\ncorporate, pricing-simulator"]
-    end
+---
 
-    NETLIFY --> AUTH
-    AUTH --> WEBHOOKS
-    AUTH --> DATA
+## Input Validation
+
+### Zod Validation
+- `validateBody()` utility used on write endpoints with Zod schemas
+- Schemas defined for: bookings, checkout, corporate, events, and others
+- **Gap:** Not all POST endpoints use Zod validation — inline validation (checking required fields manually) is used in some routes
+- **Positive:** UUID format validation on `class_id`, `member_id` in booking schema prevents IDOR attacks via malformed IDs
+
+### Search Parameter Injection
+Multiple routes construct `.ilike()` queries with unsanitized search params:
+```typescript
+query.or(`name.ilike.%${search}%,...`)
 ```
+Supabase's PostgREST query builder parameterizes values, so this is NOT a SQL injection vector. However, extremely long `search` values could degrade query performance (no length limit on search param).
+
+### Content Sanitization
+- `isomorphic-dompurify` is installed — HTML sanitization is available
+- `handlebars` for email template rendering
+- Content security with `dangerouslySetInnerHTML` found in `chart.tsx` — this is Recharts' tooltip renderer, not user-controlled content
+
+---
+
+## Secret Management
+
+### Environment Variables
+All secrets are stored as environment variables — no hardcoded secrets found in source code.
+
+Key secrets required:
+- `SUPABASE_SERVICE_ROLE_KEY` — bypasses RLS (high sensitivity)
+- `STRIPE_SECRET_KEY` — Stripe API access
+- `STRIPE_WEBHOOK_SECRET` — webhook signature verification
+- `ANTHROPIC_API_KEY` — AI access
+- `INNGEST_SIGNING_KEY` — background job security
+- `CRON_SECRET` — cron endpoint auth
+- `EMAIL_UNSUBSCRIBE_SECRET` — HMAC for unsubscribe tokens
+
+### Concerns
+1. **`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`** — This env var has the `NEXT_PUBLIC_` prefix, meaning it is embedded in the client-side JavaScript bundle (this is intentional per Supabase's design — the "anon" key is meant to be public). However, the naming convention `PUBLISHABLE_DEFAULT_KEY` is non-standard. The actual risk is that RLS must be correctly configured to prevent privilege escalation with the anon key — if RLS has gaps, the publicly-available anon key becomes a direct data access vector.
+2. **`DEFAULT_STUDIO_ID = '11111111-1111-1111-1111-111111111111'`** — This hardcoded UUID is used as a fallback in several places. If this UUID matches a real studio in production, it becomes an implicit access vector for any codepath that falls through to this default.
+
+---
+
+## Transport Security
+
+### HTTPS
+- Netlify enforces HTTPS by default
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` header set in netlify.toml — correct
+
+### Security Headers
+Set in `netlify.toml` (correctly):
+- `X-Frame-Options: DENY`
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(self)`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
+- `Content-Security-Policy` (see below)
+
+Set in `next.config.ts` (partially overlapping):
+- `Content-Security-Policy: frame-ancestors 'self'` (more restrictive than netlify.toml)
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- **Note:** Both netlify.toml and next.config.ts set security headers. In Netlify deployments, there could be duplicate headers or conflicts.
+
+### CSP Analysis
+The `netlify.toml` CSP:
+```
+default-src 'self'; 
+script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://js.stripe.com; 
+style-src 'self' 'unsafe-inline'; 
+connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.anthropic.com https://api.resend.com https://inn.gs;
+frame-src https://js.stripe.com;
+object-src 'none'; 
+base-uri 'self'
+```
+Issues:
+- `unsafe-inline` and `unsafe-eval` in `script-src` — allows arbitrary inline script execution, mitigating most CSP protections
+- Missing `report-uri` or `report-to` for CSP violation monitoring
+- `next.config.ts` has a comment explaining the temporary nature of these directives with a Phase 5 plan — good documentation
+
+---
+
+## Webhook Security
+
+| Webhook | Verification | Risk |
+|---------|-------------|------|
+| Stripe | `webhooks.constructEvent()` with secret | Verified |
+| Resend | Svix library | Verified |
+| Inngest | Inngest signing key | Configured |
+| EasyPost | Text parsing, no signature check confirmed | Unverified |
+| Twilio | Not inspected | Unknown |
+
+---
+
+## Data Exposure Analysis
+
+### Sensitive Fields
+- `SUPABASE_SERVICE_ROLE_KEY` — only used server-side (confirmed in lib files) — OK
+- `STRIPE_SECRET_KEY` — only used server-side — OK
+- Admin notes on members (`notes text | null`) — accessible to owner/manager only via `requireRole` — OK
+- Direct deposit info on employees (`direct_deposit_last_four`, `direct_deposit_bank`) — requires employee role or higher — should verify
+- Tax IDs on corporate accounts — requires owner/manager — OK
+
+### IDOR (Insecure Direct Object Reference)
+- All resource queries include `studio_id = studioId` check — correct
+- UUID IDs prevent enumeration attacks
+- **Potential gap:** In inline-auth routes (corporate, events), studioId is derived from `DEFAULT_STUDIO_ID` or the profile — must verify the inline patterns always use profile.studio_id
+
+---
+
+## Dependency Security
+
+CI pipeline runs `npm audit --audit-level=high` on every push and PR. This is the correct minimum. No specific high/critical vulnerability findings reported (as of audit date).
+
+Notable high-value dependencies from a security standpoint:
+- `handlebars ^4.7.8` — template injection risk if user-supplied strings reach `compile()`. Verify template inputs are not user-controlled.
+- `isomorphic-dompurify ^3.5.1` — HTML sanitization, used for sanitizing email content before rendering
 
 ---
 
 ## Findings
 
-### HIGH-SEC-001: AI NL Search executes AI-generated SQL without confirmed DB-layer read-only enforcement
+### CRITICAL
+- **CRIT-SEC-001:** LLM-generated SQL execution with no server-side validation (re-stated from AI layer). The `/api/ai/search` endpoint takes user input, sends it to Claude, and executes the returned SQL via `supabase.rpc('execute_read_query', ...)`. There is no server-side parse to validate the generated SQL is a single SELECT statement before execution. A prompt injection attack could potentially exfiltrate data from tables with sensitive fields (employee documents, direct deposit info, wallet balances).
 
-**Severity:** High
-**Location:** `apps/web/src/app/api/ai/search/route.ts`, `apps/web/src/lib/ai/nl-search.ts`
+### HIGH
+- **HIGH-SEC-001:** `unsafe-inline` and `unsafe-eval` in CSP script-src effectively disables XSS mitigation via CSP. While this is documented as temporary (Phase 5 fix), any XSS vulnerability in the application would not be mitigated by the current CSP policy.
+- **HIGH-SEC-002:** EasyPost webhook endpoint lacks confirmed signature verification. An attacker could POST fake shipping events to `/api/webhooks/easypost`, potentially marking orders as delivered when they haven't been.
+- **HIGH-SEC-003:** The Events API uses `DEFAULT_STUDIO_ID` instead of the authenticated user's `studio_id` (re-stated from API surface CRIT-AS-001). This is a multi-tenancy breach — for multi-studio deployments, this becomes a data access control failure where events from one studio could be accessed by users of another.
 
-The NL search pipeline generates SQL via Claude, validates it starts with `SELECT` at the application layer, then executes via `execute_readonly_sql` Supabase RPC. The RPC definition was not found in audited SQL migration files. If the RPC does not enforce:
-- `SET TRANSACTION READ ONLY`
-- A read-only database role with only SELECT grants
+### MEDIUM
+- **MED-SEC-001:** Duplicate/conflicting security headers: `netlify.toml` and `next.config.ts` both set `X-Content-Type-Options` and `Referrer-Policy`. In practice, Netlify sets these at the CDN edge, and Next.js sets them via the server response. Browsers typically use the first header value — this could lead to unexpected behavior. Standardize to one location.
+- **MED-SEC-002:** No `max-age` or session expiry configuration found for Supabase sessions. Supabase's default session duration is 1 hour, with refresh tokens valid for longer periods. Verify session refresh policy matches the security requirements for admin dashboard access.
+- **MED-SEC-003:** The `CRON_SECRET` is compared via a Bearer token header but the comparison mechanism should use constant-time comparison to prevent timing attacks. Check the implementation in `/api/glofox/sync` and `/api/cron/*` routes.
+- **MED-SEC-004:** `search` parameters injected directly into `.ilike()` queries have no length limit. A search query of 10,000 characters would be sent to the database. Add server-side length validation (e.g., `search.slice(0, 100)`).
 
-...then the application-layer SELECT check can be bypassed by:
-- Prompt injection crafting a SELECT with side-effecting functions
-- A multi-statement query (though Postgres parameterized queries mitigate this)
+### LOW
+- **LOW-SEC-001:** Handlebars templates in `lib/email-templates.ts` should ensure user-controlled data (member names, email addresses) is properly escaped. Handlebars HTML-escapes by default with `{{ }}` — verify `{{{ }}}` (triple-stache, unescaped) is not used with user data.
+- **LOW-SEC-002:** `geolocation=(self)` in Permissions-Policy allows geolocation — this is correct for the employee clock-in feature, but any future embedded third-party content would also have geolocation access.
+- **LOW-SEC-003:** No CORS configuration in Next.js API routes. The API is currently only consumed by the same-origin admin dashboard, but future iOS app and third-party integrations will require explicit CORS headers.
 
-The schema context in the system prompt exposes all table and column names including sensitive fields (`email`, `phone`, `health_score`, `date_of_birth`).
-
-**Classification:** This is a High severity finding rather than Critical because: the route requires owner/manager role authentication, and Claude's instruction-following is generally reliable for basic SQL constraints.
-
-**Recommendation:**
-1. Locate or create `execute_readonly_sql` as a `SECURITY DEFINER` function running under a read-only role.
-2. Add `SET LOCAL statement_timeout = '5000'` inside the function.
-3. Post-generation: assert the SQL contains `studio_id = '...'` before execution.
-4. Consider column allowlisting for sensitive fields in the schema context.
-
----
-
-### HIGH-SEC-002: Rate limiter is non-functional for cross-instance protection — AI cost attack vector
-
-**Severity:** High
-**Location:** `apps/web/src/lib/rate-limit.ts`
-
-The rate limiter returns an in-memory result optimistically and updates Supabase asynchronously. In a serverless environment with N concurrent instances, each instance has its own counter. A user can make N × 20 = up to N×20 requests per minute against AI endpoints without hitting the limit. With Netlify's autoscaling, N could be 10+ during traffic spikes.
-
-Combined with the 10 unrated AI routes, a stolen session token could generate significant Anthropic API costs.
-
-**Recommendation:** Rewrite `rateLimit()` to be async — await the Supabase atomic increment, return the real count. Add `rateLimit()` to all AI routes using a studio-level key.
-
----
-
-### HIGH-SEC-003: POST /api/campaigns/send uses inline auth with DEFAULT_STUDIO_ID fallback
-
-**Severity:** High
-**Location:** `apps/web/src/app/api/campaigns/send/route.ts`
-
-This route uses inline auth (not `requireRole()`) and uses `DEFAULT_STUDIO_ID` as the studio identifier. A user whose profile has `studio_id = null` would send bulk campaign emails against the hardcoded studio, potentially cross-contaminating studio data at SaaS launch.
-
-**Recommendation:** Refactor to use `requireRole(['owner', 'manager'])` which throws a 403 if `studio_id` is null.
-
----
-
-### MEDIUM-SEC-004: getStudioId() utility returns DEFAULT_STUDIO_ID as fallback — fail-open design
-
-**Severity:** Medium
-**Location:** `apps/web/src/lib/auth/get-studio-id.ts`
-
-```typescript
-export function getStudioId(profile: { studio_id?: string | null }): string {
-  return profile?.studio_id || process.env.DEFAULT_STUDIO_ID || DEFAULT_STUDIO_ID;
-}
-```
-
-This function fails open: if a profile has no `studio_id`, it returns the default studio ID. This means any authenticated user with a partial profile can read/write another studio's data. The TODO in `MED-008` acknowledges routes need to be migrated away from this pattern.
-
-**Recommendation:** Add a `required` parameter to `getStudioId()` that throws a 403 instead of returning the fallback. Migrate all routes per MED-008.
-
----
-
-### MEDIUM-SEC-005: EasyPost webhook may lack signature verification
-
-**Severity:** Medium
-**Location:** `apps/web/src/app/api/webhooks/easypost/route.ts` (directory confirmed, content unread)
-
-The middleware allowlist includes `/api/webhooks/easypost` as a public route. The Stripe and Resend webhooks have explicit signature verification. EasyPost webhooks should be verified using their HMAC-SHA256 signature header.
-
-**Recommendation:** Implement EasyPost webhook signature verification using the `X-Hmac-Signature-256` header. Store the EasyPost webhook secret in `EASYPOST_WEBHOOK_SECRET` env var (already present in `.env.example`).
-
----
-
-### MEDIUM-SEC-006: Content Security Policy uses 'unsafe-inline' and 'unsafe-eval' for scripts
-
-**Severity:** Medium
-**Location:** `netlify.toml`
-
-```
-Content-Security-Policy: "... script-src 'self' 'unsafe-inline' 'unsafe-eval' ..."
-```
-
-`'unsafe-inline'` and `'unsafe-eval'` in `script-src` significantly weaken XSS protections. These are required by some React runtime behaviors and Stripe.js, but they should be scoped as narrowly as possible.
-
-**Recommendation:**
-1. Evaluate whether `'unsafe-eval'` is still needed after the React 19 / Next.js 16 upgrade. The React compiler may have eliminated eval usage.
-2. Replace `'unsafe-inline'` with `nonce-based` CSP for inline scripts where possible.
-3. At minimum, document why these flags are required and add them to a periodic review list.
-
----
-
-### MEDIUM-SEC-007: Zod validation inconsistently applied — only 4 schemas exist for 150 routes
-
-**Severity:** Medium
-**Location:** `apps/web/src/lib/validation.ts`
-
-The `validateBody()` utility with Zod schemas exists for 4 endpoints: bookings, checkout, corporate, pricing-simulator. The remaining ~140 POST/PUT routes parse `request.json()` directly and validate fields with ad-hoc if-checks. This is inconsistent and creates risk of unexpected input shapes causing database errors or logic bugs.
-
-**Recommendation:** Extend Zod validation to all state-mutating routes (POST/PUT/DELETE). Prioritize: members, campaigns, automations, leads.
-
----
-
-### LOW-SEC-008: SUPABASE_SERVICE_ROLE_KEY used inline in Stripe webhook — not from shared helper
-
-**Severity:** Low
-**Location:** `apps/web/src/app/api/webhooks/stripe/route.ts`
-
-The Stripe webhook creates a Supabase client inline using `SUPABASE_SERVICE_ROLE_KEY`. Other service-role clients use `getAdminClient()` from `lib/inngest/helpers.ts`. This inconsistency means if the service role client initialization needs to change (e.g., adding a custom header or timeout), it must be updated in multiple places.
-
-**Recommendation:** Extract a `getWebhookSupabaseClient()` helper to a shared location used by all webhook handlers.
-
----
-
-### LOW-SEC-009: X-Frame-Options: DENY may block legitimate iframe embeds
-
-**Severity:** Low
-**Location:** `netlify.toml`
-
-`X-Frame-Options: DENY` prevents all iframe embedding. The SnapWidget Instagram embed uses an iframe and may be rendered in a member portal page. If the member portal (Phase 5) is served from the same origin, this header would block it.
-
-**Recommendation:** Switch to `Content-Security-Policy: frame-ancestors 'self'` which is more flexible and allows same-origin iframes while still preventing clickjacking from external origins.
-
----
-
-### INFO-SEC-010: No secrets in source code — confirmed clean
-
-**Severity:** Info
-
-A search for real API key patterns (`sk_live_*`, long base64 strings) in all TypeScript source files returned no results. All secrets are properly referenced via `process.env.*`. The `.env.example` file contains only placeholder values. HSTS, CSP, `X-Content-Type-Options`, and `Referrer-Policy` headers are correctly configured.
-
----
-
-## Summary Table
-
-| ID | Severity | Category | Title |
-|----|----------|----------|-------|
-| HIGH-SEC-001 | High | Security | NL Search executes AI-generated SQL without DB read-only enforcement |
-| HIGH-SEC-002 | High | Security | Rate limiter non-functional — AI cost attack via stolen session |
-| HIGH-SEC-003 | High | Auth | /api/campaigns/send uses inline auth with DEFAULT_STUDIO_ID fallback |
-| MEDIUM-SEC-004 | Medium | Auth | getStudioId() fails-open with DEFAULT_STUDIO_ID for missing profiles |
-| MEDIUM-SEC-005 | Medium | Security | EasyPost webhook may lack signature verification |
-| MEDIUM-SEC-006 | Medium | Security | CSP uses unsafe-inline and unsafe-eval for script-src |
-| MEDIUM-SEC-007 | Medium | Validation | Zod validation exists for 4 of 150 routes — inconsistently applied |
-| LOW-SEC-008 | Low | Architecture | Service-role client created inline in webhook — not from shared helper |
-| LOW-SEC-009 | Low | Security | X-Frame-Options: DENY may block Phase 5 same-origin iframes |
-| INFO-SEC-010 | Info | Security | No hardcoded secrets found in source code |
+### INFO
+- **INFO-SEC-001:** No hardcoded API keys or secrets found in source code — all secrets properly managed via environment variables.
+- **INFO-SEC-002:** Magic link authentication eliminates password-related attack vectors (credential stuffing, brute force, weak passwords).
+- **INFO-SEC-003:** Row-Level Security (RLS) is active for Phase 2 tables + manual `studio_id` filtering as defense-in-depth. The multi-layer approach is correct.

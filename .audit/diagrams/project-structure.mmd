@@ -1,119 +1,67 @@
 flowchart TB
-    subgraph Monorepo["Turborepo Monorepo — Meridian"]
-        subgraph SharedPackages["Shared Packages"]
-            PT["@meridian/types\n12 domain type files\n2 imports in web app"]
-            PU["@meridian/utils\ncurrency, dates, constants\n0 imports in web app"]
-            PS["@meridian/supabase\ncreateClient + createServerClient\n0 imports in web app"]
+    subgraph MONOREPO["Turborepo Monorepo — meridian"]
+        subgraph PACKAGES["packages/"]
+            TYPES["@meridian/types\n13 domain type modules"]
+            UTILS["@meridian/utils\ncurrency, dates, constants"]
+            SUPA_PKG["@meridian/supabase\nShared Supabase factory"]
         end
 
-        subgraph WebApp["apps/web — Next.js 16 (91k lines)"]
-            subgraph AppRouter["App Router"]
-                MW["middleware.ts\nAuth guard + public route allowlist"]
-                RL["Root Layout\nAuthProvider + TooltipProvider"]
-
-                subgraph AdminGroup["(admin) — 48 pages"]
-                    AL["Admin Layout\nsidebar + header ('use client')"]
-                    CC["Command Center"]
-                    SCH["Schedule"]
-                    MEM["Members"]
-                    REV["Revenue"]
-                    MKT["Marketing"]
-                    CRP["Corporate"]
-                    OPS["Operations"]
-                    ANL["Analytics"]
-                    SET["Settings"]
-                end
-
-                subgraph EmployeeGroup["(employee) — 9 pages"]
-                    EL["Employee Layout\n+ inline clock widget"]
-                    EMP["Employee Home\n+ 8 sub-pages under /employee/"]
-                    ORPHAN["7 empty orphan dirs\nclasses/ pay/ schedule/ etc."]
-                end
-
-                subgraph AuthGroup["(auth)"]
-                    LGN["Login page"]
-                    CB["Auth Callback"]
-                end
-
-                subgraph API["API Routes — 148 handlers"]
-                    AIAPI["ai/ — 13 endpoints\nrequireRole + rateLimit"]
-                    ANLAPI["analytics/ — 7 endpoints"]
-                    GLFAPI["glofox/ — sync (read-only)"]
-                    WBHAPI["webhooks/ — Stripe, Resend,\nTwilio, EasyPost"]
-                    INGAPI["inngest/ — serve endpoint"]
-                    DOMAPI["Domain APIs\nbookings, members, classes\nrevenue, corporate, etc."]
-                end
+        subgraph WEB["apps/web — Next.js 16 + React 19"]
+            subgraph ROUTES["App Router Route Groups"]
+                ADMIN["(admin)/\n8 Domain Modules"]
+                EMPLOYEE["(employee)/\nEmployee Portal"]
+                AUTH["(auth)/\nLogin + Callback"]
             end
 
-            subgraph LibLayer["lib/ — Business Logic"]
-                AILIB["ai/ — 14 modules\nClient singleton + 13 AI functions\n5 modules lack API routes"]
-                ANTH["anthropic.ts\n1699 lines, misnamed\nbriefing + recommendations"]
-                AUTH["auth/\nrequireRole + getStudioId\nused by 58/148 routes"]
-                GLF["glofox/\nclient, transformers, types\n+ migration.sql (misplaced)"]
-                ING["inngest/\n19 background functions\ncron + event-driven"]
-                SUP["supabase/\nclient + server + middleware\nduplicates @meridian/supabase"]
-                STR["stripe.ts\nsubscriptions + payments"]
-                RES["resend.ts\ntransactional email"]
-                SMSLIB["sms/ — Twilio provider"]
-                RL2["rate-limit.ts\nin-memory ONLY\nunsafe for serverless"]
-                RPT["reports/\ncsv + pdf export engine"]
+            subgraph API["api/ — ~120+ Route Handlers"]
+                AI_API["ai/* (14 endpoints)\nBriefing, Churn, Health, Campaign"]
+                BIZ_API["Business APIs\nMembers, Revenue, Schedule"]
+                WEBHOOKS["webhooks/*\nStripe, Resend, EasyPost, Twilio"]
+                GLOFOX_API["glofox/*\nSync, Backfill"]
             end
 
-            subgraph HooksLayer["hooks/ — 13 React hooks"]
-                AIHOOKS["AI hooks x9\nchurn, health-score, etc."]
-                SUHOOKS["use-supabase.ts\ngeneric polling query hook"]
-                EMPHOOKS["use-employee.ts\nclock in/out"]
-                CCDATA["use-command-center-data.ts\n(MISPLACED: in app/ not hooks/)"]
+            subgraph LIB["lib/ — Service Layer"]
+                AI_LIB["ai/ (23 modules)\nClaude integrations"]
+                INNGEST["inngest/ (14 functions)\nBackground jobs + Crons"]
+                GLOFOX_LIB["glofox/\nAPI client + transformers"]
+                SUPABASE_LIB["supabase/\nClient + Server + Middleware"]
+                SMS_LIB["sms/\nTwilio provider"]
+                REPORTS_LIB["reports/\nPDF + CSV export"]
             end
 
-            AUTHCTX["contexts/auth-context.tsx\nuser, profile, studioId\nstudio_id fallback = hardcoded UUID"]
-
-            subgraph Components["components/"]
-                UI["ui/ — 24 shadcn primitives"]
-                LAY["layout/ — sidebar + header"]
-                CMD["command-palette.tsx"]
-                GLFCOMP["glofox/DataSyncButton"]
+            subgraph COMPONENTS["components/"]
+                UI["ui/ (29 shadcn primitives)"]
+                LAYOUT["layout/ (shell, sidebar, header)"]
             end
+
+            MIDDLEWARE["middleware.ts\nAuth enforcement + session refresh"]
         end
     end
 
-    MW --> RL
-    RL --> AdminGroup
-    RL --> EmployeeGroup
-    RL --> AuthGroup
-    RL --> API
+    subgraph EXTERNAL["External Services"]
+        SUPABASE["Supabase\nPostgres + Auth + RLS"]
+        ANTHROPIC["Anthropic API\nClaude Sonnet 4.6"]
+        STRIPE["Stripe\nPayments + Webhooks"]
+        RESEND["Resend\nEmail delivery"]
+        TWILIO["Twilio\nSMS (stub)"]
+        NETLIFY["Netlify\nHosting (60s timeout)"]
+        INNGEST_EXT["Inngest Cloud\nBackground job orchestration"]
+        GLOFOX["Glofox API\nLegacy data source (read-only)"]
+    end
 
-    DOMAPI --> AUTH
-    AIAPI --> AUTH
-    AIAPI --> RL2
-    AIAPI --> AILIB
-    AIAPI --> ANTH
-    ANLAPI --> AUTH
-    GLFAPI --> ING
-    WBHAPI --> STR
-    WBHAPI --> RES
-    INGAPI --> ING
-
-    AUTH --> SUP
-    ING --> AILIB
-    ING --> GLF
-    DOMAPI --> SUP
-    DOMAPI --> STR
-
-    AdminGroup --> HooksLayer
-    AdminGroup --> Components
-    EmployeeGroup --> HooksLayer
-    EmployeeGroup --> Components
-    HooksLayer --> AUTHCTX
-    HooksLayer --> SUP
-
-    classDef healthy fill:#10B981,color:#fff,stroke:#059669
-    classDef warning fill:#F59E0B,color:#fff,stroke:#D97706
-    classDef critical fill:#EF4444,color:#fff,stroke:#DC2626
-    classDef orphan fill:#9CA3AF,color:#fff,stroke:#6B7280
-
-    class AdminGroup,EmployeeGroup,AUTH,ING,STR,RES,SMSLIB,RPT,UI,LAY,CMD,AIHOOKS,SUHOOKS,EMPHOOKS,AUTHCTX,GLFCOMP,GLFAPI,WBHAPI,INGAPI healthy
-    class AILIB,ANTH,RL2,DOMAPI,AIAPI,ANLAPI,CCDATA,SUP warning
-    class ORPHAN critical
-    class PS,PU orphan
-    class PT warning
+    WEB --> TYPES
+    WEB --> UTILS
+    WEB --> SUPA_PKG
+    ADMIN --> API
+    EMPLOYEE --> API
+    API --> AI_LIB
+    API --> INNGEST
+    API --> GLOFOX_LIB
+    AI_LIB --> ANTHROPIC
+    SUPABASE_LIB --> SUPABASE
+    INNGEST --> INNGEST_EXT
+    GLOFOX_LIB --> GLOFOX
+    WEB --> NETLIFY
+    API --> STRIPE
+    API --> RESEND
+    API --> TWILIO

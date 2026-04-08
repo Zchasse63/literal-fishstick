@@ -26,6 +26,7 @@ import {
 import Link from 'next/link'
 import MemberUpgradeModal from './MemberUpgradeModal'
 import MemberPauseModal from './MemberPauseModal'
+import AIDetailModal from './AIDetailModal'
 import type { Member, MemberBooking, MemberTransaction, ProfileTab } from './types'
 import { statusDot, statusLabel, membershipBadgeColor, heatmapData, heatmapColor } from './types'
 
@@ -53,6 +54,7 @@ export default function MemberProfilePanel({
   const notify = onShowToast ?? ((msg: string) => { /* no-op if not passed */ })
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [pauseOpen, setPauseOpen] = useState(false)
+  const [aiDetailOpen, setAiDetailOpen] = useState(false)
   return (
     <motion.div
       key={member.id}
@@ -238,7 +240,7 @@ export default function MemberProfilePanel({
                               : `Strong retention pattern. ${member.avgVisitsPerWeek >= 3 ? 'Power user' : 'Consistent visitor'} — ${member.avgVisitsPerWeek >= 3 ? 'candidate for referral program' : 'trending toward upgrade'}.`}
                           </p>
                           <button
-                            onClick={() => notify('AI detail view coming in Phase 3')}
+                            onClick={() => setAiDetailOpen(true)}
                             className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors"
                           >
                             {member.status === 'at-risk' ? 'Send re-engagement' : 'View details'}
@@ -258,7 +260,7 @@ export default function MemberProfilePanel({
                               : `Primarily uses open sessions. Consider introducing to guided classes — members who try guided have 40% higher retention.`}
                           </p>
                           <button
-                            onClick={() => notify('AI detail view coming in Phase 3')}
+                            onClick={() => setAiDetailOpen(true)}
                             className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors"
                           >
                             {member.guidedSessions > 10 ? 'Invite to workshop' : 'Suggest guided class'}
@@ -571,6 +573,13 @@ export default function MemberProfilePanel({
         memberId={member.id}
         memberName={`${member.firstName} ${member.lastName}`}
         onSuccess={() => notify('Membership paused successfully')}
+      />
+
+      <AIDetailModal
+        open={aiDetailOpen}
+        onOpenChange={setAiDetailOpen}
+        memberId={member.id}
+        memberName={`${member.firstName} ${member.lastName}`}
       />
     </motion.div>
   )

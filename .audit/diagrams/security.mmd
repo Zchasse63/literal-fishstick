@@ -1,83 +1,24 @@
 flowchart TB
-    classDef green fill:#10B981,color:#fff,stroke:#059669
-    classDef yellow fill:#F59E0B,color:#fff,stroke:#D97706
-    classDef red fill:#EF4444,color:#fff,stroke:#DC2626
-    classDef grey fill:#6B7280,color:#fff,stroke:#4B5563
-
-    Internet(["Internet / Public"])
-
-    subgraph PUBLIC["Public Endpoints (no auth)"]
-        direction TB
-        LC["/api/leads/capture"]:::yellow
-        UN["/api/unsubscribe/[token]"]:::green
-        WS["/api/webhooks/stripe"]:::green
-        WR["/api/webhooks/resend"]:::green
-        WT["/api/webhooks/twilio"]:::red
-        WE["/api/webhooks/easypost"]:::red
-        OA["/api/openapi"]:::yellow
-        INN["/api/inngest"]:::yellow
+    subgraph AUTH["Authentication"]
+        MAGIC["Magic Link / OTP\nPasswordless (Supabase)"]
+        SESSION["Cookie-based session\nupdateSession() on every request"]
+        REQUIRE_ROLE["requireRole() helper\nauth + role check + studioId"]
     end
 
-    subgraph CRONAUTH["Cron Endpoints (x-cron-secret)"]
-        CR["/api/cron/waitlist-promote"]:::yellow
-        PS["/api/campaigns/process-scheduled"]:::yellow
-        LS["/api/leads/score"]:::yellow
+    subgraph THREATS["Security Threats"]
+        NL_SQL["CRIT-SEC-001\nLLM SQL execution\nno server-side validation"]
+        EVENTS_MT["HIGH-SEC-003\nEvents API uses\nDEFAULT_STUDIO_ID"]
+        EASYPOST_VERIFY["HIGH-SEC-002\nEasyPost webhook\nunverified"]
+        CSP_UNSAFE["HIGH-SEC-001\nunsafe-inline + unsafe-eval\nin CSP"]
     end
 
-    subgraph AUTHMW["Middleware Auth Boundary"]
-        direction TB
-        subgraph CANONICAL["Canonical requireRole() — 58 routes"]
-            direction TB
-            AI["AI Endpoints (13)"]:::green
-            AN["Analytics Endpoints (7)"]:::green
-            SE["Segments CRUD"]:::green
-            TR["Trainers CRUD"]:::green
-        end
-        subgraph ADHOC["Ad-hoc Auth — 90 routes"]
-            direction TB
-            MBR["Members CRUD"]:::yellow
-            CLS["Classes CRUD"]:::yellow
-            RPT["Reports (owner blocked)"]:::red
-            PAY["Payroll (owner blocked)"]:::red
-            CAM["Campaigns CRUD"]:::yellow
-            AUT["Automations CRUD (owner blocked)"]:::red
-            LED["Leads CRUD (owner blocked)"]:::red
-            CNT["Content CRUD (owner blocked)"]:::red
-            SMS["SMS Send (owner blocked)"]:::red
-            CHK["Check-in"]:::yellow
-            CLK["Clock In/Out"]:::yellow
-        end
+    subgraph CONTROLS["Security Controls"]
+        WEBHOOK_SIG["Stripe + Resend\nSignature verification\n(svix)"]
+        ZOD_VALID["Zod input validation\non write endpoints"]
+        RLS["Supabase RLS\n+ manual studio_id\ndefense-in-depth"]
+        HEADERS["Security headers\nHSTS, X-Frame, nosniff\nReferrer-Policy"]
     end
 
-    subgraph DB["Supabase (Postgres)"]
-        direction TB
-        RLS["RLS Policies (app.studio_id — NEVER SET)"]:::red
-        SRV["Service-role Client (bypasses RLS)"]:::yellow
-        PG["Postgres Tables"]:::grey
-    end
-
-    subgraph EXT["External Integrations"]
-        STRIPE["Stripe (signed)"]:::green
-        ANTH["Anthropic API (rate limit: broken)"]:::red
-        TWILIO["Twilio"]:::grey
-        RESEND["Resend (signed)"]:::green
-    end
-
-    Internet --> PUBLIC
-    Internet --> CRONAUTH
-    Internet --> AUTHMW
-
-    AUTHMW --> SRV
-    SRV --> PG
-    RLS --> PG
-
-    CANONICAL --> ANTH
-    AI --> ANTH
-    WS --> STRIPE
-    WR --> RESEND
-    WT --> TWILIO
-
-    LC -.->|"rate limit: broken in serverless"| DB
-    WE -.->|"no auth if env var missing"| DB
-    WT -.->|"no auth if env var missing"| DB
-    INN -.->|"auth only if INNGEST_SIGNING_KEY set"| DB
+    AUTH --> REQUIRE_ROLE
+    CONTROLS --> RLS
+    THREATS --> NL_SQL

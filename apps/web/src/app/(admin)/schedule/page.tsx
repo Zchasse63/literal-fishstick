@@ -804,7 +804,7 @@ export default function SchedulePage() {
                               ) : (
                                 <div className="h-16 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                                   <button
-                                    onClick={() => showToast('Class creation coming in Phase 2')}
+                                    onClick={() => { setEditClassData(null); setClassFormOpen(true) }}
                                     className="w-full h-full rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-800 hover:border-indigo-300 hover:bg-indigo-50/30 flex items-center justify-center transition-colors"
                                   >
                                     <Plus className="w-4 h-4 text-gray-300" />
@@ -857,7 +857,7 @@ export default function SchedulePage() {
                 }}
                 onCheckInAll={handleCheckInAll}
                 checkingInAll={checkingInAll}
-                onSendReminder={() => showToast('Reminders coming in Phase 2')}
+                onSendReminder={async () => { if (!selectedClass) return; const channel = prompt('Send reminders via: email, sms, or both'); if (!channel) return; const res = await fetch(`/api/classes/${selectedClass.id}/remind`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel }) }); if (res.ok) { const d = await res.json(); showToast(`Reminders sent: ${d.data.sent} delivered, ${d.data.failed} failed`) } else { showToast('Failed to send reminders') } }}
                 onEditClass={() => {
                   if (selectedClass) {
                     // Find the raw class data to populate the edit modal

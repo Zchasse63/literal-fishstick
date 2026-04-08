@@ -1,97 +1,42 @@
 flowchart LR
-    classDef green fill:#10B981,color:#fff,stroke:#059669
-    classDef yellow fill:#F59E0B,color:#fff,stroke:#D97706
-    classDef red fill:#EF4444,color:#fff,stroke:#DC2626
-    classDef purple fill:#8B5CF6,color:#fff,stroke:#7C3AED
-    classDef gray fill:#6B7280,color:#fff,stroke:#4B5563
-
-    MW["Next.js Middleware\n(cookie auth check)"]:::green
-
-    subgraph PUBLIC["Public / Webhook (no user auth)"]
-        direction TB
-        LC["POST /api/leads/capture\n(rate limited)"]:::green
-        UNSUB["GET+POST /api/unsubscribe/:token\n(HMAC verified)"]:::green
-        WH_STRIPE["POST /api/webhooks/stripe\n(sig verified)"]:::green
-        WH_RESEND["POST /api/webhooks/resend\n(svix verified)"]:::green
-        WH_TWILIO["POST /api/webhooks/twilio\n(sig conditional)"]:::yellow
-        WH_EASY["POST /api/webhooks/easypost\n(sig conditional)"]:::yellow
-        INNGEST["GET+POST+PUT /api/inngest\n(Inngest signing key)"]:::yellow
-        OPENAPI["GET /api/openapi\n(public docs)"]:::gray
+    subgraph CLIENT["Clients"]
+        ADMIN_UI["Admin Dashboard"]
+        EMP_UI["Employee Portal"]
+        WEBHOOKS_EXT["External Services\n(Stripe, Resend, Inngest)"]
+        CRON["Cron Services\n(Glofox Sync)"]
     end
 
-    subgraph AUTH_LAYER["requireRole() — canonical auth (26 routes)"]
-        direction TB
-        MEMBERS_L["GET+POST /api/members"]:::green
-        BOOKS["GET+POST /api/bookings"]:::green
-        CAMPAIGNS_L["GET+POST /api/campaigns"]:::green
-        ANALYTICS_G["GET /api/analytics/*\n(6 routes)"]:::green
-        AI_CORE["POST+GET /api/ai/*\n(10 routes via requireRole)"]:::green
-        PRICING["GET /api/pricing"]:::green
-        GLOFOX["GET+POST /api/glofox/*"]:::green
-        EMAIL_T["GET+POST+PUT /api/email-templates"]:::green
+    subgraph MIDDLEWARE["middleware.ts"]
+        AUTH_CHECK["Session Refresh\n+ Auth Check"]
+        PUBLIC_CHECK["Public Route\nAllowlist"]
     end
 
-    subgraph ADHOC["Ad-hoc getUser + manual role check (~110 routes)"]
-        direction TB
-        subgraph OWNER_MGR_ADHOC["owner/manager enforced"]
-            MEMBERS_D["GET+PUT+DELETE /api/members/:id\n+upgrade +downgrade +tags"]:::yellow
-            CLASSES["GET+POST+PUT+DELETE /api/classes"]:::yellow
-            REVENUE["GET /api/revenue"]:::yellow
-            TXNS["GET+POST /api/transactions"]:::yellow
-            STAFF["GET+POST+PUT+DELETE /api/staff"]:::yellow
-            QR["GET /api/qr/*"]:::yellow
-            PAYROLL["GET+POST+PUT /api/payroll/periods/*"]:::yellow
-            PRODUCTS["GET+POST+PUT+DELETE /api/products"]:::yellow
-            ORDERS["GET+PUT /api/orders/*"]:::yellow
-            SEGMENTS["GET+POST+PUT+DELETE /api/segments"]:::yellow
-            SETTINGS["GET+PUT /api/settings"]:::yellow
-            SHIPPING["POST /api/shipping/rates"]:::yellow
-            PRICING_SIM["GET+POST+PUT+DELETE /api/pricing-simulator/*"]:::yellow
-            REPORTS["GET+POST+PUT+DELETE /api/reports/*"]:::yellow
-            MIGRATE["POST /api/migration/*"]:::yellow
-            GEO["GET+POST+PUT+DELETE /api/geofence"]:::yellow
-            INVOICES["GET+PUT+POST /api/invoices/*"]:::yellow
-            CORP["GET+POST+PUT+DELETE /api/corporate/*"]:::yellow
-            EVENTS["GET+POST+PUT+DELETE /api/events/*"]:::yellow
-            TRAINERS["GET+POST /api/trainers/*"]:::yellow
-            LEADS["GET+POST+PUT+DELETE /api/leads/:id+activity+convert"]:::yellow
-            AI_INS["GET /api/ai/insights\n(owner+manager+trainer)"]:::yellow
-        end
-        subgraph SELF_OR_ADMIN["member self-service"]
-            EMAIL_P["GET+PUT /api/email-preferences/:id\n(self or admin)"]:::green
-        end
-        subgraph STAFF_ROLES["any staff role"]
-            CLOCK["POST /api/clock"]:::yellow
-            CONTENT["GET+POST+PUT+DELETE /api/content/*"]:::yellow
-            CHECKIN["POST /api/check-in\n+/qr"]:::yellow
-            SMS["POST /api/sms/send"]:::yellow
-            BOOKCANCEL["POST /api/bookings/:id/cancel"]:::yellow
-        end
+    subgraph API["Next.js API Routes (159 handlers)"]
+        AI_GRP["ai/* (17 endpoints)\nAll rate-limited, owner+manager only"]
+        ANALYTICS_GRP["analytics/* (9 endpoints)\nRead-only analytics data"]
+        BOOKINGS_GRP["bookings/* (3 endpoints)\natomic capacity checks"]
+        CAMPAIGNS_GRP["campaigns/* (11 endpoints)\nfull lifecycle"]
+        MEMBERS_GRP["members/* (4 endpoints)\nCRUD + pause"]
+        CORPORATE_GRP["corporate/* — INLINE AUTH\nBUG: DEFAULT_STUDIO_ID in events"]
+        EVENTS_GRP["events/* — INLINE AUTH\nCRIT: hardcoded DEFAULT_STUDIO_ID"]
+        WEBHOOKS_GRP["webhooks/*\nSignature-verified (Stripe/Resend)"]
+        GLOFOX_GRP["glofox/*\nCRON_SECRET protected"]
+        PAYROLL_GRP["payroll/*\nNo rate limiting on expensive ops"]
+        PUBLIC_GRP["health, leads/capture\nUnsubscribe — public"]
     end
 
-    subgraph CRON["Cron — dual auth (cron secret OR admin user)"]
-        CRON_WL["GET+POST /api/cron/waitlist-promote"]:::yellow
-        CRON_CS["POST /api/campaigns/process-scheduled"]:::yellow
-        CRON_LS["POST /api/leads/score\n(Bearer token or admin)"]:::yellow
-    end
-
-    subgraph EXTERNAL["External Services"]
-        STRIPE_SVC["Stripe API"]
-        RESEND_SVC["Resend API"]
-        GLOFOX_SVC["Glofox API (read-only)"]
-        ANTHROPIC["Anthropic API\n(Claude)"]
-        TWILIO_SVC["Twilio API"]
-    end
-
-    MW --> AUTH_LAYER
-    MW --> ADHOC
-    MW --> CRON
-    PUBLIC -.->|"bypasses MW"| STRIPE_SVC
-
-    AI_CORE --> ANTHROPIC
-    GLOFOX --> GLOFOX_SVC
-    CAMPAIGNS_L --> RESEND_SVC
-    CRON_CS --> RESEND_SVC
-    WH_STRIPE --> STRIPE_SVC
-    SMS --> TWILIO_SVC
-    WH_TWILIO --> TWILIO_SVC
+    ADMIN_UI --> MIDDLEWARE
+    EMP_UI --> MIDDLEWARE
+    WEBHOOKS_EXT --> WEBHOOKS_GRP
+    CRON --> GLOFOX_GRP
+    MIDDLEWARE --> AUTH_CHECK
+    AUTH_CHECK --> PUBLIC_CHECK
+    PUBLIC_CHECK --> AI_GRP
+    PUBLIC_CHECK --> ANALYTICS_GRP
+    PUBLIC_CHECK --> BOOKINGS_GRP
+    PUBLIC_CHECK --> CAMPAIGNS_GRP
+    PUBLIC_CHECK --> MEMBERS_GRP
+    PUBLIC_CHECK --> CORPORATE_GRP
+    PUBLIC_CHECK --> EVENTS_GRP
+    PUBLIC_CHECK --> PAYROLL_GRP
+    PUBLIC_CHECK --> PUBLIC_GRP

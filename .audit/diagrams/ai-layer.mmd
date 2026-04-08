@@ -1,55 +1,36 @@
-flowchart TD
-    subgraph CLIENT["Client (Browser)"]
-        UI["Admin UI / Hooks\n(AbortController, polling)"]
+flowchart TB
+    subgraph CLIENT["AI Client Infrastructure"]
+        ANTHROPIC_CLIENT["getAnthropicClient()\nSingleton, 30s timeout\nLazy init from ANTHROPIC_API_KEY"]
+        RETRY["withRetry()\n3 attempts\n429/529 exponential backoff"]
+        HELPERS["extractText()\nparseAIJson<T>()"]
     end
 
-    subgraph API["API Layer (Next.js Routes)"]
-        RL["Rate Limiter\n(in-memory, 20 req/min)"]
-        AUTH["requireRole()\nAuth Guard"]
-        CACHE["ai_cache / ai_briefings\n(Supabase — 24h TTL)"]
-        ROUTES["13 AI Route Handlers\n/api/ai/*"]
+    subgraph MODULES["23 AI Modules"]
+        BRIEFING["briefing.ts\nDaily studio briefing"]
+        CHURN["churn-prediction.ts\nChurn risk + narrative"]
+        HEALTH["health-score.ts\nMember health score"]
+        INSIGHTS["insights-generator.ts\n3-8 actionable insights"]
+        CAMPAIGN["campaign.ts\nCopy + subject lines"]
+        SEARCH["nl-search.ts\nNL → SQL → Execute\nCRIT: no SQL validation"]
+        OTHER["+ 17 more modules\nlead-scoring, send-time\nrevenue-anomaly, etc."]
     end
 
-    subgraph LIBAI["lib/ai/ + lib/anthropic.ts"]
-        CLIENT_MOD["client.ts\nSingleton Anthropic\nAI_MODEL constant"]
-        BRIEFING["anthropic.ts\nbriefing, recommendations\ncampaign-copy, health-score\nnl-search, lead-score\nsubject-lines, send-time\ncampaign-summary, automation-recs"]
-        AIMOD["lib/ai/ modules\nchurn-prediction\nbooking-patterns\nrevenue-anomaly\ninsights-generator\ntrainer-summary\nwaitlist-messaging\nauto-reply\nintake-enrichment"]
-        DEADMOD["lib/ai/ — NO API ROUTE\ncross-sell\npricing-analyzer\nseasonal-predictor\nreport-narrative\ntrainer-comparison"]
+    subgraph FALLBACKS["Rules-Based Fallbacks"]
+        FALLBACK_ALL["Every module has\nrules-based fallback\nwhen API unavailable"]
     end
 
-    subgraph ANTHROPIC["Anthropic API"]
-        MODEL_MAIN["claude-sonnet-4-6\n(9 modules)"]
-        MODEL_OLD["claude-sonnet-4-20250514\n(6 modules — stale ID)"]
+    subgraph HOOKS["17 Client Hooks"]
+        HOOKS_LIST["use-churn-prediction\nuse-member-health-score\nuse-ai-campaign-copy\nuse-ai-search\n+ 13 more"]
     end
 
-    subgraph FALLBACK["Rules-Based Fallbacks"]
-        RB["Every module has\nfull rules-based fallback\nif API unavailable"]
+    subgraph BACKGROUND["Inngest Background AI Jobs"]
+        CRON_INSIGHTS["cron-ai-insights\nDaily insight generation"]
+        CRON_ENRICHMENT["cron-member-enrichment\nNew member AI enrichment"]
     end
 
-    subgraph DB["Supabase Database"]
-        TABLES["members, bookings\ntransactions, classes\nprofiles, credit_packs\nemail_send_log"]
-        CACHE_TABLE["ai_cache\nai_briefings\nai_insights"]
-    end
-
-    UI -->|"fetch + AbortController"| ROUTES
-    ROUTES --> AUTH
-    AUTH --> RL
-    RL -->|"check cache"| CACHE
-    CACHE -->|"cache miss"| AIMOD
-    CACHE -->|"cache miss"| BRIEFING
-    AIMOD --> CLIENT_MOD
-    BRIEFING --> CLIENT_MOD
-    CLIENT_MOD -->|"primary"| MODEL_MAIN
-    CLIENT_MOD -->|"stale model ID\nin 6 modules"| MODEL_OLD
-    MODEL_MAIN -->|"JSON output\nvalidated"| AIMOD
-    MODEL_OLD -->|"JSON output\nvalidated"| AIMOD
-    MODEL_MAIN -->|"error / key missing"| RB
-    MODEL_OLD -->|"error / key missing"| RB
-    ROUTES -->|"parallel queries"| TABLES
-    AIMOD -->|"persist results"| CACHE_TABLE
-    DEADMOD -.->|"implemented but\nnot routed"| CLIENT_MOD
-
-    style DEADMOD fill:#f97316,color:#fff
-    style MODEL_OLD fill:#f59e0b,color:#000
-    style RB fill:#10b981,color:#fff
-    style MODEL_MAIN fill:#4f46e5,color:#fff
+    ANTHROPIC_CLIENT --> RETRY
+    RETRY --> MODULES
+    MODULES --> FALLBACKS
+    HOOKS_LIST --> MODULES
+    BACKGROUND --> MODULES
+    SEARCH --> |"CRIT-AI-001: No SQL validation"| SEARCH

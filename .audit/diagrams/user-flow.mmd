@@ -1,257 +1,29 @@
-%% Meridian User Flow Diagrams
-%% Updated by user-flow audit agent (comprehensive audit)
-
-%% ─── Diagram 1: Primary Admin User Journey (Happy Path + Error Paths) ───────
-
-sequenceDiagram
-    participant U as User (Browser)
-    participant MW as Middleware
-    participant LP as /login
-    participant CB as /auth/callback
-    participant CC as / (Command Center)
-    participant MB as /members
-    participant MP as /members/[id]
-    participant RV as /revenue
-    participant MK as /marketing
-    participant CN as /campaigns/new
-    participant AN as /analytics
-    participant EMP as /employee
-
-    Note over U,MW: Unauthenticated user
-    U->>MW: GET /
-    MW-->>U: 302 /login?redirect=/
-
-    U->>LP: Email + password (or toggle to magic link)
-    alt Password sign-in
-        LP-->>LP: signInWithPassword
-        LP-->>LP: Fetch profile.roles
-        alt Admin/Owner/Manager
-            LP-->>CC: router.push("/")
-        else Trainer/Staff only
-            LP-->>EMP: router.push("/employee")
-        end
-    else Magic link
-        LP-->>U: "Check your email" state (no back navigation)
-        U->>CB: GET /auth/callback?code=...
-        CB-->>CB: exchangeCodeForSession
-        CB-->>CB: Fetch profile.roles
-        alt Admin role
-            CB-->>CC: 302 /
-        else Trainer/Staff only
-            CB-->>EMP: 302 /employee
-        end
+flowchart LR
+    subgraph AUTH["Auth Flow"]
+        LOGIN["/login"] -->|magic link OTP| CALLBACK["/auth/callback"]
+        CALLBACK --> HOME["/Command Center"]
     end
 
-    Note over U,CC: Daily operator flow
-    U->>CC: Load Command Center
-    CC-->>CC: useCommandCenterData (60s poll) + useKpiData
-
-    opt Click member in Activity Feed
-        Note right of CC: DEAD END — activity items are div.cursor-pointer with no href
+    subgraph ADMIN["Admin Primary Flows"]
+        HOME --> SCHEDULE["/schedule\nClass calendar"]
+        HOME --> MEMBERS["/members\nDirectory + profile panel"]
+        HOME --> REVENUE["/revenue\nMRR + transactions"]
+        HOME --> MARKETING["/marketing\nCampaigns + automation"]
+        HOME --> ANALYTICS["/analytics\nDashboards + AI insights"]
+        HOME --> CORPORATE["/corporate\nCompany accounts"]
+        HOME --> OPERATIONS["/operations\nStaff + payroll"]
     end
 
-    opt Click "View All" on Class Status Board
-        Note right of CC: DEAD END — button has no href/onClick navigation
+    subgraph DEAD_ENDS["Orphaned / Incomplete"]
+        SEGMENTS["/segments — NOT in nav"]
+        ENGAGEMENT["/engagement — NOT in nav"]
+        EMP_STUBS["(employee)/classes/ etc.\norphaned stubs"]
+        SMS_CAMPAIGN["SMS campaign channel\n— may not send"]
     end
 
-    opt Click AI insight action button
-        Note right of CC: DEAD END — button renders but has no routing logic
+    subgraph EMPLOYEE["Employee Portal"]
+        EMP_HOME["/employee"] --> EMP_CLOCK["/employee/clock"]
+        EMP_HOME --> EMP_SCHEDULE["/employee/schedule"]
+        EMP_HOME --> EMP_PAY["/employee/pay"]
+        EMP_HOME --> EMP_TRAINER["Trainer section\nshows for ALL employees (bug)"]
     end
-
-    U->>MB: Sidebar → Members
-    MB-->>MB: Search, filter tabs, 60s poll
-    U->>MP: Click member row → /members/[id]
-    MP-->>MP: SSR: member + member_360 + bookings + transactions (last 20 each)
-    U->>MB: ArrowLeft "Back to Members"
-
-    Note over U,RV: Revenue review
-    U->>RV: Sidebar → Revenue
-    RV-->>RV: Tabs: Overview | Memberships | Transactions
-    Note right of RV: No /revenue/transactions/[id] page — no drill-down
-
-    Note over U,CN: Campaign creation
-    U->>MK: Sidebar → Marketing
-    MK-->>CN: "New Campaign" link
-    CN-->>CN: Step 1 Audience, Step 2 Content, Step 3 Schedule
-    alt Draft saved
-        CN-->>MK: a href="/marketing" (back button, bypasses /campaigns list)
-    else Campaign sent
-        CN-->>MK: a href="/marketing" on success screen
-    end
-
-    Note over U,AN: Analytics
-    U->>AN: Sidebar → Analytics
-    AN-->>AN: KPI cards, charts, AI recommendations
-    U->>AN: /analytics/kpi (KPI Deep Dive)
-    U->>AN: /analytics/trainers → /analytics/trainers/[id]
-    U->>AN: /analytics/reports → /analytics/reports/new or /analytics/reports/[id]
-
-    Note over U: Settings — no sidebar link — URL must be known
-
-
-%% ─── Diagram 2: Page Navigation Flowchart ──────────────────────────────────
-
-flowchart TD
-    LOGIN(["/login"]):::green
-    CALLBACK(["/auth/callback"]):::green
-    CC(["/ — Command Center"]):::green
-    SCHED(["/schedule"]):::green
-    MEMBERS(["/members"]):::green
-    MEMBER_DETAIL(["/members/[id]"]):::green
-    REVENUE(["/revenue"]):::green
-    REVENUE_PRODUCTS(["/revenue/products"]):::green
-    REVENUE_PRODUCTS_DETAIL(["/revenue/products/[id]"]):::green
-    REVENUE_PRODUCTS_NEW(["/revenue/products/new"]):::green
-    REVENUE_ORDERS(["/revenue/orders"]):::green
-    MARKETING(["/marketing"]):::green
-    CAMP_LIST(["/marketing/campaigns"]):::green
-    CAMP_NEW(["/marketing/campaigns/new"]):::green
-    CAMP_DETAIL(["/marketing/campaigns/[id]"]):::green
-    CAMP_REPORT(["/marketing/campaigns/[id]/report"]):::green
-    AUTO_LIST(["/marketing/automations"]):::green
-    AUTO_NEW(["/marketing/automations/new"]):::green
-    AUTO_DETAIL(["/marketing/automations/[id]"]):::green
-    LEADS(["/marketing/leads"]):::green
-    LEAD_DETAIL(["/marketing/leads/[id]"]):::green
-    CONTENT(["/marketing/content"]):::green
-    CONTENT_NEW(["/marketing/content/new"]):::green
-    CORP(["/corporate"]):::green
-    CORP_NEW(["/corporate/new"]):::green
-    CORP_DETAIL(["/corporate/[id]"]):::green
-    CORP_EVENTS(["/corporate/events"]):::green
-    CORP_EVENT_DETAIL(["/corporate/events/[id]"]):::green
-    OPS(["/operations"]):::green
-    OPS_PAYROLL(["/operations/payroll"]):::green
-    OPS_DOCS(["/operations/documents"]):::green
-    ANALYTICS(["/analytics"]):::green
-    A_KPI(["/analytics/kpi"]):::green
-    A_DASH(["/analytics/dashboards"]):::green
-    A_DASH_EXEC(["/analytics/dashboards/executive"]):::green
-    A_DASH_GROWTH(["/analytics/dashboards/growth"]):::green
-    A_DASH_OPS(["/analytics/dashboards/operations"]):::green
-    A_INSIGHTS(["/analytics/insights"]):::yellow
-    A_REPORTS(["/analytics/reports"]):::green
-    A_REPORT_NEW(["/analytics/reports/new"]):::green
-    A_REPORT_DETAIL(["/analytics/reports/[id]"]):::green
-    A_TRAINERS(["/analytics/trainers"]):::green
-    A_TRAINER_DETAIL(["/analytics/trainers/[id]"]):::green
-    A_PRICING(["/analytics/pricing"]):::green
-    A_PRICING_NEW(["/analytics/pricing/new"]):::green
-    A_PRICING_DETAIL(["/analytics/pricing/[id]"]):::green
-    A_MIGRATION(["/analytics/migration"]):::yellow
-    SEGMENTS(["/segments"]):::green
-    ENGAGEMENT(["/engagement"]):::green
-    SETTINGS(["/settings"]):::red
-    SETTINGS_SMS(["/settings/sms"]):::green
-    SETTINGS_GEO(["/settings/geofence"]):::green
-    DOCS_API(["/docs/api"]):::gray
-    UNSUB(["/unsubscribe/[token]"]):::gray
-    EMP(["/employee"]):::green
-    EMP_SCHED(["/employee/schedule"]):::green
-    EMP_CLOCK(["/employee/clock"]):::green
-    EMP_PAY(["/employee/pay"]):::green
-    EMP_TS(["/employee/timesheets"]):::green
-    EMP_PROFILE(["/employee/profile"]):::green
-    EMP_CLASSES(["/employee/classes"]):::green
-    EMP_PERF(["/employee/performance"]):::green
-    EMP_PROMO(["/employee/promo"]):::green
-
-    LOGIN --> CC
-    LOGIN --> EMP
-    CALLBACK --> CC
-    CALLBACK --> EMP
-
-    %% Admin sidebar (10 items — Settings is NOT here)
-    CC --> SCHED
-    CC --> MEMBERS
-    CC --> REVENUE
-    CC --> MARKETING
-    CC --> CORP
-    CC --> OPS
-    CC --> ANALYTICS
-    CC --> SEGMENTS
-    CC --> ENGAGEMENT
-
-    MEMBERS --> MEMBER_DETAIL
-    MEMBER_DETAIL --> MEMBERS
-
-    REVENUE --> REVENUE_PRODUCTS
-    REVENUE --> REVENUE_ORDERS
-    REVENUE_PRODUCTS --> REVENUE_PRODUCTS_DETAIL
-    REVENUE_PRODUCTS --> REVENUE_PRODUCTS_NEW
-    REVENUE_PRODUCTS_NEW --> REVENUE_PRODUCTS
-    REVENUE_PRODUCTS_DETAIL --> REVENUE_PRODUCTS
-
-    MARKETING --> CAMP_LIST
-    MARKETING --> AUTO_LIST
-    MARKETING --> LEADS
-    MARKETING --> CONTENT
-    CAMP_LIST --> CAMP_NEW
-    CAMP_LIST --> CAMP_DETAIL
-    CAMP_NEW --> MARKETING
-    CAMP_DETAIL --> MARKETING
-    CAMP_DETAIL --> CAMP_REPORT
-    CAMP_REPORT --> CAMP_LIST
-    AUTO_LIST --> AUTO_NEW
-    AUTO_LIST --> AUTO_DETAIL
-    AUTO_NEW --> AUTO_LIST
-    AUTO_DETAIL --> AUTO_LIST
-    LEADS --> LEAD_DETAIL
-    LEAD_DETAIL --> LEADS
-    CONTENT --> CONTENT_NEW
-    CONTENT_NEW --> CONTENT
-
-    CORP --> CORP_NEW
-    CORP --> CORP_DETAIL
-    CORP --> CORP_EVENTS
-    CORP_NEW --> CORP
-    CORP_EVENTS --> CORP_EVENT_DETAIL
-
-    OPS --> OPS_PAYROLL
-    OPS --> OPS_DOCS
-    OPS_PAYROLL --> OPS
-    OPS_DOCS --> OPS
-
-    ANALYTICS --> A_KPI
-    ANALYTICS --> A_DASH
-    ANALYTICS --> A_INSIGHTS
-    ANALYTICS --> A_REPORTS
-    ANALYTICS --> A_TRAINERS
-    ANALYTICS --> A_PRICING
-    ANALYTICS --> A_MIGRATION
-    A_KPI --> ANALYTICS
-    A_DASH --> A_DASH_EXEC
-    A_DASH --> A_DASH_GROWTH
-    A_DASH --> A_DASH_OPS
-    A_DASH_EXEC --> A_DASH
-    A_DASH_GROWTH --> A_DASH
-    A_DASH_OPS --> A_DASH
-    A_REPORTS --> A_REPORT_NEW
-    A_REPORTS --> A_REPORT_DETAIL
-    A_REPORT_NEW --> A_REPORTS
-    A_REPORT_DETAIL --> A_REPORTS
-    A_TRAINERS --> A_TRAINER_DETAIL
-    A_TRAINER_DETAIL --> A_TRAINERS
-    A_PRICING --> A_PRICING_NEW
-    A_PRICING --> A_PRICING_DETAIL
-    A_PRICING_NEW --> A_PRICING
-    A_PRICING_DETAIL --> A_PRICING
-
-    SETTINGS --> SETTINGS_SMS
-    SETTINGS --> SETTINGS_GEO
-    SETTINGS_GEO --> SETTINGS
-
-    EMP --> EMP_SCHED
-    EMP --> EMP_CLOCK
-    EMP --> EMP_PAY
-    EMP --> EMP_TS
-    EMP --> EMP_PROFILE
-    EMP --> EMP_CLASSES
-    EMP --> EMP_PERF
-    EMP --> EMP_PROMO
-    EMP --> CC
-
-    classDef green fill:#d1fae5,stroke:#10b981,color:#065f46
-    classDef yellow fill:#fef3c7,stroke:#f59e0b,color:#92400e
-    classDef red fill:#fee2e2,stroke:#ef4444,color:#991b1b
-    classDef gray fill:#f3f4f6,stroke:#9ca3af,color:#6b7280

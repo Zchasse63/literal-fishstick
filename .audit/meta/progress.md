@@ -2,12 +2,10 @@
 
 ## Configuration
 - Primary language: TypeScript
-- Total files: ~500
-- Approximate lines: ~80,000
-- Frameworks: Next.js, React, Tailwind
-- Database: PostgreSQL (Supabase)
-- Infrastructure: Netlify, Supabase, Stripe, Resend, Inngest, Anthropic, Glofox API
-- Monorepo: Yes (Turborepo)
+- Frameworks: Next.js, React, Supabase, Tailwind CSS, Turborepo, Playwright
+- has_frontend: true
+- ai_detected: true
+- Monorepo: Turborepo
 
 ## Agent Plan
 - Wave 1: project-structure
@@ -17,56 +15,60 @@
 - Wave 5: synthesizer
 
 ## Agents Skipped
-- None (has_frontend=true, ai_detected=true — all agents applicable)
-
-## Critical Context (Changes Since Last Audit 2026-04-02)
-1. 15 Glofox API client methods were rewritten with corrected endpoint paths
-2. member_360 PostgreSQL VIEW was created
-3. glofox_plan_map table was created with 20 plan mappings
-4. 1,894 real transactions were inserted from Glofox API
-5. 6 new automation trigger types were added
-6. 32 admin pages were converted to React Server Components
-7. Daily member enrichment cron was created
-8. Phone normalization was added to 14 API routes
-9. The daily_metrics revenue data is WRONG (doesn't match real transactions)
-10. credit_packs table is still empty (needs Glofox pull)
+- None — all agents applicable (has_frontend=true, ai_detected=true)
 
 ## Wave Status
 
 ### Wave 1: project-structure
-- Status: COMPLETE
-- Output: .audit/layers/project-structure.md
-- Findings: 0 critical, 0 high, 1 medium, 2 low, 2 info
+- Status: IN PROGRESS
+- Started: 2026-04-08
 
-### Wave 2: data-model, api-surface, testing-quality
-- Status: COMPLETE
-- Outputs: .audit/layers/data-model.md, api-surface.md, testing-quality.md
-- Findings: data-model (2 critical, 2 high, 3 medium), api-surface (3 high, 3 medium), testing-quality (3 high, 2 medium)
+### Wave 2: Core Analysis
+- Status: PENDING
 
-### Wave 3: ui-ux, user-flow, ai-layer
-- Status: COMPLETE
-- Outputs: .audit/layers/ui-ux.md, user-flow.md, ai-layer.md
-- Findings: ui-ux (2 high, 3 medium), user-flow (3 high, 2 medium), ai-layer (3 high, 3 medium)
+### Wave 3: Contextual Analysis
+- Status: PENDING
 
-### Wave 4: integration, security, performance-infra
-- Status: COMPLETE
-- Outputs: .audit/layers/integration.md, security.md, performance-infra.md
-- Findings: integration (2 high, 2 medium), security (3 high, 3 medium), performance-infra (2 high, 2 medium)
+### Wave 4: Infrastructure Analysis
+- Status: PENDING
 
-### Wave 5: synthesizer
-- Status: COMPLETE
-- Outputs:
-  - .audit/synthesis/cross-references.md (8 multi-layer corroborations)
-  - .audit/synthesis/contradictions.md (4 apparent contradictions, all resolved)
-  - .audit/synthesis/gaps.md (10 coverage gaps)
-  - .audit/findings/critical.md (2 findings)
-  - .audit/findings/high.md (11 findings)
-  - .audit/findings/medium.md (16 findings)
-  - .audit/findings/low-info.md (20 low + 10 info)
-  - .audit/AUDIT-SUMMARY.md
+### Wave 5: Synthesis
+- Status: PENDING
 
-## Final Status: COMPLETE
-- Completed: 2026-04-05
-- Total deduplicated findings: 59
-- Architecture health score: 6.8/10
-- Critical findings requiring immediate action: 2
+### Wave 1 Complete
+- project-structure.md: 12.8KB
+
+### Wave 2 Complete
+- data-model.md: 12.1KB
+- api-surface.md: 11.7KB
+- testing-quality.md: 10.5KB
+
+### Wave 3 Complete
+- ui-ux.md: 9.2KB
+- user-flow.md: 11.2KB
+- ai-layer.md: 13.1KB
+
+### Wave 4 Complete
+- integration.md: 10.0KB
+- security.md: 11.7KB
+- performance-infra.md: 9.9KB
+
+### Wave 5: Synthesis
+- Status: IN PROGRESS
+
+### Wave 5 Complete
+- AUDIT-SUMMARY.md: 12.4KB
+- synthesis/cross-references.md
+- synthesis/contradictions.md
+- synthesis/gaps.md
+- findings/critical.md
+- findings/high.md
+- findings/medium.md
+- findings/low-info.md
+
+## AUDIT COMPLETE
+- Completed: 2026-04-08T13:02:00Z
+- Total findings: 55 (2 CRITICAL, 10 HIGH, 15 MEDIUM, 16 LOW, 12 INFO)
+- Architecture health score: 7.5/10
+- Agents executed: 11
+- Agents skipped: 0

@@ -1,48 +1,30 @@
 # Critical Findings
 
-**Generated:** 2026-04-05
-**Deduplicated and cross-referenced from 10 layer audit reports.**
+**Date:** 2026-04-08
 
 ---
 
-## CRIT-001: daily_metrics revenue data is wrong across all historical dates
+## CRIT-1 (= CRIT-AS-001 / HIGH-SEC-003): Events API Multi-Tenancy Breach
 
-**ID:** DM-001
-**Corroborated by:** data-model, user-flow, ui-ux, ai-layer, performance-infra (5/10 layers)
-**Layer:** data-model
+**Source:** api-surface, security, integration
+**Corroboration:** Cross-reference CR-001
 
-**Summary:** The `daily_metrics` table was computed before 1,894 Glofox transactions were inserted. The cron only processes forward — historical rows will never be corrected. Every revenue metric on the Command Center, Revenue dashboard, executive analytics, and AI briefing context is displaying incorrect (zero or near-zero) historical revenue.
+The Events API (`/api/events`, `/api/events/[id]`) uses `DEFAULT_STUDIO_ID = '11111111-1111-1111-1111-111111111111'` (hardcoded in `lib/constants.ts`) instead of the authenticated user's `studio_id`. Every event query, creation, and modification is routed to the hardcoded default studio.
 
-**Evidence:**
-- `cron-daily-metrics.ts`: only processes dates after the last computed row
-- `transactions` table: 1,894 rows with historical timestamps inserted after metrics were computed
-- `daily_metrics` rows: exist for historical dates but contain zero revenue
+**Impact:** When a second studio is onboarded (Phase 3 SaaS expansion), users from Studio B would be able to read and modify Studio A's events. This is a data isolation failure that will be impossible to detect in production if not fixed beforehand.
 
-**Fix:**
-1. Run one-time backfill: DELETE all `daily_metrics` rows for affected date range, re-aggregate from `transactions`
-2. Add reconciliation: if `revenue_total = 0` but `transactions` exist for that date, re-compute
-3. Interim: have Command Center revenue widgets read directly from `transactions`
-
-**Effort:** Low (1-2 hours for backfill script). High urgency.
+**Fix:** Replace `DEFAULT_STUDIO_ID` usage in all event route handlers with `profile.studio_id` from the authenticated user. Mirror the pattern used in all other API domains.
 
 ---
 
-## CRIT-002: credit_packs table is empty — member credit features are non-functional
+## CRIT-2 (= CRIT-AI-001 / CRIT-SEC-001): LLM SQL Execution Without Server-Side Validation
 
-**ID:** DM-002
-**Corroborated by:** data-model, user-flow, integration (3/10 layers)
-**Layer:** data-model
+**Source:** ai-layer, security
+**Corroboration:** Cross-reference CR-002
 
-**Summary:** The `credit_packs` table has never been populated. The Glofox backfill function has a step for credits (`backfill-credits`) but it has apparently never been triggered or completed successfully. Members with credit packs in Glofox show zero credits in Meridian. The `credit_expiry` automation trigger can never fire.
+The `/api/ai/search` endpoint accepts user input, sends it to Claude to generate SQL, and executes the LLM-generated query directly against the production database via `supabase.rpc('execute_read_query', ...)`. There is no server-side parse to verify the returned query is a single, safe SELECT statement before execution.
 
-**Evidence:**
-- `credit_packs` table: empty
-- `glofox-backfill.ts` step 6: code exists to fetch credits per member but table remains empty
-- `GET /api/members/[id]`: queries `credit_packs`, always returns empty array
+**Impact:** (1) Prompt injection via user search input could generate SELECT statements that exfiltrate sensitive data (employee direct deposit info, wallet balances, tax IDs). (2) A malformed or malicious SQL query (nested loops, CARTESIAN joins) could cause database denial-of-service. (3) If the read-only RPC doesn't exist or isn't configured correctly, the fallback may execute with service-role permissions.
 
-**Fix:**
-1. Trigger the backfill: `POST /api/glofox/backfill` with the `credit_packs` step enabled
-2. Monitor Inngest function execution and `credit_packs` row count post-run
-3. Verify `credit_expiry` automation can now fire for eligible members
+**Fix:** Before executing any LLM-generated SQL: (1) Parse the string to verify it contains exactly one `SELECT` statement with no semicolons or DDL/DML keywords using a lightweight SQL parser. (2) Add a query timeout via `SET statement_timeout`. (3) Log all AI-generated queries for audit purposes.
 
-**Effort:** Low (trigger existing backfill). Medium urgency (members losing credit expiry reminders).

@@ -1,232 +1,223 @@
 # Layer Report: Project Structure
 
-**Audit Date:** 2026-04-05
 **Agent:** project-structure
-**Severity Scale:** Critical / High / Medium / Low / Info
+**Date:** 2026-04-08
+**Status:** Complete
 
 ---
 
 ## Executive Summary
 
-Meridian is a Turborepo monorepo with a single primary application (`apps/web`) — a Next.js 16.2 app running on React 19. The architecture follows a well-structured feature-module layout inside the Next.js App Router with route groups for role separation. Three shared packages (`types`, `supabase`, `utils`) provide reuse across future apps. The project is in active Phase 1 to 2 transition with 430 TypeScript source files and approximately 80,000 estimated lines.
-
-The structure is clean and purposeful. Key risks center on an oversized monolith within `apps/web`, a `'use client'` admin layout that forces client-side rendering on all children despite a 32-page RSC conversion, and no second app yet despite the monorepo scaffold.
+Meridian is a Turborepo monorepo hosting a single Next.js 16 application (`apps/web`) backed by Supabase (Postgres + Auth + Realtime). The architecture is a **feature-based vertical slice** pattern within the Next.js App Router, organized by business domain (members, revenue, marketing, corporate, analytics, operations). Three shared packages (`@meridian/types`, `@meridian/utils`, `@meridian/supabase`) provide cross-app primitives. The platform is a fitness-studio OS replacing Glofox, currently in Phase 2 of a 5-phase roadmap.
 
 ---
 
 ## Directory Tree (Top 3 Levels)
 
 ```
-literal-fishstick/                    # Turborepo root
+literal-fishstick/
 ├── apps/
-│   └── web/                          # Next.js 16.2 + React 19 app
+│   └── web/                         # Next.js 16 admin dashboard + employee portal
 │       ├── src/
-│       │   ├── app/                  # App Router entry point
-│       │   │   ├── (admin)/          # Admin dashboard (12 modules)
-│       │   │   ├── (auth)/           # Login + auth callback
-│       │   │   ├── (employee)/       # Employee portal (9 sub-routes)
-│       │   │   ├── api/              # 60+ API route namespaces
-│       │   │   └── unsubscribe/      # Public email unsubscribe
-│       │   ├── components/           # Shared UI components
-│       │   │   ├── ui/               # Base design system (24 primitives)
-│       │   │   ├── layout/           # Sidebar, Header, CommandPalette
-│       │   │   └── glofox/           # Glofox-specific components
-│       │   ├── contexts/             # React contexts (auth-context only)
-│       │   ├── hooks/                # 14 custom hooks (AI, data, realtime)
-│       │   ├── lib/                  # Core logic layer
-│       │   │   ├── ai/               # 22 AI feature modules
-│       │   │   ├── auth/             # Auth helpers (require-role, studio)
-│       │   │   ├── glofox/           # Glofox API client + transformers
-│       │   │   ├── inngest/          # 20 cron/background functions
-│       │   │   ├── reports/          # Report generation
-│       │   │   ├── sms/              # SMS provider abstraction
-│       │   │   └── supabase/         # DB client (client.ts, server.ts)
-│       │   └── __tests__/            # Unit + integration test suites
-│       ├── e2e/                      # Playwright E2E tests
-│       └── scripts/                  # DB and utility scripts
+│       │   ├── app/                 # Next.js App Router (route tree)
+│       │   │   ├── (admin)/         # Admin route group (8 modules)
+│       │   │   ├── (auth)/          # Auth routes (login, callback)
+│       │   │   ├── (employee)/      # Employee portal routes
+│       │   │   └── api/             # API route handlers (~120+ routes)
+│       │   ├── components/          # Shared UI components
+│       │   │   ├── ui/              # shadcn/ui primitives (29 components)
+│       │   │   ├── layout/          # Admin shell, sidebar, header
+│       │   │   └── glofox/          # Glofox-specific components
+│       │   ├── hooks/               # React hooks (17 hooks, many AI-powered)
+│       │   ├── lib/                 # Business logic & service clients
+│       │   │   ├── ai/              # 23 AI modules (Claude integrations)
+│       │   │   ├── auth/            # Auth helpers
+│       │   │   ├── glofox/          # Glofox API client + transformers
+│       │   │   ├── inngest/         # Background job functions (14 crons + events)
+│       │   │   ├── reports/         # PDF/CSV export engine
+│       │   │   ├── sms/             # Provider-agnostic SMS (Twilio impl)
+│       │   │   └── supabase/        # Supabase client/server/middleware
+│       │   └── __tests__/           # Unit + integration tests
+│       ├── e2e/                     # Playwright E2E tests
+│       └── netlify/                 # Netlify function overrides
 ├── packages/
-│   ├── types/                        # Shared TypeScript types
-│   ├── supabase/                     # Supabase client factory
-│   └── utils/                        # Shared utilities (dates, currency)
-├── docs/                             # Architecture docs, research, prompts
-├── scripts/                          # Root-level utility scripts
-└── .audit/ .scrutiny/ .github/       # Meta tooling
+│   ├── types/                       # @meridian/types — shared TypeScript types (13 modules)
+│   ├── utils/                       # @meridian/utils — shared utilities
+│   └── supabase/                    # @meridian/supabase — shared Supabase client
+├── scripts/                         # DB seed scripts, migration SQL, data import scripts
+├── docs/                            # Product docs, PRD, design guides, research
+└── turbo.json                       # Turborepo pipeline config
 ```
 
 ---
 
 ## Architectural Pattern
 
-**Pattern:** Feature-module monolith inside Next.js App Router with domain-driven API surface.
+**Pattern:** Feature-based vertical slice + domain-grouped API
 
-Meridian uses the Route Group pattern (`(admin)`, `(auth)`, `(employee)`) to cleanly separate role-based surfaces without affecting URL paths. Within each surface, modules map closely to business domains: schedule, members, revenue, marketing, corporate, operations, analytics.
+The Next.js App Router uses **route groups** to organize three distinct user-facing surfaces:
+- `(admin)` — Admin dashboard (8 domain modules)
+- `(employee)` — Employee portal (clock-in, pay, performance, schedule)
+- `(auth)` — Authentication (login, magic link callback)
 
-The `lib/` directory acts as a service/domain layer — all business logic lives here, not in route handlers. Route handlers (`app/api/`) are thin: they authenticate via `requireRole()`, delegate to lib functions, and return JSON. This is a healthy separation of concerns.
+Within `(admin)`, each module (analytics, corporate, marketing, members, operations, revenue, schedule, settings) owns its own:
+- Page components (`page.tsx`, `layout.tsx`)
+- Collocated client components (`_components/`)
+- Data fetching via API calls to `/api/*`
 
-**Architectural style:** Layered monolith with feature-based organization. Not yet hexagonal (no explicit ports/adapters), but the `requireRole` plus service-function pattern approximates it within Next.js constraints.
+This is a **"server page + client component"** hybrid pattern: page.tsx files are server components that pass data to `*Client.tsx` components which handle interactivity.
 
 ---
 
 ## Module Boundaries
 
-| Module | Route Group | API Namespace | Lib Module | Background Jobs |
-|--------|-------------|---------------|------------|-----------------|
-| Command Center | `(admin)/` | `/api/analytics/snapshot` | `ai/briefing.ts` | `cron-daily-metrics` |
-| Schedule | `(admin)/schedule` | `/api/classes`, `/api/bookings` | — | `glofox-sync-hourly` |
-| Members | `(admin)/members` | `/api/members` | — | `cron-member-enrichment` |
-| Revenue | `(admin)/revenue` | `/api/revenue`, `/api/transactions` | — | `cron-daily-metrics` |
-| Marketing | `(admin)/marketing` | `/api/campaigns`, `/api/automations`, `/api/leads` | `ai/campaign.ts` | `evaluate-triggers`, `execute-flow` |
-| Corporate | `(admin)/corporate` | `/api/corporate`, `/api/events` | — | `cron-corporate-credits` |
-| Operations | `(admin)/operations` | `/api/employees`, `/api/clock`, `/api/payroll` | — | `cron-payroll-reminder` |
-| Analytics | `(admin)/analytics` | `/api/analytics/*`, `/api/reports` | `ai/insights-generator.ts` | `cron-ai-insights`, `cron-report-scheduler` |
-| Employee Portal | `(employee)/employee` | `/api/clock`, `/api/employees` | — | — |
-| Segments | `(admin)/segments` | `/api/segments` | — | — |
-| Engagement | `(admin)/engagement` | — | — | — |
-| AI Layer | — | `/api/ai/*` (17 endpoints) | `lib/ai/` (22 modules) | `cron-ai-insights` |
-| Glofox Sync | — | `/api/glofox/*` | `lib/glofox/` | `glofox-sync-hourly`, `glofox-backfill` |
+### Admin Modules (8 domains)
+| Module | Path | Purpose |
+|--------|------|---------|
+| Command Center | `(admin)/page.tsx` | Daily briefing, live metrics, facility map |
+| Schedule | `(admin)/schedule/` | Class calendar, waitlists, class management |
+| Members | `(admin)/members/` | Member directory, profiles, segments |
+| Revenue | `(admin)/revenue/` | MRR/churn metrics, transactions, products |
+| Marketing | `(admin)/marketing/` | Campaigns, automations, leads, content hub |
+| Corporate | `(admin)/corporate/` | Company accounts, event management |
+| Operations | `(admin)/operations/` | Staff directory, payroll, permissions |
+| Analytics | `(admin)/analytics/` | Dashboards, AI insights, reports, pricing simulator, trainer performance, migration |
+| Settings | `(admin)/settings/` | Studio settings, geofencing, SMS config |
+
+### API Domains (~120+ route handlers)
+| Domain | Route Prefix | Notes |
+|--------|-------------|-------|
+| AI Features | `/api/ai/*` | 14 endpoints (briefing, churn, health-score, campaign-copy, etc.) |
+| Analytics | `/api/analytics/*` | 8 endpoints |
+| Automations | `/api/automations/*` | Full CRUD + enrollment management |
+| Bookings | `/api/bookings/*` | Create, cancel |
+| Campaigns | `/api/campaigns/*` | Full lifecycle (create, send, schedule, A/B winner) |
+| Check-in | `/api/check-in/*` | QR-based and direct check-in |
+| Classes | `/api/classes/*` | Class management + reminders |
+| Corporate | `/api/corporate/*` | Accounts, members, credits, invoices |
+| Employees | `/api/employees/*` | Staff CRUD, documents |
+| Events | `/api/events/*` | Event management |
+| Glofox | `/api/glofox/*` | Sync, backfill (background functions) |
+| Inngest | `/api/inngest` | Background job webhook |
+| Members | `/api/members/*` | Member CRUD, pause |
+| Payroll | `/api/payroll/*` | Periods, approve, calculate, export |
+| Pricing Simulator | `/api/pricing-simulator/*` | Simulate, analyze, apply |
+| Products | `/api/products/*` | Merchandise CRUD |
+| Promo Codes | `/api/promo-codes/*` | Trainer promo codes |
+| Reports | `/api/reports/*` | Report builder, generate, export |
+| Segments | `/api/segments/*` | Smart member segments |
+| Staff | `/api/staff/*` | Staff management |
+| Trainers | `/api/trainers/*` | Performance, leaderboard, summaries |
+| Webhooks | `/api/webhooks/*` | Stripe, Resend, EasyPost, Twilio |
+| Cron | `/api/cron/*` | Waitlist promotion |
+
+### Background Jobs (Inngest — 14 functions)
+- `cron-ai-insights` — AI insight generation
+- `cron-cohort-refresh` — Cohort analytics refresh
+- `cron-contract-expiry` — Contract expiry notifications
+- `cron-corporate-credits` — Corporate credit allocation
+- `cron-daily-metrics` — Daily KPI snapshots
+- `cron-export-cleanup` — Cleanup exported files
+- `cron-invoice-overdue` — Invoice overdue alerts
+- `cron-member-enrichment` — AI member enrichment
+- `cron-payroll-reminder` — Payroll reminder notifications
+- `cron-report-scheduler` — Scheduled report delivery
+- `cron-trainer-metrics` — Trainer performance metrics
+- `evaluate-triggers` — Automation trigger evaluation
+- `execute-flow` — Automation step execution
+- `glofox-backfill/sync/create-booking/cancel-booking/mark-attendance` — Glofox integration jobs
+
+### Shared Packages
+| Package | Exports |
+|---------|---------|
+| `@meridian/types` | 13 domain type modules (auth, members, classes, bookings, revenue, trainers, employees, merch, marketing, guests, analytics, corporate) |
+| `@meridian/utils` | currency.ts, dates.ts, constants.ts |
+| `@meridian/supabase` | Supabase client/server factories |
 
 ---
 
 ## Dependency Graph
 
+### Critical Dependencies
 ```
 apps/web
-  ├── @meridian/types        (shared entity types)
-  ├── @meridian/supabase     (DB client factory)
-  └── @meridian/utils        (currency, dates, constants)
-
-apps/web external dependencies (key):
-  ├── next 16.2.0            (framework)
-  ├── @supabase/ssr          (auth + DB)
-  ├── @anthropic-ai/sdk      (AI)
-  ├── stripe                 (payments)
-  ├── inngest                (background jobs)
-  ├── resend                 (email)
-  ├── twilio                 (SMS — installed, provider-agnostic wrapper)
-  ├── reactflow              (automation flow builder UI)
-  ├── recharts               (analytics charts)
-  ├── @react-pdf/renderer    (invoice PDF generation)
-  ├── handlebars             (email template rendering)
-  └── zod                    (validation)
+  → @meridian/types (shared types — monorepo workspace)
+  → @anthropic-ai/sdk ^0.80.0 (Claude AI)
+  → @supabase/ssr + supabase-js (database + auth)
+  → stripe ^20.4.1 (payments)
+  → inngest ^4.0.2 (background jobs)
+  → resend ^6.9.4 (email)
+  → twilio ^5.13.0 (SMS)
+  → next 16.2.0 (framework)
+  → react ^19.2.4 (UI)
+  → zod ^3.24.0 (validation)
+  → recharts ^2.15.4 (charts)
+  → framer-motion ^12.4.10 (animations)
+  → reactflow ^11.11.4 (flow diagrams)
+  → handlebars ^4.7.8 (email templates)
+  → svix ^1.89.0 (webhook verification)
+  → @react-pdf/renderer ^4.3.2 (PDF export)
+  → @dnd-kit/* (drag-and-drop)
+  → cmdk ^1.1.1 (command palette)
 ```
+
+### Key Technical Observations
+1. **Next.js 16.2.0** — This is a very recent/leading-edge version that may have breaking changes from well-known Next.js 14/15 patterns. The AGENTS.md explicitly warns about this.
+2. **React 19** — Latest React version with concurrent features; some third-party libraries may not be compatible.
+3. **Vitest 4.1.0** — Very recent major version.
+4. **Twilio imported as a production dependency** but SMS is described as "stub" — the library is bundled but the feature may be partially implemented.
 
 ---
 
-## Architecture Diagram
+## Infrastructure
 
-```mermaid
-flowchart TD
-    subgraph MONOREPO["Turborepo Monorepo"]
-        subgraph WEB["apps/web (Next.js 16.2)"]
-            subgraph ROUTES["App Router"]
-                ADMIN["(admin) Route Group\n12 modules"]
-                EMPLOYEE["(employee) Route Group\n9 sub-routes"]
-                AUTH["(auth) Route Group\nLogin + callback"]
-                API["api/ — 60+ namespaces\n17 AI + 8 Glofox sync\n35 domain routes"]
-            end
+### Deployment
+- **Hosting:** Netlify with `@netlify/plugin-nextjs`
+- **Build:** `apps/web` as Netlify base directory
+- **Functions timeout:** 60s (extended for Glofox sync)
+- **Node version:** 22
 
-            subgraph LIB["lib/ — Service Layer"]
-                AI_LIB["lib/ai/ (22 modules)\nChurn, health, briefing,\ncampaign, insights..."]
-                GLOFOX_LIB["lib/glofox/\nAPI client + transformers"]
-                INNGEST_LIB["lib/inngest/ (20 functions)\nCron + event-driven jobs"]
-                AUTH_LIB["lib/auth/\nrequireRole, getStudioId"]
-                SUPABASE_LIB["lib/supabase/\nserver + client factories"]
-            end
+### Middleware Architecture
+The single `middleware.ts` handles:
+1. **Session refresh** via `updateSession()` on every request
+2. **Public route allowlist** — leads/capture, unsubscribe, webhook endpoints, Inngest, health check, Glofox sync (secured by `CRON_SECRET`)
+3. **Auth enforcement** — redirect to `/login` for pages, JSON 401 for API routes
+4. **Note:** Uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` (non-standard name for anon key)
 
-            subgraph COMPONENTS["components/"]
-                UI_COMP["ui/ — 24 primitives"]
-                LAYOUT_COMP["layout/ — Sidebar, Header"]
-            end
-        end
-
-        subgraph PACKAGES["packages/"]
-            TYPES["@meridian/types"]
-            SUPA_PKG["@meridian/supabase"]
-            UTILS_PKG["@meridian/utils"]
-        end
-    end
-
-    subgraph EXTERNAL["External Services"]
-        SUPABASE_EXT["Supabase\n(Postgres + Auth)"]
-        ANTHROPIC_EXT["Anthropic Claude\n(Sonnet 4.6)"]
-        STRIPE_EXT["Stripe\n(Payments)"]
-        GLOFOX_EXT["Glofox API\n(Legacy sync)"]
-        INNGEST_EXT["Inngest\n(Job scheduler)"]
-        RESEND_EXT["Resend\n(Email)"]
-    end
-
-    ADMIN --> LIB
-    EMPLOYEE --> LIB
-    API --> LIB
-    LIB --> PACKAGES
-    LIB --> EXTERNAL
-```
+### CI/CD
+- GitHub Actions workflow at `.github/workflows/ci.yml`
+- Netlify for deployment
 
 ---
 
 ## Findings
 
-### MEDIUM-PS-001: Admin layout forces client boundary on all 32 admin pages
+### CRITICAL
+None identified in project structure.
 
-**Severity:** Medium
-**Location:** `apps/web/src/app/(admin)/layout.tsx`
+### HIGH
+- **HIGH-PS-001:** Next.js 16.2.0 is an extremely recent/possibly pre-release version. The codebase's AGENTS.md explicitly warns that "APIs, conventions, and file structure may all differ from training data." This creates risk for all future development and makes community support harder. Verify this is a stable release, not an RC or canary build.
 
-The `(admin)/layout.tsx` has `'use client'` at the top and uses `useState`, `useEffect`, and `usePathname`. This layout wraps all 32 admin pages, meaning even RSC-converted pages must re-hydrate through this client boundary. The 32-page RSC conversion noted in the critical context gains only partial benefit — data fetching in individual `page.tsx` files can be async/server, but the layout shell and all children re-render on the client. The `Sidebar` and `Header` being client components is expected, but the top-level layout itself does not need to be a client component.
+### MEDIUM
+- **MED-PS-001:** The `/api/glofox/sync` and `/api/glofox/backfill` endpoints are listed as PUBLIC_API_ROUTES in middleware (secured by `CRON_SECRET`), but there is no dedicated Netlify scheduled function implemented at `netlify/functions/glofox-sync.mts` — the `netlify.toml` only has commented-out instructions for this. This means the hourly Glofox sync must be triggered by an external cron service, which is not configured in the repo.
+- **MED-PS-002:** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` is used in middleware as the Supabase anon key. This is a non-standard environment variable name (typical is `NEXT_PUBLIC_SUPABASE_ANON_KEY`). If `.env.local` uses the wrong key name, auth will silently fail.
+- **MED-PS-003:** `twilio` is a production dependency despite SMS being described as "stub" and provider-agnostic. Twilio SDK adds bundle weight and if `TWILIO_*` env vars are absent, runtime errors may occur on SMS-related code paths.
 
-**Recommendation:** Extract the keyboard shortcut handler and sidebar state into a dedicated `AdminShell` client component. Make `(admin)/layout.tsx` a server component that renders `<AdminShell>` around `{children}`.
+### LOW
+- **LOW-PS-001:** The `netlify/` directory exists but contains only function infrastructure — no Glofox scheduled function is implemented (per netlify.toml comments). This is a documentation/implementation gap.
+- **LOW-PS-002:** The `scripts/` directory contains raw Python and SQL migration files that are not integrated into any automated pipeline — they appear to be one-off data import scripts. They should be documented or archived.
+- **LOW-PS-003:** The `(employee)/classes/` and `(employee)/pay/` etc. paths appear to exist as empty/redirect stubs alongside the real `/employee/` routes — both `(employee)/classes` and `(employee)/employee/classes` exist, suggesting routing duplication.
 
----
-
-### LOW-PS-002: Monorepo scaffold underutilized — only one app
-
-**Severity:** Low
-**Location:** Root `package.json`, `turbo.json`
-
-The Turborepo setup properly declares `apps/*` and `packages/*` workspaces, but only `apps/web` exists. Three shared packages exist (`types`, `supabase`, `utils`) but the iOS app (React Native), landing page (Astro), and future member web portal would all benefit from them. This is expected at Phase 1 but creates a risk: if package boundaries are not enforced now, extracting them later is harder.
-
-**Recommendation:** Enforce `@meridian/types` usage strictly — no inline type duplication inside `apps/web`. Add a lint rule or turbo boundary check.
-
----
-
-### LOW-PS-003: `glofox/` components directory lacks ownership documentation
-
-**Severity:** Low
-**Location:** `apps/web/src/components/glofox/`
-
-There is a `components/glofox/` directory alongside the main component tree. If these are migration-era UI components, they should be clearly scoped and have a documented deprecation path once Glofox sync is complete.
-
-**Recommendation:** Add a comment header explaining the purpose and expected lifespan of these components.
+### INFO
+- **INFO-PS-001:** 466 TypeScript source files, ~104,986 total lines — this is a large codebase for a Phase 1+2 system.
+- **INFO-PS-002:** Turborepo `LOW-014` comment in turbo.json explicitly instructs all packages to use `@meridian/types` — good governance marker.
+- **INFO-PS-003:** The `docs/` tree is extensive (PRD, phase plans, research, design guides) and well-organized, indicating disciplined documentation practices.
+- **INFO-PS-004:** The middleware RLS comment (`// RLS STATUS: 11 Phase 2 tables...`) is a useful inline architecture note about which tables use `app.studio_id` setting vs. manual studio_id filtering.
 
 ---
 
-### INFO-PS-004: 14 AI-specific hooks co-located with data hooks
+## Architecture Health Score: 8/10
 
-**Severity:** Info
-**Location:** `apps/web/src/hooks/`
+**Strengths:** Clean feature-based organization, strong shared type discipline, clear module boundaries, well-documented codebase, comprehensive background job infrastructure, thoughtful middleware design.
 
-The `hooks/` directory contains 14 hooks of which approximately 10 are AI-specific (`use-ai-search.ts`, `use-churn-prediction.ts`, `use-booking-patterns.ts`, etc.). As the AI surface grows, mixing data hooks with AI hooks in one flat directory reduces discoverability.
-
-**Recommendation:** Consider a `hooks/ai/` subdirectory as the AI hook count grows.
-
----
-
-### INFO-PS-005: Admin and Employee portals co-located in a single app
-
-**Severity:** Info
-**Location:** `apps/web/src/app/`
-
-Admin dashboard and employee portal are co-located in the same Next.js app via route groups. This is intentional per the PRD but means both surfaces share the same deployment, auth middleware, and bundle. If the employee portal eventually needs a separate subdomain or kiosk deployment, extraction will be required.
-
-**Recommendation:** Document this as a known architectural constraint. Evaluate at Phase 4 when geofencing and kiosk mode are added.
-
----
-
-## Summary Table
-
-| ID | Severity | Category | Title |
-|----|----------|----------|-------|
-| MEDIUM-PS-001 | Medium | Architecture | Admin layout forces unnecessary client boundary on all pages |
-| LOW-PS-002 | Low | Monorepo | Shared packages underutilized — single app today |
-| LOW-PS-003 | Low | Codebase | glofox/ components directory lacks ownership documentation |
-| INFO-PS-004 | Info | Organization | AI hooks co-located with data hooks in flat directory |
-| INFO-PS-005 | Info | Architecture | Admin + Employee co-located in single deployment unit |
+**Weaknesses:** Very bleeding-edge dependency versions (Next.js 16, React 19, Vitest 4) introduce risk; Glofox cron scheduling is incomplete in infrastructure; minor route duplication in employee portal.

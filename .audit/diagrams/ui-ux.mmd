@@ -1,87 +1,24 @@
-%%{init: {"theme": "base"}}%%
-graph TD
-    %% Root layout
-    ROOT["RootLayout\n(RSC — font, auth, tooltip)"]
-
-    %% Route groups
-    AUTH["(auth)\nLoginPage"]
-    ADMIN["(admin)\nAdminLayout (RSC)"]
-    EMP["(employee)\nEmployeeLayout\nDuplicates dark-mode logic"]:::yellow
-
-    %% Admin shell
-    AS["AdminShell\n(client boundary)\nSidebar state + shortcuts"]:::yellow
-    SB["Sidebar\nNav + dark mode toggle\n(inverted icon)"]:::yellow
-    HD["Header\nFlat-string breadcrumb\n(Breadcrumbs component unused)"]:::red
-    CP["CommandPalette\nMissing Corporate,\nwrong shortcut for Ops"]:::red
-
-    %% Admin pages
-    CC["Command Center\npage.tsx — 653 lines\nMetricCard duplicates HeroMetricCard"]:::red
-    SCH["Schedule\nCalendar + classes"]:::green
-    MB["Members\nDirectory + slide-in panel"]:::green
-    RV["Revenue\nOverview / Memberships / Tx"]:::green
-    MK["Marketing\nOverview hub"]:::green
-    CO["Corporate\nAccounts + Events"]:::green
-    OP["Operations\nDirectory / Payroll / Permissions"]:::green
-    AN["Analytics\nOverview + charts"]:::green
-    SG["Segments\nbreadcrumb: 'Members > Segments'\nbut top-level in sidebar"]:::yellow
-    EG["Engagement\nAchievements/Challenges\nall-zero stub data"]:::red
-    ST["Settings\nStudio config\nNO sidebar entry"]:::red
-
-    %% Shared components — key items
-    subgraph SHARED ["Shared Components"]
-        HM["HeroMetricCard\nIn admin/_components\n(not in components/ui)"]:::yellow
-        WR["WeeklyReviewBar\nIn admin/_components\n(not in components/ui)"]:::yellow
-        BC["Breadcrumbs\nFully built, aria-label OK\nNot used in Header"]:::red
-        DLG["Dialog (shadcn)\nExists but AddMemberModal\nuses custom overlay instead"]:::yellow
+flowchart TB
+    subgraph LAYOUT["Layout System"]
+        ADMIN_SHELL["AdminShell\nCmd+K, Sidebar 72/240px\nHeader, max-w-7xl main"]
+        EMP_LAYOUT["EmployeeLayout\nSidebar 64/220px\nClock-in header button"]
+        AUTH_LAYOUT["AuthLayout\nLogin page only"]
     end
 
-    %% Analytics sub
-    subgraph ANA_SUB ["Analytics Sub-pages"]
-        KPI["KPI Deep Dive\n~800 lines\ndouble-background bug"]:::red
-        AID["AI Insights\ndouble-background bug"]:::red
-        TR["Trainer Performance"]:::green
-        DB["Dashboards (3x)\ndouble-background bug"]:::red
-        PS["Pricing Simulator"]:::green
+    subgraph DESIGN["Design System"]
+        TOKENS["Color Tokens\nindigo-600 primary\nemerald success\namber warning"]
+        COMPONENTS["29 shadcn/ui primitives\nButton, Dialog, Sheet\nTable, Command, etc."]
+        MOTION["Framer Motion\nnav-pill layoutId animation\nspringy transitions"]
     end
 
-    %% Marketing sub
-    subgraph MK_SUB ["Marketing Sub-pages"]
-        CL["Campaigns List"]:::green
-        CB["Campaign Builder\nmulti-step wizard"]:::green
-        AU["Automations\nReactFlow canvas"]:::green
-        LP["Lead Pipeline"]:::green
+    subgraph ACCESSIBILITY["Accessibility Status"]
+        GOOD_A11Y["Good:\naria-label on buttons\nsemantics nav/main/aside\nfocus in Radix components"]
+        BAD_A11Y["Gaps:\ntext-[10px] gray-400 fails WCAG\nno mobile responsive layout\ndark mode not persisted"]
     end
 
-    ROOT --> AUTH
-    ROOT --> ADMIN
-    ROOT --> EMP
-
-    ADMIN --> AS
-    AS --> SB
-    AS --> HD
-    AS --> CP
-
-    AS --> CC
-    AS --> SCH
-    AS --> MB
-    AS --> RV
-    AS --> MK
-    AS --> CO
-    AS --> OP
-    AS --> AN
-    AS --> SG
-    AS --> EG
-    AS --> ST
-
-    AN --> ANA_SUB
-    MK --> MK_SUB
-
-    CC --> HM
-    CC --> WR
-    MB --> BC
-    MB --> DLG
-
-    %% Color coding: green=healthy, yellow=needs attention, red=problematic
-    classDef green fill:#d1fae5,stroke:#10b981,color:#065f46
-    classDef yellow fill:#fef3c7,stroke:#f59e0b,color:#92400e
-    classDef red fill:#fee2e2,stroke:#ef4444,color:#991b1b
+    ADMIN_SHELL --> TOKENS
+    ADMIN_SHELL --> COMPONENTS
+    ADMIN_SHELL --> MOTION
+    ADMIN_SHELL --> GOOD_A11Y
+    EMP_LAYOUT --> GOOD_A11Y
+    ADMIN_SHELL --> BAD_A11Y

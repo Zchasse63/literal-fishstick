@@ -3,7 +3,6 @@ import { createServerClient } from '@/lib/supabase/server'
 import { validateBody, eventCreateSchema, normalizePhone } from '@/lib/validation'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
-const STUDIO_ID = DEFAULT_STUDIO_ID
 const ALLOWED_ROLES = ['owner', 'manager']
 
 /**
@@ -36,7 +35,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const studioId = profile?.studio_id || STUDIO_ID
+    const studioId = profile?.studio_id
+    if (!studioId) {
+      return NextResponse.json({ error: 'No studio associated with this account' }, { status: 403 })
+    }
 
     // ─── Query Params ──────────────────────────────────────────
     const { searchParams } = request.nextUrl
@@ -124,7 +126,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const studioId = profile?.studio_id || STUDIO_ID
+    const studioId = profile?.studio_id
+    if (!studioId) {
+      return NextResponse.json({ error: 'No studio associated with this account' }, { status: 403 })
+    }
 
     // ─── Parse & Validate Body ─────────────────────────────────
     const body = await request.json()

@@ -45,6 +45,7 @@ export default async function DocumentsPage() {
           year: 'numeric',
         })
       : null,
+    fileUrl: d.file_url ?? null,
   }))
 
   const employees: EmployeeListItem[] = [

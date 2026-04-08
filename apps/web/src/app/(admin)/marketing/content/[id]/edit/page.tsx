@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -88,8 +88,11 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string; description: strin
 ]
 
 // ─── Main Page ──────────────────────────────────────────────
-export default function NewPostPage() {
+export default function EditPostPage() {
   const router = useRouter()
+  const params = useParams()
+  const postId = params.id as string
+
   const [selectedType, setSelectedType] = useState<PostType | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -98,7 +101,39 @@ export default function NewPostPage() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Fetch existing post on mount
+  useEffect(() => {
+    async function fetchPost() {
+      try {
+        const res = await fetch(`/api/content/${postId}`)
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Failed to load post')
+
+        const post = json.data
+        setSelectedType(post.type ?? null)
+        setTitle(post.title ?? '')
+        setContent(post.body ?? '')
+        setPinned(post.pinned ?? false)
+
+        // Map is_published to visibility if available
+        if (post.visibility) {
+          setVisibility(post.visibility)
+        }
+
+        if (post.media_urls?.length > 0) {
+          setImagePreview(post.media_urls[0])
+        }
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPost()
+  }, [postId])
 
   const isValid = selectedType && content.trim().length > 0
 
@@ -107,16 +142,14 @@ export default function NewPostPage() {
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch('/api/content', {
-        method: 'POST',
+      const res = await fetch(`/api/content/${postId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: selectedType,
           title: title.trim() || null,
           body: content,
-          visibility,
-          pinned,
-          status,
+          is_published: status === 'published',
         }),
       })
       const json = await res.json()
@@ -150,6 +183,14 @@ export default function NewPostPage() {
     input.click()
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-6">
@@ -166,8 +207,8 @@ export default function NewPostPage() {
 
         {/* Header */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.05 }} className="mb-8">
-          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">New Post</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create content for your community board</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">Edit Post</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Update your community board post</p>
         </motion.div>
 
         {/* Post Type Selector */}
@@ -376,7 +417,7 @@ export default function NewPostPage() {
             className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Publish Now
+            Update & Publish
           </button>
         </motion.div>
 

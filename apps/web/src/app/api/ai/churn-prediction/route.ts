@@ -223,6 +223,38 @@ async function buildChurnInput(
       .gte("created_at", ninetyDaysAgo),
   ]);
 
+  // ─── Error checks for critical queries ──────────────────────
+  // If member visit counts or last-visit queries fail, we cannot produce a
+  // meaningful churn prediction, so bail out early.
+  if (visitsLast30dResult.error) {
+    console.error("Churn: visitsLast30d query failed", visitsLast30dResult.error);
+    return null;
+  }
+  if (visitsPrevious30dResult.error) {
+    console.error("Churn: visitsPrevious30d query failed", visitsPrevious30dResult.error);
+    return null;
+  }
+  if (lastVisitResult.error) {
+    console.error("Churn: lastVisit query failed", lastVisitResult.error);
+    return null;
+  }
+  if (spendRecent45dResult.error) {
+    console.error("Churn: spendRecent45d query failed", spendRecent45dResult.error);
+    return null;
+  }
+  if (spendEarlier45dResult.error) {
+    console.error("Churn: spendEarlier45d query failed", spendEarlier45dResult.error);
+    return null;
+  }
+  if (lateCancelsResult.error) {
+    console.error("Churn: lateCancels query failed", lateCancelsResult.error);
+    return null;
+  }
+  if (noShowsResult.error) {
+    console.error("Churn: noShows query failed", noShowsResult.error);
+    return null;
+  }
+
   const visitsLast30d = visitsLast30dResult.count ?? 0;
   const visitsPrevious30d = visitsPrevious30dResult.count ?? 0;
 
@@ -376,7 +408,7 @@ export async function POST(request: NextRequest) {
 
     if (!input) {
       return NextResponse.json(
-        { error: "Member not found" },
+        { error: "Member not found or failed to gather member data for churn analysis" },
         { status: 404 }
       );
     }

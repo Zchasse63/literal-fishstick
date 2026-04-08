@@ -170,10 +170,31 @@ export default function NewProductPage() {
           {/* Image Placeholder */}
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Product Image</h2>
-            <div className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl p-10 text-center">
-              <ImagePlus className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Image upload coming soon</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Drag and drop or click to upload (Phase 2)</p>
+            <div
+              onClick={() => {
+                const input = document.createElement('input')
+                input.type = 'file'
+                input.accept = 'image/*'
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0]
+                  if (file) {
+                    const preview = URL.createObjectURL(file)
+                    const img = document.querySelector('[data-product-preview]') as HTMLImageElement
+                    if (img) { img.src = preview; img.classList.remove('hidden') }
+                    const placeholder = document.querySelector('[data-product-placeholder]') as HTMLElement
+                    if (placeholder) placeholder.classList.add('hidden')
+                  }
+                }
+                input.click()
+              }}
+              className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl p-10 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors"
+            >
+              <img data-product-preview="" src="" alt="" className="hidden h-32 w-32 object-cover rounded-lg mx-auto mb-3" />
+              <div data-product-placeholder="">
+                <ImagePlus className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Click to upload product image</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PNG, JPG, WebP up to 5MB</p>
+              </div>
             </div>
           </div>
 

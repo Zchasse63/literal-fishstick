@@ -1139,7 +1139,7 @@ export default function CampaignDetailPage({
             </Link>
           ) : (
             <button
-              onClick={() => showToast(scheduleMode === 'schedule' ? 'Campaign scheduling coming in Phase 2' : 'Campaign sending coming in Phase 2')}
+              onClick={async () => { try { if (scheduleMode === 'schedule') { const res = await fetch(`/api/campaigns/${resolvedId}/schedule`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scheduled_at: scheduleDate && scheduleTime ? `${scheduleDate}T${scheduleTime}` : undefined }) }); if (res.ok) { showToast('Campaign scheduled successfully') } else { showToast('Failed to schedule campaign') } } else { const res = await fetch('/api/campaigns/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaign_id: resolvedId }) }); if (res.ok) { showToast('Campaign sent successfully') } else { showToast('Failed to send campaign') } } } catch { showToast('Network error') } }}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm"
             >
               <Send className="h-4 w-4" />

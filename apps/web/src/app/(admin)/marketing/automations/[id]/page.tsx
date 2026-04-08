@@ -696,7 +696,41 @@ export default function EditAutomationPage() {
             </div>
           </div>
 
-          <button onClick={() => window.alert('Automation saving coming in Phase 2')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 transition-colors">
+          <button
+            onClick={async () => {
+              try {
+                const steps = nodes.map((n) => ({
+                  id: n.id,
+                  type: n.type,
+                  position: n.position,
+                  data: n.data,
+                }))
+                const triggerConfig: Record<string, unknown> = { trigger_type: triggerType }
+                if (triggerType === 'inactivity') triggerConfig.inactivity_days = inactivityDays
+                if (exitCondition) triggerConfig.exit_condition = exitCondition
+
+                const res = await fetch(`/api/automations/${id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: flowName,
+                    trigger_type: triggerType,
+                    trigger_config: triggerConfig,
+                    steps,
+                  }),
+                })
+                const json = await res.json()
+                if (!res.ok) {
+                  window.alert(json.error || 'Failed to save automation')
+                } else {
+                  window.alert('Automation saved successfully')
+                }
+              } catch {
+                window.alert('Network error while saving')
+              }
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 transition-colors"
+          >
             <Save className="h-4 w-4" />
             Save Draft
           </button>

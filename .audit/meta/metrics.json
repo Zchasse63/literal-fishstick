@@ -1,5 +1,5 @@
 {
-  "completed_at": "2026-04-05T00:00:00Z",
+  "completed_at": "2026-04-08T13:02:00Z",
   "agents_executed": [
     "project-structure",
     "data-model",
@@ -17,15 +17,18 @@
   "waves_completed": 5,
   "total_findings": {
     "critical": 2,
-    "high": 11,
-    "medium": 16,
-    "low": 20,
-    "info": 10,
-    "total_deduplicated": 59
+    "high": 10,
+    "medium": 15,
+    "low": 16,
+    "info": 12,
+    "total": 55
   },
-  "architecture_health_score": 6.8,
-  "layers_audited": 10,
-  "coverage_gaps_identified": 10,
-  "cross_references_found": 8,
-  "contradictions_resolved": 4
+  "architecture_health_score": 7.5,
+  "source_files_audited": 466,
+  "total_lines_approx": 104986,
+  "api_routes": 159,
+  "ai_modules": 23,
+  "background_functions": 14,
+  "test_files": 56,
+  "entities": 50
 }

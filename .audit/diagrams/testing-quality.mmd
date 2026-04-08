@@ -1,115 +1,36 @@
-flowchart TD
-    subgraph UNIT["Unit Tests (26/148 API routes)"]
-        direction TB
-
-        subgraph WELL["Well Tested"]
-            style WELL fill:#d1fae5,stroke:#10b981
-            BOOKINGS["bookings\n15 tests"]:::green
-            CHECKIN["check-in\n12 tests"]:::green
-            STRIPE["webhooks/stripe\n23 tests"]:::green
-            REQUIREROLE["lib/require-role\n12 tests"]:::green
-            RATELIMIT["lib/rate-limit\n10 tests"]:::green
-            INNGEST["lib/inngest/helpers\n32 tests"]:::green
-            VALIDATION["lib/validation\n18 tests"]:::green
-        end
-
-        subgraph PARTIAL["Partial Coverage"]
-            style PARTIAL fill:#fef3c7,stroke:#f59e0b
-            MEMBERS["members\n10 tests\n(4 routes, 2 covered)"]:::yellow
-            CLASSES["classes\n11 tests"]:::yellow
-            LEADS["leads\n10 tests\n(5 routes, 2 covered)"]:::yellow
-            CAMPAIGNS["campaigns\n10 tests\n(9 routes, 1 covered)"]:::yellow
-            CORPORATE["corporate\n8 tests\n(6 routes, 2 covered)"]:::yellow
-            INVOICES["invoices\n9 tests\n(5 routes, 1 covered)"]:::yellow
-        end
-
-        subgraph MINIMAL["Minimal Coverage"]
-            style MINIMAL fill:#fee2e2,stroke:#ef4444
-            CLOCK["clock\n8 tests"]:::red
-            STAFF["staff\n10 tests"]:::red
-            SETTINGS["settings\n8 tests"]:::red
-            PRICING_SIM["pricing-simulator\n10 tests\n(3 routes, 1 covered)"]:::red
-            RESEND["lib/resend\n14 tests"]:::red
-        end
+flowchart TB
+    subgraph UNIT["Unit Tests (40 files) — Vitest"]
+        API_TESTS["API Handler Tests (27)\nbookings, campaigns, check-in\nstripe webhooks, leads, etc."]
+        LIB_TESTS["Library Tests (12)\nauth, rate-limit, resend\ninngest helpers, glofox client"]
+        COMP_TESTS["Component Tests (1)\nMemberProfilePanel only"]
     end
 
-    subgraph ZERO["Zero Unit Test Coverage"]
-        direction TB
-        style ZERO fill:#f1f5f9,stroke:#94a3b8,stroke-dasharray: 5 5
-
-        subgraph AI_GROUP["AI Routes (17 routes)"]
-            style AI_GROUP stroke-dasharray: 5 5
-            AI["ai/*\n0 tests\n17 routes"]:::none
-        end
-
-        subgraph ANALYTICS_GROUP["Analytics Routes (7 routes)"]
-            style ANALYTICS_GROUP stroke-dasharray: 5 5
-            ANALYTICS["analytics/*\n0 tests\n7 routes"]:::none
-        end
-
-        subgraph REVENUE_GROUP["Revenue & Payments"]
-            style REVENUE_GROUP stroke-dasharray: 5 5
-            REVENUE["revenue/\n0 tests"]:::none
-            TRANSACTIONS["transactions/\n0 tests"]:::none
-            PAYROLL["payroll/*\n0 tests\n6 routes"]:::none
-            UPGRADE["members/upgrade\ndowngrade/tags\n0 tests"]:::none
-        end
-
-        subgraph COMMS["Communications"]
-            style COMMS stroke-dasharray: 5 5
-            CAMPAIGN_SEND["campaigns/send\nprocess-scheduled\n0 tests"]:::none
-            SMS["sms/send\n0 tests"]:::none
-            WEBHOOKS_OTHER["webhooks/resend\ntwilio, easypost\n0 tests"]:::none
-        end
-
-        subgraph OPS["Operations"]
-            style OPS stroke-dasharray: 5 5
-            EVENTS["events/*\n0 tests\n6 routes"]:::none
-            AUTOMATIONS["automations/*\n0 tests\n6 routes"]:::none
-            MIGRATION["migration/*\n0 tests\n7 routes"]:::none
-            GEOFENCE["geofence/*\n0 tests"]:::none
-        end
-
-        subgraph MERCH["Merch & Orders"]
-            style MERCH stroke-dasharray: 5 5
-            ORDERS["orders/*\n0 tests\n4 routes"]:::none
-            PRODUCTS["products/*\n0 tests"]:::none
-        end
+    subgraph INTEGRATION["Integration Tests (6 files) — Vitest + Real Supabase"]
+        INT_AI["ai-endpoints"]
+        INT_BOOKINGS["api-bookings"]
+        INT_AUTH["auth-flow"]
+        INT_INNGEST["inngest-helpers"]
+        INT_STRIPE["stripe-webhook-effects"]
+        INT_CRUD["supabase-crud"]
     end
 
-    subgraph INTEGRATION["Integration Tests (Live Supabase)"]
-        direction LR
-        INT_CRUD["supabase-crud\n12 tests\nprofile/member/class/booking/tx"]:::green
-        INT_AUTH["auth-flow\n6 tests\nsign-in/sign-out/password"]:::green
-        INT_STRIPE["stripe-webhook-effects\n11 tests\nDB side effects"]:::green
-        INT_INNGEST["inngest-helpers\n17 tests\nenrollment lifecycle"]:::green
-        INT_BOOKINGS["api-bookings\n6 tests\ncapacity enforcement"]:::green
-        INT_AI["ai-endpoints\n7 tests\nLIVE Anthropic API\ncosts real money"]:::yellow
+    subgraph E2E["E2E Tests (10 files) — Playwright"]
+        E2E_ADMIN["Admin Tests (auth, command-center\nanalytics, members, revenue,\nschedule, marketing, corporate)"]
+        E2E_EMP["Employee Tests\n(employee-portal)"]
+        E2E_AUTH["auth-setup\n(creates real test users)"]
     end
 
-    subgraph E2E["E2E Tests (Playwright - Smoke Only)"]
-        direction LR
-        E2E_LOGIN["login\n4 tests\npage load only"]:::yellow
-        E2E_COMMAND["command-center\n4 tests\npage load only"]:::yellow
-        E2E_MEMBERS["members\n4 tests\npage load + search"]:::yellow
-        E2E_SCHEDULE["schedule\n3 tests\npage load only"]:::yellow
-        E2E_REVENUE["revenue\n3 tests\npage load only"]:::yellow
-        E2E_ANALYTICS["analytics\n4 tests\npage load only"]:::yellow
-        E2E_EMPLOYEE["employee-portal\n4 tests\npage load only"]:::yellow
-        E2E_MARKETING["marketing\n4 tests\npage load only"]:::yellow
-        E2E_CORPORATE["corporate\n2 tests\npage load only"]:::yellow
+    subgraph GAPS["Coverage Gaps"]
+        GAP1["AI Library — 23 modules untested"]
+        GAP2["execute-flow.ts — automation executor"]
+        GAP3["Report engine — PDF/CSV export"]
+        GAP4["SMS provider — Twilio impl"]
+        GAP5["~99% of UI components"]
+        GAP6["Inngest cron functions (7 untested)"]
     end
 
-    subgraph GAPS["Test Gaps (0 tests)"]
-        direction LR
-        HOOKS["13 React hooks\n0 tests"]:::none
-        COMPONENTS["UI components\n0 tests\n(Testing Library installed)"]:::none
-        MIDDLEWARE["middleware.ts\nauth guard\n0 tests"]:::none
-        INNGEST_FNS["19 Inngest functions\n0 tests"]:::none
-        AI_LIB["lib/ai/* (14 files)\nanthropics.ts (1699 lines)\n0 unit tests"]:::none
-    end
-
-    classDef green fill:#d1fae5,stroke:#10b981,color:#065f46
-    classDef yellow fill:#fef3c7,stroke:#f59e0b,color:#92400e
-    classDef red fill:#fee2e2,stroke:#ef4444,color:#991b1b
-    classDef none fill:#f1f5f9,stroke:#94a3b8,color:#64748b,stroke-dasharray: 5 5
+    UNIT --> |"covers core happy + error paths"| API_TESTS
+    INTEGRATION --> |"real DB + Supabase"| INT_BOOKINGS
+    E2E --> |"full browser automation"| E2E_ADMIN
+    GAPS --> |"HIGH risk"| GAP2
+    GAPS --> |"MEDIUM risk"| GAP1

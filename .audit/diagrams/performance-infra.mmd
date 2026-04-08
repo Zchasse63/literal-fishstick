@@ -1,97 +1,37 @@
-flowchart TD
-    subgraph CI["CI/CD (GitHub Actions)"]
-        direction LR
-        C1["Checkout + Node 22"]:::green
-        C2["npm ci (cache: npm)"]:::green
-        C3["type-check"]:::green
-        C4["lint"]:::green
-        C5["test (vitest)"]:::yellow
-        C6["build"]:::yellow
-        C1 --> C2 --> C3 --> C4 --> C5
-        C5 --> C6
-        note1["E2E: not in CI"]:::red
+flowchart TB
+    subgraph BUILD["Build Pipeline"]
+        TURBO["Turborepo\npackages → apps/web"]
+        NEXT_BUILD["next build\nRoute-level code splitting"]
+        NETLIFY_CACHE["Netlify\n.next/cache per content hash"]
     end
 
-    subgraph NETLIFY["Netlify (Node 20)"]
-        direction LR
-        N1["@netlify/plugin-nextjs"]:::yellow
-        N2["Next.js 16 SSR"]:::yellow
-        N3["Static assets (.next/static)"]:::green
-        N4["Serverless functions"]:::yellow
-        N5["No cache headers (non-analytics)"]:::red
+    subgraph CI["CI/CD Pipeline"]
+        TYPECHECK["tsc --noEmit"]
+        LINT["eslint"]
+        UNIT_TESTS["vitest unit tests\n40 files"]
+        AUDIT["npm audit --audit-level=high"]
+        BUILD_STEP["next build (cached)"]
+        MISSING_CI["NOT in CI:\nIntegration tests (commented out)\nE2E tests\nCoverage thresholds\nBundle size"]
     end
 
-    subgraph NEXTJS["Next.js App (all 'use client')"]
-        direction TB
-        P1["Admin layout (63 client pages)"]:::red
-        P2["Employee portal (9 client pages)"]:::red
-        P3["148 API route handlers"]:::yellow
-        P4["Zero RSC pages"]:::red
-        P5["No dynamic() splits except SwaggerUI"]:::red
+    subgraph CACHING["Application Caching"]
+        AI_CACHE["AI Briefing\n30-min DB cache"]
+        INSIGHTS_CACHE["AI Insights\n7-day fingerprint dedup"]
+        DAILY_METRICS["Daily Metrics\ncron-refreshed daily"]
+        NO_HTTP_CACHE["No HTTP Cache-Control\non analytics endpoints"]
+        NO_CLIENT_CACHE["No React Query / SWR\nFresh fetch on every navigation"]
     end
 
-    subgraph POLLING["Client Polling (60s default)"]
-        direction TB
-        PO1["Command Center useCommandCenterData"]:::yellow
-        PO2["Revenue page"]:::yellow
-        PO3["Schedule page attendees"]:::yellow
-        PO4["Members page"]:::yellow
-        PO5["DataSyncButton (15s)"]:::yellow
-        PO6["use-supabase useQuery hook"]:::yellow
+    subgraph INFRA["Infrastructure"]
+        NETLIFY["Netlify (60s timeout)\nnon-streaming limit approached\nby Glofox sync"]
+        SUPABASE_DB["Supabase Postgres\nMissing indexes on:\nbookings, members, daily_metrics"]
+        NO_MONITORING["No APM / Error Tracking\nNo Sentry\nConsole.error only"]
+        NO_MIGRATION["No migration runner\nManual SQL application"]
     end
 
-    subgraph DB["Supabase / Postgres"]
-        direction TB
-        D1["RLS enabled (studio_id)"]:::green
-        D2["Phase 2 indexes applied"]:::green
-        D3["ai_cache table (24h TTL)"]:::green
-        D4["Booking capacity trigger"]:::green
-        D5["N+1: /trainers/performance 3 queries/trainer"]:::red
-        D6["N+1: cron-trainer-metrics 1 query/class"]:::red
-        D7["SELECT * in 27 routes"]:::yellow
-        D8["Unbounded txns: /api/revenue"]:::red
-    end
-
-    subgraph CACHING["Caching"]
-        direction TB
-        CA1["ai_cache (DB-backed, 24h)"]:::green
-        CA2["ai_briefings (30 min)"]:::green
-        CA3["Analytics Cache-Control headers (4 routes)"]:::green
-        CA4["In-memory rate limiter (broken in serverless)"]:::red
-        CA5["No HTTP cache on 144+ API routes"]:::red
-        CA6["TanStack Query installed but unused"]:::red
-    end
-
-    subgraph INNGEST["Inngest Background Jobs"]
-        direction TB
-        I1["cron-daily-metrics (2 AM)"]:::green
-        I2["cron-trainer-metrics (monthly)"]:::yellow
-        I3["cron-ai-insights"]:::green
-        I4["glofox-sync-hourly"]:::green
-        I5["evaluate-triggers / execute-flow"]:::green
-        I6["Trainer loop: N queries per class"]:::red
-    end
-
-    subgraph BUILD["Build Config"]
-        direction TB
-        B1["TypeScript strict: true"]:::green
-        B2["Incremental TS compile"]:::green
-        B3["SWC compiler (fast)"]:::green
-        B4["transpilePackages missing"]:::red
-        B5["Node 22 CI vs Node 20 Netlify"]:::red
-        B6["@types/node ^20 vs engine >=22"]:::red
-        B7["turbo.json: type-check blocks build"]:::yellow
-        B8["No bundle analyzer"]:::yellow
-    end
-
-    NEXTJS --> DB
-    NEXTJS --> POLLING
-    POLLING --> NEXTJS
-    CACHING --> DB
-    INNGEST --> DB
-    BUILD --> NETLIFY
-    CI --> NETLIFY
-
-    classDef green fill:#10B981,color:#fff,stroke:#059669
-    classDef yellow fill:#F59E0B,color:#fff,stroke:#D97706
-    classDef red fill:#EF4444,color:#fff,stroke:#DC2626
+    TURBO --> NEXT_BUILD
+    NEXT_BUILD --> NETLIFY_CACHE
+    CI --> TYPECHECK
+    CI --> UNIT_TESTS
+    CI --> BUILD_STEP
+    CI --> MISSING_CI

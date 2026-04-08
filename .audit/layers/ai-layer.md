@@ -1,218 +1,190 @@
 # Layer Report: AI Layer
 
-**Audit Date:** 2026-04-05
 **Agent:** ai-layer
-**Severity Scale:** Critical / High / Medium / Low / Info
+**Date:** 2026-04-08
+**Status:** Complete
 
 ---
 
 ## Executive Summary
 
-Meridian has a comprehensive and well-architected AI layer using the Anthropic SDK (Claude Sonnet 4.6). There are 22 AI modules in `lib/ai/`, 17 API endpoints under `/api/ai/`, 14 AI-specific React hooks, and 2 background cron jobs that generate AI insights. Key strengths: centralized AI client singleton with proper retry logic (exponential backoff on 429/529), graceful rules-based fallbacks when the API key is absent, and a consistent prompt engineering pattern across all modules.
-
-Critical concerns: (1) the natural language SQL search executes AI-generated SQL against production data with insufficient DB-layer guardrails; (2) prompt injection is not validated before execution; (3) 10 of 17 AI routes lack rate limiting, creating Anthropic cost exposure; (4) the AI briefing and churn prediction both receive incorrect revenue/visit data from `daily_metrics` and are therefore producing insights from wrong inputs.
+Meridian has an exceptionally well-architected AI layer. The Anthropic Claude SDK is integrated via a singleton client (`lib/ai/client.ts`) with a 30-second timeout, exponential retry on 429/529, and a centralised `AI_MODEL = "claude-sonnet-4-6"` constant. The AI functionality is decomposed into 23 focused modules covering every major business domain: churn prediction, health scoring, campaign copy generation, natural language SQL search, briefing generation, insights generation, revenue anomaly detection, booking pattern analysis, trainer summaries, waitlist messaging, and more. Every AI module implements a rules-based fallback for when the API key is absent or the API is unavailable. Rate limiting is applied to all AI endpoints. The most significant risk is the natural language SQL generation module, which generates and executes arbitrary SQL against the production database using the service-role key.
 
 ---
 
-## AI Architecture Overview
+## AI Provider Integration
 
-```mermaid
-flowchart TD
-    subgraph AI_CLIENT["lib/ai/client.ts — Shared Singleton"]
-        CLIENT["Anthropic(apiKey, timeout=30s)\nLazy init, null-safe"]
-        MODEL["AI_MODEL = 'claude-sonnet-4-6'"]
-        RETRY["withRetry(fn, 3 attempts)\nExponential backoff 1s/2s/4s\nOn: 429, 529"]
-        EXTRACT["extractText()\nparseAIJson()"]
-    end
+### SDK: `@anthropic-ai/sdk ^0.80.0`
+- **Model:** `claude-sonnet-4-6` (defined in `lib/ai/client.ts`)
+- **Timeout:** 30 seconds on all API calls
+- **Retry:** 3 attempts, exponential backoff (1s, 2s, 4s), triggers on 429 and 529
+- **Client init:** Lazy singleton via `getAnthropicClient()`, returns `null` if `ANTHROPIC_API_KEY` is absent
+- **Null-safe:** Every AI module checks `if (!anthropic) { return generateRulesBasedFallback(input) }`
 
-    subgraph AI_MODULES["lib/ai/ — 22 Feature Modules"]
-        BRIEFING["briefing.ts\nDaily studio summary"]
-        CHURN["churn-prediction.ts\nPer-member churn risk"]
-        HEALTH["health-score.ts\nEngagement health score"]
-        CAMPAIGN["campaign.ts\nEmail copy generation"]
-        NL_SEARCH["nl-search.ts\nNatural language to SQL"]
-        INSIGHTS["insights-generator.ts\nProactive AI insights"]
-        ANOMALY["revenue-anomaly.ts\nRevenue anomaly detection"]
-        PATTERNS["booking-patterns.ts\nBooking pattern analysis"]
-        TRAINER["trainer-summary.ts\nTrainer performance narrative"]
-        INTAKE["intake-enrichment.ts\nMember intake form AI"]
-        WAITLIST["waitlist-messaging.ts\nAI waitlist messages"]
-        LEAD_SCORE["lead-scoring.ts\nAI lead qualification"]
-        SEND_TIME["send-time.ts\nOptimal email send time"]
-        SEASONAL["seasonal-predictor.ts\nDemand forecasting"]
-        PRICING["pricing-analyzer.ts\nPricing recommendations"]
-        CROSS_SELL["cross-sell.ts\nUpsell recommendations"]
-        REPORT["report-narrative.ts\nAI-written report prose"]
-        AUTO_RECS["automation-recommendations.ts\nFlow suggestions"]
-        TRAINER_COMP["trainer-comparison.ts\nInter-trainer benchmarking"]
-        AUTO_REPLY["auto-reply.ts\nEmail auto-reply drafts"]
-        NL_TO_SEG["... (others)"]
-    end
+### Barrel Export
+`lib/anthropic.ts` is a deprecated barrel re-export with a `@deprecated` JSDoc comment. All production code should import directly from `lib/ai/*` sub-modules. This migration is tracked as `MED-012` in code comments.
 
-    subgraph AI_ROUTES["app/api/ai/ — 17 Endpoints"]
-        R_BRIEFING["/api/ai/briefing\nrequireRole + rateLimit"]
-        R_SEARCH["/api/ai/search\nrequireRole + rateLimit"]
-        R_CHURN["/api/ai/churn-prediction\nrequireRole + rateLimit"]
-        R_HEALTH["/api/ai/health-score\nrequireRole + rateLimit"]
-        R_CAMPAIGN["/api/ai/campaign-copy\nrequireRole + rateLimit"]
-        R_INSIGHTS["/api/ai/insights/**\nrequireRole — NO rateLimit"]
-        R_ANOMALY["/api/ai/revenue-anomaly\nrequireRole — NO rateLimit"]
-        R_PATTERNS["/api/ai/booking-patterns\nrequireRole — NO rateLimit"]
-    end
+---
 
-    subgraph CRONS["Background AI Jobs"]
-        CRON_INSIGHTS["cron-ai-insights\nDaily at 4 AM ET\nGenerates proactive insights"]
-        CRON_COHORT["cron-cohort-refresh\nCohort analysis refresh"]
-    end
+## AI Modules Inventory (23 modules)
 
-    AI_CLIENT --> AI_MODULES
-    AI_MODULES --> AI_ROUTES
-    AI_MODULES --> CRONS
+| Module | Function | Input | Output | Fallback |
+|--------|----------|-------|--------|---------|
+| `briefing.ts` | `generateBriefing` | BriefingContext | string (bullet points) | Rules-based text |
+| `churn-prediction.ts` | `predictChurn` | ChurnInput | ChurnPredictionResult | Rules-based scoring |
+| `health-score.ts` | `generateHealthScore` | HealthScoreInput | HealthScoreResult | Rules-based score |
+| `insights-generator.ts` | `generateInsights` | StudioMetricsContext | AIInsight[] | Empty array |
+| `campaign.ts` | `generateCampaignCopy`, `suggestSubjectLines`, `summarizeCampaign` | Campaign context | Copy/subject lines | Template fallback |
+| `nl-search.ts` | `translateToSQL` | NLSearchRequest | NLSearchResult (SQL + data) | Error result |
+| `recommendations.ts` | `generateRecommendations` | RecommendationContext | Recommendation[] | Rules-based |
+| `lead-scoring.ts` | `scoreLead` | LeadScoreInput | LeadScoreResult | Rules-based score |
+| `send-time.ts` | `optimizeSendTime` | SendTimeInput | SendTimeResult | Default send time |
+| `revenue-anomaly.ts` | `detectRevenueAnomaly` | Revenue metrics | AnomalyResult | Threshold-based |
+| `booking-patterns.ts` | `analyzeBookingPatterns` | Booking history | PatternResult | Statistical fallback |
+| `trainer-summary.ts` | `generateTrainerSummary` | Trainer metrics | Narrative summary | Template |
+| `trainer-comparison.ts` | `compareTrainers` | Multi-trainer metrics | Comparative analysis | N/A |
+| `waitlist-messaging.ts` | `generateWaitlistMessage` | Waitlist context | Personalized message | Template |
+| `auto-reply.ts` | `generateAutoReply` | Member message context | Reply suggestion | N/A |
+| `intake-enrichment.ts` | `enrichMemberIntake` | New member data | Enriched profile fields | N/A |
+| `seasonal-predictor.ts` | `predictSeasonalTrend` | Historical data | Seasonal forecast | Statistical |
+| `pricing-analyzer.ts` | `analyzePricing` | PricingSimulation | Impact analysis | N/A |
+| `report-narrative.ts` | `generateReportNarrative` | Report data | Narrative summary | Template |
+| `cross-sell.ts` | `generateCrossSellOpportunities` | Member profile | CrossSell[] | Rules-based |
+| `automation-recommendations.ts` | `recommendAutomations` | Studio context | AutomationRecommendation[] | Template recommendations |
+
+---
+
+## Prompt Architecture
+
+### Pattern: System Prompt + User Prompt (Non-Streaming)
+All AI modules use the standard non-streaming chat completion pattern:
+```typescript
+anthropic.messages.create({
+  model: AI_MODEL,
+  max_tokens: 800,  // varies by module
+  system: SYSTEM_PROMPT,  // constant — defines persona + output format
+  messages: [{ role: "user", content: dataContext }]
+})
 ```
 
+### System Prompt Design
+Every module uses a consistent persona: `"You are Meridian AI, [role description]..."`. System prompts:
+- Define output format (JSON schema with exact fields)
+- Specify the business domain context (fitness/wellness studio)
+- Instruct on fallback behavior
+- Return `ONLY the JSON object. No markdown fences, no extra text.`
+
+### Output Parsing
+- `parseAIJson<T>(text)` in `lib/ai/client.ts` strips markdown fences then parses JSON
+- If parsing fails, the error propagates and the API route catches it with a `console.error` + fallback
+- No schema validation (Zod) on the parsed JSON from Claude — type assertion only
+
+### Prompt Hardcoding
+All prompts are hardcoded in the source files. There is no database-driven prompt management system. Changes to AI behavior require code deployments. This is appropriate for the current phase but limits non-technical customization.
+
 ---
 
-## Prompt Engineering Analysis
+## Natural Language SQL Search — Security Analysis
 
-### Patterns observed across all 22 modules:
+### Implementation
+`nl-search.ts` implements a natural language to SQL translator for the Cmd+K search:
+1. User types a natural language query (e.g., "members who haven't visited in 30 days")
+2. Claude generates a SQL SELECT statement
+3. The generated SQL is executed against the **production database** via a read-only Supabase RPC
 
-1. **System prompt separation:** Every module has a dedicated `SYSTEM_PROMPT` constant defining the AI's role and output format. Prompts are clear and well-scoped.
+### Security Measures in Place
+- `SCHEMA_CONTEXT` in the prompt includes explicit schema definition — narrows Claude's knowledge
+- System prompt rule: `"Only generate SELECT statements. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, TRUNCATE, or any mutation."`
+- The SQL is executed via a **read-only RPC** (`create-readonly-sql-rpc.sql` in scripts/)
 
-2. **Structured JSON output:** AI modules that need structured data (churn prediction, health score, anomaly detection) request JSON responses and use `parseAIJson<T>()` to parse with type safety.
+### Residual Risks
+1. Claude could generate a valid SELECT that exfiltrates sensitive data from a table not listed in the schema context (the service-role key bypasses RLS)
+2. Claude could generate a computationally expensive query (nested loops, CARTESIAN joins) that causes a denial-of-service on the database
+3. No server-side SQL parsing/validation — the LLM output is passed directly to execution
+4. If Claude returns non-SELECT SQL despite the instruction, there is no programmatic check before execution
 
-3. **Rules-based fallbacks:** All modules check `getAnthropicClient() === null` and return sensible fallback data when the API key is absent. This enables unit testing without the real API.
+---
 
-4. **Model centralization:** All modules use `AI_MODEL = "claude-sonnet-4-6"` imported from `client.ts`. A model upgrade requires a single-line change.
+## AI Error Handling
 
-5. **Token budget:** `max_tokens` is set per module. Briefing uses 500, churn prediction likely uses more. No module was found to be missing `max_tokens`.
+### Pattern: Try-Catch + Fallback
+Every AI function wraps the API call in try-catch:
+```typescript
+try {
+  const message = await withRetry(() => anthropic.messages.create(...))
+  return parseAIJson(extractText(message))
+} catch (error) {
+  console.error("Anthropic API error, falling back to rules-based:", error)
+  return generateRulesBasedFallback(input)
+}
+```
+
+### What's Good
+- Rules-based fallbacks ensure the feature never returns an error to users
+- `withRetry` handles transient rate limiting (429) and overload (529)
+- 30-second timeout prevents hanging requests
+
+### What's Missing
+- No error telemetry — `console.error` won't appear in Netlify production logs in a queryable form
+- No circuit breaker pattern — if Anthropic is down for an extended period, every AI request still attempts one API call before falling back (adding 30-second latency)
+- No AI response validation against Zod schemas — malformed JSON from Claude (which can happen with `max_tokens` truncation) propagates as a parse error rather than using the fallback
+
+---
+
+## AI Hooks (Client-Side)
+
+17 React hooks in `src/hooks/` wrap AI endpoints:
+- `use-churn-prediction.ts` — calls `/api/ai/churn-prediction`
+- `use-member-health-score.ts` — calls `/api/ai/health-score`
+- `use-ai-campaign-copy.ts` — calls `/api/ai/campaign-copy`
+- `use-booking-patterns.ts` — calls `/api/ai/booking-patterns`
+- `use-revenue-anomaly.ts` — calls `/api/ai/revenue-anomaly`
+- `use-trainer-summary.ts` — calls `/api/ai/trainer-summary`
+- `use-waitlist-message.ts` — calls `/api/ai/waitlist-message`
+- `use-ai-search.ts` — calls `/api/ai/search`
+- `use-intake-enrichment.ts` — calls `/api/ai/intake-enrichment`
+- `use-command-center-data.ts` — aggregates Command Center metrics
+
+All hooks follow a consistent `{ data, loading, error }` pattern.
+
+---
+
+## RAG Pipeline
+
+No RAG (Retrieval-Augmented Generation) pipeline was detected. `pgvector` is mentioned in the project documentation as a planned addition for AI-powered search and retrieval, but there are no vector embedding generation calls or similarity search implementations in the current codebase. The NL search feature uses schema context injected into prompts rather than vector similarity.
+
+---
+
+## Inngest AI Background Jobs
+
+4 Inngest cron functions involve AI:
+1. `cron-ai-insights.ts` — runs on schedule, calls `generateInsights()`, stores to `ai_insights` table with fingerprint dedup
+2. `cron-member-enrichment.ts` — enriches new member profiles via `enrichMemberIntake()` (AI + rules)
+3. `glofox-sync-enrichment.ts` — enriches data during Glofox sync
+4. Various AI API calls are also triggered on-demand through API routes
 
 ---
 
 ## Findings
 
-### HIGH-AI-001: NL Search executes AI-generated SQL without DB-layer read-only enforcement
+### CRITICAL
+- **CRIT-AI-001:** The NL Search (`/api/ai/search`) feature generates and executes LLM-produced SQL against the production database via a read-only RPC. While the prompt instructs Claude to generate only SELECT statements, there is no server-side SQL syntax validation before execution. A prompt injection via user input (e.g., "show me members; DROP TABLE members;--") could potentially bypass the instruction. The read-only RPC mitigates write risk, but a malicious or malformed query could still cause significant read-load or data exfiltration. Recommend: server-side SQL parsing to validate the query is a single SELECT before execution.
 
-**Severity:** High
-**Location:** `apps/web/src/lib/ai/nl-search.ts`, `apps/web/src/app/api/ai/search/route.ts`
+### HIGH
+- **HIGH-AI-001:** AI responses from Claude are parsed as JSON with `parseAIJson<T>()` but are not validated against Zod schemas before use. When Claude returns malformed JSON or a response that doesn't match the expected schema (which can happen due to `max_tokens` truncation or model behavior changes), the parse error causes the API request to fail rather than triggering the rules-based fallback. The fallback is only in the outer try-catch in the module, but if `parseAIJson` throws, the fallback should still trigger.
+- **HIGH-AI-002:** No observability for AI failures in production. `console.error` logs won't surface in Netlify's structured logs in an actionable way. If AI features are silently failing (always returning fallback responses), administrators have no visibility. Recommend: add error tracking (Sentry or similar) or structured logging to a database table.
 
-Application-layer mitigations exist (SELECT-only prompt, string-prefix check), but the `execute_readonly_sql` RPC is not confirmed to enforce read-only at the database level. A prompt injection or an unusually creative Claude response that crafts a SELECT with side-effecting functions (e.g., `SELECT pg_cancel_backend()`, or a CTE with a malformed subquery) would bypass the string-prefix check.
+### MEDIUM
+- **MED-AI-001:** The `lib/anthropic.ts` barrel file has a `@deprecated` JSDoc comment but is still imported in test files and possibly in some production paths. The migration to direct sub-module imports (tracked as MED-012) should be completed to avoid confusion and ensure bundle optimization.
+- **MED-AI-002:** No Zod validation on Claude JSON responses. A changed schema from Claude (column rename, missing field) would only surface as a runtime error after deployment. Validate each module's expected output shape with Zod.
+- **MED-AI-003:** The `insights-generator.ts` generates insights and writes them to the database via the Inngest cron. There is no maximum insights count per studio per day, so if the cron runs frequently or is triggered multiple times, the `ai_insights` table could grow unboundedly. The 7-day fingerprint dedup helps but doesn't cap total insight count.
 
-Additionally, the schema context provided in the system prompt contains all table and column names across the entire data model. This is necessary for the feature but also means a sufficiently crafted input could guide the AI to expose sensitive fields (e.g., `email`, `phone`, `health_score`) without an explicit column allowlist.
+### LOW
+- **LOW-AI-001:** pgvector for semantic search is documented as planned but not implemented. The NL Search currently uses prompt-based SQL generation rather than vector similarity — this is less semantically powerful than a vector search approach.
+- **LOW-AI-002:** AI model is hardcoded as `claude-sonnet-4-6` with no way to configure per-environment (e.g., use a cheaper model in development). This means dev/test runs incur production model costs.
+- **LOW-AI-003:** `max_tokens` values vary by module (500 for briefing, 800 for churn, 1500+ for insights) with no documentation of why specific values were chosen. If a module's output truncates at the token limit, `parseAIJson` will fail.
 
-**Recommendation:**
-1. Confirm `execute_readonly_sql` uses `BEGIN; SET TRANSACTION READ ONLY; ... ROLLBACK;` and runs under a role with only SELECT grants.
-2. Add `SET statement_timeout = '5000'` to prevent long-running AI-generated queries.
-3. Add a post-generation validator that checks the SQL for `studio_id =` presence before execution.
-
----
-
-### HIGH-AI-002: AI briefing and churn prediction receive incorrect revenue/visit data as inputs
-
-**Severity:** High
-**Location:** `apps/web/src/app/api/ai/briefing/route.ts`, `apps/web/src/lib/ai/briefing.ts`
-
-The AI briefing gathers context including `revenue_today` and `revenue_mtd` from the `transactions` table with date filters. This path appears correct (direct table query). However, `revenue_mtd` may also source from `daily_metrics` in some dashboard contexts, which is known-wrong.
-
-More critically, `churn-prediction.ts` uses `total_spend_90d` and `days_since_last_visit` as inputs. If the member enrichment cron has not run recently, these values (stored in the `members` table's denormalized fields) may be stale. Visit data is only reconciled daily, so a member who checked in this morning would not have their `total_visits` incremented until the nightly cron.
-
-**Recommendation:** The briefing route appears to fetch live transaction data correctly — document this clearly. For churn prediction, add a recency indicator to the response: "Data current as of [last enrichment run timestamp]".
-
----
-
-### HIGH-AI-003: 10 of 17 AI routes have no rate limiting — unbounded Anthropic cost exposure
-
-**Severity:** High
-**Location:** `/api/ai/insights`, `/api/ai/insights/generate`, `/api/ai/recommendations`, `/api/ai/revenue-anomaly`, `/api/ai/booking-patterns`, `/api/ai/trainer-summary`, `/api/ai/intake-enrichment`, `/api/ai/auto-reply`, `/api/ai/waitlist-message`
-
-These routes call Claude on each request with no rate limit. An admin who rapidly refreshes insights or triggers multiple AI recommendations will generate unbounded Anthropic API costs. At Claude Sonnet 4.6 pricing, 100 insight generation requests with 2,000 output tokens each would cost approximately $15. More concerning, if authentication is compromised, these endpoints could be called in a loop.
-
-**Recommendation:** Apply `rateLimit()` to all AI routes. Use a studio-level key (`ai:studio:{studioId}`) to cap per-studio spend, not just per-user.
-
----
-
-### MEDIUM-AI-004: Not all AI modules use withRetry() wrapper
-
-**Severity:** Medium
-**Location:** Multiple AI modules
-
-The `withRetry()` function was added to `client.ts` as a shared retry wrapper for 429/529 errors. Not all AI modules have been updated to use it. Modules that call `anthropic.messages.create()` directly will throw immediately on rate limit, breaking the user experience. Modules using `withRetry()` will gracefully retry with backoff.
-
-**Recommendation:** Audit all 22 modules for `anthropic.messages.create()` calls. Wrap each in `withRetry(() => anthropic.messages.create(...))`.
-
----
-
-### MEDIUM-AI-005: AI briefing imports from deprecated lib/anthropic.ts
-
-**Severity:** Medium
-**Location:** `apps/web/src/app/api/ai/briefing/route.ts`
-
-The briefing route imports from `@/lib/anthropic`:
-```typescript
-import { generateBriefing, BriefingContext } from "@/lib/anthropic";
-```
-
-But `briefing.ts` in `lib/ai/` imports from `@/lib/ai/client`:
-```typescript
-import { getAnthropicClient, AI_MODEL, extractText } from "@/lib/ai/client";
-```
-
-This suggests `lib/anthropic.ts` still exists as a legacy file and the briefing route has not been fully migrated to the new `lib/ai/` structure. If `lib/anthropic.ts` maintains its own Anthropic client instance, it creates a second singleton alongside `lib/ai/client.ts`.
-
-**Recommendation:** Remove `lib/anthropic.ts` and update the briefing route to import `generateBriefing` from `@/lib/ai/briefing`.
-
----
-
-### MEDIUM-AI-006: AI insights cron uses service-role client — no per-insight studio isolation validation
-
-**Severity:** Medium
-**Location:** `apps/web/src/lib/inngest/functions/cron-ai-insights.ts`
-
-The AI insights cron uses the admin/service-role Supabase client (bypasses RLS) and must explicitly filter by `studio_id`. If the cron fails to include `studio_id` filters on any query, insights from one studio could bleed into another's feed. This is a multi-tenancy correctness issue that becomes critical at SaaS launch.
-
-**Recommendation:** Add an explicit RLS check: after the cron generates insights, verify each insight's `studio_id` matches the target studio before inserting. Add a lint rule or code review checklist for service-role queries.
-
----
-
-### LOW-AI-007: AI cache (ai_briefings table) has no eviction policy
-
-**Severity:** Low
-**Location:** `apps/web/src/app/api/ai/briefing/route.ts`
-
-The briefing caches results for 30 minutes in the `ai_briefings` table. Old cache entries are never deleted. Over time this table will accumulate unbounded historical briefings. At 1 briefing per 30 minutes for a year, that's ~17,520 rows — not catastrophic but wasteful.
-
-**Recommendation:** Add a cleanup step to the `cron-daily-metrics` or `cron-ai-insights` functions that deletes `ai_briefings` entries older than 24 hours.
-
----
-
-### LOW-AI-008: Hardcoded AI_MODEL constant — no model version pinning strategy
-
-**Severity:** Low
-**Location:** `apps/web/src/lib/ai/client.ts`
-
-`AI_MODEL = "claude-sonnet-4-6"` is correct. However, Anthropic occasionally deprecates model versions. There is no monitoring or alerting for model deprecation. When `claude-sonnet-4-6` is deprecated, all AI features will fail simultaneously.
-
-**Recommendation:** Document the model pinning strategy. Subscribe to Anthropic deprecation notifications. Set a calendar reminder to review model versions quarterly.
-
----
-
-### INFO-AI-009: AI fallback quality is high — feature degrades gracefully without API key
-
-**Severity:** Info
-
-All 22 AI modules implement rules-based fallbacks. The briefing fallback generates a multi-point summary from raw metrics. The churn fallback applies risk thresholds based on `days_since_last_visit`. This means the platform remains functional in environments without an Anthropic API key (e.g., local dev, CI). This is excellent engineering practice.
-
----
-
-## Summary Table
-
-| ID | Severity | Category | Title |
-|----|----------|----------|-------|
-| HIGH-AI-001 | High | Security | NL Search executes AI-generated SQL without DB read-only enforcement |
-| HIGH-AI-002 | High | Data | AI briefing/churn receive potentially stale or incorrect data |
-| HIGH-AI-003 | High | Cost | 10 of 17 AI routes lack rate limiting — unbounded cost exposure |
-| MEDIUM-AI-004 | Medium | Reliability | Not all AI modules use withRetry() for rate limit handling |
-| MEDIUM-AI-005 | Medium | Architecture | AI briefing imports from deprecated lib/anthropic.ts |
-| MEDIUM-AI-006 | Medium | Multi-tenancy | AI insights cron uses service-role — studio isolation must be explicit |
-| LOW-AI-007 | Low | Performance | ai_briefings cache table has no eviction policy |
-| LOW-AI-008 | Low | Reliability | AI model version pinning has no deprecation monitoring |
-| INFO-AI-009 | Info | Architecture | AI fallback is high quality — feature degrades gracefully |
+### INFO
+- **INFO-AI-001:** 23 AI modules with rules-based fallbacks is an exemplary pattern for production AI integration. The codebase is prepared for Anthropic API outages without service degradation.
+- **INFO-AI-002:** Model version is centralised in a single constant — a model upgrade only requires one line change. Good practice.
+- **INFO-AI-003:** The AI features cover the full business lifecycle: new member intake enrichment → daily briefing → churn prediction → re-engagement campaign copy → automated flow execution. This is coherent, domain-appropriate AI integration rather than bolt-on features.

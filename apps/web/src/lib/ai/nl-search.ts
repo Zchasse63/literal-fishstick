@@ -271,6 +271,17 @@ export async function translateToSQL(
       };
     }
 
+    // Security: reject multiple statements (semicolons outside of string literals)
+    const sqlNoStrings = parsed.sql.replace(/'[^']*'/g, "''"); // strip string contents
+    if (sqlNoStrings.includes(";")) {
+      return {
+        sql: parsed.sql,
+        explanation: parsed.explanation,
+        result_type: "other" as NLSearchResult["result_type"],
+        error: "Query contains multiple statements and was rejected for safety.",
+      };
+    }
+
     // Security: reject dangerous keywords in the body of the query
     const forbidden = [
       "INSERT",
@@ -284,6 +295,11 @@ export async function translateToSQL(
       "EXECUTE",
       "GRANT",
       "REVOKE",
+      "COPY",
+      "PG_READ_FILE",
+      "PG_WRITE_FILE",
+      "LO_IMPORT",
+      "LO_EXPORT",
     ];
     for (const keyword of forbidden) {
       const regex = new RegExp(`\\b${keyword}\\b`, "i");
@@ -296,6 +312,17 @@ export async function translateToSQL(
           error: `Query contains forbidden keyword "${keyword}" and was rejected for safety.`,
         };
       }
+    }
+
+    // Security: reject queries accessing sensitive tables directly
+    const sensitiveTablePattern = /\b(pg_catalog|information_schema|pg_shadow|pg_authid)\b/i;
+    if (sensitiveTablePattern.test(parsed.sql)) {
+      return {
+        sql: parsed.sql,
+        explanation: parsed.explanation,
+        result_type: "other" as NLSearchResult["result_type"],
+        error: "Query accesses restricted system tables and was rejected for safety.",
+      };
     }
 
     // Verify studio_id appears in a WHERE clause context

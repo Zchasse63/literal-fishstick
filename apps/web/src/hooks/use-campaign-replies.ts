@@ -64,7 +64,17 @@ export function useCampaignReplies(): UseCampaignRepliesReturn {
   const mountedRef = useRef(true);
 
   // Fetch all non-dismissed replies
+  // TODO: The campaign_replies table does not exist yet. Once it is created
+  // via a migration, remove the early return below and uncomment the query.
   const fetchReplies = useCallback(async () => {
+    // Gracefully return empty until campaign_replies table is created
+    if (mountedRef.current) {
+      setReplies([]);
+      setIsLoading(false);
+    }
+    return;
+
+    /*
     try {
       const { data, error: queryError } = await supabase
         .from("campaign_replies")
@@ -90,6 +100,7 @@ export function useCampaignReplies(): UseCampaignRepliesReturn {
         setIsLoading(false);
       }
     }
+    */
   }, [supabase]);
 
   // Initial fetch + polling
@@ -183,8 +194,17 @@ export function useCampaignReplies(): UseCampaignRepliesReturn {
   );
 
   // Dismiss a reply (update status directly via Supabase)
+  // TODO: The campaign_replies table does not exist yet. Once created,
+  // uncomment the Supabase query below and remove the early return.
   const dismissReply = useCallback(
     async (replyId: string): Promise<boolean> => {
+      // Gracefully no-op until campaign_replies table is created
+      if (mountedRef.current) {
+        setReplies((prev) => prev.filter((r) => r.id !== replyId));
+      }
+      return true;
+
+      /*
       try {
         const { error: updateError } = await supabase
           .from("campaign_replies")
@@ -208,6 +228,7 @@ export function useCampaignReplies(): UseCampaignRepliesReturn {
         }
         return false;
       }
+      */
     },
     [supabase]
   );

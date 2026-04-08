@@ -1,204 +1,185 @@
-# Meridian — Full Codebase Audit
+# Meridian Codebase Audit — Executive Summary
 
-**Date:** 2026-04-05
-**Layers audited:** 10 of 10 (project-structure, data-model, api-surface, testing-quality, ui-ux, user-flow, ai-layer, integration, security, performance-infra)
-**Model:** claude-sonnet-4-6 (all layer agents + synthesis)
-
-| Metric | Value |
-|--------|-------|
-| Total findings (deduplicated) | 62 |
-| Critical | 2 |
-| High | 11 |
-| Medium | 16 |
-| Low | 20 |
-| Info | 10 |
-| Agents executed | 10 |
-| Coverage gaps identified | 10 |
+**Date:** 2026-04-08
+**Audited Project:** Meridian Fitness Studio OS (`literal-fishstick`)
+**Auditor:** Codebase Cartographer (multi-agent audit system)
+**Agents Executed:** 10 (project-structure, data-model, api-surface, testing-quality, ui-ux, user-flow, ai-layer, integration, security, performance-infra) + synthesizer
 
 ---
 
-## Architecture Health Score
+## Project Overview
 
-**Overall: 6.8 / 10**
+Meridian is a custom fitness studio management OS built as a Turborepo monorepo with a single Next.js 16 application. It replaces Glofox as the operational backbone for The Sauna Guys (Tampa, FL) and is designed for future SaaS expansion. The codebase is in Phase 2 of a 5-phase roadmap, with Phase 1 (core platform) complete and Phase 2 (marketing & engagement) underway.
+
+**Scale:** 466 TypeScript source files, ~105,000 lines, 159 API route handlers, 23 AI modules, 14+ Inngest background functions, 50+ data entities, 3 shared packages.
+
+---
+
+## Architecture Health Score: 7.5 / 10
 
 | Dimension | Score | Notes |
 |-----------|-------|-------|
-| Data Model | 5.5 / 10 | Strong schema design, 2 critical data integrity bugs |
-| API Surface | 6.5 / 10 | Consistent requireRole pattern, 3 routes bypass it |
-| Testing | 5.0 / 10 | Good unit test structure, AI layer uncovered, CI incomplete |
-| UI/UX | 7.0 / 10 | Strong design system, RSC conversion partial |
-| User Flows | 6.5 / 10 | Core flows work, 3 broken due to data/schema issues |
-| AI Layer | 7.5 / 10 | Well-architected, good fallbacks, cost exposure risk |
-| Integration | 7.0 / 10 | Clean patterns, no circuit breaker on Glofox |
-| Security | 7.0 / 10 | No secrets in code, CSP configured, 3 auth gaps |
-| Performance | 6.5 / 10 | Missing indexes, wrong data being polled |
-| Project Structure | 8.0 / 10 | Clean monorepo, one client-boundary issue |
+| Project Structure | 8/10 | Clean feature-based organization, strong type discipline |
+| Data Model | 7/10 | Comprehensive schema, missing critical indexes |
+| API Surface | 7/10 | Well-structured, inconsistent auth patterns |
+| Testing Quality | 6/10 | Good infrastructure, significant coverage gaps |
+| UI/UX | 7/10 | Consistent design system, accessibility gaps |
+| User Flow | 7/10 | Core flows complete, orphaned pages and dead ends |
+| AI Layer | 8/10 | Exemplary AI integration with fallbacks, one critical risk |
+| Integration | 7/10 | Clean patterns, missing circuit breakers |
+| Security | 7/10 | Good baseline, two critical issues |
+| Performance/Infra | 6/10 | No observability, no migration runner, no CDN caching |
 
 ---
 
-## Executive Summary
+## Finding Summary
 
-Meridian is a well-architected Phase 1 platform with a clean TypeScript/Next.js/Supabase/Inngest stack. The codebase is organized, readable, and clearly built with SaaS scale in mind. The engineering quality is high for the project stage.
-
-**The sprint that just completed introduced two critical data integrity bugs that must be fixed immediately:**
-
-1. **Revenue data is wrong everywhere.** 1,894 real Glofox transactions were imported with historical timestamps after the `daily_metrics` table had already been computed. The cron only runs forward — historical rows will never be re-computed. Every revenue chart, the Command Center daily briefing, MRR, ARPM, and the AI briefing context are all displaying incorrect (zero or near-zero) historical revenue. The fix is a one-time backfill script.
-
-2. **Member credits are completely broken.** The `credit_packs` table has never been populated despite the backfill code existing. Members with credit packs in Glofox show zero credits. The `credit_expiry` automation trigger can never fire.
-
-**Two high-priority blocking bugs** from this sprint also need immediate attention:
-
-3. **6 new automation trigger types cannot be saved.** The database CHECK constraint was not updated when 6 new trigger types were added to `evaluate-triggers.ts`. Creating an automation with `never_booked`, `classpass_repeat`, `one_and_done`, `cooling_off`, `plan_upgrade_candidate`, or `class_type_fan` will fail with a constraint violation.
-
-4. **The rate limiter doesn't work.** The in-memory + async-Supabase pattern does not achieve distributed rate limiting in serverless. 10 of 17 AI routes have no rate limiting at all. This creates Anthropic API cost exposure if session tokens are compromised.
-
-Outside these immediate issues, the codebase has a healthy foundation. The AI layer architecture is particularly strong: centralized client singleton, rules-based fallbacks, `withRetry()` for rate limit handling, and consistent prompt engineering across 22 modules. The integration patterns (Stripe webhook idempotency, Resend Svix verification, Inngest retry logic) are all correctly implemented.
+| Severity | Count |
+|----------|-------|
+| CRITICAL | 2 |
+| HIGH | 10 |
+| MEDIUM | 15 |
+| LOW | 16 |
+| INFO | 12 |
+| **Total** | **55** |
 
 ---
 
-## Immediate Actions (This Week)
+## Critical Findings (Fix Before Phase 3)
 
-### Fix 1 — Daily Metrics Backfill (CRIT-001) — 2 hours
+### CRIT-1: Events API Uses Hardcoded DEFAULT_STUDIO_ID
+**Files:** `apps/web/src/app/api/events/route.ts`, `apps/web/src/app/api/events/[id]/route.ts`
+
+All event queries use `DEFAULT_STUDIO_ID = '11111111-1111-1111-1111-111111111111'` instead of the authenticated user's `studio_id`. This is a multi-tenancy isolation breach — when a second studio is onboarded, their users can access or modify the first studio's event data.
+
+**Immediate fix:** Replace all `DEFAULT_STUDIO_ID` references in event routes with `profile.studio_id` sourced from `requireRole()`. Also migrate event routes from inline auth to the canonical `requireRole()` pattern.
+
+---
+
+### CRIT-2: LLM-Generated SQL Executed Without Server-Side Validation
+**Files:** `apps/web/src/app/api/ai/search/route.ts`, `apps/web/src/lib/ai/nl-search.ts`
+
+The natural language search feature generates SQL via Claude and executes it against the production database via a Supabase RPC. No server-side parse validates the LLM output before execution. A prompt injection attack could generate SQL that exfiltrates sensitive data or degrades the database.
+
+**Immediate fix:** Before passing the LLM-generated SQL to the RPC, validate it server-side: (1) Parse to confirm it's a single SELECT statement with no semicolons, (2) reject any query containing DDL/DML keywords (DROP, INSERT, UPDATE, DELETE, ALTER, TRUNCATE), (3) add a `statement_timeout` via SET LOCAL.
+
+---
+
+## Top 5 High-Priority Issues
+
+### H-1: Missing index on bookings(class_id, studio_id, status)
+Every booking creation runs an unindexed COUNT query across the bookings table. This is the highest-traffic query in the system and will degrade sharply as bookings grow.
 ```sql
--- Delete and re-aggregate all historical daily_metrics rows
-DELETE FROM daily_metrics
-WHERE studio_id = '<studio_id>'
-  AND metric_date < CURRENT_DATE;
--- Then trigger the cron manually or run the aggregation inline
+CREATE INDEX idx_bookings_class_status ON bookings(class_id, studio_id, status);
 ```
 
-### Fix 2 — Trigger Credit Pack Backfill (CRIT-002) — 30 minutes
-```
-POST /api/glofox/backfill
-```
-Monitor the Inngest dashboard for the `backfill-credits` step. Verify `credit_packs` row count after.
+### H-2: No database migration runner
+SQL migration files are applied manually with no history tracking. One missed migration causes schema drift. Adopt Supabase CLI migrations or Flyway before Phase 3.
 
-### Fix 3 — Update automation_flows CHECK Constraint (HIGH-001) — 30 minutes
-```sql
-ALTER TABLE automation_flows DROP CONSTRAINT automation_flows_trigger_type_check;
-ALTER TABLE automation_flows ADD CONSTRAINT automation_flows_trigger_type_check
-  CHECK (trigger_type IN (
-    'signup', 'no_show', 'churn_risk', 'credit_expiry', 'birthday',
-    'milestone', 'membership_change', 'booking_completed', 'failed_payment',
-    'inactivity', 'referral', 'custom',
-    'never_booked', 'classpass_repeat', 'one_and_done',
-    'cooling_off', 'plan_upgrade_candidate', 'class_type_fan'
-  ));
-```
+### H-3: execute-flow automation function has zero unit tests
+The most complex background function — handling email sends, waits, and conditional branching — has no tests. A bug silently affects all marketing automation enrollees.
 
-### Fix 4 — Add Missing Composite Indexes (HIGH-011) — 30 minutes
-```sql
-CREATE INDEX idx_bookings_member_attended ON bookings(studio_id, member_id, attended) WHERE attended = true;
-CREATE INDEX idx_transactions_studio_date ON transactions(studio_id, created_at, status);
-CREATE INDEX idx_profiles_studio_engagement ON profiles(studio_id, engagement_status);
-```
+### H-4: No production observability (errors, performance, AI failures)
+All errors log to `console.error`. No Sentry, no APM, no structured logging. Silent AI fallbacks, DB errors, and external API failures go undetected. Add error tracking before Phase 3.
+
+### H-5: Glofox sync should move to Inngest
+The current HTTP endpoint with NDJSON streaming is a workaround for the 60-second Netlify function timeout. As data volume grows, this will fail. Moving to an Inngest function (no timeout, built-in retry/cron) is the correct solution.
 
 ---
 
-## Near-Term Actions (Next Sprint)
+## Layer-by-Layer Summary
 
-### Rewrite Rate Limiter (HIGH-002)
-The `rateLimit()` function must be async — await the Supabase atomic increment and use the returned count. Apply to all 17 AI routes with studio-level keys (`ai:studio:{studioId}`).
+### Project Structure
+Well-organized Turborepo monorepo with clean feature-based architecture. The `@meridian/types` shared package enforces type consistency. Main concerns: Next.js 16.2.0 is bleeding-edge (verify it's a stable release), and the Glofox cron scheduling infrastructure is incomplete (no scheduled function configured).
 
-### Fix Campaign Send Auth (HIGH-003)
-`POST /api/campaigns/send` must use `requireRole(['owner', 'manager'])` — not inline auth with `DEFAULT_STUDIO_ID` fallback.
+### Data Model
+Comprehensive 50+ entity schema with correct UUID PKs, integer cents for money, and multi-tenant `studio_id` on every table. The `audit-fixes-migration.sql` file shows proactive schema correction (capacity trigger, partial reenrollment index, email_hash column). Key gaps: missing indexes on high-traffic queries, no automated type generation from the live schema, and no migration runner.
 
-### Verify execute_readonly_sql RPC (HIGH-004)
-Locate or create the `execute_readonly_sql` RPC in migrations with: read-only role enforcement, `SET LOCAL statement_timeout = '5s'`, and studio_id presence validation.
+### API Surface
+159 route handlers organized by domain with good consistency. The `requireRole()` helper is the canonical auth pattern (~75% of routes). Corporate and Events routes deviate with inline auth — these need migration to `requireRole()`. The Events API's `DEFAULT_STUDIO_ID` usage is a critical multi-tenancy breach.
 
-### Add Test Coverage for AI Layer (HIGH-005)
-All 22 AI modules have rules-based fallbacks that can be unit-tested without the real API. Add tests by mocking `getAnthropicClient()` to return null.
+### Testing Quality
+Mature three-tier test infrastructure (Vitest unit + integration, Playwright E2E). 40 unit test files, 6 integration tests, 10 E2E specs. Custom Supabase mock builder is a quality abstraction. Key gaps: execute-flow has no tests, 22/23 AI modules untested, coverage threshold at 50% is too low for a payment/booking system, E2E tests not running in CI.
 
-### Enable Integration Tests in CI (HIGH-006)
-Provision Supabase test project (MED-27) or use Supabase local Docker. Uncomment the integration test CI step.
+### UI/UX
+Consistent Meridian design system (indigo-600 primary, emerald/amber accents, framer-motion animations). Both admin dashboard and employee portal share the design language. The command palette (Cmd+K) is a power-user feature worth highlighting. Accessibility gaps: `text-[10px] gray-400` fails WCAG contrast, no mobile responsive layout for admin, dark mode preference not persisted.
 
-### Fix Engagement Module Placeholder Data (HIGH-010)
-Hide the streak and referrals columns or implement the data pipelines before shipping the Engagement module.
+### User Flow
+10 major user flows identified. 8 are fully implemented (auth, member management, bookings, campaigns, employee clock-in, lead pipeline, automation enrollment, AI insights). 2 are partially complete (command palette quick actions, SMS campaigns). Orphaned pages: `/segments` and `/engagement` are not in the primary navigation despite being implemented.
 
----
+### AI Layer
+The AI integration is Meridian's strongest technical differentiator. 23 focused modules, all with rules-based fallbacks, a singleton Anthropic client with retry logic, and a centralised `AI_MODEL` constant. The critical risk is the NL-to-SQL search feature, which executes LLM-generated queries without server-side validation. The `lib/anthropic.ts` barrel file should be formally deprecated.
 
-## Phase 2 Readiness Assessment
+### Integration
+8 external services with clean integration patterns: lazy-init singletons, server-side only, retry where needed (Anthropic, Glofox). Webhook signature verification is correct for Stripe and Resend. Gaps: EasyPost webhook has no verified signature check, the rate-limit RPC may not be deployed, and `DEFAULT_STUDIO_ID` appears in Stripe customer creation metadata.
 
-Meridian is functionally ready for Phase 2 (Marketing & Engagement) with these caveats:
+### Security
+Solid baseline: passwordless auth, RLS + manual `studio_id` filtering (defense-in-depth), Zod validation on write endpoints. The two critical issues (NL SQL, Events multi-tenancy) need immediate attention. CSP `unsafe-inline/unsafe-eval` is tracked technical debt with a Phase 5 remediation plan. No hardcoded secrets found.
 
-| Feature | Status |
-|---------|--------|
-| Campaign builder | Ready — send route needs auth fix |
-| Automation flows | Blocked — 6 trigger types need schema fix |
-| Lead pipeline | Ready |
-| Email tracking (Resend) | Ready |
-| SMS campaigns | Ready (Twilio installed, provider-agnostic) |
-| Content hub | Ready |
-| Engagement leaderboard | Blocked — streak/referral data pipelines missing |
-| A/B test campaigns | Ready — manual winner selection works |
+### Performance & Infrastructure
+Build pipeline is efficient (Turborepo + Next.js cache). CI covers lint, typecheck, unit tests, dependency audit, and build verification. Significant gaps: no observability/APM, no migration runner, no HTTP caching on analytics endpoints, no bundle size tracking, heavy client libraries not lazily loaded, and E2E/integration tests not running in CI.
 
 ---
 
-## Pre-Phase-4 SaaS Launch Requirements
+## Recommended Fix Priority
 
-These issues MUST be resolved before onboarding a second studio:
+### Immediate (Before Phase 3 Launch)
+1. Fix Events API: replace `DEFAULT_STUDIO_ID` with `profile.studio_id`, migrate to `requireRole()`
+2. Fix NL SQL: add server-side SQL validation before execution
+3. Add missing booking index: `CREATE INDEX idx_bookings_class_status ON bookings(class_id, studio_id, status)`
+4. Set up Sentry or equivalent error tracking
+5. Write unit tests for `execute-flow.ts`
+6. Provision Supabase test instance and enable integration tests in CI
 
-1. **Remove all `DEFAULT_STUDIO_ID` fallbacks** from API routes — use fail-closed auth
-2. **RLS rewrite** — switch from `current_setting('app.studio_id')` to `auth.uid()`-based policies
-3. **Distributed rate limiting** — per-studio AI rate keys with real enforcement
-4. **Studio onboarding flow** — no guided setup currently exists
-5. **Multi-tenant `cron-daily-metrics`** — currently hardcodes `STUDIO_ID`; needs to iterate all studios (per the existing TODO comment)
+### Phase 3 Prerequisites
+7. Adopt database migration runner (Supabase CLI migrations)
+8. Add `supabase gen types typescript` to CI pipeline
+9. Move Glofox sync to Inngest background function
+10. Add `DEFAULT_STUDIO_ID` audit across all files that reference it (Stripe, reports, etc.)
+11. Raise coverage thresholds for `src/app/api/webhooks/` and `src/lib/inngest/functions/`
+12. Add rate limiting to campaign send, payroll calculate, report generate
 
----
-
-## Findings by Layer
-
-| Layer | Critical | High | Medium | Low | Info |
-|-------|----------|------|--------|-----|------|
-| project-structure | 0 | 0 | 1 | 2 | 2 |
-| data-model | 2 | 2 | 3 | 1 | 1 |
-| api-surface | 0 | 3 | 3 | 2 | 1 |
-| testing-quality | 0 | 3 | 2 | 3 | 1 |
-| ui-ux | 0 | 2 | 3 | 3 | 1 |
-| user-flow | 0 | 3 | 2 | 3 | 1 |
-| ai-layer | 0 | 3 | 3 | 2 | 1 |
-| integration | 0 | 2 | 2 | 3 | 1 |
-| security | 0 | 3 | 3 | 3 | 1 |
-| performance-infra | 0 | 2 | 2 | 3 | 2 |
-| **Total** | **2** | **23** | **24** | **25** | **12** |
-
-*Note: Cross-layer duplicates are deduplicated in the findings files. Totals above count per-layer before deduplication.*
-
-**Deduplicated totals:** Critical: 2, High: 11, Medium: 16, Low: 20, Info: 10 = **59 total**
+### Before Phase 5 (Member-Facing)
+13. Add CORS headers to API routes
+14. Implement API versioning (`/api/v1/`)
+15. Replace CSP `unsafe-inline/unsafe-eval` with nonce-based CSP
+16. Verify Twilio and EasyPost webhook signature verification
+17. Add mobile-responsive layout to admin dashboard (or confirm admin stays desktop-only)
+18. Add React Query / SWR client-side caching layer
 
 ---
 
-## Strengths to Preserve
+## Strengths Worth Preserving
 
-- **Clean requireRole() pattern** — used by ~90% of API routes. Maintain this discipline.
-- **AI fallback architecture** — all 22 modules degrade gracefully without API key. Keep this.
-- **Stripe webhook idempotency** — `processed_webhook_events` table correctly prevents duplicates.
-- **Zod validation** — good pattern for the 4 schemas that use it. Expand coverage.
-- **member_360 view** — excellent data access pattern for the most complex join. Use it everywhere.
-- **Inngest step-based functions** — proper use of step.run() for fault-tolerant background jobs.
-- **Monorepo shared packages** — types, supabase, utils are correctly isolated. Enforce usage.
+1. **AI fallback pattern** — Every AI module has a rules-based fallback. This is production-grade and should never be removed.
+2. **Integer cents for money** — Consistent throughout all 50+ entities. Never introduce floating-point money.
+3. **`requireRole()` canonical auth helper** — The role alias support and studioId resolution are valuable. Migrate all inline auth routes to use this.
+4. **`@meridian/types` discipline** — The Turborepo `LOW-014` governance comment and type discipline should be enforced as new packages/modules are added.
+5. **Inngest event type definitions** — Fully typed `MeridianEvents` prevents runtime event payload errors. Maintain this as new events are added.
+6. **Multi-layer security** — RLS + manual `studio_id` + auth middleware is the correct defense-in-depth pattern. Don't simplify this away.
 
 ---
 
-## File Index
+## File Locations
 
-| File | Contents |
-|------|---------|
-| `.audit/AUDIT-SUMMARY.md` | This document |
-| `.audit/layers/project-structure.md` | Architecture, module boundaries, dependency graph |
-| `.audit/layers/data-model.md` | Schema, ER diagram, data integrity findings |
-| `.audit/layers/api-surface.md` | All 150 routes, auth patterns, AI endpoints |
-| `.audit/layers/testing-quality.md` | Test inventory, coverage analysis, CI gaps |
-| `.audit/layers/ui-ux.md` | Component hierarchy, design system, RSC analysis |
-| `.audit/layers/user-flow.md` | User journeys, broken flows, dead ends |
-| `.audit/layers/ai-layer.md` | 22 AI modules, prompt patterns, cost exposure |
-| `.audit/layers/integration.md` | 7 external services, error handling, circuit breakers |
-| `.audit/layers/security.md` | Auth gaps, CSP, input validation, secrets |
-| `.audit/layers/performance-infra.md` | Indexes, memory patterns, build config, CI/CD |
-| `.audit/findings/critical.md` | 2 critical findings |
-| `.audit/findings/high.md` | 11 high findings |
-| `.audit/findings/medium.md` | 16 medium findings |
-| `.audit/findings/low-info.md` | 20 low + 10 info findings |
-| `.audit/synthesis/cross-references.md` | 8 findings corroborated by 2+ layers |
-| `.audit/synthesis/contradictions.md` | 4 apparent contradictions — all resolved |
-| `.audit/synthesis/gaps.md` | 10 areas no agent covered |
+| Report | Path |
+|--------|------|
+| This summary | `/Users/zach/Desktop/literal-fishstick/.audit/AUDIT-SUMMARY.md` |
+| Project Structure | `/Users/zach/Desktop/literal-fishstick/.audit/layers/project-structure.md` |
+| Data Model | `/Users/zach/Desktop/literal-fishstick/.audit/layers/data-model.md` |
+| API Surface | `/Users/zach/Desktop/literal-fishstick/.audit/layers/api-surface.md` |
+| Testing Quality | `/Users/zach/Desktop/literal-fishstick/.audit/layers/testing-quality.md` |
+| UI/UX | `/Users/zach/Desktop/literal-fishstick/.audit/layers/ui-ux.md` |
+| User Flow | `/Users/zach/Desktop/literal-fishstick/.audit/layers/user-flow.md` |
+| AI Layer | `/Users/zach/Desktop/literal-fishstick/.audit/layers/ai-layer.md` |
+| Integration | `/Users/zach/Desktop/literal-fishstick/.audit/layers/integration.md` |
+| Security | `/Users/zach/Desktop/literal-fishstick/.audit/layers/security.md` |
+| Performance & Infra | `/Users/zach/Desktop/literal-fishstick/.audit/layers/performance-infra.md` |
+| Critical Findings | `/Users/zach/Desktop/literal-fishstick/.audit/findings/critical.md` |
+| High Findings | `/Users/zach/Desktop/literal-fishstick/.audit/findings/high.md` |
+| Medium Findings | `/Users/zach/Desktop/literal-fishstick/.audit/findings/medium.md` |
+| Low/Info Findings | `/Users/zach/Desktop/literal-fishstick/.audit/findings/low-info.md` |
+| Cross-References | `/Users/zach/Desktop/literal-fishstick/.audit/synthesis/cross-references.md` |
+| Contradictions | `/Users/zach/Desktop/literal-fishstick/.audit/synthesis/contradictions.md` |
+| Coverage Gaps | `/Users/zach/Desktop/literal-fishstick/.audit/synthesis/gaps.md` |
+

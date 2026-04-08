@@ -1,314 +1,204 @@
 # Layer Report: API Surface
 
-**Audit Date:** 2026-04-05
 **Agent:** api-surface
-**Severity Scale:** Critical / High / Medium / Low / Info
+**Date:** 2026-04-08
+**Status:** Complete
 
 ---
 
 ## Executive Summary
 
-Meridian has 150 API route files under `apps/web/src/app/api/` across 60+ namespaces. The API is organized by domain (bookings, members, campaigns, etc.) with a consistent `requireRole()` authentication pattern used by most routes. Recent work added phone normalization to 14 routes, added 17 AI endpoints, and corrected 15 Glofox API client methods.
-
-Key findings: (1) `POST /api/campaigns/send` does not use `requireRole()` — it has an inline auth check that misses rate limiting; (2) the rate limiter is effectively non-functional for cross-instance protection (returns optimistic in-memory result, updates Supabase async but reads from in-memory state); (3) several routes still use `DEFAULT_STUDIO_ID` as a hardcoded fallback instead of failing closed; (4) the AI natural language search executes AI-generated SQL via `execute_readonly_sql` RPC — a high-risk pattern with some mitigations but no comprehensive allow-list.
+Meridian exposes approximately 159 API route handlers via the Next.js App Router file-system convention. The API is well-structured with domain-grouped route prefixes, consistent authentication via the `requireRole()` helper, and Zod validation on write operations. However, there are two distinct auth patterns in use — the canonical `requireRole()` helper vs. inline manual auth checks — creating inconsistency and increasing risk of role-check mistakes. Rate limiting exists but is only applied to AI endpoints. Several corporate and event routes use inline auth (no requireRole), and no API documentation generation is in the CI pipeline despite a Swagger UI page existing in the admin dashboard.
 
 ---
 
-## API Inventory
+## Route Inventory
 
-### Domain Routes
+### AI Endpoints (`/api/ai/*`)
+| Method | Route | Auth | Rate Limited |
+|--------|-------|------|--------------|
+| GET | `/api/ai/briefing` | owner,manager | Yes (20/min) |
+| GET | `/api/ai/booking-patterns` | owner,manager | Yes |
+| GET | `/api/ai/churn-prediction` | owner,manager | Yes |
+| GET | `/api/ai/health-score` | owner,manager | Yes |
+| POST | `/api/ai/campaign-copy` | owner,manager | Yes |
+| POST | `/api/ai/auto-reply` | owner,manager | Yes |
+| GET | `/api/ai/insights` | owner,manager | Unknown |
+| POST | `/api/ai/insights/generate` | owner,manager | Unknown |
+| POST | `/api/ai/insights/[id]/action` | owner,manager | Unknown |
+| POST | `/api/ai/insights/[id]/dismiss` | owner,manager | Unknown |
+| GET | `/api/ai/insights/history` | owner,manager | Unknown |
+| POST | `/api/ai/intake-enrichment` | owner,manager | Yes |
+| GET | `/api/ai/recommendations` | owner,manager | Yes |
+| GET | `/api/ai/revenue-anomaly` | owner,manager | Yes |
+| POST | `/api/ai/search` | owner,manager | Yes |
+| GET | `/api/ai/trainer-summary` | owner,manager | Yes |
+| POST | `/api/ai/waitlist-message` | owner,manager | Yes |
 
-| Namespace | Methods | Auth |
-|-----------|---------|------|
-| `/api/bookings` | GET, POST | requireRole (owner/manager/trainer/staff) |
-| `/api/bookings/[id]/cancel` | POST | requireRole |
-| `/api/classes` | GET, POST | requireRole |
-| `/api/classes/[id]` | GET, PUT, DELETE | requireRole |
-| `/api/members` | GET, POST | requireRole (owner/manager) |
-| `/api/members/[id]` | GET, PUT, DELETE | Inline auth (not requireRole) |
-| `/api/members/[id]/upgrade` | POST | requireRole |
-| `/api/members/[id]/downgrade` | POST | requireRole |
-| `/api/members/[id]/tags` | GET, POST, DELETE | requireRole |
-| `/api/revenue` | GET | requireRole |
-| `/api/transactions` | GET, POST | requireRole |
-| `/api/campaigns` | GET, POST | requireRole |
-| `/api/campaigns/[id]` | GET, PUT, DELETE | requireRole |
-| `/api/campaigns/send` | POST | Inline auth (not requireRole) |
-| `/api/campaigns/send-test` | POST | requireRole |
-| `/api/campaigns/process-scheduled` | POST | Cron secret header |
-| `/api/automations` | GET, POST | requireRole |
-| `/api/automations/[id]` | GET, PUT, DELETE | requireRole |
-| `/api/automations/[id]/activate` | POST | requireRole |
-| `/api/automations/[id]/deactivate` | POST | requireRole |
-| `/api/leads` | GET, POST | requireRole |
-| `/api/leads/[id]` | GET, PUT, DELETE | requireRole |
-| `/api/leads/[id]/convert` | POST | requireRole |
-| `/api/corporate` | GET, POST | requireRole (owner/manager) |
-| `/api/corporate/[id]` | GET, PUT, DELETE | requireRole |
-| `/api/events` | GET, POST | requireRole |
-| `/api/employees` | GET, POST | requireRole |
-| `/api/clock` | POST | requireRole (trainer/staff/employee) |
-| `/api/payroll` | GET | requireRole (owner/manager) |
-| `/api/check-in` | POST | requireRole |
-| `/api/check-in/qr` | POST | requireRole |
-| `/api/invoices` | GET, POST | requireRole |
-| `/api/invoices/[id]/pdf` | GET | requireRole |
-| `/api/invoices/[id]/send` | POST | requireRole |
+### Analytics Endpoints (`/api/analytics/*`)
+| Method | Route | Auth |
+|--------|-------|------|
+| GET | `/api/analytics/churn-rate` | requireRole |
+| GET | `/api/analytics/cohorts` | requireRole |
+| GET | `/api/analytics/daily-metrics` | requireRole |
+| GET | `/api/analytics/heatmap` | requireRole |
+| GET | `/api/analytics/kpi-overview` | requireRole |
+| GET | `/api/analytics/member-movement` | requireRole |
+| GET | `/api/analytics/revenue-breakdown` | requireRole |
+| GET | `/api/analytics/snapshot` | requireRole |
+| GET | `/api/analytics/summary` | requireRole |
 
-### AI Routes (17 endpoints)
+### Bookings (`/api/bookings/*`)
+| Method | Route | Auth |
+|--------|-------|------|
+| GET | `/api/bookings` | owner,manager |
+| POST | `/api/bookings` | owner,manager |
+| POST | `/api/bookings/[id]/cancel` | owner,manager |
 
-| Endpoint | Function | Auth | Rate Limited |
-|----------|----------|------|-------------|
-| `/api/ai/briefing` | Daily studio briefing | requireRole + rateLimit | Yes (20/min) |
-| `/api/ai/search` | NL to SQL search | requireRole + rateLimit | Yes (20/min) |
-| `/api/ai/churn-prediction` | Member churn scores | requireRole + rateLimit | Yes |
-| `/api/ai/health-score` | Member health scores | requireRole + rateLimit | Yes |
-| `/api/ai/campaign-copy` | AI email copy | requireRole + rateLimit | Yes |
-| `/api/ai/insights` | AI insight cards | requireRole | No rateLimit |
-| `/api/ai/insights/generate` | Generate insights | requireRole | No rateLimit |
-| `/api/ai/recommendations` | AI recommendations | requireRole | No rateLimit |
-| `/api/ai/revenue-anomaly` | Revenue anomaly detection | requireRole | No rateLimit |
-| `/api/ai/booking-patterns` | Booking pattern analysis | requireRole | No rateLimit |
-| `/api/ai/trainer-summary` | Trainer AI summary | requireRole | No rateLimit |
-| `/api/ai/intake-enrichment` | Member intake AI | requireRole | No rateLimit |
-| `/api/ai/auto-reply` | AI email auto-reply | requireRole | No rateLimit |
-| `/api/ai/waitlist-message` | Waitlist AI message | requireRole | No rateLimit |
-| `/api/ai/insights/[id]/action` | Act on insight | requireRole | No |
-| `/api/ai/insights/[id]/dismiss` | Dismiss insight | requireRole | No |
-| `/api/ai/insights/history` | Insight history | requireRole | No |
+### Campaigns (`/api/campaigns/*`)
+| Method | Route | Auth |
+|--------|-------|------|
+| GET | `/api/campaigns` | requireRole |
+| POST | `/api/campaigns` | requireRole |
+| GET,PUT,DELETE | `/api/campaigns/[id]` | requireRole |
+| POST | `/api/campaigns/[id]/duplicate` | requireRole |
+| POST | `/api/campaigns/[id]/pause` | requireRole |
+| GET | `/api/campaigns/[id]/recipients` | requireRole |
+| POST | `/api/campaigns/[id]/schedule` | requireRole |
+| POST | `/api/campaigns/[id]/select-winner` | requireRole |
+| POST | `/api/campaigns/process-scheduled` | requireRole |
+| POST | `/api/campaigns/send` | requireRole |
+| POST | `/api/campaigns/send-test` | requireRole |
 
-### Webhook Routes (no user auth — signature verified)
+### Corporate (`/api/corporate/*`) — INLINE AUTH
+| Method | Route | Auth Pattern |
+|--------|-------|--------------|
+| GET,POST | `/api/corporate` | Inline manual auth |
+| GET,PUT | `/api/corporate/[id]` | Inline manual auth |
+| GET,POST | `/api/corporate/[id]/credits` | Inline manual auth |
+| GET,POST | `/api/corporate/[id]/invoices` | Inline manual auth |
+| GET,POST | `/api/corporate/[id]/members` | Inline manual auth |
+| DELETE | `/api/corporate/[id]/members/[mid]` | Inline manual auth |
+| GET | `/api/corporate/dashboard` | Inline manual auth |
 
-| Endpoint | Provider | Verification |
-|----------|---------|-------------|
-| `/api/webhooks/stripe` | Stripe | `constructWebhookEvent` signature |
-| `/api/webhooks/resend` | Resend | Svix HMAC verification |
-| `/api/webhooks/twilio` | Twilio | Svix HMAC verification |
-| `/api/webhooks/easypost` | EasyPost | (unknown — not checked) |
+### Events (`/api/events/*`) — INLINE AUTH + DEFAULT_STUDIO_ID
+| Method | Route | Auth Pattern |
+|--------|-------|--------------|
+| GET | `/api/events` | Inline + DEFAULT_STUDIO_ID hardcoded |
+| POST | `/api/events` | Inline + DEFAULT_STUDIO_ID hardcoded |
+| GET,PUT,DELETE | `/api/events/[id]` | Inline + DEFAULT_STUDIO_ID hardcoded |
 
-### Sync / Infrastructure Routes
+### Members (`/api/members/*`)
+| Method | Route | Auth |
+|--------|-------|------|
+| GET,POST | `/api/members` | owner,manager |
+| GET,PUT | `/api/members/[id]` | requireRole |
+| POST | `/api/members/[id]/pause` | requireRole |
 
-| Endpoint | Function | Auth |
-|----------|---------|------|
-| `/api/glofox/status` | Glofox sync status | requireRole |
-| `/api/glofox/sync` | Trigger manual sync | requireRole |
-| `/api/glofox/backfill` | Full historical backfill | requireRole |
-| `/api/inngest` | Inngest serve endpoint | Inngest SDK auth |
-| `/api/cron/waitlist-promote` | Waitlist promotion | CRON_SECRET header |
-| `/api/campaigns/process-scheduled` | Send scheduled campaigns | CRON_SECRET header |
-| `/api/health` | Health check | None |
+### Other Core Routes
+| Method | Route | Auth |
+|--------|-------|------|
+| GET,POST | `/api/classes` | requireRole |
+| GET,PUT,DELETE | `/api/classes/[id]` | requireRole |
+| POST | `/api/classes/[id]/remind` | requireRole |
+| POST | `/api/check-in` | inline (owner,manager) |
+| GET | `/api/check-in/qr` | inline |
+| POST | `/api/clock` | requireRole (trainer,staff) |
+| GET,POST | `/api/employees` | owner,manager |
+| GET,PUT,DELETE | `/api/employees/[id]` | requireRole |
+| GET,POST | `/api/invoices/[id]/*` | inline |
+| GET,POST | `/api/payroll/periods` | requireRole |
+| GET,POST | `/api/pricing-simulator` | requireRole |
+| GET,POST | `/api/products` | requireRole |
+| GET,POST | `/api/promo-codes` | requireRole |
+| GET,POST | `/api/reports` | requireRole |
+| GET,PUT,DELETE | `/api/segments/[id]` | requireRole |
+| GET,PUT | `/api/settings` | owner |
+| POST | `/api/sms/send` | requireRole |
+| GET,PUT,DELETE | `/api/staff/[id]` | requireRole |
+| GET | `/api/trainers/leaderboard` | requireRole |
+| GET | `/api/transactions` | requireRole |
+| GET | `/api/revenue` | requireRole |
+
+### Public / Externally-Authenticated Routes
+| Method | Route | Auth |
+|--------|-------|------|
+| GET | `/api/health` | Public |
+| POST | `/api/leads/capture` | Public (lead intake form) |
+| GET | `/api/unsubscribe/[token]` | Token-based |
+| POST | `/api/inngest` | Inngest signing key |
+| POST | `/api/webhooks/stripe` | Stripe signature verification |
+| POST | `/api/webhooks/resend` | Resend signature (svix) |
+| POST | `/api/webhooks/easypost` | EasyPost |
+| POST | `/api/webhooks/twilio` | Twilio |
+| POST | `/api/glofox/sync` | CRON_SECRET header |
+| POST | `/api/glofox/backfill` | CRON_SECRET header |
+| GET | `/api/openapi` | Public |
+| GET/POST | `/api/cron/*` | CRON_SECRET header |
 
 ---
 
-## API Flow Diagram
+## Middleware Chain
 
-```mermaid
-flowchart LR
-    subgraph CLIENT["Client (Browser/Admin)"]
-        ADMIN["Admin Dashboard\n(Next.js)"]
-        EMPLOYEE["Employee Portal"]
-    end
-
-    subgraph MIDDLEWARE["Middleware Layer"]
-        MW["Next.js middleware.ts\nAuth guard + public allowlist"]
-        RR["requireRole()\nJWT verify + role check"]
-        RL["rateLimit()\nIn-memory + async Supabase"]
-    end
-
-    subgraph DOMAIN["Domain API Routes"]
-        MEMBERS_API["Members\n/api/members/**"]
-        BOOKING_API["Bookings\n/api/bookings/**"]
-        REVENUE_API["Revenue/Transactions"]
-        CAMPAIGNS_API["Campaigns + Automations"]
-        LEADS_API["Leads"]
-        CORP_API["Corporate/Events"]
-        OPS_API["Operations/Employees"]
-        ANALYTICS_API["Analytics + Reports"]
-    end
-
-    subgraph AI_ROUTES["AI Routes (/api/ai/**)"]
-        BRIEFING["briefing"]
-        SEARCH["search (NL-SQL)"]
-        CHURN["churn-prediction"]
-        INSIGHTS["insights/**"]
-    end
-
-    subgraph WEBHOOKS["Webhook Routes"]
-        STRIPE_WH["Stripe (signature verified)"]
-        RESEND_WH["Resend (Svix verified)"]
-        INNGEST_EP["Inngest serve"]
-    end
-
-    subgraph EXTERNAL["External Services"]
-        SUPABASE_DB["Supabase DB"]
-        ANTHROPIC["Anthropic Claude"]
-        STRIPE_SVC["Stripe"]
-        GLOFOX_API["Glofox API"]
-    end
-
-    ADMIN --> MW
-    EMPLOYEE --> MW
-    MW --> RR
-    RR --> DOMAIN
-    RR --> AI_ROUTES
-    AI_ROUTES --> RL
-    DOMAIN --> SUPABASE_DB
-    AI_ROUTES --> ANTHROPIC
-    AI_ROUTES --> SUPABASE_DB
-    WEBHOOKS --> STRIPE_SVC
-    WEBHOOKS --> SUPABASE_DB
-    CAMPAIGNS_API --> SUPABASE_DB
 ```
+Request
+  → Next.js middleware.ts
+    → updateSession() (Supabase session refresh)
+    → isPublicRoute() check (allowlist)
+    → createServerClient() auth check
+    → if no user: 401 JSON (API) or redirect to /login (pages)
+    → pass through to route handler
+  → Route Handler
+    → requireRole(['owner', 'manager']) or inline auth
+    → Zod validation (validateBody schema)
+    → Supabase query with studioId filter
+    → Response
+```
+
+---
+
+## Authentication Pattern Analysis
+
+### Pattern 1: `requireRole()` (canonical — preferred)
+Used by ~75% of routes. Returns `{ error, user, profile, supabase, studioId }`. If `error` is returned, route handler returns it immediately. Handles auth + role check + studioId resolution in one call.
+
+### Pattern 2: Inline manual auth (legacy/inconsistent)
+Used by corporate, events, and some invoice routes. Pattern:
+```typescript
+const { data: { user } } = await supabase.auth.getUser()
+if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+const { data: profile } = await supabase.from('profiles').select('id, roles, studio_id')...
+const STUDIO_ID = DEFAULT_STUDIO_ID  // ← hardcoded!
+```
+
+The critical issue: several event routes use `DEFAULT_STUDIO_ID` (a hardcoded constant) instead of the profile's `studio_id`. This breaks multi-tenancy for the Events API — all events queries go to the default studio regardless of which studio the authenticated user belongs to.
+
+### Role Aliases
+`requireRole` supports `"admin"` as an alias for `"owner"` via `ROLE_ALIASES`. This handles the dual-role problem where older profiles have `"admin"` in their roles array.
 
 ---
 
 ## Findings
 
-### HIGH-AS-001: Rate limiter is effectively non-functional for cross-instance protection
+### CRITICAL
+- **CRIT-AS-001:** Events API (`/api/events/*`) uses `DEFAULT_STUDIO_ID` hardcoded from `@/lib/constants` instead of the authenticated user's `studio_id`. This is a multi-tenancy breach — if Meridian ever serves multiple studios, all event operations would be routed to the same studio regardless of which user is calling the API. Even for single-studio use, this bypasses the multi-tenant isolation pattern that every other endpoint enforces.
 
-**Severity:** High
-**Location:** `apps/web/src/lib/rate-limit.ts`
+### HIGH
+- **HIGH-AS-001:** Inconsistent auth patterns across the API. Corporate, Events, and some Invoice routes use inline manual auth rather than the `requireRole()` helper. This creates drift: inline patterns don't get automatic improvements when `requireRole` is updated (e.g., role alias support was added to `requireRole` but may not be reflected in inline implementations).
+- **HIGH-AS-002:** Rate limiting is only applied to AI endpoints. High-cost operations like campaign sending (`/api/campaigns/send`), report generation (`/api/reports/[id]/generate`), and payroll calculation (`/api/payroll/periods/[id]/calculate`) have no rate limiting. An authenticated user could trigger expensive operations in rapid succession.
+- **HIGH-AS-003:** No API versioning strategy. All 159 routes are unversioned (`/api/...` not `/api/v1/...`). Once member-facing apps (iOS, web booking) are built against these endpoints, breaking changes will have no migration path.
 
-The `rateLimit()` function returns an optimistic in-memory result immediately, then fires an async Supabase upsert (fire-and-forget). The in-memory `fallbackMap` is local to each serverless instance and resets on cold start. Effectively:
-- Each serverless instance has its own per-process limit counter
-- Across multiple concurrent instances (e.g., 5 parallel Lambda invocations), a single user can exceed the stated rate limit by 5x
-- The Supabase async write is not read back — the next call still reads from the in-memory map
+### MEDIUM
+- **MED-AS-001:** `/api/openapi` is listed as public in middleware but there is no indication it returns a real OpenAPI spec — only the Swagger UI page at `(admin)/docs/api/page.tsx` exists. If the `/api/openapi` route returns nothing or 404, the public API docs are broken.
+- **MED-AS-002:** `/api/campaigns/process-scheduled` is a route handler that appears to process scheduled campaigns — if this is triggered by a cron job or webhook, it should be protected by `CRON_SECRET` rather than user auth.
+- **MED-AS-003:** The `check-in/qr` route uses inline auth rather than `requireRole`. QR check-in is a high-frequency operation and should use the canonical auth pattern with appropriate role restrictions.
 
-This means the 20 req/min rate limit on AI endpoints does not hold under concurrent load.
+### LOW
+- **LOW-AS-001:** Many routes return generic `{ error: "Internal server error" }` with status 500 without logging the actual error for observability. The `bookings` route does this: `if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })` — the original `error` from Supabase is discarded.
+- **LOW-AS-002:** Pagination exists (`limit`/`offset` params) on list endpoints but max limit is capped at 100. For corporate use cases where an admin needs to export all members, this cap may force excessive pagination.
+- **LOW-AS-003:** No CORS configuration observed. All API routes will use Next.js default CORS behavior (same-origin only). This is fine for the current admin dashboard, but when the iOS app or third-party integrations need to call these APIs directly, CORS headers will need to be added.
 
-**Recommendation:** Rewrite `rateLimit()` to be async — await the Supabase upsert with `ON CONFLICT DO UPDATE SET count = count + 1 RETURNING count`, check the returned count against the limit, and return the real result. This adds ~5ms latency per AI request but provides true distributed rate limiting.
-
----
-
-### HIGH-AS-002: POST /api/campaigns/send uses inline auth without requireRole() or rateLimit()
-
-**Severity:** High
-**Location:** `apps/web/src/app/api/campaigns/send/route.ts`
-
-This route (which sends bulk campaign emails) uses an inline auth check rather than `requireRole()`. As a result:
-- The `studioId` falls back to `DEFAULT_STUDIO_ID` — a hardcoded UUID — if the user's profile has no `studio_id`. A compromised or incomplete profile could send emails against any studio.
-- No rate limiting is applied. An attacker with a valid session can trigger repeated bulk email sends.
-- The auth check uses `ALLOWED_ROLES = ['owner', 'admin', 'manager']` while `requireRole()` normalizes `'admin'` as an alias for `'owner'`. This particular inline check does handle `'admin'`, but the pattern itself is fragile.
-
-**Recommendation:** Refactor this route to use `requireRole(['owner', 'manager'])` + `rateLimit()` consistent with other AI/high-impact routes.
-
----
-
-### HIGH-AS-003: AI natural language search executes AI-generated SQL with limited safeguards
-
-**Severity:** High
-**Location:** `apps/web/src/app/api/ai/search/route.ts`, `apps/web/src/lib/ai/nl-search.ts`
-
-The NL search pipeline translates natural language queries to SQL via Claude, then executes the SQL via a `execute_readonly_sql` Postgres RPC. Mitigations present:
-- System prompt instructs Claude to generate only `SELECT` statements
-- Code rejects any SQL that doesn't start with `SELECT`
-- SQL is scoped to a specific `studio_id`
-
-Gaps:
-- The `execute_readonly_sql` RPC definition was not found in the audited SQL files — if it does not enforce a `SET TRANSACTION READ ONLY` or uses a limited-privilege role, the SELECT-only check in application code is bypassable by prompt injection.
-- No maximum execution time or row limit enforced at the DB layer (only `LIMIT 50` suggested in the prompt)
-- A sufficiently adversarial prompt could instruct Claude to embed a subquery that reads from tables outside the user's studio_id
-
-**Recommendation:**
-1. Verify `execute_readonly_sql` runs in a `SECURITY DEFINER` context with a read-only role that has SELECT-only grants.
-2. Add `SET TRANSACTION READ ONLY` and `SET statement_timeout = '5s'` inside the RPC.
-3. Validate that the generated SQL contains `studio_id = '<studioId>'` before execution.
-
----
-
-### MEDIUM-AS-004: 10 of 17 AI routes lack rate limiting
-
-**Severity:** Medium
-**Location:** `/api/ai/insights`, `/api/ai/insights/generate`, `/api/ai/recommendations`, `/api/ai/revenue-anomaly`, `/api/ai/booking-patterns`, `/api/ai/trainer-summary`, `/api/ai/intake-enrichment`, `/api/ai/auto-reply`, `/api/ai/waitlist-message`
-
-The high-usage AI endpoints (`/api/ai/briefing`, `/api/ai/search`, `/api/ai/churn-prediction`, `/api/ai/health-score`, `/api/ai/campaign-copy`) use rate limiting. The remaining 10 AI routes call the Anthropic API without any limit. A rapid loop against `/api/ai/insights/generate` could accumulate significant Anthropic API costs with no throttle.
-
-**Recommendation:** Apply `rateLimit()` consistently to all AI routes. Consider a shared AI rate limit key per studio (`ai:studio:{studioId}`) rather than per user, to cap total Anthropic spend per studio.
-
----
-
-### MEDIUM-AS-005: GET /api/members/[id] uses inline auth pattern instead of requireRole()
-
-**Severity:** Medium
-**Location:** `apps/web/src/app/api/members/[id]/route.ts`
-
-This high-traffic route performs auth inline rather than using `requireRole()`. The inline check:
-- Uses `DEFAULT_STUDIO_ID` as fallback if user has no `studio_id` in profile
-- Makes two separate Supabase calls (auth.getUser + profiles.select) before the role check
-- The PUT and DELETE handlers in the same file were not verified to follow the same pattern consistently
-
-**Recommendation:** Refactor to `requireRole(['owner', 'manager'])`.
-
----
-
-### MEDIUM-AS-006: Hardcoded DEFAULT_STUDIO_ID fallbacks scattered across routes
-
-**Severity:** Medium
-**Location:** `apps/web/src/lib/constants.ts`, multiple routes
-
-Several routes use `DEFAULT_STUDIO_ID` as a fallback when `authProfile?.studio_id` is null:
-```ts
-const studioId = authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
-```
-This is a single-tenant convenience that becomes a multi-tenancy security hole at Phase 4 SaaS launch. A user with no `studio_id` on their profile would be silently bucketed into the default studio, potentially accessing another studio's data.
-
-**Recommendation:** Remove `DEFAULT_STUDIO_ID` fallbacks from all API routes. Return a 403 if `studio_id` is null. Keep `DEFAULT_STUDIO_ID` only in development/seed tooling.
-
----
-
-### MEDIUM-AS-007: EasyPost webhook has no signature verification
-
-**Severity:** Medium
-**Location:** `apps/web/src/app/api/webhooks/easypost/route.ts` (inferred from directory listing)
-
-The Stripe webhook uses `constructWebhookEvent()` signature verification. The Resend and Twilio webhooks use Svix HMAC. The EasyPost webhook directory exists but signature verification was not confirmed. If unverified, the webhook endpoint accepts arbitrary HTTP POSTs that could spoof shipping events.
-
-**Recommendation:** Implement EasyPost HMAC signature verification using their `X-Hmac-Signature-256` header.
-
----
-
-### LOW-AS-008: /api/cron routes protected only by CRON_SECRET — no IP allowlisting
-
-**Severity:** Low
-**Location:** `/api/cron/waitlist-promote`, `/api/campaigns/process-scheduled`
-
-These cron-triggered endpoints are protected by a `CRON_SECRET` header. If the secret leaks, any external actor can trigger waitlist promotion or campaign sending. Netlify Scheduled Functions can also be configured with IP allowlisting as an additional layer.
-
-**Recommendation:** Add Netlify IP allowlisting for cron endpoint callers, or migrate to Inngest-triggered functions which use signed event payloads.
-
----
-
-### LOW-AS-009: OpenAPI spec endpoint exists but spec accuracy unverified
-
-**Severity:** Low
-**Location:** `apps/web/src/app/api/openapi/route.ts`, `apps/web/src/app/(admin)/docs/api`
-
-There is an OpenAPI spec endpoint and a Swagger UI documentation page. The spec is hand-maintained (not auto-generated from route handlers). With 150 route files, spec drift is likely. The recent 15 Glofox API method corrections and 6 new automation trigger types are unlikely to be reflected.
-
-**Recommendation:** Evaluate auto-generation tooling (e.g., `next-swagger-doc` or `zod-to-openapi`). At minimum, add spec review to the release checklist.
-
----
-
-### INFO-AS-010: /api/health returns 200 with no auth — suitable for monitoring
-
-**Severity:** Info
-**Location:** `apps/web/src/app/api/health/route.ts`
-
-The health check endpoint is unauthenticated and returns a simple success response. This is standard practice for monitoring systems. Confirmed intentional.
-
----
-
-## Summary Table
-
-| ID | Severity | Category | Title |
-|----|----------|----------|-------|
-| HIGH-AS-001 | High | Security | Rate limiter non-functional for cross-instance protection |
-| HIGH-AS-002 | High | Security | /api/campaigns/send bypasses requireRole + rateLimit |
-| HIGH-AS-003 | High | Security | NL search executes AI-generated SQL with limited DB-layer guardrails |
-| MEDIUM-AS-004 | Medium | Security | 10 of 17 AI routes lack rate limiting |
-| MEDIUM-AS-005 | Medium | Security | /api/members/[id] uses inline auth instead of requireRole() |
-| MEDIUM-AS-006 | Medium | Multi-tenancy | DEFAULT_STUDIO_ID fallback scattered across routes |
-| MEDIUM-AS-007 | Medium | Security | EasyPost webhook may lack signature verification |
-| LOW-AS-008 | Low | Security | Cron endpoints protected by secret only — no IP allowlisting |
-| LOW-AS-009 | Low | Documentation | OpenAPI spec manually maintained — likely drifted |
-| INFO-AS-010 | Info | Operations | Health endpoint unauthenticated — confirmed intentional |
+### INFO
+- **INFO-AS-001:** The `requireRole()` helper makes a profile lookup on every authenticated request (2 DB calls: `auth.getUser()` + `profiles` select). This is efficient but means every API call incurs at least 2 Supabase round-trips.
+- **INFO-AS-002:** 159 total route files discovered — an extensive API surface for a Phase 1+2 system. Many future-phase routes (shipping, events detail, payroll export) are already implemented.
+- **INFO-AS-003:** Glofox write-back (booking creation) uses fire-and-forget Inngest events rather than synchronous calls. This is the correct pattern for external API integration.

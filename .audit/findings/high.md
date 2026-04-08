@@ -1,130 +1,94 @@
 # High Findings
 
-**Generated:** 2026-04-05
-**Deduplicated and cross-referenced from 10 layer audit reports.**
+**Date:** 2026-04-08
 
 ---
 
-## HIGH-001: automation_flows CHECK constraint blocks 6 new trigger types
+## HIGH-1: Missing Index on bookings(class_id, studio_id, status)
+**Source:** data-model, performance-infra | Corroborated: CR-003
 
-**IDs:** DM-003, UF-002, TQ-002
-**Corroborated by:** data-model, user-flow, testing-quality (3/10 layers)
+Every booking creation triggers `SELECT COUNT(*) FROM bookings WHERE class_id = ? AND studio_id = ? AND status IN (...)`. Without a composite index, this is a full table scan. As bookings grow to tens of thousands, this query degrades to 100ms+, directly impacting booking response time.
 
-The Phase 2 migration's CHECK constraint on `automation_flows.trigger_type` was not updated when 6 new trigger types were added to `evaluate-triggers.ts`. Creating any automation with these types will fail silently at the database level. Additionally, these 6 types have no unit tests.
-
-**New types blocked:** `never_booked`, `classpass_repeat`, `one_and_done`, `cooling_off`, `plan_upgrade_candidate`, `class_type_fan`
-
-**Fix:** Apply schema migration to update the CHECK constraint. Add test coverage for new trigger evaluation logic.
+**Fix:** `CREATE INDEX idx_bookings_class_status ON bookings(class_id, studio_id, status);`
 
 ---
 
-## HIGH-002: Rate limiter is non-functional for cross-instance protection
+## HIGH-2: No Database Migration Runner
+**Source:** performance-infra, data-model, project-structure | Corroborated: CR-005
 
-**IDs:** AS-001, SEC-002
-**Corroborated by:** api-surface, security (2/10 layers)
+SQL migration files in `scripts/` are applied manually with no runner, no migration history table, and no ordering guarantee. `audit-fixes-migration.sql` must run after `phase2-migration.sql` but this is enforced only by documentation.
 
-`rateLimit()` returns an in-memory optimistic result. In serverless, each instance has its own counter. 10 AI routes lack any rate limiting. A stolen session token can generate unbounded Anthropic API costs.
-
-**Fix:** Rewrite `rateLimit()` to be async — await the Supabase atomic increment. Apply `rateLimit()` to all 17 AI routes using studio-level keys.
+**Fix:** Adopt a migration runner (Supabase CLI migrations or Flyway) with a `schema_migrations` table. Convert all SQL files to numbered migrations (e.g., `001_phase2_tables.sql`, `002_audit_fixes.sql`).
 
 ---
 
-## HIGH-003: POST /api/campaigns/send bypasses requireRole() and uses DEFAULT_STUDIO_ID
+## HIGH-3: No Automated Type Generation from Database Schema
+**Source:** data-model
 
-**IDs:** AS-002, SEC-003
-**Corroborated by:** api-surface, security (2/10 layers)
+TypeScript types in `packages/types/src/` are hand-maintained and can drift from the live Supabase schema. A column rename, type change, or missing field in production won't be caught until runtime.
 
-The campaign bulk send route uses inline auth without `requireRole()` and falls back to `DEFAULT_STUDIO_ID` if the user's profile has no `studio_id`. This is the highest-impact route in the system (sends bulk email to hundreds of members).
-
-**Fix:** Refactor to `requireRole(['owner', 'manager'])`.
+**Fix:** Add `supabase gen types typescript --project-id YOUR_PROJECT > packages/types/src/database.types.ts` to CI. Use generated types as the source of truth and re-export domain-specific types built on top of them.
 
 ---
 
-## HIGH-004: AI NL Search executes AI-generated SQL without DB-layer read-only enforcement
+## HIGH-4: execute-flow Automation Function Has No Unit Tests
+**Source:** testing-quality, user-flow | Corroborated: CR-007
 
-**IDs:** AS-003, SEC-001, AI-001
-**Corroborated by:** api-surface, security, ai-layer (3/10 layers)
+The `execute-flow.ts` Inngest function processes all automation step executions: email sends, waits, conditional branching, and field updates. It's the highest-complexity background function with the most user-visible impact and has zero unit tests.
 
-The NL search feature translates natural language to SQL via Claude, then executes via `execute_readonly_sql` RPC. Application-layer SELECT-only check exists but the RPC definition was not found in audited migration files. DB-layer enforcement (read-only role, `SET TRANSACTION READ ONLY`) is unconfirmed.
-
-**Fix:** Verify or create `execute_readonly_sql` with read-only role enforcement, `statement_timeout = '5s'`, and add `studio_id` presence validation before execution.
+**Fix:** Write unit tests covering: (1) email step execution, (2) wait step handling, (3) condition branching (true/false), (4) enrollment completion, (5) error handling and retry.
 
 ---
 
-## HIGH-005: AI layer has near-zero test coverage — 22 modules, 1 test
+## HIGH-5: Inconsistent API Auth Patterns — Corporate/Invoice Routes
+**Source:** api-surface, security | Corroborated: CR-004
 
-**ID:** TQ-001
-**Layer:** testing-quality
+Corporate and Invoice routes use inline manual auth instead of `requireRole()`, which means they don't benefit from centralized improvements (role aliases, studio_id resolution) and create maintenance divergence. Additionally, some corporate routes may not consistently apply `profile.studio_id` filtering.
 
-The entire AI layer (briefing, churn prediction, health score, insights generator, revenue anomaly, etc.) has only 1 unit test (ai-search). Every module has a rules-based fallback path that is testable without the real API.
-
-**Fix:** Add unit tests for rules-based fallback in each AI module by mocking `getAnthropicClient()` to return null.
+**Fix:** Migrate all inline auth routes to use `requireRole()`. Audit each corporate/invoice route to verify `studio_id` is always sourced from `profile.studio_id`, not `DEFAULT_STUDIO_ID`.
 
 ---
 
-## HIGH-006: Integration tests are disabled in CI — never run
+## HIGH-6: Rate Limiting Only on AI + SMS — Missing on Expensive Operations
+**Source:** api-surface, integration | Corroborated: CR-008
 
-**ID:** TQ-003
-**Corroborated by:** testing-quality, performance-infra (2/10 layers)
+Campaign send, report generation, payroll calculation, and AI insight generation have no rate limiting. An authenticated user can trigger CPU/memory-intensive operations in rapid succession, potentially degrading the service for all users.
 
-6 integration test files exist (bookings, auth, Stripe webhooks, Supabase CRUD) but the CI step is commented out pending a Supabase test project (MED-27). Data layer bugs and performance regressions are caught only in production.
-
-**Fix:** Provision Supabase test project or use Supabase local Docker. Uncomment integration test CI step.
+**Fix:** Add `rateLimit()` calls to: `/api/campaigns/send` (3/min), `/api/reports/[id]/generate` (5/min), `/api/payroll/periods/[id]/calculate` (10/min), and `/api/ai/insights/generate` (10/min). Verify the rate-limit RPC exists in the database.
 
 ---
 
-## HIGH-007: Glofox sync has no circuit breaker or failure alerting
+## HIGH-7: No Observability / Error Tracking in Production
+**Source:** ai-layer, integration, performance-infra | Corroborated: CR-006
 
-**ID:** INT-002
-**Layer:** integration
+All production errors rely on `console.error`. Netlify function logs are not searchable, aggregatable, or alertable. Silent AI fallbacks, database errors, and external API failures go undetected until a user reports a problem.
 
-Glofox API outage stops all incremental sync. The function retries 3 times then silently stops. No alerting is triggered. `glofox_sync_state` shows errors but no notification reaches admins.
-
-**Fix:** Add failure alerting (email/Slack) when Glofox sync exhausts retries. Surface sync error count in the admin Glofox status page.
+**Fix:** Add Sentry (or equivalent) with: (1) `Sentry.captureException` for all AI fallbacks, (2) integration-level error capture for Stripe/Resend/Glofox failures, (3) custom alerts for `status=failed` automation enrollments.
 
 ---
 
-## HIGH-008: 10 of 17 AI routes lack rate limiting — Anthropic cost exposure
+## HIGH-8: Glofox Sync Needs to Move to Inngest
+**Source:** performance-infra, integration | Corroborated: partial CR-003
 
-**ID:** AI-003, AS-004
-**Corroborated by:** ai-layer, api-surface (2/10 layers)
+Glofox sync runs as an HTTP endpoint with a 60-second Netlify function timeout. NDJSON streaming is used to work around the timeout. As the Glofox dataset grows, even streaming won't prevent timeout failures. Additionally, there's no circuit breaker to prevent repeated failures when Glofox is down.
 
-Routes without rate limiting: insights/generate, recommendations, revenue-anomaly, booking-patterns, trainer-summary, intake-enrichment, auto-reply, waitlist-message, and others. At Sonnet 4.6 pricing, a loop against these endpoints could accumulate hundreds of dollars in API costs.
-
-**Fix:** Apply `rateLimit()` with studio-level keys to all AI routes.
+**Fix:** Move Glofox sync logic to an Inngest function with Inngest's built-in cron scheduling. Inngest functions have no timeout limits and have built-in retry, backoff, and failure handling.
 
 ---
 
-## HIGH-009: Command Center revenue display is wrong — first screen owners see daily
+## HIGH-9: Next.js 16.2.0 Version Risk
+**Source:** project-structure
 
-**ID:** UF-001
-**Corroborated by:** user-flow, ui-ux, data-model (3/10 layers)
+Next.js 16.2.0 is a very recent version; the AGENTS.md explicitly warns "APIs, conventions, and file structure may all differ from training data." If this is a pre-release or RC build, there may be undocumented breaking changes or instability.
 
-The Command Center reads revenue from `daily_metrics` which is wrong for all historical dates. This is compounded by the AI briefing also receiving incorrect revenue context.
-
-**Fix:** Same as CRIT-001. Interim: query `transactions` directly for Command Center revenue widgets.
+**Fix:** Verify `16.2.0` is a stable release (not RC/canary). Monitor the Next.js changelog for breaking changes affecting the app's patterns.
 
 ---
 
-## HIGH-010: Engagement leaderboard shows placeholder data for two of four metrics
+## HIGH-10: EasyPost Webhook Has No Verified Signature Check
+**Source:** integration, security
 
-**ID:** UX-001
-**Layer:** ui-ux
+The `/api/webhooks/easypost` endpoint processes shipping events without confirmed webhook signature verification. An attacker could POST fake shipping events to mark unshipped orders as delivered.
 
-The Engagement module (the gamification/retention surface) shows "--" for `currentStreak` and `referrals` columns. The code has explicit TODOs noting these data pipelines are missing. Users who navigate to the Engagement module see an incomplete and unexplained interface.
+**Fix:** Implement EasyPost webhook signature verification using their HMAC signature scheme before the shipping feature is activated.
 
-**Fix:** Implement streak and referral data pipelines before shipping the Engagement module, or hide the incomplete columns until the data is available.
-
----
-
-## HIGH-011: Missing composite indexes on 3 high-frequency query paths
-
-**IDs:** DM-004, PERF-002
-**Corroborated by:** data-model, performance-infra (2/10 layers)
-
-Three missing indexes will cause scan degradation at multi-tenant scale:
-- `bookings(studio_id, member_id, attended)` — daily enrichment cron
-- `transactions(studio_id, created_at, status)` — daily metrics cron + revenue analytics
-- `profiles(studio_id, engagement_status)` — trigger evaluation every 10 minutes
-
-**Fix:** Apply 3 CREATE INDEX statements. Low effort, high impact.

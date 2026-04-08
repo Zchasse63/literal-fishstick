@@ -666,7 +666,7 @@ export default function MembersPage() {
                                       onClick={(e) => {
                                         e.stopPropagation()
                                         setOpenDropdownId(null)
-                                        showToast('Member removal coming in Phase 2')
+                                        if (confirm('Archive this member? This can be reversed.')) { fetch(`/api/members/${member.id}`, { method: 'DELETE' }).then(r => r.ok ? window.location.reload() : alert('Failed to archive')).catch(() => alert('Network error')) }
                                       }}
                                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                     >

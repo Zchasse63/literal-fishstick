@@ -95,9 +95,42 @@ function TemplateCard({ template, delay }: { template: Template; delay: number }
   )
 }
 
+interface EnrollmentRecord {
+  id: string
+  status: string
+  created_at: string
+  member?: { id: string; full_name: string | null; email: string | null } | null
+}
+
 function AutomationCard({ automation, delay }: { automation: Automation; delay: number }) {
   const [active, setActive] = useState(automation.active)
+  const [showEnrollments, setShowEnrollments] = useState(false)
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([])
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false)
   const badge = triggerBadgeConfig[automation.triggerType]
+
+  const loadEnrollments = async () => {
+    if (showEnrollments) {
+      setShowEnrollments(false)
+      return
+    }
+    setEnrollmentsLoading(true)
+    try {
+      const res = await fetch(`/api/automations/${automation.id}/enrollments?limit=20`)
+      if (res.ok) {
+        const json = await res.json()
+        setEnrollments(json.data ?? [])
+        setShowEnrollments(true)
+      } else {
+        window.alert('Failed to load enrollments')
+      }
+    } catch {
+      window.alert('Failed to load enrollments')
+    } finally {
+      setEnrollmentsLoading(false)
+    }
+  }
+
   return (
     <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay }} className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-all">
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -121,9 +154,49 @@ function AutomationCard({ automation, delay }: { automation: Automation; delay: 
         <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" /><span className="text-xs text-gray-500 dark:text-gray-400">Last triggered {automation.lastTriggered}</span></div>
         <div className="flex items-center gap-2">
           <Link href={`/marketing/automations/${automation.id}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 transition-colors"><Pencil className="h-3 w-3" />Edit</Link>
-          <button onClick={() => window.alert('Enrollment view coming in Phase 2')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors"><Eye className="h-3 w-3" />Enrollments</button>
+          <button onClick={loadEnrollments} disabled={enrollmentsLoading} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors disabled:opacity-50"><Eye className="h-3 w-3" />{enrollmentsLoading ? 'Loading...' : 'Enrollments'}</button>
         </div>
       </div>
+      {/* Inline Enrollments Panel */}
+      {showEnrollments && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Recent Enrollments ({enrollments.length})</p>
+            <button onClick={() => setShowEnrollments(false)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Close</button>
+          </div>
+          {enrollments.length === 0 ? (
+            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No enrollments yet</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {enrollments.map((e) => (
+                <div key={e.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{e.member?.full_name ?? 'Unknown member'}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{e.member?.email ?? ''}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                      e.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                      e.status === 'completed' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                      e.status === 'exited' ? 'bg-gray-100 text-gray-500 border border-gray-200' :
+                      'bg-amber-50 text-amber-700 border border-amber-200'
+                    )}>
+                      {e.status}
+                    </span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
     </motion.div>
   )
 }

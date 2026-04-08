@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -42,6 +42,7 @@ export interface EmployeeDocument {
   status: DocStatus
   uploadedDate: string
   expiresDate: string | null
+  fileUrl: string | null
 }
 
 export interface EmployeeListItem {
@@ -95,6 +96,41 @@ export default function DocumentsClient({ initialDocuments, initialEmployees }: 
 
   const [documents] = useState<EmployeeDocument[]>(initialDocuments)
   const [employeesList] = useState<EmployeeListItem[]>(initialEmployees)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileUpload = async (file: File) => {
+    if (!uploadEmployee) {
+      window.alert('Please select an employee first')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      window.alert('File size must be under 10MB')
+      return
+    }
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('document_type', uploadDocType)
+      formData.append('name', file.name)
+      formData.append('tax_year', uploadTaxYear)
+      const res = await fetch(`/api/employees/${uploadEmployee}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+      if (res.ok) {
+        window.location.reload()
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }))
+        window.alert(err.error || 'Upload failed')
+      }
+    } catch {
+      window.alert('Upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const pendingCount = documents.filter(d => d.status === 'pending').length
 
@@ -246,18 +282,61 @@ export default function DocumentsClient({ initialDocuments, initialEmployees }: 
                     <td className="px-6 py-3.5 text-sm text-gray-500 dark:text-gray-400">{doc.expiresDate ?? '—'}</td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => window.alert('Document viewing coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300" title="View">
+                        <button
+                          onClick={() => {
+                            if (doc.fileUrl) {
+                              window.open(doc.fileUrl, '_blank')
+                            } else {
+                              window.alert('No file URL available for this document')
+                            }
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
+                          title="View"
+                        >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button onClick={() => window.alert('Document download coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300" title="Download">
+                        <button
+                          onClick={() => {
+                            if (doc.fileUrl) {
+                              const a = document.createElement('a')
+                              a.href = doc.fileUrl
+                              a.download = doc.documentName
+                              a.click()
+                            } else {
+                              window.alert('No file URL available for download')
+                            }
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
+                          title="Download"
+                        >
                           <Download className="h-4 w-4" />
                         </button>
                         {doc.status === 'pending' && (
                           <>
-                            <button onClick={() => window.alert('Document approval coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700" title="Approve">
+                            <button
+                              onClick={() => {
+                                fetch(`/api/employees/${doc.employeeId}/documents/${doc.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ status: 'approved' }),
+                                }).then(r => r.ok ? window.location.reload() : window.alert('Failed to approve document'))
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                              title="Approve"
+                            >
                               <CheckCircle2 className="h-4 w-4" />
                             </button>
-                            <button onClick={() => window.alert('Document rejection coming in Phase 4')} className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-50 hover:text-red-600" title="Reject">
+                            <button
+                              onClick={() => {
+                                fetch(`/api/employees/${doc.employeeId}/documents/${doc.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ status: 'rejected' }),
+                                }).then(r => r.ok ? window.location.reload() : window.alert('Failed to reject document'))
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                              title="Reject"
+                            >
                               <XCircle className="h-4 w-4" />
                             </button>
                           </>
@@ -335,7 +414,12 @@ export default function DocumentsClient({ initialDocuments, initialEmployees }: 
         <div
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
           onDragLeave={() => setIsDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setIsDragging(false) }}
+          onDrop={(e) => {
+            e.preventDefault()
+            setIsDragging(false)
+            const file = e.dataTransfer.files?.[0]
+            if (file) handleFileUpload(file)
+          }}
           className={cn(
             'flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 transition-all duration-200',
             isDragging
@@ -353,8 +437,23 @@ export default function DocumentsClient({ initialDocuments, initialEmployees }: 
             {isDragging ? 'Drop file here' : 'Drag and drop a file here'}
           </p>
           <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">or click to browse &middot; PDF, DOCX, JPG, PNG up to 10MB</p>
-          <button onClick={() => window.alert('File upload coming in Phase 4')} className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-            Browse Files
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleFileUpload(file)
+              e.target.value = ''
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isUploading ? 'Uploading...' : 'Browse Files'}
           </button>
         </div>
       </motion.div>

@@ -44,6 +44,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // TODO: The campaign_replies table does not exist yet. Once it is created
+    // via a migration, uncomment the queries below and remove this early return.
+    // The table should store inbound email replies linked to campaign send logs.
+    return NextResponse.json(
+      {
+        error:
+          "Campaign replies feature is not yet available. The campaign_replies table has not been created.",
+      },
+      { status: 501 }
+    );
+
+    /*
     // Fetch the campaign reply record
     const { data: reply, error: replyError } = await supabase
       .from("campaign_replies")
@@ -174,6 +186,7 @@ export async function POST(request: Request) {
       reply_id: body.reply_id,
       generated_at: now,
     });
+    */
   } catch (err) {
     console.error("POST /api/ai/auto-reply error:", err);
     return NextResponse.json(
@@ -217,6 +230,17 @@ export async function PUT(request: Request) {
       );
     }
 
+    // TODO: The campaign_replies table does not exist yet. Once it is created
+    // via a migration, uncomment the queries below and remove this early return.
+    return NextResponse.json(
+      {
+        error:
+          "Campaign replies feature is not yet available. The campaign_replies table has not been created.",
+      },
+      { status: 501 }
+    );
+
+    /*
     // Fetch the campaign reply
     const { data: reply, error: replyError } = await supabase
       .from("campaign_replies")
@@ -320,6 +344,7 @@ export async function PUT(request: Request) {
       email_id: sendResult.id,
       dry_run: sendResult.dryRun,
     });
+    */
   } catch (err) {
     console.error("PUT /api/ai/auto-reply error:", err);
     return NextResponse.json(

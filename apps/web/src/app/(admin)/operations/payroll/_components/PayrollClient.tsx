@@ -115,7 +115,22 @@ export default function PayrollClient({ initialPeriods }: PayrollClientProps) {
           <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-base font-semibold text-gray-900 dark:text-gray-100">No payroll periods yet</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create your first pay period to start tracking payroll.</p>
-          <button onClick={() => window.alert('Payroll period creation coming in Phase 4')} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
+          <button
+            onClick={() => {
+              const start = prompt('Period start date (YYYY-MM-DD):')
+              if (!start) return
+              const end = prompt('Period end date (YYYY-MM-DD):')
+              if (!end) return
+              const payDate = prompt('Pay date (YYYY-MM-DD):')
+              if (!payDate) return
+              fetch('/api/payroll/periods', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ period_start: start, period_end: end, pay_date: payDate }),
+              }).then(r => r.ok ? window.location.reload() : r.json().then(e => window.alert(e.error || 'Failed to create period')).catch(() => window.alert('Failed to create period')))
+            }}
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+          >
             <Plus className="h-4 w-4" />
             New Period
           </button>
@@ -142,7 +157,22 @@ export default function PayrollClient({ initialPeriods }: PayrollClientProps) {
             <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Manage pay periods, review calculations, and export payroll</p>
           </div>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
+        <button
+          onClick={() => {
+            const start = prompt('Period start date (YYYY-MM-DD):')
+            if (!start) return
+            const end = prompt('Period end date (YYYY-MM-DD):')
+            if (!end) return
+            const payDate = prompt('Pay date (YYYY-MM-DD):')
+            if (!payDate) return
+            fetch('/api/payroll/periods', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ period_start: start, period_end: end, pay_date: payDate }),
+            }).then(r => r.ok ? window.location.reload() : r.json().then(e => window.alert(e.error || 'Failed to create period')).catch(() => window.alert('Failed to create period')))
+          }}
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+        >
           <Plus className="h-4 w-4" />
           New Period
         </button>
