@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { createBrowserClient } from '@/lib/supabase/client'
@@ -41,7 +41,7 @@ import {
   Bar,
 } from 'recharts'
 import Link from 'next/link'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useUrlTab } from '@/hooks/use-url-tab'
 import { fadeInUp } from '@/lib/motion'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import { useToast } from '@/hooks/use-toast'
@@ -145,8 +145,6 @@ function MetricCard({ metric, index, loading }: { metric: MetricData; index: num
 }
 
 // ─── Tab Pill Navigation ────────────────────────────────────
-const TABS: Tab[] = ['Overview', 'Memberships', 'Transactions']
-
 function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
     <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
@@ -200,25 +198,13 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
 
 // REMOVED: inline OverviewTab, MembershipsTab, TransactionsTab — now imported from _components/
 
-const VALID_TABS: Tab[] = ['Overview', 'Memberships', 'Transactions']
-function parseTab(param: string | null): Tab {
-  if (param && VALID_TABS.includes(param as Tab)) return param as Tab
-  return 'Overview'
-}
+const TABS = ['Overview', 'Memberships', 'Transactions'] as const
 
 export default function RevenuePage() {
   const { toast, showToast } = useToast()
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const activeTab = useMemo(() => parseTab(searchParams.get('tab')), [searchParams])
-  const setActiveTab = useCallback((tab: Tab) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('tab', tab)
-    router.replace(`/revenue?${params.toString()}`, { scroll: false })
-  }, [searchParams, router])
+  const [activeTab, setActiveTab] = useUrlTab<Tab>(TABS, 'Overview', '/revenue')
   const [loading, setLoading] = useState(true)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
-  const [churnRateValue, setChurnRateValue] = useState<string>('\u2014')
 
   // Metric data
   const [metrics, setMetrics] = useState<MetricData[]>([])
@@ -243,10 +229,11 @@ export default function RevenuePage() {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-      // Run all queries in parallel
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString()
+
+      // Run ALL queries in parallel (no waterfall)
       const [
         mrrRes,
-        totalRevenueRes,
         activeCountRes,
         failedRes,
         dailyRes,
@@ -254,6 +241,9 @@ export default function RevenuePage() {
         txListRes,
         plansRes,
         promoRes,
+        mrrHistRes,
+        tierCountsRes,
+        churnRes,
       ] = await Promise.all([
         // MRR: membership transactions this month
         supabase
@@ -261,13 +251,6 @@ export default function RevenuePage() {
           .select('amount')
           .eq('studio_id', STUDIO_ID)
           .eq('type', 'membership')
-          .eq('status', 'completed')
-          .gte('created_at', monthStart),
-        // Total revenue this month
-        supabase
-          .from('transactions')
-          .select('amount')
-          .eq('studio_id', STUDIO_ID)
           .eq('status', 'completed')
           .gte('created_at', monthStart),
         // Active member count for ARPM
@@ -322,21 +305,30 @@ export default function RevenuePage() {
           .eq('studio_id', STUDIO_ID)
           .order('created_at', { ascending: false })
           .limit(50),
+        // MRR history (6 months) — previously a sequential waterfall
+        supabase
+          .from('transactions')
+          .select('amount, created_at')
+          .eq('studio_id', STUDIO_ID)
+          .eq('type', 'membership')
+          .eq('status', 'completed')
+          .gte('created_at', sixMonthsAgo)
+          .order('created_at', { ascending: true }),
+        // Tier counts (single query replaces N+1 per-plan queries)
+        supabase
+          .from('members')
+          .select('membership_tier')
+          .eq('studio_id', STUDIO_ID)
+          .eq('membership_status', 'active'),
+        // Churn rate (folded into main fetch to avoid stale closure)
+        fetch('/api/analytics/churn-rate').then(r => r.ok ? r.json() : null).catch(() => null),
       ])
 
       // Calculate MRR
       const mrrCents = (mrrRes.data || []).reduce((sum: number, row: any) => sum + (row.amount || 0), 0)
       const mrr = mrrCents / 100
 
-      // Total revenue today
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-      const todayRevenueCents = (totalRevenueRes.data || [])
-        .filter((row: any) => row.created_at ? new Date(row.created_at) >= new Date(todayStart) : false)
-        // totalRevenueRes doesn't have created_at, so we calculate from dailyRes instead
-      const totalRevenueCents = (totalRevenueRes.data || []).reduce((sum: number, row: any) => sum + (row.amount || 0), 0)
-
-      // Calculate revenue today from daily data
-      const todayStr = `${now.getMonth() + 1}/${now.getDate()}`
+      // Revenue today from daily data
       const todayFromDaily = (dailyRes.data || [])
         .filter((row: any) => {
           const d = new Date(row.created_at)
@@ -369,7 +361,7 @@ export default function RevenuePage() {
         },
         {
           label: 'Churn Rate',
-          value: churnRateValue,
+          value: churnRes?.data?.current_rate != null ? `${churnRes.data.current_rate}%` : '\u2014',
           trend: '\u2014',
           trendDirection: 'neutral',
           trendGood: true,
@@ -451,18 +443,7 @@ export default function RevenuePage() {
         }))
       setRevenueBySource(sourceData)
 
-      // ─── MRR Growth (monthly) ────────────────────────
-      // Get membership revenue grouped by month for last 6 months
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString()
-      const mrrHistRes = await supabase
-        .from('transactions')
-        .select('amount, created_at')
-        .eq('studio_id', STUDIO_ID)
-        .eq('type', 'membership')
-        .eq('status', 'completed')
-        .gte('created_at', sixMonthsAgo)
-        .order('created_at', { ascending: true })
-
+      // ─── MRR Growth (monthly, data from parallel batch) ──
       const monthlyMrr = new Map<string, number>()
       for (const row of (mrrHistRes.data || [])) {
         const d = new Date(row.created_at)
@@ -501,36 +482,33 @@ export default function RevenuePage() {
       })
       setTransactions(txRows)
 
-      // ─── Membership Plans ────────────────────────────
+      // ─── Membership Plans (single query replaces N+1) ──
       if (plansRes.data) {
-        // For each plan, count active members with matching tier
-        const planRows = await Promise.all(
-          plansRes.data.map(async (plan: any) => {
-            const tierSlug = plan.tier || plan.name.toLowerCase().replace(/\s+/g, '_')
-            const countRes = await supabase
-              .from('members')
-              .select('id', { count: 'exact', head: true })
-              .eq('studio_id', STUDIO_ID)
-              .eq('membership_status', 'active')
-              .eq('membership_tier', tierSlug)
+        // Build tier count map from the single grouped query
+        const tierCounts = new Map<string, number>()
+        for (const row of (tierCountsRes.data || [])) {
+          const tier = row.membership_tier || 'unknown'
+          tierCounts.set(tier, (tierCounts.get(tier) || 0) + 1)
+        }
 
-            const activeCount = countRes.count || 0
-            const price = plan.price / 100
-            const isRecurring = plan.is_recurring
-            const priceLabel = isRecurring
-              ? `$${price}/${plan.billing_interval === 'month' ? 'mo' : plan.billing_interval}`
-              : `$${price}`
-            const planMrr = isRecurring ? `$${(price * activeCount).toLocaleString()}` : '\u2014'
+        const planRows = plansRes.data.map((plan: any) => {
+          const tierSlug = plan.tier || plan.name.toLowerCase().replace(/\s+/g, '_')
+          const activeCount = tierCounts.get(tierSlug) || 0
+          const price = plan.price / 100
+          const isRecurring = plan.is_recurring
+          const priceLabel = isRecurring
+            ? `$${price}/${plan.billing_interval === 'month' ? 'mo' : plan.billing_interval}`
+            : `$${price}`
+          const planMrr = isRecurring ? `$${(price * activeCount).toLocaleString()}` : '\u2014'
 
-            return {
-              name: plan.name,
-              price: priceLabel,
-              type: isRecurring ? 'Recurring' : (plan.credits_per_cycle ? 'Credit Pack' : 'Single'),
-              active: activeCount > 0 ? activeCount : null,
-              mrr: planMrr,
-            }
-          })
-        )
+          return {
+            name: plan.name,
+            price: priceLabel,
+            type: isRecurring ? 'Recurring' : (plan.credits_per_cycle ? 'Credit Pack' : 'Single'),
+            active: activeCount > 0 ? activeCount : null,
+            mrr: planMrr,
+          }
+        })
         setMembershipPlans(planRows)
       }
 
@@ -580,18 +558,6 @@ export default function RevenuePage() {
     const interval = setInterval(fetchData, 60000)
     return () => clearInterval(interval)
   }, [fetchData])
-
-  // Fetch churn rate from API
-  useEffect(() => {
-    fetch('/api/analytics/churn-rate')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.churn_rate != null) {
-          setChurnRateValue(`${data.churn_rate}%`)
-        }
-      })
-      .catch(() => { /* leave as dash */ })
-  }, [])
 
   return (
     <motion.div

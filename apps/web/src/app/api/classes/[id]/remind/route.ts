@@ -90,57 +90,52 @@ export async function POST(
     const defaultMessage = `Reminder: ${classTitle} is coming up on ${classTime}. See you soon!`;
     const reminderMessage = message || defaultMessage;
 
-    // Send emails via the internal email API
-    if (channel === "email" || channel === "both") {
-      for (const booking of attendees) {
-        const profile = (booking as any).members?.profiles;
-        if (!profile?.email) { failed++; continue; }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-        try {
-          const emailRes = await fetch(
-            `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/email/send`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                to: profile.email,
-                subject: `Reminder: ${classTitle} — ${classTime}`,
-                html: `<p>Hi ${profile.full_name},</p><p>${reminderMessage}</p>`,
-                studio_id: studioId,
-              }),
-            }
-          );
-          if (emailRes.ok) sent++;
-          else failed++;
-        } catch {
-          failed++;
-        }
+    // Send emails in parallel (not sequential)
+    if (channel === "email" || channel === "both") {
+      const emailResults = await Promise.allSettled(
+        attendees.map(async (booking) => {
+          const profile = (booking as any).members?.profiles;
+          if (!profile?.email) return "skip";
+          const res = await fetch(`${appUrl}/api/email/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: profile.email,
+              subject: `Reminder: ${classTitle} — ${classTime}`,
+              html: `<p>Hi ${profile.full_name},</p><p>${reminderMessage}</p>`,
+              studio_id: studioId,
+            }),
+          });
+          return res.ok ? "sent" : "failed";
+        })
+      );
+      for (const r of emailResults) {
+        if (r.status === "fulfilled" && r.value === "sent") sent++;
+        else if (r.status === "fulfilled" && r.value === "skip") { /* no email */ }
+        else failed++;
       }
     }
 
-    // SMS: log intent (provider TBD)
+    // SMS in parallel
     if (channel === "sms" || channel === "both") {
-      for (const booking of attendees) {
-        const profile = (booking as any).members?.profiles;
-        if (!profile?.phone) { failed++; continue; }
-
-        try {
-          const smsRes = await fetch(
-            `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/sms/send`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                to: profile.phone,
-                body: reminderMessage,
-              }),
-            }
-          );
-          if (smsRes.ok) sent++;
-          else failed++;
-        } catch {
-          failed++;
-        }
+      const smsResults = await Promise.allSettled(
+        attendees.map(async (booking) => {
+          const profile = (booking as any).members?.profiles;
+          if (!profile?.phone) return "skip";
+          const res = await fetch(`${appUrl}/api/sms/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ to: profile.phone, body: reminderMessage }),
+          });
+          return res.ok ? "sent" : "failed";
+        })
+      );
+      for (const r of smsResults) {
+        if (r.status === "fulfilled" && r.value === "sent") sent++;
+        else if (r.status === "fulfilled" && r.value === "skip") { /* no phone */ }
+        else failed++;
       }
     }
 

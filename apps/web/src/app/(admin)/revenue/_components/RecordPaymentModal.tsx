@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ const PAYMENT_TYPES = [
 ]
 
 export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: RecordPaymentModalProps) {
+  const supabase = useRef(createBrowserClient()).current
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -74,7 +75,6 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
     if (memberSearch.length < 2) { setMembers([]); return }
     const timer = setTimeout(async () => {
       setSearchLoading(true)
-      const supabase = createBrowserClient()
       const { data } = await supabase
         .from('profiles')
         .select('id, full_name, email')
