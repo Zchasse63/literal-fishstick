@@ -90,9 +90,12 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── Fetch Campaign for A/B Test Config ───────────────────
+  // B12 FIX: real schema uses ab_variants jsonb instead of per-variant
+  // columns. Shape: { a: { subject, body_html }, b: { subject, body_html },
+  // split_percentage?: number, auto_select_winner?: boolean }
   const { data: campaign } = await supabase
     .from('campaigns')
-    .select('ab_test_enabled, ab_split_percentage, variant_a_subject, variant_a_body, variant_b_subject, variant_b_body, name')
+    .select('ab_test_enabled, ab_variants, name')
     .eq('id', campaignId)
     .eq('studio_id', STUDIO_ID)
     .single()
@@ -231,14 +234,17 @@ export async function POST(request: NextRequest) {
           let resolvedBodyTemplate = bodyTemplate
 
           if (campaign?.ab_test_enabled) {
-            const splitPct = campaign.ab_split_percentage ?? 50
+            // B12 FIX: real schema uses ab_variants jsonb
+            const variants = campaign.ab_variants as {
+              a?: { subject?: string; body_html?: string }
+              b?: { subject?: string; body_html?: string }
+              split_percentage?: number
+            } | null
+            const splitPct = variants?.split_percentage ?? 50
             variant = randomInt(100) < splitPct ? 'A' : 'B'
-            resolvedSubjectTemplate = variant === 'A'
-              ? (campaign.variant_a_subject ?? subject)
-              : (campaign.variant_b_subject ?? subject)
-            resolvedBodyTemplate = variant === 'A'
-              ? (campaign.variant_a_body ?? bodyTemplate)
-              : (campaign.variant_b_body ?? bodyTemplate)
+            const chosen = variant === 'A' ? variants?.a : variants?.b
+            resolvedSubjectTemplate = chosen?.subject ?? subject
+            resolvedBodyTemplate = chosen?.body_html ?? bodyTemplate
           }
 
           const nameParts = (member.full_name ?? '').split(' ')
@@ -339,13 +345,17 @@ export async function POST(request: NextRequest) {
 
       const finalStatus = currentState?.status === 'paused' ? 'paused' : 'completed'
 
+      // B12 FIX: real schema uses `send_completed_at`, not `completed_at`.
+      // There is no `failed_count` column — failures are tracked via
+      // `email_send_log.status='failed'` rows and can be counted on demand.
+      // The `failed` local counter is still included in the final SSE
+      // payload so the client UI sees it.
       await supabase
         .from('campaigns')
         .update({
           status: finalStatus,
           sent_count: sent,
-          failed_count: failed,
-          completed_at: finalStatus === 'completed' ? new Date().toISOString() : null,
+          send_completed_at: finalStatus === 'completed' ? new Date().toISOString() : null,
           recipient_count: total,
           updated_at: new Date().toISOString(),
         })

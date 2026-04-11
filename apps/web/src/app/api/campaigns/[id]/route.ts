@@ -39,6 +39,10 @@ export async function GET(
     }
 
     // ─── Fetch Campaign ────────────────────────────────────────
+    // B12 FIX: Engagement counters renamed from plural (opened_count) to
+    // singular (open_count/click_count/bounce_count/unsubscribe_count) to
+    // match the real schema. `deleted_at` column was added via migration
+    // `b12_add_campaigns_deleted_at` so the soft-delete filter stays.
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select('*')
@@ -54,16 +58,16 @@ export async function GET(
     // ─── Compute Engagement Metrics ────────────────────────────
     const metrics = {
       open_rate: campaign.sent_count > 0
-        ? Math.round((campaign.opened_count / campaign.sent_count) * 10000) / 100
+        ? Math.round((campaign.open_count / campaign.sent_count) * 10000) / 100
         : 0,
       click_rate: campaign.sent_count > 0
-        ? Math.round((campaign.clicked_count / campaign.sent_count) * 10000) / 100
+        ? Math.round((campaign.click_count / campaign.sent_count) * 10000) / 100
         : 0,
       bounce_rate: campaign.sent_count > 0
-        ? Math.round((campaign.bounced_count / campaign.sent_count) * 10000) / 100
+        ? Math.round((campaign.bounce_count / campaign.sent_count) * 10000) / 100
         : 0,
       unsubscribe_rate: campaign.sent_count > 0
-        ? Math.round((campaign.unsubscribed_count / campaign.sent_count) * 10000) / 100
+        ? Math.round((campaign.unsubscribe_count / campaign.sent_count) * 10000) / 100
         : 0,
     }
 
@@ -205,21 +209,24 @@ export async function PUT(
     }
 
     // ─── Apply Updates ─────────────────────────────────────────
+    // B12 FIX: allowedFields rewritten to use real schema column names.
+    // Phantom removed: body_template, variant_a_*, variant_b_*,
+    // ab_split_percentage, ab_auto_select_winner, recipient_count (this
+    // is derived from segment_id at send time, not user-editable).
+    // Real fields: body_html, body_text, sms_body, ab_variants jsonb.
     const body = await request.json()
     const allowedFields = [
       'name',
       'subject',
-      'body_template',
+      'body_html',
+      'body_text',
+      'sms_body',
+      'preview_text',
       'segment_id',
-      'recipient_count',
+      'recipient_filter',
       'type',
       'ab_test_enabled',
-      'variant_a_subject',
-      'variant_a_body',
-      'variant_b_subject',
-      'variant_b_body',
-      'ab_split_percentage',
-      'ab_auto_select_winner',
+      'ab_variants',
       'ab_winner_metric',
     ]
 

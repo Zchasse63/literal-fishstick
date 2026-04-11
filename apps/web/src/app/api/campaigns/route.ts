@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     .from('campaigns')
     .select('*', { count: 'exact' })
     .eq('studio_id', studioId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 

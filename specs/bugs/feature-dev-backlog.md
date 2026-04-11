@@ -209,9 +209,18 @@ This is the backlog of items the QA pipeline surfaced that are NOT mechanical fi
 
 ---
 
-### B12 — Campaigns subroutes wired to phantom schema (9 files)
+### B12 — Campaigns subroutes wired to phantom schema — PARTIALLY FIXED
 
-**State:** Systemic phantom-column rot — all 9 campaign subroute files reference a deprecated column set that no longer exists in the DB.
+**Status (post-B22 session):**
+- ✅ `/api/campaigns/route.ts` (Tier 5.1) — list + create
+- ✅ `/api/campaigns/[id]/route.ts` — GET/PUT/DELETE now use `open_count`/`click_count`/`bounce_count`/`unsubscribe_count` + real allowedFields (`body_html`, `body_text`, `sms_body`, `ab_variants`, `recipient_filter`)
+- ✅ `/api/campaigns/[id]/schedule/route.ts` — validates `ab_variants.a.body_html` + SMS branch
+- ✅ `/api/campaigns/send/route.ts` — reads `ab_variants`, writes `send_completed_at` (no phantom `failed_count`/`completed_at`)
+- ✅ Migration `b12_add_campaigns_deleted_at` adds the column so soft-delete actually works
+
+**Still broken (6 files):** `process-scheduled`, `send-test`, `[id]/duplicate`, `[id]/select-winner`, `[id]/recipients`, `[id]/pause` routes, plus the unit test suite and reports/templates.ts. Each needs the same mapping: `body_template` → `body_html`/`body_text`/`sms_body`, per-variant columns → `ab_variants` jsonb, plural counters → singular.
+
+**State (original):** Systemic phantom-column rot across 10 campaign route files referencing a deprecated column set.
 **Source:** Tier 5.1 discovery while fixing `/api/campaigns/route.ts`
 
 **What's broken:**

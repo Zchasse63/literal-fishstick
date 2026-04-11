@@ -97,8 +97,15 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (cached) {
+      // Defensive coerce: older cached rows may have stored
+      // `suggested_merge_tags` as non-array. Normalize to [] so clients can
+      // always rely on Array.isArray.
+      const cachedResult = cached.result as Record<string, unknown>
+      if (!Array.isArray(cachedResult.suggested_merge_tags)) {
+        cachedResult.suggested_merge_tags = []
+      }
       return NextResponse.json({
-        ...(cached.result as Record<string, unknown>),
+        ...cachedResult,
         cached: true,
         generated_at: cached.created_at,
       });

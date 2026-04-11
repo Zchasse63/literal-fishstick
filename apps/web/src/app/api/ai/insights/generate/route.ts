@@ -67,15 +67,86 @@ export async function POST() {
       .toISOString()
       .split("T")[0];
 
-    // Daily metrics for current 30-day window
-    const { data: dailyMetrics } = await supabase
-      .from("daily_metrics")
-      .select(
-        "metric_date, total_bookings, total_check_ins, revenue_total, new_members, churned_members"
-      )
-      .eq("studio_id", studioId)
-      .gte("metric_date", periodStart)
-      .order("metric_date", { ascending: true });
+    // B22 FIX: Parallelize all 7 context-gathering queries via Promise.all.
+    // Previously sequential, adding up to ~10s before Claude was even called.
+    // After this change: bottleneck is the single longest query (~1-2s).
+    const [
+      dailyMetricsRes,
+      prevMetricsRes,
+      totalActiveRes,
+      classesRes,
+      failedTxnRes,
+      merchTxnRes,
+      dropInTxnRes,
+    ] = await Promise.all([
+      // Daily metrics for current 30-day window
+      supabase
+        .from("daily_metrics")
+        .select(
+          "metric_date, total_bookings, total_check_ins, revenue_total, new_members, churned_members"
+        )
+        .eq("studio_id", studioId)
+        .gte("metric_date", periodStart)
+        .order("metric_date", { ascending: true }),
+
+      // Revenue previous 30-day window
+      supabase
+        .from("daily_metrics")
+        .select("revenue_total")
+        .eq("studio_id", studioId)
+        .gte("metric_date", previousPeriodStart)
+        .lt("metric_date", periodStart),
+
+      // Total active members
+      supabase
+        .from("members")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studioId)
+        .eq("membership_status", "active"),
+
+      // Classes in the period
+      supabase
+        .from("classes")
+        .select("id, title, capacity, booked_count, checked_in_count")
+        .eq("studio_id", studioId)
+        .gte("starts_at", periodStart)
+        .lte("starts_at", periodEnd + "T23:59:59"),
+
+      // Failed transactions (outstanding payments)
+      supabase
+        .from("transactions")
+        .select("amount")
+        .eq("studio_id", studioId)
+        .eq("status", "failed"),
+
+      // Merch revenue
+      supabase
+        .from("transactions")
+        .select("amount")
+        .eq("studio_id", studioId)
+        .eq("type", "merch")
+        .eq("status", "completed")
+        .gte("created_at", periodStart)
+        .lte("created_at", periodEnd + "T23:59:59"),
+
+      // Drop-in revenue
+      supabase
+        .from("transactions")
+        .select("amount")
+        .eq("studio_id", studioId)
+        .eq("type", "drop_in")
+        .eq("status", "completed")
+        .gte("created_at", periodStart)
+        .lte("created_at", periodEnd + "T23:59:59"),
+    ]);
+
+    const dailyMetrics = dailyMetricsRes.data;
+    const prevMetrics = prevMetricsRes.data;
+    const totalActive = totalActiveRes.count;
+    const classes = classesRes.data;
+    const failedTransactions = failedTxnRes.data;
+    const merchTransactions = merchTxnRes.data;
+    const dropInTransactions = dropInTxnRes.data;
 
     // Revenue current period (daily_metrics stores in cents — convert to dollars)
     const revenueCurrent =
@@ -84,14 +155,6 @@ export async function POST() {
       dailyMetrics?.reduce((sum, d) => sum + (d.new_members ?? 0), 0) ?? 0;
     const churnedMembers30d =
       dailyMetrics?.reduce((sum, d) => sum + (d.churned_members ?? 0), 0) ?? 0;
-
-    // Revenue previous 30-day window (cents → dollars)
-    const { data: prevMetrics } = await supabase
-      .from("daily_metrics")
-      .select("revenue_total")
-      .eq("studio_id", studioId)
-      .gte("metric_date", previousPeriodStart)
-      .lt("metric_date", periodStart);
 
     const revenuePrevious =
       (prevMetrics?.reduce(
@@ -108,13 +171,6 @@ export async function POST() {
       else if (pctChange < -5) revenueTrend = "declining";
     }
 
-    // Total active members
-    const { count: totalActive } = await supabase
-      .from("members")
-      .select("id", { count: "exact", head: true })
-      .eq("studio_id", studioId)
-      .eq("membership_status", "active");
-
     const totalActiveMembers = totalActive ?? 0;
     const churnRate =
       totalActiveMembers > 0
@@ -122,14 +178,6 @@ export async function POST() {
         : 0;
     const arpm =
       totalActiveMembers > 0 ? revenueCurrent / totalActiveMembers : 0;
-
-    // Class fill rate & top/bottom classes
-    const { data: classes } = await supabase
-      .from("classes")
-      .select("id, title, capacity, booked_count, checked_in_count")
-      .eq("studio_id", studioId)
-      .gte("starts_at", periodStart)
-      .lte("starts_at", periodEnd + "T23:59:59");
 
     const classesList = classes ?? [];
     let totalFillRate = 0;
@@ -172,44 +220,18 @@ export async function POST() {
     const topClasses = classMetrics.slice(0, 3);
     const bottomClasses = classMetrics.slice(-3).reverse();
 
-    // Outstanding payments
-    const { data: failedTransactions } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("studio_id", studioId)
-      .eq("status", "failed");
-
+    // Derived totals from the parallelized transaction queries above.
     const outstandingPayments =
       (failedTransactions?.reduce(
         (sum, t: { amount: number }) => sum + (t.amount ?? 0),
         0
       ) ?? 0) / 100;
 
-    // Merch revenue
-    const { data: merchTransactions } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("studio_id", studioId)
-      .eq("type", "merch")
-      .eq("status", "completed")
-      .gte("created_at", periodStart)
-      .lte("created_at", periodEnd + "T23:59:59");
-
     const merchRevenue =
       (merchTransactions?.reduce(
         (sum, t: { amount: number }) => sum + (t.amount ?? 0),
         0
       ) ?? 0) / 100;
-
-    // Drop-in revenue
-    const { data: dropInTransactions } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("studio_id", studioId)
-      .eq("type", "drop_in")
-      .eq("status", "completed")
-      .gte("created_at", periodStart)
-      .lte("created_at", periodEnd + "T23:59:59");
 
     const dropInRevenue =
       (dropInTransactions?.reduce(
@@ -264,21 +286,47 @@ export async function POST() {
 
     const persisted = [];
 
+    // B22 FIX: previous insert used 5 phantom columns (type, body,
+    // suggested_action, generated_by, plus misnamed insight_type). Real
+    // schema: insight_type, title, summary, detail?, data_points?,
+    // recommended_action?, action_url?, urgency, status, fingerprint,
+    // generated_at.
+    //
+    // The generator's enums don't match the DB CHECK constraints 1:1:
+    //   urgency: low/medium/high/critical → info/suggestion/attention/urgent
+    //   insight_type: churn/engagement/operational → retention/retention/anomaly
+    //                 (revenue/scheduling/growth map 1:1)
+    const URGENCY_MAP: Record<string, string> = {
+      low: "info",
+      medium: "suggestion",
+      high: "attention",
+      critical: "urgent",
+    };
+    const TYPE_MAP: Record<string, string> = {
+      churn: "retention",
+      engagement: "retention",
+      operational: "anomaly",
+      revenue: "revenue",
+      scheduling: "scheduling",
+      growth: "growth",
+    };
+
     for (const insight of newInsights) {
+      const mappedUrgency = URGENCY_MAP[insight.urgency] ?? "info";
+      const mappedType = TYPE_MAP[insight.insight_type] ?? "growth";
       const { data: inserted, error: insertError } = await supabase
         .from("ai_insights")
         .insert({
           studio_id: studioId,
-          type: insight.insight_type,
-          urgency: insight.urgency,
+          insight_type: mappedType,
+          urgency: mappedUrgency,
           title: insight.title,
-          body: insight.summary,
-          suggested_action: insight.recommended_action,
+          summary: insight.summary,
+          recommended_action: insight.recommended_action,
           action_url: insight.action_url,
           fingerprint: insight.fingerprint,
           status: "active",
           generated_at: now.toISOString(),
-          generated_by: user.id,
         })
         .select()
         .single();

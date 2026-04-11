@@ -1,4 +1,4 @@
-import { getAnthropicClient, AI_MODEL, extractText, parseAIJson, withRetry } from "@/lib/ai/client";
+import { getAnthropicClient, AI_MODEL, extractText } from "@/lib/ai/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,18 +96,34 @@ export async function generateInsights(
   }
 
   try {
-
-    const message = await withRetry(() => anthropic.messages.create({
-      model: AI_MODEL,
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      messages: [
+    // B22 FIX: Cap the Claude call at 15s with an explicit AbortSignal so
+    // the generate route can't hang for 87s on a slow response. Previous
+    // setup used withRetry() which compounded the SDK's 30s client timeout
+    // across multiple attempts. On timeout we fall through to the catch
+    // block which already has a rules-based fallback.
+    //
+    // Using AbortSignal.timeout is the most reliable cap: the Anthropic
+    // SDK `timeout` request option is min-clamped against the client-level
+    // timeout, so passing a lower value doesn't shorten it. AbortSignal
+    // works independently.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+    const message = await anthropic.messages
+      .create(
         {
-          role: "user",
-          content: `Generate insights from this studio metrics snapshot:\n${JSON.stringify(context, null, 2)}`,
+          model: AI_MODEL,
+          max_tokens: 2048,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: "user",
+              content: `Generate insights from this studio metrics snapshot:\n${JSON.stringify(context, null, 2)}`,
+            },
+          ],
         },
-      ],
-    }));
+        { signal: controller.signal }
+      )
+      .finally(() => clearTimeout(timeoutId));
 
     const text = extractText(message);
 

@@ -93,7 +93,12 @@ export async function generateCampaignCopy(
       preview_text: parsed.preview_text,
       body_html: parsed.body_html,
       body_text: parsed.body_text,
-      suggested_merge_tags: parsed.suggested_merge_tags ?? [],
+      // Coerce to array strictly — Claude occasionally returns this field
+      // as a comma-separated string or object, breaking downstream
+      // `Array.isArray` checks in the client and tests.
+      suggested_merge_tags: Array.isArray(parsed.suggested_merge_tags)
+        ? parsed.suggested_merge_tags
+        : [],
     };
   } catch (error) {
     console.error(

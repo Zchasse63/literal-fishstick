@@ -19,6 +19,7 @@ import {
   Clock,
   Inbox,
   BarChart3,
+  AlertCircle,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
 
@@ -105,6 +106,7 @@ export function AIInsightsClient({ initialInsights, initialHistory }: AIInsights
   const [insights, setInsights] = useState<Insight[]>(initialInsights)
   const [history, setHistory] = useState<Insight[]>(initialHistory)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
   const [lastGenerated, setLastGenerated] = useState<string | null>(initialInsights.length > 0 ? initialInsights[0].createdAt : null)
 
   const transformInsight = useCallback((raw: any): Insight => ({
@@ -172,14 +174,26 @@ export function AIInsightsClient({ initialInsights, initialHistory }: AIInsights
   }
 
   const handleGenerate = async () => {
+    // B22: make failures visible. Previously silent catch {} — users saw
+    // the spinner stop but nothing happen, which felt like "insights never
+    // loaded." Now we surface errors via generateError so the UI can render
+    // them.
     setIsGenerating(true)
+    setGenerateError(null)
     try {
-      await fetch('/api/ai/insights/generate', { method: 'POST' })
+      const genRes = await fetch('/api/ai/insights/generate', { method: 'POST' })
+      if (!genRes.ok) {
+        const body = await genRes.json().catch(() => ({}))
+        throw new Error(body.error ?? `HTTP ${genRes.status}`)
+      }
       const res = await fetch('/api/ai/insights?limit=20')
       const d = await res.json()
       if (d.data) { setInsights((d.data as any[]).map(transformInsight)) }
-    } catch {}
-    setIsGenerating(false)
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Generation failed')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -198,11 +212,53 @@ export function AIInsightsClient({ initialInsights, initialHistory }: AIInsights
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500"><Clock className="w-3.5 h-3.5" /><span>{lastGenerated ? `Last generated ${lastGenerated}` : 'No insights yet'}</span></div>
-            <button onClick={handleGenerate} disabled={isGenerating} className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all', isGenerating ? 'bg-indigo-100 text-indigo-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm')}>
+            <button onClick={handleGenerate} disabled={isGenerating} data-testid="insights-generate-btn" className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all', isGenerating ? 'bg-indigo-100 text-indigo-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm')}>
               <RefreshCw className={cn('w-4 h-4', isGenerating && 'animate-spin')} />{isGenerating ? 'Generating...' : 'Generate New Insights'}
             </button>
           </div>
         </motion.div>
+
+        {/* B22: Progress/error banners. Previously generate had a silent
+            catch {} so failures looked like "nothing happened". Now users
+            see either a "working…" banner with a rough time estimate or
+            a red error with the actual message. */}
+        {isGenerating && (
+          <div
+            data-testid="insights-generating-banner"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-indigo-200 bg-indigo-50/60 dark:border-indigo-900/30 dark:bg-indigo-900/10"
+          >
+            <RefreshCw className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+                Generating insights — this can take 10-20 seconds
+              </p>
+              <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80">
+                Claude is analyzing 30 days of revenue, bookings, class performance, and member behavior.
+              </p>
+            </div>
+          </div>
+        )}
+        {generateError && !isGenerating && (
+          <div
+            data-testid="insights-error-banner"
+            className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/30 dark:bg-red-900/10"
+          >
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-red-900 dark:text-red-200">
+                Generation failed
+              </p>
+              <p className="text-[11px] text-red-700 dark:text-red-300">{generateError}</p>
+            </div>
+            <button
+              onClick={() => setGenerateError(null)}
+              className="text-red-400 hover:text-red-600 dark:hover:text-red-200"
+              aria-label="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* View Tabs */}
         <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: 0.05 }} className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-800">

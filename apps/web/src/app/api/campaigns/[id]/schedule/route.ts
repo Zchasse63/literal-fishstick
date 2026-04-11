@@ -68,9 +68,11 @@ export async function POST(
     }
 
     // ─── Validate Campaign ─────────────────────────────────────
+    // B12 FIX: real schema uses body_html/body_text + ab_variants jsonb
+    // instead of body_template + variant_a_subject/body columns.
     const { data: campaign, error: fetchError } = await supabase
       .from('campaigns')
-      .select('id, status, subject, body_template, ab_test_enabled, variant_a_subject, variant_a_body')
+      .select('id, status, subject, body_html, body_text, sms_body, type, ab_test_enabled, ab_variants')
       .eq('id', id)
       .eq('studio_id', STUDIO_ID)
       .is('deleted_at', null)
@@ -89,16 +91,24 @@ export async function POST(
 
     // Validate that campaign has required content
     if (campaign.ab_test_enabled) {
-      if (!campaign.variant_a_subject || !campaign.variant_a_body) {
+      const variants = campaign.ab_variants as { a?: { subject?: string; body_html?: string } } | null
+      if (!variants?.a?.subject || !variants?.a?.body_html) {
         return NextResponse.json(
-          { error: 'A/B test campaign must have variant A content before scheduling' },
+          { error: 'A/B test campaign must have variant A content (ab_variants.a.subject + ab_variants.a.body_html) before scheduling' },
+          { status: 400 }
+        )
+      }
+    } else if (campaign.type === 'sms') {
+      if (!campaign.sms_body) {
+        return NextResponse.json(
+          { error: 'SMS campaign must have sms_body content before scheduling' },
           { status: 400 }
         )
       }
     } else {
-      if (!campaign.subject || !campaign.body_template) {
+      if (!campaign.subject || (!campaign.body_html && !campaign.body_text)) {
         return NextResponse.json(
-          { error: 'Campaign must have a subject and body before scheduling' },
+          { error: 'Campaign must have a subject and body (body_html or body_text) before scheduling' },
           { status: 400 }
         )
       }
