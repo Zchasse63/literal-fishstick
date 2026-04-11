@@ -19,6 +19,8 @@ import type {
   GlofoxMembership,
   GlofoxCreditPack,
   GlofoxLead,
+  GlofoxDiscount,
+  GlofoxTaxConfig,
 } from './types'
 import { unixToISO } from './client'
 
@@ -640,5 +642,68 @@ export function transformLead(
     glofox_id: l._id,
     created_at: unixToISO(l.created),
     updated_at: unixToISO(l.modified),
+  }
+}
+
+// ─── Discount + Tax Config Row Types ──────────────────────────
+
+export interface DiscountRow {
+  studio_id: string
+  name: string
+  description: string | null
+  rate_type: string
+  rate_value: number
+  num_cycles: number
+  active: boolean
+  glofox_id: string
+}
+
+export interface TaxConfigurationRow {
+  studio_id: string
+  name: string
+  rate: number
+  description: string | null
+  is_default: boolean
+  active: boolean
+  glofox_id: string | null
+}
+
+/**
+ * Transform a Glofox discount into a Meridian discounts row.
+ */
+export function transformDiscount(
+  d: GlofoxDiscount,
+  studioId: string,
+): DiscountRow {
+  return {
+    studio_id: studioId,
+    name: d.name ?? 'Unnamed Discount',
+    description: d.description ?? null,
+    rate_type: d.rate_type === 'percentage' ? 'percentage' : 'fixed',
+    rate_value: Number(d.rate_value ?? 0),
+    num_cycles: Number(d.num_cycles ?? 0),
+    active: true, // Glofox doesn't expose active flag on discounts
+    glofox_id: d.id,
+  }
+}
+
+/**
+ * Transform a Glofox tax configuration into a Meridian tax_configurations row.
+ */
+export function transformTaxConfig(
+  t: GlofoxTaxConfig,
+  studioId: string,
+): TaxConfigurationRow {
+  const rate = t.rate != null ? Number(t.rate) : 0
+  // Glofox returns rate as a decimal (e.g. 0.0425 for 4.25%). Meridian
+  // tax_configurations.rate is also a decimal, so no conversion needed.
+  return {
+    studio_id: studioId,
+    name: t.name ?? 'Default Tax',
+    rate,
+    description: t.description ?? null,
+    is_default: true, // First tax config returned is the default
+    active: true,
+    glofox_id: t.id ?? null,
   }
 }

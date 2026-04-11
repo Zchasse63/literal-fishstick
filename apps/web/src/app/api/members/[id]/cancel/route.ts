@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import { cancelSubscription, isStripeConfigured } from '@/lib/stripe'
+import { rateLimit } from '@/lib/rate-limit'
 
 /**
  * POST /api/members/[id]/cancel
@@ -50,6 +51,16 @@ export async function POST(
 
     if (!isAdmin && !isSelf) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Rate limit: 10 cancels per minute per user. Stripe mutations are
+    // expensive and a compromised account shouldn't be able to mass-cancel.
+    const rl = await rateLimit(`stripe-cancel:${user.id}`, 10, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Try again in a minute." },
+        { status: 429 }
+      );
     }
 
     const body = await request.json().catch(() => ({}));

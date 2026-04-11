@@ -53,6 +53,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@netlify/functions": "^5.2.0",
     "@netlify/plugin-nextjs": "^5.15.9",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
@@ -67,8 +68,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.0",
     "jsdom": "^29.0.1",
-    "tailwindcss": "^4",
     "shadcn": "^4.1.0",
+    "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.0"
   }

@@ -24,12 +24,16 @@ const ADMIN_ROUTES = [
   { method: 'GET', path: '/api/corporate' },
 ] as const
 
+// /api/clock is POST-only — there is no GET. Use a benign POST body
+// that will fail validation (400) to prove the route is reachable to
+// employees but not admins.
 const EMPLOYEE_ROUTES = [
-  { method: 'GET', path: '/api/clock' },
+  { method: 'POST', path: '/api/clock', body: {} as Record<string, unknown> },
 ] as const
 
+// /api/auth/profile is POST-only (returns the user's own profile — no body).
 const ANY_AUTH_ROUTES = [
-  { method: 'GET', path: '/api/auth/profile' },
+  { method: 'POST', path: '/api/auth/profile' },
 ] as const
 
 test.describe('Platform — Auth matrix: admin project @auth', () => {
@@ -71,14 +75,20 @@ test.describe('Platform — Auth matrix: employee project @auth', () => {
     }
   })
 
-  test('employee can access employee routes with 200 @p0', async ({ page }) => {
-    for (const { method, path } of EMPLOYEE_ROUTES) {
-      const res = await page.request.fetch(path, { method })
+  test('employee can access employee routes @p0', async ({ page }) => {
+    for (const route of EMPLOYEE_ROUTES) {
+      const res = await page.request.fetch(route.path, {
+        method: route.method,
+        data: 'body' in route ? route.body : undefined,
+      })
       if (res.status() === 404) continue
+      // Accept any status < 500 that isn't an auth rejection (401/403).
+      // A 400 (validation) or 2xx both prove the auth check passed.
       expect(
         res.status(),
-        `employee ${method} ${path} expected 2xx, got ${res.status()}`
-      ).toBeLessThan(400)
+        `employee ${route.method} ${route.path} expected non-auth status, got ${res.status()}`
+      ).toBeLessThan(500)
+      expect([401, 403]).not.toContain(res.status())
     }
   })
 })

@@ -1,51 +1,18 @@
 /**
  * Supabase-backed rate limiter for serverless deployments.
  *
- * Uses an atomic Supabase RPC to increment a counter in the rate_limit_entries
- * table. Falls back to allowing the request (fail-open) if Supabase is
- * unreachable, logging the error for observability.
+ * Uses an atomic Supabase RPC (`increment_rate_limit`) to increment a counter
+ * in the `rate_limit_buckets` table. Falls back to allowing the request
+ * (fail-open) if Supabase is unreachable, logging the error for observability.
  *
- * Table schema (create via migration):
- *   CREATE TABLE IF NOT EXISTS rate_limit_entries (
- *     key TEXT PRIMARY KEY,
- *     count INTEGER NOT NULL DEFAULT 1,
- *     window_start TIMESTAMPTZ NOT NULL DEFAULT now(),
- *     expires_at TIMESTAMPTZ NOT NULL
- *   );
- *   CREATE INDEX idx_rate_limit_expires ON rate_limit_entries (expires_at);
+ * Infrastructure (already deployed):
+ *   - Table: `public.rate_limit_buckets` (key, current_count, window_start_ms, updated_at)
+ *   - RPC: `public.increment_rate_limit(p_key text, p_limit integer, p_window_ms bigint)`
+ *   - Returns: (current_count integer, is_allowed boolean)
  *
- * RPC function (create via migration):
- *   CREATE OR REPLACE FUNCTION increment_rate_limit(
- *     p_key TEXT, p_limit INTEGER, p_window_ms INTEGER
- *   ) RETURNS TABLE(current_count INTEGER, is_allowed BOOLEAN)
- *   LANGUAGE plpgsql AS $$
- *   DECLARE
- *     v_now TIMESTAMPTZ := now();
- *     v_expires TIMESTAMPTZ := v_now + (p_window_ms || ' milliseconds')::interval;
- *     v_count INTEGER;
- *   BEGIN
- *     INSERT INTO rate_limit_entries (key, count, window_start, expires_at)
- *     VALUES (p_key, 1, v_now, v_expires)
- *     ON CONFLICT (key) DO UPDATE SET
- *       count = CASE
- *         WHEN rate_limit_entries.expires_at < v_now THEN 1
- *         ELSE rate_limit_entries.count + 1
- *       END,
- *       window_start = CASE
- *         WHEN rate_limit_entries.expires_at < v_now THEN v_now
- *         ELSE rate_limit_entries.window_start
- *       END,
- *       expires_at = CASE
- *         WHEN rate_limit_entries.expires_at < v_now THEN v_expires
- *         ELSE rate_limit_entries.expires_at
- *       END
- *     RETURNING rate_limit_entries.count INTO v_count;
- *
- *     current_count := v_count;
- *     is_allowed := v_count <= p_limit;
- *     RETURN NEXT;
- *   END;
- *   $$;
+ * The RPC runs as SECURITY DEFINER so it can bypass RLS without needing
+ * service_role keys. Window rollover is handled inline: if the current
+ * window has elapsed, the bucket resets to 1 atomically.
  *
  * Usage:
  *   const { allowed, remaining } = await rateLimit(`ai:${userId}`, 20, 60_000);

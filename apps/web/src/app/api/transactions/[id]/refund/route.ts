@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import { refundPayment, isStripeConfigured } from '@/lib/stripe'
+import { rateLimit } from '@/lib/rate-limit'
 
 /**
  * POST /api/transactions/[id]/refund
@@ -44,6 +45,16 @@ export async function POST(
     const roles: string[] = authProfile?.roles ?? [];
     if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Rate limit: 20 refunds per minute per user. Bulk refund abuse is a
+    // real attack vector since refunds trigger real Stripe mutations.
+    const rl = await rateLimit(`stripe-refund:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Try again in a minute." },
+        { status: 429 }
+      );
     }
 
     const body = await request.json().catch(() => ({}));

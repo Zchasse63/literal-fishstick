@@ -55,9 +55,10 @@ test.describe('Platform — Stress: 500 recipient campaign send (T38)', () => {
       )
     )
 
-    // Bulk-insert email_preferences rows with marketing_email=false
+    // Bulk-insert email_preferences rows with marketing_email=false.
+    // email_preferences.member_id → profiles.id (not members.id).
     const prefRows = members.map((m) => ({
-      member_id: m.memberId,
+      member_id: m.profileId,
       studio_id: DEFAULT_STUDIO_ID,
       marketing_email: false,
       transactional_email: true,
@@ -129,7 +130,7 @@ test.describe('Platform — Stress: 500 recipient campaign send (T38)', () => {
         .delete()
         .in(
           'member_id',
-          members.map((m) => m.memberId)
+          members.map((m) => m.profileId)
         )
       await testDb.from('campaigns').delete().eq('id', campaignId)
       for (const m of members) {

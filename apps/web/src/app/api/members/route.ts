@@ -19,6 +19,36 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 100);
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
 
+  // Search path: two-step query. PostgREST can't reliably .or() across
+  // fields of a joined relation — when search is present we first resolve
+  // matching profile IDs, then filter members by those ids.
+  let profileIdsMatchingSearch: string[] | null = null;
+  if (search) {
+    const escaped = search.replace(/[%,]/g, "");
+    const { data: matchingProfiles, error: profileSearchError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("studio_id", studioId)
+      .or(
+        `full_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`
+      )
+      .limit(1000);
+
+    if (profileSearchError) {
+      return NextResponse.json(
+        { error: "Internal server error" },
+        { status: 500 }
+      );
+    }
+
+    profileIdsMatchingSearch = (matchingProfiles ?? []).map((p) => p.id);
+
+    // No matching profiles → empty result set
+    if (profileIdsMatchingSearch.length === 0) {
+      return NextResponse.json({ data: [], count: 0 });
+    }
+  }
+
   let query = supabase
       .from("members")
       .select("*, profiles:profile_id ( id, full_name, email, phone, avatar_url )", {
@@ -28,10 +58,8 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-  if (search) {
-    query = query.or(
-      `profiles.full_name.ilike.%${search}%,profiles.email.ilike.%${search}%,profiles.phone.ilike.%${search}%`
-    );
+  if (profileIdsMatchingSearch) {
+    query = query.in("profile_id", profileIdsMatchingSearch);
   }
   if (status) query = query.eq("membership_status", status);
   if (membershipType) query = query.eq("membership_tier", membershipType);

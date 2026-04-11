@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { normalizePhone } from '@/lib/validation'
+import { createHash } from 'crypto'
+
+/**
+ * Hash an email for privacy-preserving deduplication + faster lookups.
+ * Lowercased + trimmed before hashing so case/whitespace variants collide.
+ */
+function hashEmail(email: string): string {
+  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
+}
 
 /**
  * POST /api/leads/capture
@@ -116,6 +125,7 @@ export async function POST(request: NextRequest) {
         first_name,
         last_name,
         email,
+        email_hash: hashEmail(email),
         phone: normalizePhone(phone) ?? null,
         source: source ?? "website",
         status: "new",

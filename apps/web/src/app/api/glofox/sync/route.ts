@@ -31,6 +31,10 @@ import {
   transformTransaction,
   transformMembershipPlan,
   transformCreditPack,
+  transformLead,
+  transformStaff,
+  transformDiscount,
+  transformTaxConfig,
 } from '@/lib/glofox/transformers'
 import { createProgramResolver } from '@/lib/glofox/program-resolver'
 import { GLOFOX_NAMESPACE } from '@/lib/constants'
@@ -40,6 +44,10 @@ import type {
   GlofoxBooking,
   GlofoxMembership,
   GlofoxCreditPack,
+  GlofoxLead,
+  GlofoxStaff,
+  GlofoxDiscount,
+  GlofoxTaxConfig,
 } from '@/lib/glofox/types'
 
 // ─── Constants ────────────────────────────────────────────────────
@@ -233,6 +241,10 @@ export async function POST(request: NextRequest) {
     transactions: null,
     memberships: null,
     credit_packs: null,
+    leads: null,
+    staff: null,
+    discounts: null,
+    tax_configurations: null,
   }
 
   try {
@@ -652,25 +664,43 @@ export async function POST(request: NextRequest) {
   logLine(`Step 4b complete: ${membershipResult.fetched} fetched, ${membershipResult.errors} errors (${membershipResult.durationMs}ms)`)
 
   // ═══════════════════════════════════════════════════════════════
-  // STEP 4c: Sync Credit Packs (per active member — bounded)
+  // STEP 4c: Sync Credit Packs (per active member — paginated)
   // ═══════════════════════════════════════════════════════════════
   const creditResult = emptyResult('credit_packs')
   const creditStepStart = Date.now()
   try {
     logLine('Step 4c: Fetching credit packs for active members...')
 
-    // Bounded: fetch up to 500 active members. This prevents the Glofox rate
-    // limit from stalling the whole sync on a studio with thousands of members.
-    const { data: activeMembers } = await db
-      .from('members')
-      .select('id, glofox_id, profile_id')
-      .eq('studio_id', STUDIO_ID)
-      .eq('membership_status', 'active')
-      .not('glofox_id', 'is', null)
-      .limit(500)
+    // Paginated: iterate through every active member in chunks of 500 so we
+    // don't miss anyone on studios with thousands of members. Total wall time
+    // is still bounded by RATE_LIMIT_DELAY_MS per member call in the client.
+    const PAGE_SIZE = 500
+    let offset = 0
+    const memberIds: { id: string; glofox_id: string; profile_id: string }[] = []
 
-    const memberIds = (activeMembers ?? []).filter((m) => m.glofox_id)
-    logLine(`Step 4c: Processing ${memberIds.length} active members`)
+    while (true) {
+      const { data: pageMembers } = await db
+        .from('members')
+        .select('id, glofox_id, profile_id')
+        .eq('studio_id', STUDIO_ID)
+        .eq('membership_status', 'active')
+        .not('glofox_id', 'is', null)
+        .order('id', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1)
+
+      if (!pageMembers || pageMembers.length === 0) break
+
+      for (const m of pageMembers) {
+        if (m.glofox_id) {
+          memberIds.push({ id: m.id, glofox_id: m.glofox_id, profile_id: m.profile_id })
+        }
+      }
+
+      if (pageMembers.length < PAGE_SIZE) break
+      offset += PAGE_SIZE
+    }
+
+    logLine(`Step 4c: Processing ${memberIds.length} active members (paginated)`)
 
     const allCreditPacks: {
       row: ReturnType<typeof transformCreditPack>['creditPack']
@@ -721,6 +751,206 @@ export async function POST(request: NextRequest) {
   logLine(`Step 4c complete: ${creditResult.fetched} fetched, ${creditResult.errors} errors (${creditResult.durationMs}ms)`)
 
   // ═══════════════════════════════════════════════════════════════
+  // STEP 4d: Sync Leads
+  // ═══════════════════════════════════════════════════════════════
+  const leadResult = emptyResult('leads')
+  const leadStepStart = Date.now()
+  try {
+    logLine('Step 4d: Fetching leads from Glofox...')
+
+    const leads = await glofox.getLeads(branchId, {
+      modifiedSince: syncState.leads ?? undefined,
+    })
+
+    leadResult.fetched = leads.length
+    logLine(`Step 4d: Fetched ${leads.length} leads`)
+
+    if (leads.length > 0) {
+      const leadRows = leads.map((l: GlofoxLead) => transformLead(l, STUDIO_ID))
+
+      const BATCH_SIZE = 200
+      for (let i = 0; i < leadRows.length; i += BATCH_SIZE) {
+        const batch = leadRows.slice(i, i + BATCH_SIZE)
+        const { error } = await db
+          .from('leads')
+          .upsert(batch as any[], { onConflict: 'glofox_id,studio_id' })
+
+        if (error) {
+          addError(leadResult, `leads upsert batch ${i}: ${error.message}`)
+        }
+      }
+
+      leadResult.created = syncState.leads ? 0 : leads.length
+      leadResult.updated = syncState.leads ? leads.length : 0
+    }
+  } catch (err) {
+    addError(leadResult, `fetch: ${err instanceof Error ? err.message : String(err)}`)
+    logLine(`Step 4d ERROR: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  leadResult.durationMs = Date.now() - leadStepStart
+  results.push(leadResult)
+  logLine(`Step 4d complete: ${leadResult.fetched} fetched, ${leadResult.errors} errors (${leadResult.durationMs}ms)`)
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 4e: Sync Staff (trainer profiles)
+  // ═══════════════════════════════════════════════════════════════
+  const staffResult = emptyResult('staff')
+  const staffStepStart = Date.now()
+  try {
+    logLine('Step 4e: Fetching staff from Glofox...')
+
+    const staffMembers = await glofox.getStaff()
+    staffResult.fetched = staffMembers.length
+    logLine(`Step 4e: Fetched ${staffMembers.length} staff members`)
+
+    if (staffMembers.length > 0) {
+      // Transform + upsert profiles (staff are stored as profiles with
+      // roles: ['trainer']). The transformer generates placeholder emails.
+      const profileRows = staffMembers.map((s: GlofoxStaff) => transformStaff(s, STUDIO_ID).profile)
+
+      const BATCH_SIZE = 200
+      for (let i = 0; i < profileRows.length; i += BATCH_SIZE) {
+        const batch = profileRows.slice(i, i + BATCH_SIZE)
+        const { error } = await db
+          .from('profiles')
+          .upsert(batch as any[], { onConflict: 'glofox_id,studio_id' })
+
+        if (error) {
+          addError(staffResult, `profiles upsert batch ${i}: ${error.message}`)
+        }
+      }
+
+      // Upsert a trainers row for each staff profile so payroll + promo code
+      // attribution work out-of-the-box. Skip if a trainer row already exists.
+      const profileMap = await buildLookupMap(db, 'profiles', STUDIO_ID)
+      const trainerRows: Record<string, unknown>[] = []
+
+      for (const s of staffMembers) {
+        const profileId = profileMap.get(s._id)
+        if (!profileId) continue
+
+        trainerRows.push({
+          profile_id: profileId,
+          studio_id: STUDIO_ID,
+          bio: null,
+          base_pay_per_class: 25,
+          bonus_amount: 25,
+          bonus_threshold: 7,
+          is_public: true,
+        })
+      }
+
+      if (trainerRows.length > 0) {
+        for (let i = 0; i < trainerRows.length; i += BATCH_SIZE) {
+          const batch = trainerRows.slice(i, i + BATCH_SIZE)
+          const { error } = await db
+            .from('trainers')
+            .upsert(batch as any[], { onConflict: 'profile_id,studio_id' })
+
+          if (error) {
+            addError(staffResult, `trainers upsert batch ${i}: ${error.message}`)
+          }
+        }
+      }
+
+      staffResult.created = syncState.staff ? 0 : staffMembers.length
+      staffResult.updated = syncState.staff ? staffMembers.length : 0
+    }
+  } catch (err) {
+    addError(staffResult, `fetch: ${err instanceof Error ? err.message : String(err)}`)
+    logLine(`Step 4e ERROR: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  staffResult.durationMs = Date.now() - staffStepStart
+  results.push(staffResult)
+  logLine(`Step 4e complete: ${staffResult.fetched} fetched, ${staffResult.errors} errors (${staffResult.durationMs}ms)`)
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 4f: Sync Discounts
+  // ═══════════════════════════════════════════════════════════════
+  const discountResult = emptyResult('discounts')
+  const discountStepStart = Date.now()
+  try {
+    logLine('Step 4f: Fetching discounts from Glofox...')
+
+    const discounts = await glofox.getDiscounts()
+    discountResult.fetched = discounts.length
+    logLine(`Step 4f: Fetched ${discounts.length} discounts`)
+
+    if (discounts.length > 0) {
+      const discountRows = discounts.map((d: GlofoxDiscount) => transformDiscount(d, STUDIO_ID))
+
+      const BATCH_SIZE = 200
+      for (let i = 0; i < discountRows.length; i += BATCH_SIZE) {
+        const batch = discountRows.slice(i, i + BATCH_SIZE)
+        const { error } = await db
+          .from('discounts')
+          .upsert(batch as any[], { onConflict: 'glofox_id,studio_id' })
+
+        if (error) {
+          addError(discountResult, `discounts upsert batch ${i}: ${error.message}`)
+        }
+      }
+
+      discountResult.created = syncState.discounts ? 0 : discounts.length
+      discountResult.updated = syncState.discounts ? discounts.length : 0
+    }
+  } catch (err) {
+    addError(discountResult, `fetch: ${err instanceof Error ? err.message : String(err)}`)
+    logLine(`Step 4f ERROR: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  discountResult.durationMs = Date.now() - discountStepStart
+  results.push(discountResult)
+  logLine(`Step 4f complete: ${discountResult.fetched} fetched, ${discountResult.errors} errors (${discountResult.durationMs}ms)`)
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 4g: Sync Tax Configurations
+  // ═══════════════════════════════════════════════════════════════
+  const taxResult = emptyResult('tax_configurations')
+  const taxStepStart = Date.now()
+  try {
+    logLine('Step 4g: Fetching tax configurations from Glofox...')
+
+    const taxes = await glofox.getTaxConfig(branchId)
+    taxResult.fetched = taxes.length
+    logLine(`Step 4g: Fetched ${taxes.length} tax configurations`)
+
+    if (taxes.length > 0) {
+      // Only the first tax is marked is_default; the rest have is_default=false.
+      const taxRows = taxes.map((t: GlofoxTaxConfig, idx: number) => {
+        const row = transformTaxConfig(t, STUDIO_ID)
+        if (idx > 0) row.is_default = false
+        return row
+      })
+
+      // tax_configurations has no unique constraint on glofox_id (it may be
+      // null for Meridian-native rows), so we delete-then-insert the Glofox
+      // ones specifically.
+      const glofoxIds = taxRows.map((r) => r.glofox_id).filter(Boolean)
+      if (glofoxIds.length > 0) {
+        await db
+          .from('tax_configurations')
+          .delete()
+          .eq('studio_id', STUDIO_ID)
+          .in('glofox_id', glofoxIds as string[])
+      }
+
+      const { error } = await db.from('tax_configurations').insert(taxRows as any[])
+      if (error) {
+        addError(taxResult, `tax_configurations insert: ${error.message}`)
+      }
+
+      taxResult.created = syncState.tax_configurations ? 0 : taxes.length
+      taxResult.updated = syncState.tax_configurations ? taxes.length : 0
+    }
+  } catch (err) {
+    addError(taxResult, `fetch: ${err instanceof Error ? err.message : String(err)}`)
+    logLine(`Step 4g ERROR: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  taxResult.durationMs = Date.now() - taxStepStart
+  results.push(taxResult)
+  logLine(`Step 4g complete: ${taxResult.fetched} fetched, ${taxResult.errors} errors (${taxResult.durationMs}ms)`)
+
+  // ═══════════════════════════════════════════════════════════════
   // STEP 5: Update Sync State
   // ═══════════════════════════════════════════════════════════════
   try {
@@ -733,6 +963,10 @@ export async function POST(request: NextRequest) {
       'transactions',
       'memberships',
       'credit_packs',
+      'leads',
+      'staff',
+      'discounts',
+      'tax_configurations',
     ] as const
 
     for (const entityType of entityTypes) {

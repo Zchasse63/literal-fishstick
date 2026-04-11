@@ -19,11 +19,15 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 100);
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
 
+  // bookings.member_id → members.id → profiles via members.profile_id.
+  // There's no direct FK from bookings to profiles, so the join has to
+  // traverse members.
   let query = supabase
     .from("bookings")
-    .select("*, classes(*), profiles!bookings_member_id_fkey(id, full_name, email)", {
-      count: "exact",
-    })
+    .select(
+      "*, classes(*), members(id, profile_id, profiles:profile_id(id, full_name, email))",
+      { count: "exact" }
+    )
     .eq("studio_id", studioId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -100,15 +104,24 @@ export async function POST(request: NextRequest) {
     .eq("studio_id", studioId)
     .single();
 
-  // Log activity
-  await supabase.from("activity_log").insert({
+  // Log activity — capture + log any failure so RLS mismatches surface
+  // in dev server logs instead of being silently swallowed.
+  const { error: activityError } = await supabase.from("activity_log").insert({
     studio_id: studioId,
     actor_id: user.id,
     type: "booking_created",
     subject_type: "booking",
     subject_id: booking.id,
+    description: `Booking created for class ${class_id}`,
     metadata: { class_id, member_id },
   });
+
+  if (activityError) {
+    console.error(
+      "POST /api/bookings: activity_log insert failed:",
+      activityError.message
+    );
+  }
 
   // Fire async Glofox booking write-back (fire-and-forget).
   // Only attempted if this class originated from Glofox AND member has a Glofox profile.

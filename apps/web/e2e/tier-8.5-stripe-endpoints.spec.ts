@@ -134,6 +134,7 @@ test.describe('Stripe endpoints — Revenue Refund (T16)', () => {
       memberId: m.memberId,
       amount: 50.0,
       type: 'drop_in',
+      status: 'completed',
     })
 
     try {
@@ -181,6 +182,7 @@ test.describe('Stripe endpoints — Revenue Refund (T16)', () => {
       memberId: m.memberId,
       amount: 100.0,
       type: 'drop_in',
+      status: 'completed',
     })
 
     try {
@@ -255,15 +257,21 @@ test.describe('Stripe endpoints — Issue Credit (T17)', () => {
 
       expect(payload.data.amount).toBe(25.5)
       expect(payload.data.balance_after).toBe(payload.data.balance_before + 25.5)
-      expect(payload.data.wallet_transaction.type).toBe('credit')
+      // Schema CHECK allows only adjustment/purchase/refund/etc — credits
+      // and debits both map to 'adjustment' distinguished by sign.
+      expect(payload.data.wallet_transaction.type).toBe('adjustment')
 
-      // Verify denormalized balance on members row
+      // Verify denormalized balance on members row. DB stores cents as
+      // integer; payload.data.balance_after is dollars. Compare against the
+      // cents value (multiply by 100) or the route's amount_cents field.
       const { data: updated } = await testDb
         .from('members')
         .select('wallet_balance')
         .eq('id', m.memberId)
         .single()
-      expect(Number(updated?.wallet_balance)).toBe(payload.data.balance_after)
+      expect(Number(updated?.wallet_balance)).toBe(
+        Math.round(payload.data.balance_after * 100)
+      )
 
       // Verify wallet_transactions row exists
       const { count } = await testDb
@@ -300,7 +308,7 @@ test.describe('Stripe endpoints — Issue Credit (T17)', () => {
         data: { balance_after: number; wallet_transaction: { type: string } }
       }
       expect(payload.data.balance_after).toBe(30)
-      expect(payload.data.wallet_transaction.type).toBe('debit')
+      expect(payload.data.wallet_transaction.type).toBe('adjustment')
     } finally {
       await testDb.from('wallet_transactions').delete().eq('member_id', m.memberId)
       await testDb.from('activity_log').delete().eq('subject_id', m.profileId)

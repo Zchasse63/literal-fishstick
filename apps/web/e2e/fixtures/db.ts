@@ -44,6 +44,7 @@ import {
   E2E_CLASS_TITLE_PREFIX,
   E2E_TRANSACTION_DESCRIPTION_PREFIX,
   E2E_PRODUCT_NAME_PREFIX,
+  DEFAULT_CLASS_TYPE_OPEN_SAUNA_ID,
 } from './test-data'
 
 // Load env from apps/web/.env.local (co-located with the Next app)
@@ -141,7 +142,7 @@ export type SeedTransactionOptions = {
   /** Transaction type. Default: 'drop_in'. */
   type?: 'drop_in' | 'membership' | 'credit_pack' | 'merch' | 'gift_card' | 'private_session'
   /** Status. Default: 'succeeded'. */
-  status?: 'succeeded' | 'pending' | 'failed' | 'refunded'
+  status?: 'succeeded' | 'completed' | 'pending' | 'failed' | 'refunded'
   /** Human-readable description. MUST start with E2E_TRANSACTION_DESCRIPTION_PREFIX for cleanup to reach it. */
   description?: string
 }
@@ -280,7 +281,7 @@ export async function seedClass(opts: SeedClassOptions = {}): Promise<SeededClas
     id: classId,
     studio_id: studioId,
     location_id: opts.locationId ?? null,
-    class_type_id: opts.classTypeId ?? null,
+    class_type_id: opts.classTypeId ?? DEFAULT_CLASS_TYPE_OPEN_SAUNA_ID,
     trainer_id: opts.trainerId ?? null,
     title,
     starts_at: startsAt,

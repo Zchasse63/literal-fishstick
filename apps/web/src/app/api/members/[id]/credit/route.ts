@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
+import { rateLimit } from '@/lib/rate-limit'
 
 /**
  * POST /api/members/[id]/credit
  *
  * Issue a wallet credit to a member. Admin only.
  * Body: { amount: number, reason: string, reference_id?: string }
+ *
+ * The `amount` is in DOLLARS (e.g. 25.50). Internally the wallet_transactions
+ * and members.wallet_balance columns store cents as integers — the route
+ * converts at the boundary.
  *
  * This does NOT touch Stripe — wallet credits are an internal ledger that
  * can be redeemed against future purchases. Creates a row in
@@ -48,6 +53,17 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Rate limit: 30 credit adjustments per minute per user. Wallet credits
+    // are free to issue but a compromised account could mass-credit and then
+    // drain via bookings.
+    const rl = await rateLimit(`stripe-credit:${user.id}`, 30, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Try again in a minute." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const { amount, reason, reference_id } = body as {
       amount?: number;
@@ -69,6 +85,10 @@ export async function POST(
       );
     }
 
+    // Convert dollar amount → integer cents. Round to avoid floating-point
+    // drift (e.g. 25.5 * 100 = 2550 not 2549.9999).
+    const amountCents = Math.round(amount * 100);
+
     // Fetch member — match by profile_id (consistent with other member routes)
     const { data: member, error: memberError } = await supabase
       .from("members")
@@ -81,31 +101,35 @@ export async function POST(
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    const currentBalance = Number(member.wallet_balance ?? 0);
+    const currentBalanceCents = Number(member.wallet_balance ?? 0);
 
     // Guard against debits that would overdraw the wallet
-    if (amount < 0 && Math.abs(amount) > currentBalance) {
+    if (amountCents < 0 && Math.abs(amountCents) > currentBalanceCents) {
       return NextResponse.json(
         {
-          error: `Debit amount ($${Math.abs(amount)}) exceeds current wallet balance ($${currentBalance})`,
+          error: `Debit amount ($${Math.abs(amount)}) exceeds current wallet balance ($${currentBalanceCents / 100})`,
         },
         { status: 409 }
       );
     }
 
-    const newBalance = Math.round((currentBalance + amount) * 100) / 100;
+    const newBalanceCents = currentBalanceCents + amountCents;
 
     // ─── Insert wallet_transactions row ──────────────────────
+    // wallet_transactions.type CHECK allows:
+    //   gift_card_redemption, purchase, refund, adjustment, gift_card_purchase
+    // Admin-issued credits/debits map to 'adjustment' (the sign of amount
+    // distinguishes them). Description records the human-readable reason.
     const { data: walletTx, error: insertError } = await supabase
       .from("wallet_transactions")
       .insert({
         member_id: member.id,
         studio_id: studioId,
-        amount,
-        type: amount > 0 ? "credit" : "debit",
+        amount: amountCents,
+        type: "adjustment",
         description: reason.trim(),
         reference_id: reference_id ?? null,
-        balance_after: newBalance,
+        balance_after: newBalanceCents,
       })
       .select()
       .single();
@@ -118,7 +142,7 @@ export async function POST(
     const { error: balanceError } = await supabase
       .from("members")
       .update({
-        wallet_balance: newBalance,
+        wallet_balance: newBalanceCents,
         updated_at: new Date().toISOString(),
       })
       .eq("id", member.id)
@@ -132,33 +156,42 @@ export async function POST(
     }
 
     // ─── Activity log ────────────────────────────────────────
-    await supabase.from("activity_log").insert({
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: amount > 0 ? "credit_issued" : "credit_debited",
+      type: amountCents > 0 ? "credit_issued" : "credit_debited",
       subject_type: "profile",
       subject_id: memberId,
       description:
-        amount > 0
+        amountCents > 0
           ? `Wallet credit of $${amount} issued: ${reason}`
           : `Wallet debit of $${Math.abs(amount)} applied: ${reason}`,
       metadata: {
-        amount,
-        balance_before: currentBalance,
-        balance_after: newBalance,
+        amount_cents: amountCents,
+        balance_before_cents: currentBalanceCents,
+        balance_after_cents: newBalanceCents,
         reason,
         reference_id: reference_id ?? null,
         wallet_transaction_id: walletTx.id,
       },
     });
 
+    if (activityError) {
+      console.error(
+        "POST /api/members/[id]/credit: activity_log insert failed:",
+        activityError.message
+      );
+    }
+
+    // Return dollars (client-friendly) alongside the raw row which has cents.
     return NextResponse.json({
       data: {
         wallet_transaction: walletTx,
         member_id: memberId,
         amount,
-        balance_before: currentBalance,
-        balance_after: newBalance,
+        amount_cents: amountCents,
+        balance_before: currentBalanceCents / 100,
+        balance_after: newBalanceCents / 100,
       },
     });
   } catch (err) {

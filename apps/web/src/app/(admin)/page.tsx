@@ -555,7 +555,9 @@ function EngagementBreakdown() {
         statuses.map((status) =>
           supabase
             .from('member_360')
-            .select('id', { count: 'exact', head: true })
+            // member_360 is a view — the primary key column is profile_id,
+            // there is no `id` column. Use profile_id for the count probe.
+            .select('profile_id', { count: 'exact', head: true })
             .eq('engagement_status', status)
         )
       )

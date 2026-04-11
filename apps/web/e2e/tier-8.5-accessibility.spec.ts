@@ -190,13 +190,15 @@ test.describe('Accessibility — Smoke (T39-T42)', () => {
 
       await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {})
 
-      // Filter to truly fatal errors (ignore dev-mode warnings like HMR, React devtools)
+      // Filter to truly fatal errors (ignore dev-mode warnings like HMR,
+      // React devtools, and network 4xx logs which are not code errors).
       const fatalErrors = consoleErrors.filter(
         (e) =>
           !e.includes('DevTools') &&
           !e.includes('hot-reloader') &&
           !e.includes('Download the React DevTools') &&
-          !e.includes('hydration')
+          !e.includes('hydration') &&
+          !e.includes('Failed to load resource')
       )
 
       page.off('console', errorListener)
