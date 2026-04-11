@@ -581,7 +581,7 @@ export function KpiDeepDiveClient({ initialSummary }: { initialSummary: InitialS
   const { current, baselineMonthly } = initialSummary
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-kpi-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">

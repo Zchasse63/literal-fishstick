@@ -53,7 +53,10 @@ export const corporateCreateSchema = z.object({
   legal_name: z.string().optional(),
   tax_id: z.string().optional(),
   industry: z.string().optional(),
-  company_size: z.string().optional(),
+  // Must match the company_accounts_company_size_check CHECK enum.
+  // Sending any other value would 500 with a DB constraint violation
+  // (caught in Tier 4.6.5 D1 — see qa-pipeline-systematic-findings.md F13).
+  company_size: z.enum(['1-10', '11-50', '51-200', '201-500', '500+']).optional(),
   contact_phone: z.string().optional(),
   contact_title: z.string().optional(),
   billing_email: z.string().email().optional(),

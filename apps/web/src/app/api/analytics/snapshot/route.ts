@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
             .from("bookings")
             .select("id", { count: "exact", head: true })
             .eq("class_id", cls.id)
-            .in("status", ["confirmed", "checked_in"]);
+            .in("status", ["booked", "checked_in"]);
 
           totalBookings += bookingCount ?? 0;
         }

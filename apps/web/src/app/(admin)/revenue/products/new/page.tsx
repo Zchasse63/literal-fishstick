@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createBrowserClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -14,9 +13,6 @@ import {
   Loader2,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
-import { DEFAULT_STUDIO_ID } from '@/lib/constants'
-
-const STUDIO_ID = DEFAULT_STUDIO_ID
 
 const CATEGORIES = [
   { value: 'apparel', label: 'Apparel' },
@@ -55,40 +51,48 @@ export default function NewProductPage() {
     setSaving(true)
     setError(null)
 
-    const supabase = createBrowserClient()
+    // BUG-009 Part B: use API route + real DB column names. The original
+    // implementation bypassed the API and wrote phantom columns directly to
+    // Supabase, so no product ever got created.
     const compareAtPriceInCents = compareAtPriceStr
       ? Math.round(parseFloat(compareAtPriceStr) * 100)
       : null
 
-    const { data, error: insertError } = await supabase
-      .from('products')
-      .insert({
-        studio_id: STUDIO_ID,
-        name: name.trim(),
-        description: description.trim() || null,
-        price_in_cents: priceInCents,
-        compare_at_price_in_cents: compareAtPriceInCents,
-        category,
-        sku: sku.trim() || null,
-        barcode: barcode.trim() || null,
-        inventory: parseInt(inventory, 10) || 0,
-        low_stock_threshold: parseInt(lowStockThreshold, 10) || 5,
-        active,
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          category,
+          price: priceInCents,
+          compare_at_price: compareAtPriceInCents,
+          sku: sku.trim() || null,
+          barcode: barcode.trim() || null,
+          inventory_count: parseInt(inventory, 10) || 0,
+          low_stock_threshold: parseInt(lowStockThreshold, 10) || 5,
+          image_url: null,
+          is_active: active,
+        }),
       })
-      .select()
-      .single()
 
-    if (insertError) {
-      setError(insertError.message)
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error || 'Failed to create product.')
+        setSaving(false)
+        return
+      }
+
+      router.push(`/revenue/products/${json.data.id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create product.')
       setSaving(false)
-      return
     }
-
-    router.push(`/revenue/products/${data.id}`)
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="revenue-products-new-page-root" className="space-y-6">
       <div className="max-w-[800px] mx-auto px-6 py-8">
         {/* Back */}
         <motion.div {...fadeInUp}>
@@ -128,6 +132,7 @@ export default function NewProductPage() {
               </label>
               <input
                 id="name"
+                data-testid="revenue-products-new-name-input"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -142,6 +147,7 @@ export default function NewProductPage() {
               </label>
               <textarea
                 id="description"
+                data-testid="revenue-products-new-description-input"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the product..."
@@ -156,6 +162,7 @@ export default function NewProductPage() {
               </label>
               <select
                 id="category"
+                data-testid="revenue-products-new-category-select"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors"
@@ -211,6 +218,7 @@ export default function NewProductPage() {
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
                     id="price"
+                    data-testid="revenue-products-new-price-input"
                     type="number"
                     step="0.01"
                     min="0"
@@ -229,6 +237,7 @@ export default function NewProductPage() {
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
                     id="compareAtPrice"
+                    data-testid="revenue-products-new-compare-price-input"
                     type="number"
                     step="0.01"
                     min="0"
@@ -253,6 +262,7 @@ export default function NewProductPage() {
                 </label>
                 <input
                   id="sku"
+                  data-testid="revenue-products-new-sku-input"
                   type="text"
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
@@ -266,6 +276,7 @@ export default function NewProductPage() {
                 </label>
                 <input
                   id="barcode"
+                  data-testid="revenue-products-new-barcode-input"
                   type="text"
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
@@ -282,6 +293,7 @@ export default function NewProductPage() {
                 </label>
                 <input
                   id="inventory"
+                  data-testid="revenue-products-new-inventory-input"
                   type="number"
                   min="0"
                   value={inventory}
@@ -295,6 +307,7 @@ export default function NewProductPage() {
                 </label>
                 <input
                   id="lowStock"
+                  data-testid="revenue-products-new-low-stock-input"
                   type="number"
                   min="0"
                   value={lowStockThreshold}
@@ -311,6 +324,7 @@ export default function NewProductPage() {
             <label className="flex items-center gap-3 cursor-pointer">
               <button
                 type="button"
+                data-testid="revenue-products-new-active-toggle"
                 onClick={() => setActive(!active)}
                 className={cn(
                   'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/20',
@@ -332,7 +346,10 @@ export default function NewProductPage() {
 
           {/* Error */}
           {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-4">
+            <div
+              data-testid="revenue-products-new-error"
+              className="rounded-xl bg-red-50 border border-red-200 p-4"
+            >
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
@@ -341,6 +358,7 @@ export default function NewProductPage() {
           <div className="flex items-center justify-end gap-3 pt-2">
             <Link
               href="/revenue/products"
+              data-testid="revenue-products-new-cancel-link"
               className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
@@ -348,6 +366,7 @@ export default function NewProductPage() {
             <button
               onClick={handleSave}
               disabled={saving}
+              data-testid="revenue-products-new-submit-btn"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

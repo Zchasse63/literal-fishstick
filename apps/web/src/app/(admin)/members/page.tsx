@@ -21,10 +21,16 @@ import { fadeInUp } from '@/lib/motion'
 import { useToast } from '@/hooks/use-toast'
 import { ToastNotification } from '@/components/ui/toast-notification'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
-import type { FilterTab, ProfileTab, Member, MemberBooking, MemberTransaction, EngagementStatus, AcquisitionChannel } from './_components/types'
+import type { FilterTab, ProfileTab, Member, MemberBooking, MemberTransaction, EngagementStatus, AcquisitionChannel, SortKey } from './_components/types'
 import { statusDot, statusLabel, membershipBadgeColor, engagementDotColor, acquisitionBadgeConfig } from './_components/types'
 import MemberProfilePanel from './_components/MemberProfilePanel'
 import AddMemberModal from './_components/AddMemberModal'
+import { useMemberSelection } from './_components/useMemberSelection'
+import { BulkActionsBar } from './_components/BulkActionsBar'
+import { BulkEmailModal } from './_components/BulkEmailModal'
+import { BulkTagModal } from './_components/BulkTagModal'
+import { useSavedViews, type SavedView } from './_components/useSavedViews'
+import { SavedViewsBar } from './_components/SavedViewsBar'
 
 const STUDIO_ID = DEFAULT_STUDIO_ID
 
@@ -142,6 +148,10 @@ function formatJoinDate(dt: string): string {
 function MemberRowSkeleton() {
   return (
     <tr className="border-b border-gray-50">
+      {/* Tier 8.5.A2 — placeholder for selection checkbox column */}
+      <td className="w-10 px-2 py-3">
+        <div className="h-4 w-4 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+      </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-gray-200 animate-pulse shrink-0" />
@@ -166,8 +176,21 @@ function MemberRowSkeleton() {
 export default function MembersPage() {
   const { toast, showToast } = useToast()
   const [filter, setFilter] = useState<FilterTab>('All')
+  const [sortKey, setSortKey] = useState<SortKey>('last_visit_desc')
+  const [tierFilter, setTierFilter] = useState<'all' | 'unlimited' | '10_class' | '6_class' | 'credit_pack'>('all')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Tier 8.5.A2 — Bulk selection state
+  const selection = useMemberSelection()
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false)
+  const [bulkTagOpen, setBulkTagOpen] = useState(false)
+  const lastClickedId = useRef<string | null>(null)
+  const selectAllCheckboxRef = useRef<HTMLInputElement | null>(null)
+
+  // Tier 8.5.A3 — Saved views (filter/sort combos persisted to localStorage)
+  const { views: savedViews, saveView, deleteView } = useSavedViews()
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [profileTab, setProfileTab] = useState<ProfileTab>('Overview')
   const [members, setMembers] = useState<Member[]>([])
@@ -192,6 +215,27 @@ export default function MembersPage() {
     return () => clearTimeout(timer)
   }, [search])
 
+  // Tier 8.5.A2 — Sync header checkbox indeterminate state (React doesn't
+  // expose this as a JSX attribute; has to be set imperatively via ref).
+  // Narrow deps to the raw selectedIds Set so the effect doesn't re-fire on
+  // every render (the `selection` object identity changes each render).
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = selection.isIndeterminate(members)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection.selectedIds, members])
+
+  // Escape key clears selection
+  useEffect(() => {
+    if (selection.selectedIds.size === 0) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') selection.clearSelection()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selection])
+
   // Fetch members
   const fetchMembers = useCallback(async () => {
     setLoading(true)
@@ -201,11 +245,32 @@ export default function MembersPage() {
         .select(`
           id, profile_id, membership_tier, membership_status, credits_remaining, total_visits,
           join_date, notes, last_visit, lifetime_value,
-          profiles!inner ( full_name, email, phone, avatar_url )
+          profiles!inner ( full_name, email, phone, avatar_url, exclude_from_analytics )
         `)
         .eq('studio_id', STUDIO_ID)
-        .order('id', { ascending: true })
         .limit(50)
+
+      // Apply sort — real columns, meaningful default. Previously `.order('id')`
+      // which is UUID-sorted (no human value). `last_visit DESC NULLS LAST`
+      // answers "who's engaging now?" — the question a dashboard should
+      // answer first.
+      switch (sortKey) {
+        case 'last_visit_desc':
+          query = query.order('last_visit', { ascending: false, nullsFirst: false })
+          break
+        case 'name_asc':
+          query = query.order('full_name', { ascending: true, referencedTable: 'profiles' })
+          break
+        case 'join_date_desc':
+          query = query.order('join_date', { ascending: false, nullsFirst: false })
+          break
+        case 'ltv_desc':
+          query = query.order('lifetime_value', { ascending: false, nullsFirst: false })
+          break
+        case 'total_visits_desc':
+          query = query.order('total_visits', { ascending: false, nullsFirst: false })
+          break
+      }
 
       // Apply search filter
       if (debouncedSearch) {
@@ -220,6 +285,11 @@ export default function MembersPage() {
         query = query.eq('membership_status', 'active')
       } else if (filter === 'Paused') {
         query = query.eq('membership_status', 'paused')
+      }
+
+      // Apply tier filter (real column, real business question)
+      if (tierFilter !== 'all') {
+        query = query.eq('membership_tier', tierFilter)
       }
 
       const { data, error } = await query
@@ -256,6 +326,11 @@ export default function MembersPage() {
 
         return {
           id: row.id,
+          // BUG-013 bridge: per-member API routes (/pause, /upgrade, PUT,
+          // DELETE, GET) all expect URL [id] = profile_id, but bookings/
+          // transactions/member_tags FKs point at members.id. Pass both so
+          // call sites can pick the right one.
+          profileId: row.profile_id,
           firstName,
           lastName,
           email: profile.email || '',
@@ -265,20 +340,17 @@ export default function MembersPage() {
           ...tierInfo,
           status: computedStatus,
           lastVisit: formatLastVisit(row.last_visit),
+          lastVisitAt: row.last_visit ?? null,
           credits: row.credits_remaining > 0 || tierInfo.membershipType !== 'unlimited' ? row.credits_remaining : null,
           ltv: Math.round((row.lifetime_value || 0) / 100),
           joinDate: formatJoinDate(row.join_date),
+          joinDateAt: row.join_date ?? null,
           totalVisits: m360?.total_visits ?? row.total_visits ?? 0,
           avgVisitsPerWeek: row.total_visits
             ? Math.round((row.total_visits / Math.max(1, Math.ceil((Date.now() - new Date(row.join_date).getTime()) / (7 * 24 * 60 * 60 * 1000)))) * 10) / 10
             : 0,
-          nextBilling: row.membership_status === 'paused' ? 'Paused' : 'N/A',
-          paymentMethod: 'On file',
-          preferredTime: '6:00 PM',
-          preferredType: 'Open Sauna',
-          guidedSessions: 0,
-          avgDuration: '50 min',
           notes: row.notes,
+          excludeFromAnalytics: profile.exclude_from_analytics ?? false,
           // member_360 enrichment
           engagementStatus: (m360?.engagement_status as EngagementStatus) || null,
           acquisitionChannel: (m360?.acquisition_channel as AcquisitionChannel) || null,
@@ -301,7 +373,7 @@ export default function MembersPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase, debouncedSearch, filter])
+  }, [supabase, debouncedSearch, filter, sortKey, tierFilter])
 
   // Fetch filter counts
   const fetchCounts = useCallback(async () => {
@@ -415,8 +487,94 @@ export default function MembersPage() {
     }
   }, [selectedMember, fetchMemberDetail])
 
+  // Tier 8.5.A2 — Bulk archive handler (sequential DELETE per member)
+  const handleBulkArchive = useCallback(async () => {
+    const selectedMembers = members.filter((m) => selection.isSelected(m.id))
+    if (selectedMembers.length === 0) return
+    if (!confirm(`Archive ${selectedMembers.length} members? This action cannot be undone.`)) return
+
+    let failed = 0
+    for (const m of selectedMembers) {
+      try {
+        // BUG-013: DELETE route expects profile_id in URL, NOT members.id.
+        const res = await fetch(`/api/members/${m.profileId}`, { method: 'DELETE' })
+        if (!res.ok) failed++
+      } catch {
+        failed++
+      }
+    }
+    selection.clearSelection()
+    setSelectedMember(null)
+    fetchMembers()
+    fetchCounts()
+    showToast(
+      failed === 0
+        ? `${selectedMembers.length} members archived`
+        : `Archived with ${failed} error${failed === 1 ? '' : 's'} — check console`
+    )
+  }, [members, selection, fetchMembers, fetchCounts, showToast])
+
+  // Tier 8.5.A3 — Apply saved view (loads filter/sort/search into state)
+  const handleApplyView = useCallback((view: SavedView) => {
+    setFilter(view.filter)
+    setSortKey(view.sortKey)
+    setTierFilter(view.tierFilter)
+    setSearch(view.search)
+    setActiveViewId(view.id)
+  }, [])
+
+  // Tier 8.5.A3 — Save current dialed-in state as a new view
+  const handleSaveCurrentView = useCallback((name: string) => {
+    const view = saveView({ name, filter, sortKey, tierFilter, search })
+    setActiveViewId(view.id)
+    showToast(`Saved view "${name}"`)
+  }, [saveView, filter, sortKey, tierFilter, search, showToast])
+
+  // Tier 8.5.A3 — Clear active view marker whenever the user tweaks filters
+  // manually (so the chip no longer claims to be active).
+  useEffect(() => {
+    if (!activeViewId) return
+    const view = savedViews.find((v) => v.id === activeViewId)
+    if (!view) return
+    const matches =
+      view.filter === filter &&
+      view.sortKey === sortKey &&
+      view.tierFilter === tierFilter &&
+      view.search === search
+    if (!matches) setActiveViewId(null)
+  }, [filter, sortKey, tierFilter, search, activeViewId, savedViews])
+
+  // Tier 8.5.A2 — Bulk CSV export handler (client-side Blob, no API)
+  const handleBulkExport = useCallback(() => {
+    const selected = members.filter((m) => selection.isSelected(m.id))
+    if (selected.length === 0) return
+    const headers = ['Name', 'Email', 'Phone', 'Membership', 'Status', 'Last Visit', 'Total Visits', 'LTV', 'Join Date']
+    const rows = selected.map((m) => [
+      `${m.firstName} ${m.lastName}`,
+      m.email,
+      m.phone,
+      m.membership,
+      m.status,
+      m.lastVisit,
+      String(m.totalVisits),
+      String(m.ltv),
+      m.joinDate,
+    ])
+    const csv = [headers, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `members-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast(`Exported ${selected.length} members to CSV`)
+  }, [members, selection, showToast])
+
   return (
-    <motion.div {...fadeInUp}>
+    <motion.div data-testid="members-page-root" {...fadeInUp}>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* ── Left: Member Directory ──────────────────────────── */}
         <div className={cn(
@@ -432,6 +590,7 @@ export default function MembersPage() {
               </p>
             </div>
             <button
+              data-testid="members-add-btn"
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
             >
@@ -471,6 +630,7 @@ export default function MembersPage() {
                     <button
                       key={tab}
                       onClick={() => setFilter(tab)}
+                      data-testid={`members-filter-${tab.toLowerCase().replace(/\s+/g, '-')}-btn`}
                       className={cn(
                         'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap',
                         filter === tab
@@ -488,6 +648,50 @@ export default function MembersPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Tier 8.5.A1 — Sort + Tier dropdowns. Real columns, real
+                    business questions. Replaces the UUID-order default. */}
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Sort</label>
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as SortKey)}
+                    data-testid="members-sort-select"
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs font-semibold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+                  >
+                    <option value="last_visit_desc">Last Visit (recent)</option>
+                    <option value="name_asc">Name (A–Z)</option>
+                    <option value="join_date_desc">Join Date (newest)</option>
+                    <option value="ltv_desc">LTV (highest)</option>
+                    <option value="total_visits_desc">Visits (most)</option>
+                  </select>
+
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-2">Tier</label>
+                  <select
+                    value={tierFilter}
+                    onChange={(e) => setTierFilter(e.target.value as typeof tierFilter)}
+                    data-testid="members-tier-filter-select"
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs font-semibold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+                  >
+                    <option value="all">All tiers</option>
+                    <option value="unlimited">Unlimited</option>
+                    <option value="10_class">10-Class Pack</option>
+                    <option value="6_class">6-Class Pack</option>
+                    <option value="credit_pack">Credit Pack</option>
+                  </select>
+                </div>
+
+                {/* Tier 8.5.A3 — Saved views (localStorage-backed chips) */}
+                <SavedViewsBar
+                  views={savedViews}
+                  activeViewId={activeViewId}
+                  onApplyView={handleApplyView}
+                  onSaveCurrent={handleSaveCurrentView}
+                  onDeleteView={(id) => {
+                    deleteView(id)
+                    if (activeViewId === id) setActiveViewId(null)
+                  }}
+                />
               </div>
             </div>
 
@@ -496,6 +700,18 @@ export default function MembersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-800">
+                    {/* Tier 8.5.A2 — select all visible checkbox */}
+                    <th className="w-10 px-2 py-3">
+                      <input
+                        ref={selectAllCheckboxRef}
+                        type="checkbox"
+                        checked={selection.isAllSelected(members)}
+                        onChange={() => selection.toggleAll(members)}
+                        data-testid="members-select-all-checkbox"
+                        aria-label="Select all visible members"
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </th>
                     <th className="text-left px-4 py-3">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Member</span>
                     </th>
@@ -530,17 +746,47 @@ export default function MembersPage() {
                       {members.map((member) => (
                         <tr
                           key={member.id}
+                          data-testid="members-directory-row"
+                          data-row-key={member.profileId}
                           onClick={() => {
                             setSelectedMember(member)
                             setProfileTab('Overview')
                           }}
                           className={cn(
                             'border-b border-gray-50 cursor-pointer transition-colors group',
-                            selectedMember?.id === member.id
-                              ? 'bg-indigo-50/60'
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-800/80'
+                            selection.isSelected(member.id)
+                              ? 'bg-indigo-100/60 dark:bg-indigo-900/20'
+                              : selectedMember?.id === member.id
+                                ? 'bg-indigo-50/60'
+                                : 'hover:bg-gray-50 dark:hover:bg-gray-800/80'
                           )}
                         >
+                          {/* Tier 8.5.A2 — row selection checkbox.
+                              onClick stops propagation so the row click-to-open
+                              handler doesn't fire. Shift-click selects a range
+                              from the last-clicked row. */}
+                          <td
+                            className="w-10 px-2 py-3"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selection.isSelected(member.id)}
+                              onChange={() => { /* controlled by onClick below */ }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (e.shiftKey && lastClickedId.current) {
+                                  selection.toggleRange(lastClickedId.current, member.id, members)
+                                } else {
+                                  selection.toggle(member.id)
+                                }
+                                lastClickedId.current = member.id
+                              }}
+                              data-testid="members-select-row-checkbox"
+                              aria-label={`Select ${member.firstName} ${member.lastName}`}
+                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                          </td>
                           {/* Name + Avatar + Engagement Dot */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
@@ -666,7 +912,10 @@ export default function MembersPage() {
                                       onClick={(e) => {
                                         e.stopPropagation()
                                         setOpenDropdownId(null)
-                                        if (confirm('Archive this member? This can be reversed.')) { fetch(`/api/members/${member.id}`, { method: 'DELETE' }).then(r => r.ok ? window.location.reload() : alert('Failed to archive')).catch(() => alert('Network error')) }
+                                        // BUG-013: DELETE /api/members/[id] expects profile_id,
+                                        // not members.id. Mirrors the fix in MemberProfilePanel's
+                                        // Archive button from Tier 3.7.
+                                        if (confirm('Archive this member? This can be reversed.')) { fetch(`/api/members/${member.profileId}`, { method: 'DELETE' }).then(r => r.ok ? window.location.reload() : alert('Failed to archive')).catch(() => alert('Network error')) }
                                       }}
                                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                     >
@@ -683,7 +932,7 @@ export default function MembersPage() {
 
                       {members.length === 0 && (
                         <tr>
-                          <td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                          <td colSpan={9} className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                             No members found matching your search.
                           </td>
                         </tr>
@@ -719,6 +968,7 @@ export default function MembersPage() {
               memberTags={memberTags}
               detailLoading={detailLoading}
               onShowToast={showToast}
+              onEditSuccess={() => { fetchMembers(); fetchCounts() }}
             />
           )}
         </AnimatePresence>
@@ -729,6 +979,36 @@ export default function MembersPage() {
       <AddMemberModal
         open={showAddModal}
         onOpenChange={setShowAddModal}
+        onSuccess={() => { fetchMembers(); fetchCounts() }}
+      />
+
+      {/* Tier 8.5.A2 — Bulk actions bar (slides in when rows are selected) */}
+      <AnimatePresence>
+        {selection.selectedIds.size > 0 && (
+          <BulkActionsBar
+            selectedCount={selection.selectedIds.size}
+            selectedMembers={members.filter((m) => selection.isSelected(m.id))}
+            onEmail={() => setBulkEmailOpen(true)}
+            onAddTag={() => setBulkTagOpen(true)}
+            onArchive={handleBulkArchive}
+            onExport={handleBulkExport}
+            onClearSelection={selection.clearSelection}
+          />
+        )}
+      </AnimatePresence>
+
+      <BulkEmailModal
+        open={bulkEmailOpen}
+        onOpenChange={setBulkEmailOpen}
+        recipients={members.filter((m) => selection.isSelected(m.id))}
+        onShowToast={showToast}
+      />
+
+      <BulkTagModal
+        open={bulkTagOpen}
+        onOpenChange={setBulkTagOpen}
+        selectedMembers={members.filter((m) => selection.isSelected(m.id))}
+        onShowToast={showToast}
         onSuccess={() => { fetchMembers(); fetchCounts() }}
       />
 

@@ -54,3 +54,10 @@ docs/glofox-migration/*.csv
 # Temporary SQL bulk import files
 *.sql.tmp
 /tmp/
+
+# Playwright
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/blob-report/
+apps/web/playwright/.cache/

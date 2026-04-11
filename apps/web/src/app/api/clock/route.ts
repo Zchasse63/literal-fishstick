@@ -90,6 +90,36 @@ export async function POST(request: NextRequest) {
     const studioId =
       profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
+    // Look up the employees row for this user. `clock_entries.employee_id`
+    // references `employees.id`, not the auth user id directly. If the staff
+    // member has not been onboarded via Operations → Employees, they cannot
+    // clock in/out.
+    const { data: employeeRow, error: employeeError } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("profile_id", user.id)
+      .eq("studio_id", studioId)
+      .maybeSingle();
+
+    if (employeeError) {
+      return NextResponse.json(
+        { error: employeeError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!employeeRow) {
+      return NextResponse.json(
+        {
+          error:
+            "No employee record found for this account. Please ask an admin to add you to Operations → Employees before clocking in.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const employeeId = employeeRow.id;
+
     // ─── Geofence Verification (optional) ─────────────────────
     let geofenceVerified = false;
     let geofenceLocationId: string | null = null;
@@ -218,7 +248,7 @@ export async function POST(request: NextRequest) {
       const { data: activeShift } = await supabase
         .from("clock_entries")
         .select("id")
-        .eq("employee_id", user.id)
+        .eq("employee_id", employeeId)
         .eq("studio_id", studioId)
         .is("clock_out", null)
         .maybeSingle();
@@ -231,7 +261,7 @@ export async function POST(request: NextRequest) {
       }
 
       const insertData: Record<string, unknown> = {
-        employee_id: user.id,
+        employee_id: employeeId,
         studio_id: studioId,
         location_id: location_id ?? null,
         clock_in: now,
@@ -264,19 +294,27 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Log activity
-      await supabase.from("activity_log").insert({
+      // Log activity (capture-and-log)
+      const { error: activityError } = await supabase.from("activity_log").insert({
         studio_id: studioId,
         actor_id: user.id,
         type: "employee_clocked_in",
         subject_type: "clock_entry",
         subject_id: entry.id,
+        description: `Employee clocked in${matchedLocationName ? ` at ${matchedLocationName}` : ""}`,
         metadata: {
           location_name: matchedLocationName,
           geofence_verified: geofenceVerified,
           distance_meters: distanceFromStudio,
         },
       });
+
+      if (activityError) {
+        console.error(
+          "POST /api/clock clock_in: activity_log insert failed",
+          activityError.message
+        );
+      }
 
       return NextResponse.json({
         data: entry,
@@ -290,7 +328,7 @@ export async function POST(request: NextRequest) {
     const { data: activeEntry, error: findError } = await supabase
       .from("clock_entries")
       .select("*")
-      .eq("employee_id", user.id)
+      .eq("employee_id", employeeId)
       .eq("studio_id", studioId)
       .is("clock_out", null)
       .order("clock_in", { ascending: false })
@@ -336,13 +374,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // Log activity (capture-and-log)
+    const { error: outActivityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
       type: "employee_clocked_out",
       subject_type: "clock_entry",
       subject_id: activeEntry.id,
+      description: `Employee clocked out (${Math.round(totalHours * 100) / 100}h)`,
       metadata: {
         location_name: matchedLocationName,
         total_hours: Math.round(totalHours * 100) / 100,
@@ -350,6 +389,13 @@ export async function POST(request: NextRequest) {
         distance_meters: distanceFromStudio,
       },
     });
+
+    if (outActivityError) {
+      console.error(
+        "POST /api/clock clock_out: activity_log insert failed",
+        outActivityError.message
+      );
+    }
 
     return NextResponse.json({
       data: updatedEntry,

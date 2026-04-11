@@ -68,7 +68,7 @@ export async function POST(
       .select("member_id, members:member_id ( profile_id, profiles:profile_id ( full_name, email, phone ) )")
       .eq("class_id", classId)
       .eq("studio_id", studioId)
-      .in("status", ["booked", "confirmed"]);
+      .in("status", ["booked", "checked_in"]);
 
     if (bookingError) {
       return NextResponse.json({ error: bookingError.message }, { status: 500 });

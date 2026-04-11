@@ -127,7 +127,7 @@ export default function EmployeeHomePage() {
   const firstName = fullName.split(' ')[0]
 
   return (
-    <div className="space-y-6">
+    <div data-testid="employee-home-page-root" className="space-y-6">
       {/* Greeting */}
       <motion.div {...fadeInUp}>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{getGreeting()}, {firstName}</h1>

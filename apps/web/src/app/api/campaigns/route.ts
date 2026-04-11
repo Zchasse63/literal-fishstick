@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
     .from('campaigns')
     .select('*', { count: 'exact' })
     .eq('studio_id', studioId)
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
   const { data, error, count } = await query
 
   if (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   return NextResponse.json({ data, count })
@@ -43,12 +42,16 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/campaigns
  *
- * Create a new campaign.
+ * Create a new campaign draft. Matches real schema:
+ *   body_html / body_text / sms_body instead of body_template,
+ *   ab_variants jsonb (rather than per-variant columns),
+ *   open_count / click_count / bounce_count / unsubscribe_count (singular).
+ *
  * Body: {
- *   name, type ('email' | 'sms'), subject?, body_template?,
- *   segment_id?, recipient_count?, ab_test_enabled?,
- *   variant_a_subject?, variant_a_body?, variant_b_subject?, variant_b_body?,
- *   ab_split_percentage?, ab_auto_select_winner?, ab_winner_metric?
+ *   name, type ('email' | 'sms'),
+ *   subject?, body_html?, body_text?, sms_body?,
+ *   preview_text?, segment_id?, recipient_filter?,
+ *   ab_test_enabled?, ab_variants?, ab_winner_metric?
  * }
  */
 export async function POST(request: NextRequest) {
@@ -57,107 +60,107 @@ export async function POST(request: NextRequest) {
   const { user, supabase, studioId } = auth
 
   const body = await request.json()
-    const {
+  const {
+    name,
+    type,
+    subject,
+    body_html,
+    body_text,
+    sms_body,
+    preview_text,
+    segment_id,
+    recipient_filter,
+    ab_test_enabled,
+    ab_variants,
+    ab_winner_metric,
+  } = body as {
+    name: string
+    type: 'email' | 'sms'
+    subject?: string
+    body_html?: string
+    body_text?: string
+    sms_body?: string
+    preview_text?: string
+    segment_id?: string
+    recipient_filter?: Record<string, unknown>
+    ab_test_enabled?: boolean
+    ab_variants?: Record<string, unknown>
+    ab_winner_metric?: 'open_rate' | 'click_rate'
+  }
+
+  if (!name || !type) {
+    return NextResponse.json(
+      { error: 'name and type are required' },
+      { status: 400 }
+    )
+  }
+
+  if (!['email', 'sms'].includes(type)) {
+    return NextResponse.json(
+      { error: 'type must be "email" or "sms"' },
+      { status: 400 }
+    )
+  }
+
+  // Validate A/B test fields — require both variants in ab_variants jsonb
+  if (ab_test_enabled) {
+    const v = ab_variants as
+      | { a?: { subject?: string; body_html?: string }; b?: { subject?: string; body_html?: string } }
+      | undefined
+    if (!v?.a?.subject || !v?.a?.body_html || !v?.b?.subject || !v?.b?.body_html) {
+      return NextResponse.json(
+        { error: 'A/B test requires ab_variants.a and ab_variants.b, each with subject and body_html' },
+        { status: 400 }
+      )
+    }
+  }
+
+  const channels = type === 'sms' ? ['sms'] : ['email']
+
+  const { data: campaign, error: insertError } = await supabase
+    .from('campaigns')
+    .insert({
+      studio_id: studioId,
       name,
       type,
-      subject,
-      body_template,
-      segment_id,
-      recipient_count,
-      ab_test_enabled,
-      variant_a_subject,
-      variant_a_body,
-      variant_b_subject,
-      variant_b_body,
-      ab_split_percentage,
-      ab_auto_select_winner,
-      ab_winner_metric,
-    } = body as {
-      name: string
-      type: 'email' | 'sms'
-      subject?: string
-      body_template?: string
-      segment_id?: string
-      recipient_count?: number
-      ab_test_enabled?: boolean
-      variant_a_subject?: string
-      variant_a_body?: string
-      variant_b_subject?: string
-      variant_b_body?: string
-      ab_split_percentage?: number
-      ab_auto_select_winner?: boolean
-      ab_winner_metric?: 'open_rate' | 'click_rate'
-    }
-
-    if (!name || !type) {
-      return NextResponse.json(
-        { error: 'name and type are required' },
-        { status: 400 }
-      )
-    }
-
-    if (!['email', 'sms'].includes(type)) {
-      return NextResponse.json(
-        { error: 'type must be "email" or "sms"' },
-        { status: 400 }
-      )
-    }
-
-    // Validate A/B test fields
-    if (ab_test_enabled) {
-      if (!variant_a_subject || !variant_a_body || !variant_b_subject || !variant_b_body) {
-        return NextResponse.json(
-          { error: 'A/B test requires variant_a_subject, variant_a_body, variant_b_subject, and variant_b_body' },
-          { status: 400 }
-        )
-      }
-    }
-
-    // ─── Insert ────────────────────────────────────────────────
-    const { data: campaign, error: insertError } = await supabase
-      .from('campaigns')
-      .insert({
-        studio_id: studioId,
-        name,
-        type,
-        status: 'draft',
-        subject: subject ?? null,
-        body_template: body_template ?? null,
-        segment_id: segment_id ?? null,
-        recipient_count: recipient_count ?? 0,
-        created_by: user.id,
-        ab_test_enabled: ab_test_enabled ?? false,
-        variant_a_subject: variant_a_subject ?? null,
-        variant_a_body: variant_a_body ?? null,
-        variant_b_subject: variant_b_subject ?? null,
-        variant_b_body: variant_b_body ?? null,
-        ab_split_percentage: ab_split_percentage ?? 50,
-        ab_auto_select_winner: ab_auto_select_winner ?? false,
-        ab_winner_metric: ab_winner_metric ?? 'open_rate',
-        sent_count: 0,
-        delivered_count: 0,
-        opened_count: 0,
-        clicked_count: 0,
-        bounced_count: 0,
-        failed_count: 0,
-        unsubscribed_count: 0,
-      })
-      .select()
-      .single()
-
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 })
-    }
-
-    // Log activity
-    await supabase.from('activity_log').insert({
-      studio_id: studioId,
-      actor_id: user.id,
-      type: 'campaign_created',
-      subject_type: 'campaign',
-      subject_id: campaign.id,
-      metadata: { name, type },
+      status: 'draft',
+      channels,
+      subject: subject ?? null,
+      body_html: body_html ?? null,
+      body_text: body_text ?? null,
+      sms_body: sms_body ?? null,
+      preview_text: preview_text ?? null,
+      segment_id: segment_id ?? null,
+      recipient_filter: recipient_filter ?? null,
+      ab_test_enabled: ab_test_enabled ?? false,
+      ab_variants: ab_variants ?? null,
+      ab_winner_metric: ab_winner_metric ?? null,
+      created_by: user.id,
     })
+    .select()
+    .single()
 
-    return NextResponse.json({ data: campaign }, { status: 201 })
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
+  // Tier 5.1 fix: description + capture-and-log pattern.
+  const { error: activityError } = await supabase.from('activity_log').insert({
+    studio_id: studioId,
+    actor_id: user.id,
+    type: 'campaign_created',
+    subject_type: 'campaign',
+    subject_id: campaign.id,
+    description: `Campaign created: ${name} (${type})`,
+    metadata: { name, type },
+  })
+
+  if (activityError) {
+    console.error(
+      'POST /api/campaigns: activity_log insert failed',
+      activityError.message
+    )
+  }
+
+  return NextResponse.json({ data: campaign }, { status: 201 })
 }

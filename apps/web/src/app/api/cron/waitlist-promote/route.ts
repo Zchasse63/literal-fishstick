@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         .select("id", { count: "exact", head: true })
         .eq("class_id", cls.id)
         .eq("studio_id", cls.studio_id)
-        .in("status", ["confirmed", "checked_in"]);
+        .in("status", ["booked", "checked_in"]);
 
       if (countError) {
         console.error(`Failed to count bookings for class ${cls.id}:`, countError);
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
           .eq("class_id", cls.id)
           .eq("member_id", entry.member_id)
           .eq("studio_id", cls.studio_id)
-          .in("status", ["confirmed", "checked_in"])
+          .in("status", ["booked", "checked_in"])
           .maybeSingle();
 
         if (existingBooking) {
@@ -198,7 +198,8 @@ export async function POST(request: Request) {
             class_id: cls.id,
             member_id: entry.member_id,
             studio_id: cls.studio_id,
-            status: "confirmed",
+            // F2 fix: 'confirmed' was a phantom enum value
+            status: "booked",
             booked_at: new Date().toISOString(),
             source: "waitlist_promotion",
           })

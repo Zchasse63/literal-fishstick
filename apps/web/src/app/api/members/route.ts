@@ -85,7 +85,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: member, error: insertError } = await supabase
+  // BUG-010 Layer 1: profiles has no `status` column; `is_active` defaults to true.
+  const { data: profile, error: insertError } = await supabase
     .from("profiles")
     .insert({
       email,
@@ -93,7 +94,6 @@ export async function POST(request: NextRequest) {
       phone: normalizePhone(phone) ?? null,
       roles: roles ?? ["member"],
       studio_id: studioId,
-      status: "active",
     })
     .select()
     .single();
@@ -102,15 +102,50 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  // Log activity
-  await supabase.from("activity_log").insert({
-    studio_id: studioId,
-    actor_id: user.id,
-    type: "member_created",
-    subject_type: "profile",
-    subject_id: member.id,
-    metadata: { email, full_name },
-  });
+  // BUG-010 Layer 2: also insert the matching `members` row so the directory
+  // list (which joins members → profiles) actually surfaces the new record.
+  // Roll back the profile on partial failure to avoid leaking orphan rows.
+  const { error: memberInsertError } = await supabase
+    .from("members")
+    .insert({
+      profile_id: profile.id,
+      studio_id: studioId,
+      membership_status: "active",
+      join_date: new Date().toISOString().slice(0, 10),
+    });
 
-  return NextResponse.json({ data: member }, { status: 201 });
+  if (memberInsertError) {
+    await supabase.from("profiles").delete().eq("id", profile.id);
+    return NextResponse.json(
+      { error: `Failed to create member row: ${memberInsertError.message}` },
+      { status: 500 }
+    );
+  }
+
+  // Log activity — BUG-010 Layers 3 & 4: `member_created` is now valid in the
+  // CHECK constraint, and `description` is NOT NULL so it must be passed.
+  // The Supabase client does not throw on insert errors, so we explicitly
+  // capture and log any failure. We do not roll back the profile+member
+  // writes — the activity log is observability, not business-critical, and
+  // the user has genuinely been created.
+  const { error: activityError } = await supabase
+    .from("activity_log")
+    .insert({
+      studio_id: studioId,
+      actor_id: user.id,
+      type: "member_created",
+      subject_type: "profile",
+      subject_id: profile.id,
+      description: `Member created: ${full_name}`,
+      metadata: { email, full_name },
+    });
+
+  if (activityError) {
+    console.error(
+      "POST /api/members: activity_log insert failed",
+      activityError.message,
+    );
+  }
+
+  return NextResponse.json({ data: profile }, { status: 201 });
 }

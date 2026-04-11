@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -17,6 +18,7 @@ import {
   ToggleLeft,
   ToggleRight,
   ShoppingBag,
+  Loader2,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
 // ─── Types ──────────────────────────────────────────────────
@@ -63,6 +65,7 @@ interface ProductDetailClientProps {
 
 // ─── Page ───────────────────────────────────────────────────
 export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+  const router = useRouter()
   const [ORDER_HISTORY] = useState<OrderHistoryItem[]>([])
 
   const [name, setName] = useState(product?.name ?? '')
@@ -77,9 +80,73 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [weightOz, setWeightOz] = useState(product?.weightOz ?? 0)
   const [active, setActive] = useState(product?.active ?? true)
 
+  // BUG-009 GAP-5: Save + Delete buttons were unwired visual stubs. Wire them
+  // to the real API routes. `handleSave` PUTs the full field set; `handleDelete`
+  // confirms then soft-deletes via DELETE.
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    if (!product) return
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          description,
+          category,
+          price: priceInCents,
+          compare_at_price: compareAtPrice || null,
+          sku,
+          barcode,
+          inventory_count: inventory,
+          low_stock_threshold: lowStockThreshold,
+          weight_oz: weightOz,
+          is_active: active,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error || 'Failed to save product.')
+        return
+      }
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save product.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!product) return
+    if (!confirm(`Delete "${product.name}"? This will soft-delete the product (set it inactive). This action can be reversed by re-activating the product.`)) {
+      return
+    }
+    setDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${product.id}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(json.error || 'Failed to delete product.')
+        setDeleting(false)
+        return
+      }
+      router.push('/revenue/products')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete product.')
+      setDeleting(false)
+    }
+  }
+
   if (!product) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div data-testid="revenue-products-detail-not-found" className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
           <p className="text-lg font-bold text-gray-700 dark:text-gray-300">Product not found</p>
@@ -94,6 +161,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   return (
     <motion.div
+      data-testid="revenue-products-detail-root"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
@@ -115,16 +183,36 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{product.sku}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 bg-white dark:bg-gray-950 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
-            <Trash2 className="h-4 w-4" />
-            Delete
+          <button
+            onClick={handleDelete}
+            disabled={deleting || saving}
+            data-testid="revenue-products-detail-delete-btn"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 bg-white dark:bg-gray-950 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {deleting ? 'Deleting...' : 'Delete'}
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
-            <Save className="h-4 w-4" />
-            Save Changes
+          <button
+            onClick={handleSave}
+            disabled={saving || deleting}
+            data-testid="revenue-products-detail-save-btn"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div
+          data-testid="revenue-products-detail-error"
+          className="rounded-xl bg-red-50 border border-red-200 p-4"
+        >
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* ─── Two-Column Layout ─────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
@@ -159,6 +247,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div>
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Product Name</label>
                 <input
+                  data-testid="revenue-products-detail-name-input"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -168,6 +257,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div>
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Description</label>
                 <textarea
+                  data-testid="revenue-products-detail-description-input"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
@@ -177,6 +267,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div>
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Category</label>
                 <select
+                  data-testid="revenue-products-detail-category-select"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-colors bg-white dark:bg-gray-950"
@@ -209,6 +300,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
+                    data-testid="revenue-products-detail-price-input"
                     type="text"
                     value={(priceInCents / 100).toFixed(2)}
                     onChange={(e) => setPriceInCents(Math.round(parseFloat(e.target.value || '0') * 100))}
@@ -221,6 +313,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
                   <input
+                    data-testid="revenue-products-detail-compare-price-input"
                     type="text"
                     value={compareAtPrice ? (compareAtPrice / 100).toFixed(2) : ''}
                     onChange={(e) => setCompareAtPrice(Math.round(parseFloat(e.target.value || '0') * 100))}
@@ -247,6 +340,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Quantity</label>
                   <input
+                    data-testid="revenue-products-detail-inventory-input"
                     type="number"
                     value={inventory}
                     onChange={(e) => setInventory(parseInt(e.target.value) || 0)}
@@ -256,6 +350,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Low Stock Alert</label>
                   <input
+                    data-testid="revenue-products-detail-low-stock-input"
                     type="number"
                     value={lowStockThreshold}
                     onChange={(e) => setLowStockThreshold(parseInt(e.target.value) || 0)}
@@ -266,6 +361,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div>
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">SKU</label>
                 <input
+                  data-testid="revenue-products-detail-sku-input"
                   type="text"
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
@@ -275,6 +371,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div>
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Barcode</label>
                 <input
+                  data-testid="revenue-products-detail-barcode-input"
                   type="text"
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
@@ -297,6 +394,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div>
               <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Weight (oz)</label>
               <input
+                data-testid="revenue-products-detail-weight-input"
                 type="number"
                 value={weightOz}
                 onChange={(e) => setWeightOz(parseFloat(e.target.value) || 0)}
@@ -321,6 +419,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               </div>
               <button
                 onClick={() => setActive(!active)}
+                data-testid="revenue-products-detail-active-toggle"
                 className="transition-colors"
               >
                 {active ? (

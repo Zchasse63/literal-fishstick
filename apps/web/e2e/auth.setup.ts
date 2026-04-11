@@ -3,11 +3,21 @@
  *
  * Uses @supabase/ssr cookie-based auth. Signs in via GoTrue REST API,
  * then sets the session cookie directly on the browser context.
+ *
+ * IMPORTANT — BUG-007 fix: the test admin/employee profiles MUST be in
+ * `E2E_STUDIO_ID` (which resolves to `DEFAULT_STUDIO_ID` until BUG-001 is
+ * fixed). The admin UI hardcodes `DEFAULT_STUDIO_ID` for all data reads,
+ * and RLS policies on `profiles`/`members` use `get_user_studio_id()` —
+ * so if the auth user sits in a different studio, every data-bound query
+ * from the browser client silently returns empty rows. Earlier smoke tiers
+ * didn't exercise data reads, which is why this stayed hidden until
+ * Tier 3.1 (Record Payment).
  */
 import { test as setup, expect } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 import { config } from 'dotenv'
 import path from 'path'
+import { E2E_STUDIO_ID } from './fixtures/test-data'
 
 // Load real env vars
 config({ path: path.resolve(__dirname, '../.env.local') })
@@ -25,7 +35,7 @@ const ADMIN_EMAIL = 'meridian-e2e-admin@test.meridian.app'
 const ADMIN_PASSWORD = 'e2e-test-admin-password-2026!'
 const EMPLOYEE_EMAIL = 'meridian-e2e-employee@test.meridian.app'
 const EMPLOYEE_PASSWORD = 'e2e-test-employee-password-2026!'
-const TEST_STUDIO_ID = '00000000-0000-4000-a000-000000000000'
+const TEST_STUDIO_ID = E2E_STUDIO_ID
 
 async function ensureTestUser(
   email: string,
@@ -51,7 +61,10 @@ async function ensureTestUser(
     userId = data.user.id
   }
 
-  // Ensure studio exists (FK target)
+  // Ensure studio exists (FK target). Use ignoreDuplicates so we never
+  // overwrite the name/slug of a pre-existing studio — DEFAULT_STUDIO_ID
+  // is "The Sauna Guys" in dev data and must not be renamed to "E2E Test
+  // Studio" on every auth-setup run. See BUG-007 for why this matters.
   await supabase.from('studios').upsert(
     {
       id: TEST_STUDIO_ID,
@@ -60,7 +73,7 @@ async function ensureTestUser(
       timezone: 'America/New_York',
       settings: {},
     },
-    { onConflict: 'id' },
+    { onConflict: 'id', ignoreDuplicates: true },
   )
 
   // Ensure profile exists

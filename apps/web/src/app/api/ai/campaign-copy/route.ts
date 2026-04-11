@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireRole(["owner", "manager"]);
     if (auth.error) return auth.error;
-    const { user, supabase } = auth;
+    const { user, supabase, studioId } = auth;
 
     // Rate limit: 20 requests per minute per user
     const rl = await rateLimit(`ai:${user.id}`, 20, 60_000);
@@ -88,19 +88,17 @@ export async function POST(request: Request) {
     const { data: cached } = await supabase
       .from("ai_cache")
       .select("result, created_at")
+      .eq("studio_id", studioId)
       .eq("cache_type", "campaign_copy")
       .eq("cache_key", cacheKey)
-      .gte(
-        "created_at",
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      )
+      .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (cached) {
       return NextResponse.json({
-        ...cached.result,
+        ...(cached.result as Record<string, unknown>),
         cached: true,
         generated_at: cached.created_at,
       });
@@ -109,22 +107,27 @@ export async function POST(request: Request) {
     // Generate fresh campaign copy
     const result = await generateCampaignCopy(body);
     const generatedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    // Cache the result (best-effort — don't fail if ai_cache table doesn't exist yet)
+    // Cache the result (best-effort — upsert on the (studio_id, cache_key) unique constraint).
     await supabase
       .from("ai_cache")
-      .insert({
-        cache_type: "campaign_copy",
-        cache_key: cacheKey,
-        result,
-        created_at: generatedAt,
-      })
+      .upsert(
+        {
+          studio_id: studioId,
+          cache_type: "campaign_copy",
+          cache_key: cacheKey,
+          result: result as unknown as Record<string, unknown>,
+          expires_at: expiresAt,
+        },
+        { onConflict: "studio_id,cache_key" }
+      )
       .then(
         () => {
           /* cached successfully */
         },
-        () => {
-          /* Table may not exist yet — that's fine */
+        (err) => {
+          console.error("campaign-copy cache upsert failed:", err);
         }
       );
 

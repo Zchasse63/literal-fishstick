@@ -199,15 +199,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
-    // Log activity
-    await supabase.from('activity_log').insert({
+    // BUG-025 fix: 'event_created' was not in the activity_log type
+    // CHECK enum (canonical is 'corporate_event_created'). Tier 4.5
+    // migration added the corporate_event_* values. Add description and
+    // capture-and-log per canonical pattern.
+    const { error: activityError } = await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: 'event_created',
+      type: 'corporate_event_created',
       subject_type: 'event',
       subject_id: event.id,
+      description: `Event created: ${name}`,
       metadata: { name, event_type },
     })
+
+    if (activityError) {
+      console.error(
+        'POST /api/events: activity_log insert failed',
+        activityError.message
+      )
+    }
 
     return NextResponse.json({ data: event }, { status: 201 })
   } catch (err) {

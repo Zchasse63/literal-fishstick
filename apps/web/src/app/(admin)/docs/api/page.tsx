@@ -17,7 +17,7 @@ export default function APIDocsPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div data-testid="docs-api-page-root" className="space-y-6">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">API Documentation</h1>

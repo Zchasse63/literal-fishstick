@@ -88,13 +88,15 @@ export async function GET() {
     const waveAssignments: Record<string, number> = {}
     let pendingWaveAssignment = 0
 
-    // Count members by migration_wave
+    // Count members by migration_wave. Glofox-sourced profiles are
+    // identified by a non-null `glofox_id` (the canonical marker), not a
+    // phantom `source` column that no longer exists on `profiles`.
     for (const wave of [1, 2, 3, 4, 5]) {
       const { count } = await supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .eq('studio_id', studioId)
-        .eq('source', 'glofox')
+        .not('glofox_id', 'is', null)
         .eq('migration_wave', wave)
 
       waveAssignments[`wave_${wave}`] = count ?? 0
@@ -105,7 +107,7 @@ export async function GET() {
       .from('profiles')
       .select('id', { count: 'exact', head: true })
       .eq('studio_id', studioId)
-      .eq('source', 'glofox')
+      .not('glofox_id', 'is', null)
       .is('migration_wave', null)
 
     pendingWaveAssignment = noWaveCount ?? 0

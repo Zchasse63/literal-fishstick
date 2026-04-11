@@ -119,7 +119,7 @@ export default function SchedulePage() {
   const weekLabel = `${formatDateShort(currentWeekStart)} – ${formatDateShort(weekEnd)}, ${weekEnd.getFullYear()}`
 
   return (
-    <div className="space-y-6">
+    <div data-testid="employee-schedule-page-root" className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp} className="flex items-center justify-between">
         <div>

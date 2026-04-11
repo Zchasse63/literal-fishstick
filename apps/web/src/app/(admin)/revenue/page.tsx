@@ -561,6 +561,7 @@ export default function RevenuePage() {
 
   return (
     <motion.div
+      data-testid="revenue-page-root"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
@@ -590,6 +591,7 @@ export default function RevenuePage() {
           <button
             onClick={() => setPaymentModalOpen(true)}
             className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2"
+            data-testid="revenue-record-payment-btn"
           >
             <DollarSign className="w-4 h-4" />
             Record Payment

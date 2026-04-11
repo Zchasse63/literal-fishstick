@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     .select("id", { count: "exact", head: true })
     .eq("class_id", class_id)
     .eq("studio_id", studioId)
-    .in("status", ["confirmed", "checked_in"]);
+    .in("status", ["booked", "checked_in"]);
 
   if (countError) {
     return NextResponse.json({ error: "Failed to check capacity" }, { status: 500 });
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     .eq("class_id", class_id)
     .eq("member_id", member_id)
     .eq("studio_id", studioId)
-    .in("status", ["confirmed", "checked_in"])
+    .in("status", ["booked", "checked_in"])
     .maybeSingle();
 
   if (existingBooking) {
@@ -103,14 +103,19 @@ export async function POST(request: NextRequest) {
   // Atomic insert — if a race condition causes over-capacity, the DB constraint
   // or a subsequent check will catch it. For Phase 1 this count-then-insert
   // approach is acceptable with the edge-case policy's atomic insert guidance.
+  //
+  // NOTE: `booked_at` is phantom — `bookings` uses `created_at` (default now())
+  // for the booking timestamp. See B17 for the full atomic-booking fix.
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .insert({
       class_id,
       member_id,
       studio_id: studioId,
-      status: "confirmed",
-      booked_at: new Date().toISOString(),
+      // F2 fix: 'confirmed' was a phantom enum value (the bookings_status_check
+      // enum allows 'booked', 'checked_in', 'no_show', 'cancelled',
+      // 'late_cancelled', 'waitlisted'). Default for new bookings is 'booked'.
+      status: "booked",
     })
     .select()
     .single();

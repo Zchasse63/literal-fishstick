@@ -195,15 +195,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // Log activity (capture-and-log with description)
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
       type: "report_created",
       subject_type: "saved_report",
       subject_id: report.id,
+      description: `Report created: ${name} (${report_type})`,
       metadata: { name, report_type },
     });
+
+    if (activityError) {
+      console.error(
+        "POST /api/reports: activity_log insert failed",
+        activityError.message
+      );
+    }
 
     return NextResponse.json({ data: report }, { status: 201 });
   } catch (err) {

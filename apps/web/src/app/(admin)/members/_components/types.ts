@@ -1,7 +1,19 @@
 // ─── Shared types & helpers for Members sub-components ──────
 
 export type FilterTab = 'All' | 'Active' | 'Paused' | 'At Risk' | 'New'
-export type ProfileTab = 'Overview' | 'History' | 'Financials' | 'Communications'
+export type ProfileTab = 'Overview' | 'Activity' | 'History' | 'Financials' | 'Communications'
+
+/**
+ * Sort key for the members directory. All are real columns. Default order
+ * is `last_visit DESC` with `full_name ASC` as a tiebreaker — that's the
+ * signal that answers "who's engaging now?" first.
+ */
+export type SortKey =
+  | 'last_visit_desc'   // most recent visits first (default)
+  | 'name_asc'          // alphabetical
+  | 'join_date_desc'    // newest members first
+  | 'ltv_desc'          // highest lifetime value first
+  | 'total_visits_desc' // most engaged first
 
 export type EngagementStatus = 'subscriber' | 'active' | 'engaged' | 'cooling' | 'at_risk' | 'lapsed_with_credits' | 'lapsed' | 'churned' | 'new_unused' | 'lead_only'
 export type BehaviorSegment = 'power_user' | 'classpass_repeat' | 'new_never_booked' | 'one_and_done' | 'regular'
@@ -9,6 +21,12 @@ export type AcquisitionChannel = 'classpass' | 'website' | 'direct' | 'mobile_ap
 
 export interface Member {
   id: string
+  // BUG-013: members.id and profiles.id are distinct UUIDs. The directory
+  // query maps row.id → Member.id (members.id, used for bookings/transactions
+  // FK lookups), but the per-member API routes (PUT/DELETE/pause/upgrade)
+  // expect URL [id] = profile_id. profileId is the bridge until BUG-013 is
+  // resolved at the broader scope in a future tier.
+  profileId: string
   firstName: string
   lastName: string
   email: string
@@ -19,19 +37,16 @@ export interface Member {
   membershipPrice: number
   membershipType: 'unlimited' | '10-class' | '6-class' | 'credit-pack'
   status: 'active' | 'paused' | 'at-risk' | 'new'
-  lastVisit: string
+  lastVisit: string           // formatted relative ("2 days ago", "Never")
+  lastVisitAt: string | null  // raw ISO timestamp, for client-side sorting
   credits: number | null
   ltv: number
-  joinDate: string
+  joinDate: string            // formatted for display
+  joinDateAt: string | null   // raw ISO
   totalVisits: number
   avgVisitsPerWeek: number
-  nextBilling: string
-  paymentMethod: string
-  preferredTime: string
-  preferredType: string
-  guidedSessions: number
-  avgDuration: string
   notes: string | null
+  excludeFromAnalytics?: boolean
   // member_360 enrichment fields
   engagementStatus?: EngagementStatus | null
   acquisitionChannel?: AcquisitionChannel | null

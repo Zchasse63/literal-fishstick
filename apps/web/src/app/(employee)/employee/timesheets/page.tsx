@@ -153,7 +153,7 @@ export default function TimesheetsPage() {
   const weekLabel = `${formatDateShort(currentWeekStart)} – ${formatDateShort(weekEnd)}, ${weekEnd.getFullYear()}`
 
   return (
-    <div className="space-y-6">
+    <div data-testid="employee-timesheets-page-root" className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Timesheets</h1>

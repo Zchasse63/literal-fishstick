@@ -398,7 +398,7 @@ export function MigrationClient({ initialMigrationJobs }: MigrationClientProps) 
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-migration-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">

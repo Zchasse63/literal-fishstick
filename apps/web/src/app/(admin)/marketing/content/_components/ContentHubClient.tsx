@@ -259,7 +259,7 @@ export default function ContentHubClient({ initialPosts }: ContentHubClientProps
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="marketing-content-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* Header */}
         <motion.div {...fadeInUp} className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

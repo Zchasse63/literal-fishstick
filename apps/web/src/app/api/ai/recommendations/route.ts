@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
       // Class utilization data
       const { data: recentClasses } = await supabase
         .from("classes")
-        .select("id, name, capacity, start_time")
+        .select("id, title, capacity, starts_at")
         .eq("studio_id", studioId)
         .gte(
-          "start_time",
+          "starts_at",
           new Date(Date.now() - 30 * 86400000).toISOString()
         )
-        .order("start_time", { ascending: false })
+        .order("starts_at", { ascending: false })
         .limit(50);
 
       metrics.recent_classes = recentClasses?.length ?? 0;
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
           .select("id", { count: "exact", head: true })
           .in("class_id", classIds)
           .eq("studio_id", studioId)
-          .in("status", ["confirmed", "checked_in"]);
+          .in("status", ["booked", "checked_in"]);
 
         metrics.avg_bookings_per_class =
           recentClasses.length > 0

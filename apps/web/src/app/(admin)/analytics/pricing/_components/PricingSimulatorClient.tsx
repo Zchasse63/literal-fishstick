@@ -80,7 +80,7 @@ export function PricingSimulatorClient({ initialSimulations }: PricingSimulatorC
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-pricing-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* --- Header --- */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">

@@ -220,14 +220,18 @@ async function buildHealthScoreInput(
 
 /**
  * Cache the health score result in ai_cache and update the member profile.
+ *
+ * Real ai_cache schema uses `result` (jsonb) and `created_at` (default now()),
+ * plus a NOT NULL `cache_key` that we derive from cache_type + entity_id.
+ * The unique constraint is (studio_id, cache_key).
  */
 async function cacheAndUpdateProfile(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   memberId: string,
   result: HealthScoreResult
 ): Promise<void> {
-  const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
+  const cacheKey = `health_score:${memberId}`;
 
   // Cache in ai_cache (best-effort)
   await supabase
@@ -235,13 +239,13 @@ async function cacheAndUpdateProfile(
     .upsert(
       {
         studio_id: STUDIO_ID,
+        cache_key: cacheKey,
         cache_type: "health_score",
         entity_id: memberId,
-        data: result as unknown as Record<string, unknown>,
-        generated_at: now,
+        result: result as unknown as Record<string, unknown>,
         expires_at: expiresAt,
       },
-      { onConflict: "studio_id,cache_type,entity_id" }
+      { onConflict: "studio_id,cache_key" }
     )
     .then(
       () => {
@@ -252,24 +256,33 @@ async function cacheAndUpdateProfile(
       }
     );
 
-  // Update profile with health score fields (best-effort)
-  await supabase
-    .from("profiles")
-    .update({
-      health_score: result.score,
-      health_score_updated_at: now,
-      health_risk_level: result.risk_level,
-    })
+  // Update the profile row linked to this member. `members.profile_id` is the
+  // FK to profiles.id — using memberId directly would silently no-op.
+  const { data: memberRow } = await supabase
+    .from("members")
+    .select("profile_id")
     .eq("id", memberId)
     .eq("studio_id", STUDIO_ID)
-    .then(
-      () => {
-        /* success */
-      },
-      (err) => {
-        console.error("Failed to update profile health score:", err);
-      }
-    );
+    .maybeSingle();
+
+  if (memberRow?.profile_id) {
+    await supabase
+      .from("profiles")
+      .update({
+        health_score: result.score,
+        health_score_updated_at: new Date().toISOString(),
+        health_risk_level: result.risk_level,
+      })
+      .eq("id", memberRow.profile_id)
+      .then(
+        () => {
+          /* success */
+        },
+        (err) => {
+          console.error("Failed to update profile health score:", err);
+        }
+      );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -301,20 +314,19 @@ export async function POST(request: NextRequest) {
     // Check for a valid cache entry first
     const { data: cached } = await supabase
       .from("ai_cache")
-      .select("data, generated_at, expires_at")
+      .select("result, created_at, expires_at")
       .eq("studio_id", STUDIO_ID)
-      .eq("cache_type", "health_score")
-      .eq("entity_id", member_id)
+      .eq("cache_key", `health_score:${member_id}`)
       .gt("expires_at", new Date().toISOString())
-      .order("generated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (cached?.data) {
+    if (cached?.result) {
       return NextResponse.json({
-        ...(cached.data as HealthScoreResult),
+        ...(cached.result as HealthScoreResult),
         cached: true,
-        generated_at: cached.generated_at,
+        generated_at: cached.created_at,
       });
     }
 

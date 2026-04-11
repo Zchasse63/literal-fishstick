@@ -145,7 +145,7 @@ export default function PerformancePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="employee-performance-page-root" className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Performance</h1>

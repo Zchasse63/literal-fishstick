@@ -1,16 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { useCommandPalette } from '@/contexts/command-palette-context'
+import { NotificationDropdown } from '@/components/layout/NotificationDropdown'
 import {
   Search,
   Menu,
-  Bell,
   Plus,
   Keyboard,
-  BellOff,
 } from 'lucide-react'
 
 interface HeaderProps {
@@ -19,22 +17,7 @@ interface HeaderProps {
 }
 
 export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
-  const { setOpen: openCommandPalette } = useCommandPalette()
-  const [notifOpen, setNotifOpen] = useState(false)
-  const notifRef = useRef<HTMLDivElement>(null)
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setNotifOpen(false)
-      }
-    }
-    if (notifOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [notifOpen])
+  const { openWithMode } = useCommandPalette()
 
   return (
     <header
@@ -60,21 +43,23 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3">
-        {/* Search — opens command palette */}
+        {/* Search — opens universal search mode */}
         <button
           aria-label="Open search"
-          onClick={() => openCommandPalette(true)}
+          onClick={() => openWithMode('search')}
+          data-testid="header-search-btn"
           className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <Search className="w-4 h-4" />
           <span>Search...</span>
-          <kbd className="text-[10px] font-medium bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-1.5 py-0.5">⌘K</kbd>
+          <kbd className="text-[10px] font-medium bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-1.5 py-0.5">/</kbd>
         </button>
 
-        {/* Keyboard shortcuts — opens command palette */}
+        {/* Keyboard shortcuts — opens command mode */}
         <button
           aria-label="Keyboard shortcuts"
-          onClick={() => openCommandPalette(true)}
+          onClick={() => openWithMode('command')}
+          data-testid="header-keyboard-btn"
           className="hidden lg:flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           <Keyboard className="w-5 h-5" />
@@ -91,33 +76,13 @@ export function Header({ sidebarCollapsed, onToggleSidebar }: HeaderProps) {
           <span className="text-emerald-600">Healthy</span>
         </div>
 
-        {/* Notifications */}
-        <div ref={notifRef} className="relative">
-          <button
-            onClick={() => setNotifOpen((prev) => !prev)}
-            aria-label="Notifications"
-            className="relative text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <Bell className="w-5 h-5" />
-          </button>
+        {/* Tier 8.5.A8 — Live notification dropdown with unread badge */}
+        <NotificationDropdown />
 
-          {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg z-50">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
-              </div>
-              <div className="flex flex-col items-center justify-center px-4 py-8">
-                <BellOff className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">No new notifications</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">You&apos;re all caught up</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Quick Create — opens command palette */}
+        {/* Quick Create — opens command mode (actions + navigation) */}
         <button
-          onClick={() => openCommandPalette(true)}
+          onClick={() => openWithMode('command')}
+          data-testid="header-quick-create-btn"
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm"
         >
           <Plus className="w-4 h-4" />

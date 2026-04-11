@@ -441,7 +441,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* ─── Header with Time Range ──────────────────── */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">

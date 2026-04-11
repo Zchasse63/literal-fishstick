@@ -197,7 +197,7 @@ export function GrowthDashboardClient({
   const cohortKeys = cohortData.length > 0 ? Object.keys(cohortData[0]).filter(k => k !== 'period') : []
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-dashboards-growth-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp}>

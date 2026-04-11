@@ -60,9 +60,9 @@ export async function GET() {
         .from("classes")
         .select("id", { count: "exact", head: true })
         .eq("studio_id", studioId)
-        .gte("start_time", new Date().toISOString().split("T")[0])
+        .gte("starts_at", new Date().toISOString().split("T")[0])
         .lt(
-          "start_time",
+          "starts_at",
           new Date(Date.now() + 86400000).toISOString().split("T")[0]
         ),
 
@@ -145,9 +145,9 @@ export async function GET() {
       .from("classes")
       .select("capacity")
       .eq("studio_id", studioId)
-      .gte("start_time", new Date().toISOString().split("T")[0])
+      .gte("starts_at", new Date().toISOString().split("T")[0])
       .lt(
-        "start_time",
+        "starts_at",
         new Date(Date.now() + 86400000).toISOString().split("T")[0]
       );
 

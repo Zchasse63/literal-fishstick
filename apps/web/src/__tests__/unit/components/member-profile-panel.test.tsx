@@ -45,6 +45,7 @@ const { default: MemberProfilePanel } = await import(
 function makeMember(overrides?: Partial<Member>): Member {
   return {
     id: 'test-member-1',
+    profileId: 'test-profile-1',
     firstName: 'Jane',
     lastName: 'Doe',
     email: 'jane@example.com',
@@ -56,17 +57,16 @@ function makeMember(overrides?: Partial<Member>): Member {
     membershipType: 'unlimited',
     status: 'active',
     lastVisit: 'Today',
+    lastVisitAt: '2026-04-09T18:00:00Z',
     credits: null,
     ltv: 1350,
     joinDate: 'Jan 15, 2025',
+    joinDateAt: '2025-01-15',
     totalVisits: 42,
     avgVisitsPerWeek: 2.1,
-    nextBilling: 'Feb 1, 2025',
-    paymentMethod: 'On file',
-    preferredTime: '6:00 PM',
-    preferredType: 'Open Sauna',
-    guidedSessions: 5,
-    avgDuration: '50 min',
+    // Tier 8.5: removed fluff fields (nextBilling, paymentMethod,
+    // preferredTime, preferredType, guidedSessions, avgDuration) —
+    // they were hardcoded placeholders in the page.tsx mapping.
     notes: null,
     engagementStatus: 'engaged',
     acquisitionChannel: 'website',

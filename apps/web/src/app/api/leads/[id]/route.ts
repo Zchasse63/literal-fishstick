@@ -167,6 +167,11 @@ export async function PUT(
       .single();
 
     if (updateError) {
+      // PGRST116 = "JSON object requested, multiple (or no) rows returned"
+      // — surfaces when the lead doesn't exist or isn't in this studio.
+      if (updateError.code === "PGRST116") {
+        return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      }
       return NextResponse.json(
         { error: updateError.message },
         { status: 500 }
@@ -190,14 +195,24 @@ export async function PUT(
     }
 
     // Log to activity_log
-    await supabase.from("activity_log").insert({
+    const u = updated as { first_name?: string; last_name?: string; email?: string };
+    const leadName = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'lead';
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
       type: "lead_updated",
       subject_type: "lead",
       subject_id: id,
+      description: `Lead updated: ${leadName}`,
       metadata: updates,
     });
+
+    if (activityError) {
+      console.error(
+        "PUT /api/leads/[id]: activity_log insert failed",
+        activityError.message
+      );
+    }
 
     return NextResponse.json({ data: updated });
   } catch (err) {
@@ -279,14 +294,22 @@ export async function DELETE(
     }
 
     // Log activity
-    await supabase.from("activity_log").insert({
+    const { error: deleteActivityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
       type: "lead_deleted",
       subject_type: "lead",
       subject_id: id,
+      description: `Lead deleted`,
       metadata: {},
     });
+
+    if (deleteActivityError) {
+      console.error(
+        "DELETE /api/leads/[id]: activity_log insert failed",
+        deleteActivityError.message
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

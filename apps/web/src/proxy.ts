@@ -32,7 +32,7 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Refresh the auth session on every request
   //
   // RLS STATUS: 11 Phase 2 tables (campaigns, leads, content_posts, etc.) use

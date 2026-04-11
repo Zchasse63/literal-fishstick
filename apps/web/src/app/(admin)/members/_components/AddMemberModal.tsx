@@ -32,6 +32,7 @@ export default function AddMemberModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        data-testid="members-add-modal-dialog"
         className="sm:max-w-md bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl p-6"
         showCloseButton
       >
@@ -70,6 +71,7 @@ export default function AddMemberModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Full Name *</label>
             <input
+              data-testid="members-add-modal-name-input"
               type="text"
               required
               value={addForm.full_name}
@@ -82,6 +84,7 @@ export default function AddMemberModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email *</label>
             <input
+              data-testid="members-add-modal-email-input"
               type="email"
               required
               value={addForm.email}
@@ -93,6 +96,7 @@ export default function AddMemberModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Phone</label>
             <input
+              data-testid="members-add-modal-phone-input"
               type="tel"
               value={addForm.phone}
               onChange={(e) => setAddForm(f => ({ ...f, phone: e.target.value }))}
@@ -102,11 +106,12 @@ export default function AddMemberModal({
           </div>
 
           {addError && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{addError}</p>
+            <p data-testid="members-add-modal-error" className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{addError}</p>
           )}
 
           <div className="flex gap-3 pt-2">
             <button
+              data-testid="members-add-modal-cancel-btn"
               type="button"
               onClick={handleClose}
               className="flex-1 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -114,6 +119,7 @@ export default function AddMemberModal({
               Cancel
             </button>
             <button
+              data-testid="members-add-modal-submit-btn"
               type="submit"
               disabled={addLoading || !addForm.full_name || !addForm.email}
               className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

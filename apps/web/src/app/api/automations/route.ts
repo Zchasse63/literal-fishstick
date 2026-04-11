@@ -109,16 +109,16 @@ export async function GET(request: NextRequest) {
     if (flowIds.length > 0) {
       const { data: enrollments } = await supabase
         .from("automation_enrollments")
-        .select("flow_id, status")
-        .in("flow_id", flowIds);
+        .select("automation_id, status")
+        .in("automation_id", flowIds);
 
       for (const enrollment of enrollments ?? []) {
-        if (!enrollmentCounts[enrollment.flow_id]) {
-          enrollmentCounts[enrollment.flow_id] = { active: 0, total: 0 };
+        if (!enrollmentCounts[enrollment.automation_id]) {
+          enrollmentCounts[enrollment.automation_id] = { active: 0, total: 0 };
         }
-        enrollmentCounts[enrollment.flow_id].total++;
+        enrollmentCounts[enrollment.automation_id].total++;
         if (enrollment.status === "active") {
-          enrollmentCounts[enrollment.flow_id].active++;
+          enrollmentCounts[enrollment.automation_id].active++;
         }
       }
     }
@@ -209,7 +209,6 @@ export async function POST(request: NextRequest) {
         steps,
         version: 1,
         is_active: false,
-        created_by: user.id,
       })
       .select()
       .single();
@@ -221,15 +220,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // Tier 5.3: add description + capture-and-log
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
       type: "automation_created",
       subject_type: "automation_flow",
       subject_id: flow.id,
+      description: `Automation flow created: ${name} (trigger: ${trigger_type})`,
       metadata: { name, trigger_type },
     });
+
+    if (activityError) {
+      console.error(
+        "POST /api/automations: activity_log insert failed",
+        activityError.message
+      );
+    }
 
     return NextResponse.json({ data: flow }, { status: 201 });
   } catch (err) {

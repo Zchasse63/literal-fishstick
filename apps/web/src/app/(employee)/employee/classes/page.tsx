@@ -63,7 +63,7 @@ export default function ClassesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="employee-classes-page-root" className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Classes</h1>

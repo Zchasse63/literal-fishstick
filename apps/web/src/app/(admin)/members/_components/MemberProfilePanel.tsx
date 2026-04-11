@@ -5,28 +5,27 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
   X,
-  Sparkles,
   CreditCard,
   Clock,
   TrendingUp,
-  TrendingDown,
   Activity,
-  ArrowUpRight,
   Tag,
-  Heart,
   Flame,
-  Zap,
   Pause,
   ArrowUp,
   Mail,
   Phone,
   Loader2,
   ExternalLink,
+  Pencil,
 } from 'lucide-react'
 import Link from 'next/link'
 import MemberUpgradeModal from './MemberUpgradeModal'
 import MemberPauseModal from './MemberPauseModal'
 import AIDetailModal from './AIDetailModal'
+import EditMemberModal from './EditMemberModal'
+import { ActivityTimeline } from './ActivityTimeline'
+import { HealthScoreCard } from './HealthScoreCard'
 import type { Member, MemberBooking, MemberTransaction, ProfileTab } from './types'
 import { statusDot, statusLabel, membershipBadgeColor, heatmapData, heatmapColor } from './types'
 
@@ -40,6 +39,7 @@ export default function MemberProfilePanel({
   memberTags,
   detailLoading,
   onShowToast,
+  onEditSuccess,
 }: {
   member: Member
   onClose: () => void
@@ -50,11 +50,13 @@ export default function MemberProfilePanel({
   memberTags: string[]
   detailLoading: boolean
   onShowToast?: (msg: string) => void
+  onEditSuccess?: () => void
 }) {
   const notify = onShowToast ?? ((msg: string) => { /* no-op if not passed */ })
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [pauseOpen, setPauseOpen] = useState(false)
   const [aiDetailOpen, setAiDetailOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   return (
     <motion.div
       key={member.id}
@@ -93,13 +95,24 @@ export default function MemberProfilePanel({
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Joined {member.joinDate}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close panel"
-            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setEditOpen(true)}
+              aria-label="Edit member"
+              data-testid="members-edit-btn"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="Close panel"
+              data-testid="members-panel-close-btn"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Contact Row */}
@@ -176,7 +189,7 @@ export default function MemberProfilePanel({
       {/* Profile Tabs */}
       <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
         <div className="flex border-b border-gray-100 dark:border-gray-800">
-          {(['Overview', 'History', 'Financials', 'Communications'] as ProfileTab[]).map((tab) => (
+          {(['Overview', 'Activity', 'History', 'Financials', 'Communications'] as ProfileTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setProfileTab(tab)}
@@ -210,67 +223,17 @@ export default function MemberProfilePanel({
                 transition={{ duration: 0.15 }}
                 className="space-y-4"
               >
-                {/* AI Predictive Insights */}
-                <div className="rounded-xl p-[1px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
-                  <div className="bg-white dark:bg-gray-950 rounded-[11px] p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                        <Sparkles className="h-3.5 w-3.5 text-white" />
-                      </div>
-                      <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">AI Predictive Insights</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-2.5">
-                        <div className={cn(
-                          'mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0',
-                          member.status === 'at-risk'
-                            ? 'bg-orange-100 text-orange-600'
-                            : 'bg-emerald-100 text-emerald-600'
-                        )}>
-                          {member.status === 'at-risk' ? (
-                            <TrendingDown className="h-3 w-3" />
-                          ) : (
-                            <TrendingUp className="h-3 w-3" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {member.status === 'at-risk'
-                              ? `Visit frequency dropped ${member.avgVisitsPerWeek < 1 ? '68%' : '42%'} over 3 weeks. Churn probability: ${member.avgVisitsPerWeek < 1 ? '73%' : '55%'}. Consider a personal re-engagement.`
-                              : `Strong retention pattern. ${member.avgVisitsPerWeek >= 3 ? 'Power user' : 'Consistent visitor'} — ${member.avgVisitsPerWeek >= 3 ? 'candidate for referral program' : 'trending toward upgrade'}.`}
-                          </p>
-                          <button
-                            onClick={() => setAiDetailOpen(true)}
-                            className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors"
-                          >
-                            {member.status === 'at-risk' ? 'Send re-engagement' : 'View details'}
-                            <ArrowUpRight className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2.5">
-                        <div className="mt-0.5 h-5 w-5 rounded-md bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
-                          <Zap className="h-3 w-3" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {member.guidedSessions > 10
-                              ? `${member.guidedSessions} guided sessions attended. High affinity for instructor-led experiences — prime candidate for workshop invitations.`
-                              : `Primarily uses open sessions. Consider introducing to guided classes — members who try guided have 40% higher retention.`}
-                          </p>
-                          <button
-                            onClick={() => setAiDetailOpen(true)}
-                            className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-0.5 transition-colors"
-                          >
-                            {member.guidedSessions > 10 ? 'Invite to workshop' : 'Suggest guided class'}
-                            <ArrowUpRight className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {/*
+                  Tier 8.5: The previous "AI Predictive Insights" card had
+                  HARDCODED fake percentages in its narrative template
+                  strings — "visit frequency dropped 68% over 3 weeks",
+                  "churn probability 73%" — none of which were computed
+                  from real data. Replaced with <HealthScoreCard /> which
+                  calls the existing /api/ai/health-score endpoint (Tier
+                  5.7 regression-verified) for real numbers + reasoning
+                  grounded in actual booking/transaction aggregates.
+                */}
+                <HealthScoreCard memberId={member.id} memberFirstName={member.firstName} />
 
                 {/* Active Membership */}
                 <div>
@@ -280,16 +243,11 @@ export default function MemberProfilePanel({
                       <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{member.membership}</span>
                       <span className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">${member.membershipPrice}/mo</span>
                     </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500 dark:text-gray-400">Next Billing</span>
-                        <span className="text-gray-700 dark:text-gray-300 font-medium">{member.nextBilling}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500 dark:text-gray-400">Payment Method</span>
-                        <span className="text-gray-700 dark:text-gray-300 font-medium">{member.paymentMethod}</span>
-                      </div>
-                    </div>
+                    {/* Tier 8.5: Next Billing / Payment Method rows removed.
+                        `nextBilling` was hardcoded to 'N/A' or 'Paused' and
+                        `paymentMethod` was always the literal string 'On file' —
+                        fake data dressed as a real billing card. Re-add when
+                        Stripe subscription + PM metadata land (B5). */}
                     <div className="flex items-center gap-2 pt-1.5">
                       {member.status !== 'paused' && (
                         <button
@@ -308,10 +266,15 @@ export default function MemberProfilePanel({
                         Upgrade
                       </button>
                       <button
+                        data-testid="members-archive-btn"
                         onClick={async () => {
                           if (!confirm(`Are you sure you want to archive ${member.firstName} ${member.lastName}? This action cannot be undone.`)) return
                           try {
-                            const res = await fetch(`/api/members/${member.id}`, { method: 'DELETE' })
+                            // BUG-013: DELETE /api/members/[id] expects URL
+                            // [id] = profile_id. Same narrow-blast fix the
+                            // Edit modal uses. Pause/Upgrade still pass
+                            // member.id — Tier 4.2/4.3 will resolve.
+                            const res = await fetch(`/api/members/${member.profileId}`, { method: 'DELETE' })
                             if (res.ok) {
                               onClose()
                               notify('Member archived')
@@ -405,30 +368,40 @@ export default function MemberProfilePanel({
                   </div>
                 </div>
 
-                {/* Session Preferences */}
-                <div>
-                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Session Preferences</h4>
-                  <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3.5">
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: 'Preferred Time', value: member.preferredTime, icon: Clock },
-                        { label: 'Preferred Type', value: member.preferredType, icon: Flame },
-                        { label: 'Guided Sessions', value: member.guidedSessions.toString(), icon: Heart },
-                        { label: 'Avg Duration', value: member.avgDuration, icon: Activity },
-                      ].map((pref) => (
-                        <div key={pref.label} className="flex items-center gap-2.5">
-                          <div className="h-7 w-7 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                            <pref.icon className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{pref.label}</p>
-                            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{pref.value}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                {/*
+                  Tier 8.5: "Session Preferences" card removed. Every field
+                  was fake:
+                    • preferredTime: hardcoded '6:00 PM'
+                    • preferredType: hardcoded 'Open Sauna'
+                    • guidedSessions: hardcoded 0
+                    • avgDuration: hardcoded '50 min'
+                  Re-add when real aggregations against bookings/class_types
+                  are implemented (B18 + dedicated tier for member analytics).
+                */}
+              </motion.div>
+            )}
+
+            {/* Tier 8.5.A4 — Unified activity timeline tab. Merges bookings
+                + transactions into one reverse-chronological feed. */}
+            {profileTab === 'Activity' && (
+              <motion.div
+                key="activity"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+              >
+                {detailLoading ? (
+                  <div className="py-8 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
                   </div>
-                </div>
+                ) : (
+                  <ActivityTimeline
+                    bookings={memberBookings}
+                    transactions={memberTransactions}
+                    emptyLabel={`No activity yet for ${member.firstName}`}
+                  />
+                )}
               </motion.div>
             )}
 
@@ -580,6 +553,26 @@ export default function MemberProfilePanel({
         onOpenChange={setAiDetailOpen}
         memberId={member.id}
         memberName={`${member.firstName} ${member.lastName}`}
+      />
+
+      {/* Edit modal — uses profileId because PUT /api/members/[id] expects
+          profile_id. See BUG-013 for the wider story on why pause/upgrade
+          above still pass member.id. */}
+      <EditMemberModal
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        profileId={member.profileId}
+        initial={{
+          full_name: `${member.firstName} ${member.lastName}`.trim(),
+          email: member.email,
+          phone: member.phone,
+          notes: member.notes,
+          exclude_from_analytics: member.excludeFromAnalytics ?? false,
+        }}
+        onSuccess={() => {
+          notify('Member updated successfully')
+          onEditSuccess?.()
+        }}
       />
     </motion.div>
   )

@@ -30,6 +30,15 @@ export default defineConfig({
         storageState: 'e2e/.auth/admin.json',
       },
       dependencies: ['auth-setup'],
+      // Exclude anonymous-only specs (which assume NO session) and the
+      // _stubs quarantine folder. Anonymous specs are:
+      //   - login.spec.ts (tests the login flow itself)
+      //   - middleware-redirect.spec.ts (tests the unauthenticated redirect branch)
+      testIgnore: [
+        /login.*\.spec\.ts/,
+        /middleware-redirect.*\.spec\.ts/,
+        /_stubs/,
+      ],
     },
     // Employee tests — uses trainer auth state
     {
@@ -39,7 +48,23 @@ export default defineConfig({
         storageState: 'e2e/.auth/employee.json',
       },
       dependencies: ['auth-setup'],
-      testMatch: /employee/,
+      testMatch: /employee.*\.spec\.ts/,
+      testIgnore: [/_stubs/],
+    },
+    // Anonymous tests — no storage state, no auth dependency.
+    // Used by login.spec.ts, middleware-redirect.spec.ts, and any other flow
+    // that must start unauthenticated.
+    // Auth test users are seeded once via the `auth-setup` project (run manually if needed);
+    // this project does NOT depend on it because it should not re-run setup on every invocation.
+    {
+      name: 'anonymous',
+      use: {
+        ...devices['Desktop Chrome'],
+        // NOTE: No storageState. Each test starts with a fresh browser context.
+      },
+      // Add new anonymous-project specs to this array as they're created.
+      // Explicit list keeps admin/employee specs from leaking into this project.
+      testMatch: [/login.*\.spec\.ts/, /middleware-redirect.*\.spec\.ts/],
     },
   ],
 

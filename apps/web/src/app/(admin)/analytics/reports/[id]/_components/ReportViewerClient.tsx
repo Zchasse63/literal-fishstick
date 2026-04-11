@@ -137,7 +137,7 @@ export function ReportViewerClient({ initialRows, reportName, reportId }: Report
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-reports-detail-root" className="space-y-6">
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* --- Top Bar --- */}
         <motion.div {...fadeInUp} className="mb-6 flex flex-wrap items-center justify-between gap-4">

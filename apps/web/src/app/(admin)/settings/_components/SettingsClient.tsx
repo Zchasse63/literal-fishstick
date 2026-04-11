@@ -955,7 +955,7 @@ const tabs = [
 // ─── Settings Page ──────────────────────────────────────────
 export default function SettingsClient() {
   return (
-    <motion.div {...fadeInUp} className="space-y-6">
+    <motion.div data-testid="settings-page-root" {...fadeInUp} className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">Settings</h1>

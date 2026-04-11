@@ -328,6 +328,8 @@ function ClassBlockCard({ cls, onClick, isSelected }: { cls: ClassBlock; onClick
 
   return (
     <motion.button
+      data-testid="schedule-class-tile"
+      data-class-id={cls.id}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2 }}
@@ -355,6 +357,7 @@ function ClassDetailPanel({
   checkingInAll,
   onSendReminder,
   onEditClass,
+  onCancelClass,
 }: {
   cls: ClassBlock
   attendees: Attendee[]
@@ -364,6 +367,7 @@ function ClassDetailPanel({
   checkingInAll: boolean
   onSendReminder: () => void
   onEditClass: () => void
+  onCancelClass: () => void
 }) {
   const fillPercent = Math.round((cls.booked / cls.capacity) * 100)
   const typeBadgeColor = cls.type === 'guided' ? 'bg-violet-100 text-violet-700' : 'bg-indigo-100 text-indigo-700'
@@ -372,6 +376,7 @@ function ClassDetailPanel({
 
   return (
     <motion.div
+      data-testid="schedule-class-detail-panel"
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16 }}
@@ -463,6 +468,7 @@ function ClassDetailPanel({
       {/* Actions */}
       <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
         <button
+          data-testid="schedule-check-in-all-btn"
           onClick={onCheckInAll}
           disabled={checkingInAll}
           className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
@@ -479,11 +485,20 @@ function ClassDetailPanel({
         </button>
       </div>
       <button
+        data-testid="schedule-edit-class-btn"
         onClick={onEditClass}
         className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
         <Edit3 className="w-4 h-4" />
         Edit Class
+      </button>
+      <button
+        data-testid="schedule-cancel-class-btn"
+        onClick={onCancelClass}
+        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+      >
+        <X className="w-4 h-4" />
+        Cancel Class
       </button>
     </motion.div>
   )
@@ -581,7 +596,8 @@ export default function SchedulePage() {
             )
           `)
           .eq('class_id', classId)
-          .in('status', ['confirmed', 'checked_in', 'no_show', 'waitlisted'])
+          // F2 fix: 'confirmed' is not a valid bookings.status value.
+          .in('status', ['booked', 'checked_in', 'no_show', 'waitlisted'])
           .order('created_at', { ascending: true })
 
         if (error) throw error
@@ -592,7 +608,8 @@ export default function SchedulePage() {
             id: row.id,
             name: profile?.full_name ?? 'Unknown',
             email: profile?.email ?? '',
-            status: row.status === 'confirmed' ? 'booked' : row.status,
+            // No more 'confirmed' → 'booked' mapping since the DB now stores 'booked' directly.
+            status: row.status,
             isWalkIn: row.is_walk_in,
             isGuest: row.is_guest,
             checkedInAt: row.checked_in_at,
@@ -631,24 +648,63 @@ export default function SchedulePage() {
     }
   }
 
+  // BUG-020 fix: previously this did a direct Supabase UPDATE which bypassed
+  // /api/check-in entirely — meaning no activity_log entry, no member visit
+  // stat update, no engagement_status recalc, no trainer bonus evaluation,
+  // and no Glofox attendance write-back. Now fetches the booked attendees
+  // fresh from the DB (so we don't depend on local `attendees` state being
+  // loaded yet) and calls /api/check-in per booking with partial-failure
+  // tracking.
   const handleCheckInAll = useCallback(async () => {
     if (!selectedClass) return
     setCheckingInAll(true)
     try {
-      const { error } = await supabase
+      // Fetch fresh booked-status bookings for this class. Don't trust local
+      // attendees state — it may be empty if the panel just opened.
+      const { data: bookedBookings, error: fetchErr } = await supabase
         .from('bookings')
-        .update({
-          status: 'checked_in',
-          attended: true,
-          checked_in_at: new Date().toISOString(),
-        })
+        .select('id')
         .eq('class_id', selectedClass.id)
-        .in('status', ['booked', 'confirmed'])
+        .eq('status', 'booked')
 
-      if (error) throw error
+      if (fetchErr) {
+        console.error('Failed to fetch booked attendees:', fetchErr)
+        showToast('Failed to check in all attendees')
+        return
+      }
 
-      showToast(`All attendees checked in for ${selectedClass.name}`)
-      // Refresh attendee list
+      const toCheckIn = bookedBookings ?? []
+
+      if (toCheckIn.length === 0) {
+        showToast('No bookings to check in')
+        return
+      }
+
+      const results = await Promise.allSettled(
+        toCheckIn.map((booking) =>
+          fetch('/api/check-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ booking_id: booking.id }),
+          }).then(async (res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}`)
+            }
+            return res.json()
+          })
+        ),
+      )
+
+      const successCount = results.filter((r) => r.status === 'fulfilled').length
+      const failCount = results.length - successCount
+
+      if (failCount === 0) {
+        showToast(`Checked in ${successCount} attendees for ${selectedClass.name}`)
+      } else {
+        showToast(`Checked in ${successCount}, ${failCount} failed`)
+      }
+
+      // Refresh attendee list to reflect new check-in state
       fetchAttendees(selectedClass.id)
     } catch (err) {
       console.error('Failed to check in all:', err)
@@ -666,7 +722,7 @@ export default function SchedulePage() {
   const atCapacity = classBlocks.filter(c => c.booked >= c.capacity).length
 
   return (
-    <motion.div {...fadeInUp} className="space-y-5">
+    <motion.div data-testid="schedule-page-root" {...fadeInUp} className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -734,6 +790,7 @@ export default function SchedulePage() {
         </div>
 
         <button
+          data-testid="schedule-new-class-btn"
           onClick={() => { setEditClassData(null); setClassFormOpen(true) }}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm"
         >
@@ -871,10 +928,35 @@ export default function SchedulePage() {
                         ends_at: raw.ends_at,
                         capacity: raw.capacity,
                         trainer_id: raw.trainer_id,
-                        description: (raw as any).description ?? null,
+                        // BUG-018: the modal's "Description" field maps to
+                        // classes.notes at the DB layer. Load from notes,
+                        // not the phantom `description` column that used
+                        // to live here. Fixes note-wipe on every edit.
+                        notes: (raw as { notes?: string | null }).notes ?? null,
                       })
                       setClassFormOpen(true)
                     }
+                  }
+                }}
+                onCancelClass={async () => {
+                  if (!selectedClass) return
+                  if (!confirm(`Cancel "${selectedClass.name}"? Attendees will need to be notified separately.`)) return
+                  try {
+                    const res = await fetch(`/api/classes/${selectedClass.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ status: 'cancelled' }),
+                    })
+                    if (res.ok) {
+                      setSelectedClass(null)
+                      setAttendees([])
+                      showToast('Class cancelled')
+                    } else {
+                      const body = await res.json().catch(() => ({}))
+                      showToast(body.error || 'Failed to cancel class')
+                    }
+                  } catch {
+                    showToast('Network error')
                   }
                 }}
               />

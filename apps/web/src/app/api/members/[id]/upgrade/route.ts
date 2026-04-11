@@ -112,19 +112,31 @@ export async function POST(
       ? "Stripe subscription proration pending"
       : "No Stripe subscription to update";
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // BUG-021 fix: 'membership_upgraded' was not in the activity_log type
+    // CHECK enum (canonical is 'membership_change'). The previous insert
+    // silently swallowed every upgrade. Also add the NOT NULL description
+    // and capture { error } per the canonical capture-and-log pattern.
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: "membership_upgraded",
+      type: "membership_change",
       subject_type: "profile",
       subject_id: memberId,
+      description: `Membership changed: ${oldPlan} → ${new_plan}`,
       metadata: {
         old_plan: oldPlan,
         new_plan,
         stripe_note: stripeNote,
+        action: "upgrade",
       },
     });
+
+    if (activityError) {
+      console.error(
+        "POST /api/members/[id]/upgrade: activity_log insert failed",
+        activityError.message
+      );
+    }
 
     return NextResponse.json({
       data: {

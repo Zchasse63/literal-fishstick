@@ -17,6 +17,7 @@ import { createBrowserClient } from '@/lib/supabase/client'
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 interface MemberOption {
+  /** members.id — FK target for transactions.member_id */
   id: string
   full_name: string
   email: string
@@ -28,14 +29,15 @@ interface RecordPaymentModalProps {
   onSuccess: () => void
 }
 
+// Must stay in lockstep with the `transactions_type_check` CHECK constraint
+// (see `specs/bugs/revenue-record-payment-modal-broken.md` for prior mismatch).
 const PAYMENT_TYPES = [
-  { value: 'membership', label: 'Membership' },
   { value: 'drop_in', label: 'Drop-in' },
+  { value: 'membership', label: 'Membership' },
   { value: 'credit_pack', label: 'Credit Pack' },
-  { value: 'merchandise', label: 'Merchandise' },
-  { value: 'event', label: 'Event' },
+  { value: 'merch', label: 'Merch' },
   { value: 'gift_card', label: 'Gift Card' },
-  { value: 'other', label: 'Other' },
+  { value: 'private_event', label: 'Private Event' },
 ]
 
 export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: RecordPaymentModalProps) {
@@ -46,7 +48,7 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
   // Form state
   const [memberId, setMemberId] = useState('')
   const [amount, setAmount] = useState('')
-  const [type, setType] = useState('other')
+  const [type, setType] = useState('drop_in')
   const [description, setDescription] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
 
@@ -61,7 +63,7 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
     if (open) {
       setMemberId('')
       setAmount('')
-      setType('other')
+      setType('drop_in')
       setDescription('')
       setPaymentMethod('cash')
       setMemberSearch('')
@@ -70,19 +72,53 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
     }
   }, [open])
 
-  // Member search
+  // Member search — two-step query so the filter applies cleanly to the
+  // searchable columns on `profiles`, then we look up the matching `members`
+  // row (FK target for `transactions.member_id`).
+  //
+  // Previous approach used `.from('members').select('id, profiles:profile_id!inner(...)').or(..., { referencedTable: 'profiles' })`
+  // but the embedded-resource filter returned an empty set in practice (see
+  // BUG-006 council run) — likely a PostgREST serialization quirk. The two-step
+  // form is explicit and resilient.
   useEffect(() => {
     if (memberSearch.length < 2) { setMembers([]); return }
     const timer = setTimeout(async () => {
       setSearchLoading(true)
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('studio_id', DEFAULT_STUDIO_ID)
-        .or(`full_name.ilike.%${memberSearch}%,email.ilike.%${memberSearch}%`)
-        .limit(8)
-      setMembers(data ?? [])
-      setSearchLoading(false)
+      try {
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .eq('studio_id', DEFAULT_STUDIO_ID)
+          .or(`full_name.ilike.%${memberSearch}%,email.ilike.%${memberSearch}%`)
+          .limit(8)
+
+        if (!profileRows || profileRows.length === 0) {
+          setMembers([])
+          return
+        }
+
+        const profileIds = profileRows.map((p: any) => p.id)
+        const { data: memberRows } = await supabase
+          .from('members')
+          .select('id, profile_id')
+          .eq('studio_id', DEFAULT_STUDIO_ID)
+          .in('profile_id', profileIds)
+
+        const profileById = new Map(
+          profileRows.map((p: any) => [p.id, p] as const),
+        )
+        const rows: MemberOption[] = (memberRows ?? []).map((m: any) => {
+          const p: any = profileById.get(m.profile_id)
+          return {
+            id: m.id,
+            full_name: p?.full_name ?? 'Unknown',
+            email: p?.email ?? '',
+          }
+        })
+        setMembers(rows)
+      } finally {
+        setSearchLoading(false)
+      }
     }, 300)
     return () => clearTimeout(timer)
   }, [memberSearch])
@@ -132,7 +168,7 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-testid="revenue-payment-form-dialog">
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
@@ -145,7 +181,10 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
           <div>
             <Label>Member *</Label>
             {selectedMember ? (
-              <div className="mt-1 flex items-center justify-between p-2 rounded-lg border border-indigo-200 bg-indigo-50">
+              <div
+                className="mt-1 flex items-center justify-between p-2 rounded-lg border border-indigo-200 bg-indigo-50"
+                data-testid="revenue-payment-form-member-selected"
+              >
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{selectedMember.full_name}</p>
                   <p className="text-xs text-gray-500">{selectedMember.email}</p>
@@ -153,6 +192,7 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
                 <button
                   onClick={() => { setSelectedMember(null); setMemberId('') }}
                   className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                  data-testid="revenue-payment-form-member-change-btn"
                 >
                   Change
                 </button>
@@ -165,14 +205,20 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
                   onChange={(e) => setMemberSearch(e.target.value)}
                   placeholder="Search by name or email..."
                   className="pl-8"
+                  data-testid="revenue-payment-form-member-search-input"
                 />
                 {members.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div
+                    className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                    data-testid="revenue-payment-form-member-results"
+                  >
                     {members.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => selectMember(m)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                        data-testid="revenue-payment-form-member-result"
+                        data-member-id={m.id}
                       >
                         <p className="font-semibold text-gray-900 dark:text-gray-100">{m.full_name}</p>
                         <p className="text-xs text-gray-500">{m.email}</p>
@@ -202,6 +248,7 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
                   className="pl-8"
+                  data-testid="revenue-payment-form-amount-input"
                 />
               </div>
             </div>
@@ -211,6 +258,7 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                data-testid="revenue-payment-form-type-select"
               >
                 {PAYMENT_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -225,6 +273,7 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+              data-testid="revenue-payment-form-method-select"
             >
               <option value="cash">Cash</option>
               <option value="check">Check</option>
@@ -240,18 +289,34 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional notes..."
               className="mt-1"
+              data-testid="revenue-payment-form-description-input"
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <p
+              className="text-sm text-red-600"
+              data-testid="revenue-payment-form-error"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            data-testid="revenue-payment-form-cancel-btn"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
             className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+            data-testid="revenue-payment-form-submit-btn"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
             Record Payment

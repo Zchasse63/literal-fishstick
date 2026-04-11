@@ -40,7 +40,7 @@ const DASHBOARDS = [
 
 export function DashboardsClient() {
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-dashboards-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* --- Header --- */}
         <motion.div {...fadeInUp}>

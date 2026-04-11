@@ -126,7 +126,7 @@ export function TrainerDetailClient({
 
   if (!TRAINER || !TRAINER.id) {
     return (
-      <div className="space-y-6">
+      <div data-testid="analytics-trainers-detail-not-found" className="space-y-6">
         <Link href="/analytics/trainers" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-6">
           <ArrowLeft className="h-4 w-4" />Back to Trainers
         </Link>
@@ -147,7 +147,7 @@ export function TrainerDetailClient({
   const totalCompensation = PAYROLL.basePay + PAYROLL.bonuses + PAYROLL.promoCommission
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-trainers-detail-root" className="space-y-6">
       <div className="space-y-6">
         {/* --- Back Link --- */}
         <motion.div {...fadeInUp}>

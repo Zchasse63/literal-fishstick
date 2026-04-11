@@ -170,15 +170,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
-    // Log activity
-    await supabase.from('activity_log').insert({
+    // BUG-023 fix: 'corporate.company_created' was not in the
+    // activity_log type CHECK enum. Tier 4.5 migration added the
+    // canonical 'company_created' (without dot). Also add the
+    // NOT NULL description and capture-and-log per canonical pattern.
+    const { error: activityError } = await supabase.from('activity_log').insert({
       studio_id: STUDIO_ID,
       actor_id: user.id,
-      type: 'corporate.company_created',
+      type: 'company_created',
       subject_type: 'company_account',
       subject_id: company.id,
+      description: `Company account created: ${name}`,
       metadata: { company_name: name },
     })
+
+    if (activityError) {
+      console.error(
+        'POST /api/corporate: activity_log insert failed',
+        activityError.message
+      )
+    }
 
     return NextResponse.json({ data: company }, { status: 201 })
   } catch (err) {

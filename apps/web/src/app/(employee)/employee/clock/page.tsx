@@ -290,7 +290,7 @@ export default function EmployeeClockPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="employee-clock-page-root" className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp}>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Clock In/Out</h1>

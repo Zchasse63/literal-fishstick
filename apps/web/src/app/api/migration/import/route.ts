@@ -361,7 +361,9 @@ function mapRowToTable(
         member_email: (row['member_email'] ?? row['email'] ?? '').trim().toLowerCase(),
         class_name: row['class_name'] ?? row['class'] ?? '',
         date: normalizeDate(row['date'] ?? row['booking_date'] ?? '') ?? null,
-        status: row['status'] ?? 'confirmed',
+        // F2 fix: 'confirmed' was a phantom enum value (the bookings_status_check
+        // enum allows 'booked', 'checked_in', etc — never 'confirmed').
+        status: row['status'] ?? 'booked',
         migration_job_id: migrationJobId,
         source: 'glofox',
       }

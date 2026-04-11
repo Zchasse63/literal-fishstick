@@ -159,7 +159,7 @@ export function OperationsDashboardClient({
   }, [])
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-dashboards-operations-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp}>

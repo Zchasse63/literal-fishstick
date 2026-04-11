@@ -384,7 +384,7 @@ export default function MemberProfileClient({
 
   if (!member) {
     return (
-      <div className="space-y-6">
+      <div data-testid="members-detail-not-found" className="space-y-6">
         <div className="mb-6">
           <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
             <ArrowLeft className="h-4 w-4" />
@@ -399,7 +399,7 @@ export default function MemberProfileClient({
   }
 
   return (
-    <motion.div {...fadeInUp} className="space-y-6">
+    <motion.div data-testid="members-detail-root" {...fadeInUp} className="space-y-6">
       {/* Back link */}
       <div className="mb-6">
         <Link href="/members" className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">

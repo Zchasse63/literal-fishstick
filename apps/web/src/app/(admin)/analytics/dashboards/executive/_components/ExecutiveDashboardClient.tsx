@@ -293,7 +293,7 @@ export function ExecutiveDashboardClient({ initialKpiMetrics }: ExecutiveDashboa
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-dashboards-executive-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* ─── Header ──────────────────────────────────── */}
         <motion.div {...fadeInUp}>

@@ -67,7 +67,7 @@ export default function GeofenceClient({ initialLocations }: GeofenceClientProps
   }
 
   return (
-    <motion.div {...fadeInUp} className="space-y-6">
+    <motion.div data-testid="settings-geofence-page-root" {...fadeInUp} className="space-y-6">
       {/* Header */}
       <div className="mb-6 flex items-center gap-3">
         <Link

@@ -67,7 +67,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="employee-profile-page-root" className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp} className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center">

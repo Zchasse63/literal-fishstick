@@ -118,6 +118,8 @@ export async function PUT(
     }
 
     // ─── Apply Updates ───────────────────────────────────────────
+    // BUG-009 Part B: field names match the `products` table schema exactly.
+    // Previously used phantom columns `quantity` and `images[]` that never existed.
     const body = await request.json()
     const allowedFields = [
       'name',
@@ -127,9 +129,9 @@ export async function PUT(
       'compare_at_price',
       'sku',
       'barcode',
-      'quantity',
+      'inventory_count',
       'low_stock_threshold',
-      'images',
+      'image_url',
       'weight_oz',
       'is_active',
     ]
@@ -159,13 +161,15 @@ export async function PUT(
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Log activity
+    // Log activity — `description` is NOT NULL on activity_log, so it must be
+    // passed on every insert or the write silently fails.
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
       type: 'product_updated',
       subject_type: 'product',
       subject_id: id,
+      description: `Product updated: ${existing.name}`,
       metadata: updates,
     })
 
@@ -234,13 +238,15 @@ export async function DELETE(
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Log activity
+    // Log activity — `description` is NOT NULL on activity_log, so it must be
+    // passed on every insert or the write silently fails.
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
       type: 'product_deleted',
       subject_type: 'product',
       subject_id: id,
+      description: `Product deleted: ${existing.name}`,
       metadata: { name: existing.name },
     })
 

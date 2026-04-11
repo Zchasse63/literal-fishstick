@@ -123,7 +123,7 @@ export default function EngagementClient({ initialActiveMemberCount, initialLead
   ]
 
   return (
-    <div className="space-y-6">
+    <div data-testid="engagement-page-root" className="space-y-6">
       {/* Header */}
       <motion.div {...fadeInUp} className="mb-8">
         <div className="flex items-center justify-between">

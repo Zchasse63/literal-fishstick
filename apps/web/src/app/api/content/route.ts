@@ -3,7 +3,21 @@ import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
 const ALLOWED_ROLES = ["owner", "admin", "manager"];
-const STAFF_ROLES = ["admin", "manager", "trainer", "staff"];
+// Roles that produce auto-approved posts. Must include 'owner' since
+// the content_posts.author_role CHECK constraint only allows
+// ['owner','manager','trainer','member'].
+const STAFF_ROLES = ["owner", "admin", "manager", "trainer", "staff"];
+// Valid author_role values per content_posts CHECK constraint.
+const VALID_AUTHOR_ROLES = ["owner", "manager", "trainer"];
+// Valid post_type values per content_posts CHECK constraint.
+const VALID_POST_TYPES = new Set([
+  "update",
+  "event",
+  "class_promo",
+  "tip",
+  "poll",
+  "announcement",
+]);
 const PAGE_SIZE = 20;
 
 /**
@@ -48,7 +62,7 @@ export async function GET(request: NextRequest) {
       .limit(limit + 1); // Fetch one extra to determine if there's a next page
 
     if (type) {
-      query = query.eq("type", type);
+      query = query.eq("post_type", type);
     }
 
     if (authorRole) {
@@ -121,7 +135,7 @@ export async function POST(request: NextRequest) {
     const userRoles: string[] = profile?.roles ?? [];
 
     const body = await request.json();
-    const { title, body: postBody, type, is_published, media_urls, tags } = body;
+    const { title, body: postBody, type, is_published, image_url } = body;
 
     if (!title || !postBody) {
       return NextResponse.json(
@@ -130,9 +144,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine author role (highest privilege)
+    // Determine author role (highest privilege) — constrained to the
+    // values allowed by the content_posts.author_role CHECK constraint.
     let authorRole = "member";
-    for (const role of ["admin", "manager", "trainer", "staff"]) {
+    for (const role of VALID_AUTHOR_ROLES) {
       if (userRoles.includes(role)) {
         authorRole = role;
         break;
@@ -143,6 +158,10 @@ export async function POST(request: NextRequest) {
     const isStaff = userRoles.some((r: string) => STAFF_ROLES.includes(r));
     const isApproved = isStaff;
 
+    // Sanitize post_type against the CHECK constraint; unknown types fall
+    // back to the default 'update'.
+    const safePostType = type && VALID_POST_TYPES.has(type) ? type : "update";
+
     const { data: post, error: insertError } = await supabase
       .from("content_posts")
       .insert({
@@ -150,12 +169,11 @@ export async function POST(request: NextRequest) {
         author_id: user.id,
         author_role: authorRole,
         title,
-        body: postBody,
-        type: type ?? "post",
+        content: postBody,
+        post_type: safePostType,
         is_published: is_published ?? true,
         is_approved: isApproved,
-        media_urls: media_urls ?? [],
-        tags: tags ?? [],
+        image_url: image_url ?? null,
         like_count: 0,
         comment_count: 0,
       })
@@ -170,14 +188,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Log activity
-    await supabase.from("activity_log").insert({
+    // Tier 5.4 fix: capture-and-log + description
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: "content_created",
+      type: "content_post_created",
       subject_type: "content_post",
       subject_id: post.id,
-      metadata: { title, type: type ?? "post", author_role: authorRole },
+      description: `Content post created: ${title}`,
+      metadata: { title, post_type: type ?? "update", author_role: authorRole },
     });
+
+    if (activityError) {
+      console.error(
+        "POST /api/content: activity_log insert failed",
+        activityError.message
+      );
+    }
 
     return NextResponse.json({ data: post }, { status: 201 });
   } catch (err) {

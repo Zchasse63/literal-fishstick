@@ -88,11 +88,13 @@ export async function POST(request: NextRequest) {
     let bookingQuery = supabase
       .from("bookings")
       .select(
-        "*, classes(id, name, start_time, end_time, trainer_id)"
+        // BUG-026 sweep: phantom columns `name`, `start_time`, `end_time`.
+        // Actual columns are `title`, `starts_at`, `ends_at`.
+        "*, classes(id, title, starts_at, ends_at, trainer_id)"
       )
       .eq("member_id", member_id)
       .eq("studio_id", studioId)
-      .eq("status", "confirmed");
+      .eq("status", "booked");
 
     if (class_id) {
       // Check in for a specific class
@@ -107,8 +109,8 @@ export async function POST(request: NextRequest) {
       ).toISOString();
 
       bookingQuery = bookingQuery
-        .gte("classes.start_time", twoHoursAgo)
-        .lte("classes.start_time", twoHoursAhead);
+        .gte("classes.starts_at", twoHoursAgo)
+        .lte("classes.starts_at", twoHoursAhead);
     }
 
     const { data: bookings, error: bookingError } = await bookingQuery
@@ -196,19 +198,29 @@ export async function POST(request: NextRequest) {
       .eq("id", member_id)
       .single();
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // BUG-019 fix: 'member_checked_in_qr' replaced with canonical 'check_in_qr'.
+    // Description added (NOT NULL silent swallow). Capture-and-log pattern.
+    const memberName = (memberInfo as { full_name?: string } | null)?.full_name ?? 'Member';
+    const { error: qrActivityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: "member_checked_in_qr",
+      type: "check_in_qr",
       subject_type: "booking",
       subject_id: booking.id,
+      description: `${memberName} checked in via QR`,
       metadata: {
         member_id,
         class_id: booking.class_id,
         method: "qr_code",
       },
     });
+
+    if (qrActivityError) {
+      console.error(
+        "POST /api/check-in/qr: activity_log insert failed",
+        qrActivityError.message
+      );
+    }
 
     // Evaluate trainer bonus threshold (same logic as regular check-in)
     let bonusTriggered = false;
@@ -263,8 +275,8 @@ export async function POST(request: NextRequest) {
       data: {
         booking: updatedBooking,
         member_name: memberInfo?.full_name ?? "Unknown",
-        class_name: booking.classes?.name ?? "Unknown",
-        class_time: booking.classes?.start_time ?? null,
+        class_name: booking.classes?.title ?? "Unknown",
+        class_time: booking.classes?.starts_at ?? null,
         checked_in_at: checkedInAt,
         check_in_count: checkInCount,
         bonus_triggered: bonusTriggered,

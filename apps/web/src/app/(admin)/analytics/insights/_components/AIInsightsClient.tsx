@@ -183,7 +183,7 @@ export function AIInsightsClient({ initialInsights, initialHistory }: AIInsights
   }
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-insights-page-root" className="space-y-6">
       <div className="space-y-6">
         {/* Header */}
         <motion.div {...fadeInUp} className="flex items-center justify-between">

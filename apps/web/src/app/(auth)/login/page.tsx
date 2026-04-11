@@ -1,5 +1,6 @@
 "use client";
 
+// e2e: testids seeded for login.spec.ts
 import { useState } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -99,7 +100,7 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-8">
           {sent ? (
-            <div className="text-center py-4">
+            <div className="text-center py-4" data-testid="login-sent-confirmation">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50">
                 <svg
                   className="h-6 w-6 text-primary"
@@ -129,6 +130,7 @@ export default function LoginPage() {
                   setEmail("");
                 }}
                 className="mt-6 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                data-testid="login-use-different-email-btn"
               >
                 Use a different email
               </button>
@@ -164,6 +166,7 @@ export default function LoginPage() {
                     required
                     autoFocus
                     className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
+                    data-testid="login-email-input"
                   />
                 </div>
 
@@ -183,18 +186,20 @@ export default function LoginPage() {
                       placeholder="Enter your password"
                       required
                       className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
+                      data-testid="login-password-input"
                     />
                   </div>
                 )}
 
                 {error && (
-                  <p className="text-sm text-red-600">{error}</p>
+                  <p className="text-sm text-red-600" data-testid="login-error-message">{error}</p>
                 )}
 
                 <button
                   type="submit"
                   disabled={loading || !email || (mode === "password" && !password)}
                   className="w-full rounded-lg bg-primary px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  data-testid="login-submit-btn"
                 >
                   {loading
                     ? mode === "password" ? "Signing in..." : "Sending..."
@@ -221,6 +226,7 @@ export default function LoginPage() {
                   setPassword("");
                 }}
                 className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                data-testid="login-mode-toggle-btn"
               >
                 {mode === "password"
                   ? "Sign in with Magic Link"

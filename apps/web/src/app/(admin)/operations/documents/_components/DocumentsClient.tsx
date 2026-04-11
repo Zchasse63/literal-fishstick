@@ -144,7 +144,7 @@ export default function DocumentsClient({ initialDocuments, initialEmployees }: 
   }, [selectedEmployee, docTypeFilter, taxYearFilter, documents])
 
   return (
-    <motion.div {...fadeInUp} className="space-y-6">
+    <motion.div data-testid="operations-documents-page-root" {...fadeInUp} className="space-y-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">

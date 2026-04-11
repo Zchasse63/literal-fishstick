@@ -216,7 +216,7 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
 
   if (!COMPANY) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div data-testid="corporate-detail-not-found" className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">Company not found</h3>
@@ -234,6 +234,7 @@ export default function CompanyDetailClient({ initialCompany }: CompanyDetailCli
 
   return (
     <motion.div
+      data-testid="corporate-detail-root"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}

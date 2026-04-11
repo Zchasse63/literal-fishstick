@@ -34,6 +34,8 @@ import {
 import { useKpiData } from '@/hooks/use-kpi-data'
 import { HeroMetricCard } from './_components/HeroMetricCard'
 import { WeeklyReviewBar } from './_components/WeeklyReviewBar'
+import { FocusQueue } from './_components/FocusQueue'
+import { AskMeridian } from './_components/AskMeridian'
 import { fadeInUp } from '@/lib/motion'
 
 // ─── Icon map for AI insights ───────────────────────────────
@@ -62,7 +64,7 @@ function getActivityIcon(type: string) {
 // ─── Loading Skeleton ───────────────────────────────────────
 function CommandCenterSkeleton() {
   return (
-    <div className="space-y-5">
+    <div data-testid="command-page-root" className="space-y-5">
       {/* AI Briefing skeleton */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
         <div className="flex items-center gap-2 mb-4">
@@ -640,7 +642,7 @@ export default function CommandCenter() {
   }
 
   return (
-    <motion.div {...fadeInUp} className="space-y-5">
+    <motion.div data-testid="command-page-root" {...fadeInUp} className="space-y-5">
       {/* AI Briefing */}
       <AIBriefingCard insights={aiInsights} greeting={greeting} firstName={firstName} />
 
@@ -679,6 +681,12 @@ export default function CommandCenter() {
           isLoading={kpiData.isLoading}
         />
       </div>
+
+      {/* Tier 8.5.A9 — Today's Focus queue (priority-ranked action list) */}
+      <FocusQueue />
+
+      {/* Tier 8.5.A10 — Ask Meridian NL query (Claude → SQL → results) */}
+      <AskMeridian />
 
       {/* Weekly Review */}
       <WeeklyReviewBar week={kpiData.week} isLoading={kpiData.isLoading} />

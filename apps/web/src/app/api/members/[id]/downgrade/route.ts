@@ -108,20 +108,32 @@ export async function POST(
       ? "Stripe subscription scheduled for downgrade at next billing cycle"
       : "No Stripe subscription — downgrade recorded locally";
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // BUG-022 fix: 'membership_downgrade_scheduled' was not in the
+    // activity_log type CHECK enum (canonical is 'membership_change').
+    // Same root cause as BUG-021 (Tier 4.1 fix). Add description and
+    // capture-and-log per the canonical pattern.
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: "membership_downgrade_scheduled",
+      type: "membership_change",
       subject_type: "profile",
       subject_id: memberId,
+      description: `Membership downgrade scheduled: ${oldPlan} → ${new_plan} at next billing cycle`,
       metadata: {
         old_plan: oldPlan,
         new_plan,
         effective: "next_billing_cycle",
         stripe_note: stripeNote,
+        action: "downgrade_scheduled",
       },
     });
+
+    if (activityError) {
+      console.error(
+        "POST /api/members/[id]/downgrade: activity_log insert failed",
+        activityError.message
+      );
+    }
 
     return NextResponse.json({
       data: {

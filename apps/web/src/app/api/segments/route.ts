@@ -102,20 +102,39 @@ export async function POST(request: NextRequest) {
     const studioId =
       profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
+    // Tier 4.8: role check was missing on POST (GET had one). Mirror the
+    // canonical owner/manager pattern.
+    const roles: string[] = profile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
-    if (!body.name || !body.rules) {
+    if (!body.name || typeof body.name !== "string" || body.name.trim().length === 0) {
       return NextResponse.json(
-        { error: "name and rules are required" },
+        { error: "name is required" },
         { status: 400 }
       );
     }
+
+    if (!body.rules || typeof body.rules !== "object") {
+      return NextResponse.json(
+        { error: "rules is required and must be an object" },
+        { status: 400 }
+      );
+    }
+
+    const segmentName = body.name.trim();
 
     const { data, error } = await supabase
       .from("smart_segments")
       .insert({
         studio_id: studioId,
-        name: body.name,
+        name: segmentName,
         description: body.description ?? null,
         rules: body.rules,
         color: body.color || "#4F46E5",
@@ -127,8 +146,32 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: "Internal server error" },
+        { error: error.message },
         { status: 500 }
+      );
+    }
+
+    // Tier 4.8: activity_log entry was missing entirely. Add capture-and-log
+    // pattern. Uses 'settings_updated' type (settings/config-style resource)
+    // since there's no dedicated segment_created type in the enum and this
+    // is a low-volume admin operation.
+    const { error: activityError } = await supabase.from("activity_log").insert({
+      studio_id: studioId,
+      actor_id: user.id,
+      type: "settings_updated",
+      subject_type: "smart_segment",
+      subject_id: data.id,
+      description: `Smart segment created: ${segmentName}`,
+      metadata: {
+        segment_name: segmentName,
+        rules: body.rules,
+      },
+    });
+
+    if (activityError) {
+      console.error(
+        "POST /api/segments: activity_log insert failed",
+        activityError.message
       );
     }
 

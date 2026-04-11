@@ -114,8 +114,10 @@ export default function NewPricingSimulationPage() {
     setSaving(true)
     setError(null)
 
-    const supabase = createBrowserClient()
-
+    // F8 (UI bypass fix): previously this called supabase.from('pricing_simulations').insert
+    // directly, which bypassed the API route's role check, validation, and
+    // activity_log entry. Now calls the canonical /api/pricing-simulator
+    // endpoint instead.
     const config = {
       plans: changes.map((c) => ({
         plan_id: c.plan_id,
@@ -125,31 +127,37 @@ export default function NewPricingSimulationPage() {
       })),
     }
 
-    const { data, error: insertError } = await supabase
-      .from('pricing_simulations')
-      .insert({
-        studio_id: STUDIO_ID,
-        name: name.trim(),
-        description: description.trim() || null,
-        status: 'Draft',
-        config,
+    try {
+      const res = await fetch('/api/pricing-simulator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          status: 'Draft',
+          config,
+        }),
       })
-      .select()
-      .single()
 
-    if (insertError) {
-      setError(insertError.message)
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        setError(errBody.error || 'Failed to create simulation')
+        setSaving(false)
+        return
+      }
+
+      const body = await res.json()
+      router.push(`/analytics/pricing/${body.data.id}`)
+    } catch {
+      setError('Network error')
       setSaving(false)
-      return
     }
-
-    router.push(`/analytics/pricing/${data.id}`)
   }
 
   const availablePlans = plans.filter((p) => !changes.some((c) => c.plan_id === p.id))
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-pricing-new-page-root" className="space-y-6">
       <div className="max-w-[800px] mx-auto px-6 py-8">
         {/* Back */}
         <motion.div {...fadeInUp}>

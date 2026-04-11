@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("transactions")
       .select(
-        "*, member:profiles!transactions_member_id_fkey(id, full_name, email)",
+        "*, members!transactions_member_id_fkey(id, profiles:profile_id(id, full_name, email))",
         { count: "exact" }
       )
       .eq("studio_id", studioId)
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     const body = await request.json();
-    const { member_id, amount, type, description, status } = body;
+    const { member_id, amount, type, description, status, payment_method } = body;
 
     if (!member_id || amount === undefined || !type) {
       return NextResponse.json(
@@ -154,9 +154,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify member exists in this studio
+    if (amount <= 0) {
+      return NextResponse.json(
+        { error: "amount must be greater than zero" },
+        { status: 400 }
+      );
+    }
+
+    // Verify member exists in this studio. `transactions.member_id` is a FK to
+    // `members.id` (NOT `profiles.id`) — see BUG-006. The prior validation
+    // looked up the profile table and then failed the FK on insert.
     const { data: member } = await supabase
-      .from("profiles")
+      .from("members")
       .select("id")
       .eq("id", member_id)
       .eq("studio_id", studioId)
@@ -178,9 +187,12 @@ export async function POST(request: NextRequest) {
         type,
         description: description ?? null,
         status: status ?? "completed",
-        created_by: user.id,
+        payment_method: payment_method ?? null,
+        // `transactions` has no `created_by` column; provenance is tracked via
+        // `sold_by_profile_id` (profiles.id of the admin that recorded it).
+        sold_by_profile_id: user.id,
       })
-      .select("*, member:profiles!transactions_member_id_fkey(id, full_name, email)")
+      .select("*, members!transactions_member_id_fkey(id, profiles:profile_id(id, full_name, email))")
       .single();
 
     if (insertError) {
@@ -190,14 +202,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
+    // Log activity. `activity_log.description` is NOT NULL — include a
+    // human-readable label. `activity_log_type_check` restricts `type` to a
+    // fixed enum; `'payment'` is the canonical value for manual transactions
+    // (a prior draft used `'transaction_created'` which violated the CHECK).
     await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: "transaction_created",
+      type: "payment",
       subject_type: "transaction",
       subject_id: transaction.id,
-      metadata: { member_id, amount, type },
+      description: `Manual payment recorded: ${(amount / 100).toFixed(2)} ${type}`,
+      metadata: { member_id, amount, type, payment_method: payment_method ?? null },
     });
 
     return NextResponse.json({ data: transaction }, { status: 201 });

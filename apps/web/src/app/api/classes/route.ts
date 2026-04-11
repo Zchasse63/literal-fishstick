@@ -96,8 +96,19 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/classes
- * Create a new class.
+ * Create a new class. Requires owner or manager role.
+ *
  * Body: { class_type_id, start_time, end_time, capacity, trainer_id?, title?, description? }
+ *
+ * Notes:
+ * - The body field `description` maps to the DB column `classes.notes`. The
+ *   classes table has no `description` column (BUG-015 Layer 1).
+ * - The `title` field defaults to `class_type.name` when blank or omitted,
+ *   because `classes.title` is NOT NULL and the modal labels it "optional"
+ *   (BUG-015 Layer 2).
+ * - Writes an `activity_log` row with type='class_created' and a non-null
+ *   description. The activity_log insert is capture-and-log — failures
+ *   are observability-only, they do NOT roll back the class insert.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -161,10 +172,24 @@ export async function POST(request: NextRequest) {
     const studioId =
       profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
-    // Verify the class type exists
+    // BUG-015 Layer 5: role check on POST mirrors the GET handler above.
+    // Without this, unauthorized requests fall through to RLS which returns
+    // a generic 500 "Internal server error" rather than a clean 403.
+    const roles: string[] = profile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
+    // BUG-015 Layer 2: fetch class_type.name up-front so we can default
+    // title when blank. `class_types.name` is NOT NULL per schema, so the
+    // fallback always resolves to a string. Select is also the class_type
+    // existence check (404 if missing).
     const { data: classType, error: typeError } = await supabase
       .from("class_types")
-      .select("id")
+      .select("id, name")
       .eq("id", class_type_id)
       .eq("studio_id", studioId)
       .single();
@@ -184,8 +209,14 @@ export async function POST(request: NextRequest) {
         ends_at: end.toISOString(),
         capacity,
         trainer_id: trainer_id ?? null,
-        title: title ?? null,
-        description: description ?? null,
+        // BUG-015 Layer 2: title is NOT NULL in the schema. Default to
+        // class_type.name when blank — matches existing data pattern
+        // (every prior class in prod has title = class_type name or similar).
+        title: title || classType.name,
+        // BUG-015 Layer 1: the DB column is `notes`, not `description`.
+        // The request body field `description` is intentional — that's what
+        // the UI calls it — but it maps to `notes` at the DB layer.
+        notes: description ?? null,
         studio_id: studioId,
         status: "scheduled",
       })
@@ -199,15 +230,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // BUG-015 Layers 3 + 4: activity_log row. The `description` column is
+    // NOT NULL; the `type` value must be in the CHECK enum (migration
+    // 20260410 added 'class_created'). Capture { error } and console.error
+    // on failure — no rollback. Observability pattern, not business-critical
+    // (the class itself is created whether or not the log row lands).
+    const { error: activityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
       type: "class_created",
       subject_type: "class",
       subject_id: newClass.id,
+      description: `Class created: ${classType.name}`,
       metadata: { class_type_id, start_time, trainer_id },
     });
+
+    if (activityError) {
+      console.error(
+        "POST /api/classes: activity_log insert failed",
+        activityError.message
+      );
+    }
 
     return NextResponse.json({ data: newClass }, { status: 201 });
   } catch (err) {

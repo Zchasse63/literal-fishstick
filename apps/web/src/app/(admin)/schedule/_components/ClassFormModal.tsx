@@ -39,7 +39,10 @@ interface ClassFormModalProps {
     ends_at: string
     capacity: number
     trainer_id: string | null
-    description: string | null
+    /** BUG-018: field is `notes` (the actual DB column), not `description`.
+     *  The UI still labels the form field "Description" — that's just a UI
+     *  label, it's persisted as `classes.notes`. */
+    notes: string | null
   } | null
 }
 
@@ -88,7 +91,9 @@ export default function ClassFormModal({ open, onOpenChange, onSuccess, editData
       setEndTime(new Date(editData.ends_at).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }))
       setCapacity(editData.capacity)
       setTrainerId(editData.trainer_id ?? '')
-      setDescription(editData.description ?? '')
+      // BUG-018: load from editData.notes (the real DB column), not a
+      // phantom `description` field. Prevents note-wipe on every save.
+      setDescription(editData.notes ?? '')
     } else {
       // Reset for create mode
       setClassTypeId('')
@@ -146,7 +151,7 @@ export default function ClassFormModal({ open, onOpenChange, onSuccess, editData
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent data-testid="schedule-class-form-modal" className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Class' : 'Create New Class'}</DialogTitle>
           <DialogDescription>
@@ -163,6 +168,7 @@ export default function ClassFormModal({ open, onOpenChange, onSuccess, editData
             <div>
               <Label>Class Type *</Label>
               <select
+                data-testid="schedule-class-form-type-select"
                 value={classTypeId}
                 onChange={(e) => setClassTypeId(e.target.value)}
                 className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
@@ -176,32 +182,65 @@ export default function ClassFormModal({ open, onOpenChange, onSuccess, editData
 
             <div>
               <Label>Title (optional)</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Morning Flow" className="mt-1" />
+              <Input
+                data-testid="schedule-class-form-title-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Morning Flow"
+                className="mt-1"
+              />
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Date *</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1" />
+                <Input
+                  data-testid="schedule-class-form-date-input"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Start</Label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="mt-1" />
+                <Input
+                  data-testid="schedule-class-form-start-time-input"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>End</Label>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="mt-1" />
+                <Input
+                  data-testid="schedule-class-form-end-time-input"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="mt-1"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Capacity</Label>
-                <Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} min={1} max={100} className="mt-1" />
+                <Input
+                  data-testid="schedule-class-form-capacity-input"
+                  type="number"
+                  value={capacity}
+                  onChange={(e) => setCapacity(Number(e.target.value))}
+                  min={1}
+                  max={100}
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Trainer</Label>
                 <select
+                  data-testid="schedule-class-form-trainer-select"
                   value={trainerId}
                   onChange={(e) => setTrainerId(e.target.value)}
                   className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
@@ -217,6 +256,7 @@ export default function ClassFormModal({ open, onOpenChange, onSuccess, editData
             <div>
               <Label>Description</Label>
               <textarea
+                data-testid="schedule-class-form-description-textarea"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
@@ -226,14 +266,21 @@ export default function ClassFormModal({ open, onOpenChange, onSuccess, editData
             </div>
 
             {error && (
-              <p className="text-sm text-red-600">{error}</p>
+              <p data-testid="schedule-class-form-error" className="text-sm text-red-600">{error}</p>
             )}
           </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
+            data-testid="schedule-class-form-cancel-btn"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            data-testid="schedule-class-form-submit-btn"
             onClick={handleSubmit}
             disabled={loading || loadingLookups}
             className="bg-indigo-600 hover:bg-indigo-700 text-white"

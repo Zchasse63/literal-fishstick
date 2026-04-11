@@ -98,6 +98,8 @@ function ProductGridCard({ product, delay }: { product: Product; delay: number }
     <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay }}>
       <Link
         href={`/revenue/products/${product.id}`}
+        data-testid="revenue-products-grid-card"
+        data-product-id={product.id}
         className="group bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all block"
       >
         {/* Image placeholder */}
@@ -154,6 +156,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
 
   return (
     <motion.div
+      data-testid="revenue-products-page-root"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
@@ -167,6 +170,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
         </div>
         <Link
           href="/revenue/products/new"
+          data-testid="revenue-products-add-btn"
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
@@ -195,6 +199,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
               <button
                 key={cat.value}
                 onClick={() => setCategory(cat.value)}
+                data-testid={`revenue-products-category-${cat.value}`}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                   category === cat.value
@@ -211,6 +216,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <input
+              data-testid="revenue-products-search-input"
               type="text"
               placeholder="Search products or SKUs..."
               value={search}
@@ -265,7 +271,10 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
             ))}
           </AnimatePresence>
           {filtered.length === 0 && (
-            <div className="col-span-full py-16 text-center">
+            <div
+              data-testid="revenue-products-empty-state"
+              className="col-span-full py-16 text-center"
+            >
               <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No products found</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>
@@ -295,6 +304,8 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
               <Link
                 key={product.id}
                 href={`/revenue/products/${product.id}`}
+                data-testid="revenue-products-table-row"
+                data-product-id={product.id}
                 className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors group"
               >
                 <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
@@ -348,7 +359,10 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
           </div>
 
           {filtered.length === 0 && (
-            <div className="py-16 text-center">
+            <div
+              data-testid="revenue-products-empty-state"
+              className="py-16 text-center"
+            >
               <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No products found</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>

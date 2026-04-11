@@ -54,10 +54,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch the booking with class + member glofox_id for write-back
+    // Fetch the booking with class + member glofox_id for write-back.
+    // BUG-026 sweep: previously selected phantom columns `start_time` and
+    // `end_time` on classes — actual columns are `starts_at` and `ends_at`.
+    // PostgREST errors on unknown columns and returns null for the entire
+    // row, which made the handler return 404 on every check-in attempt.
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
-      .select("*, classes(id, trainer_id, start_time, end_time), members(glofox_id)")
+      .select("*, classes(id, trainer_id, starts_at, ends_at), members(glofox_id)")
       .eq("id", booking_id)
       .eq("studio_id", studioId)
       .single();
@@ -102,18 +106,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
-    await supabase.from("activity_log").insert({
+    // BUG-019 L1+L2 fix: 'member_checked_in' was not in the activity_log
+    // type CHECK enum (canonical is 'check_in'). Description was also
+    // omitted (NOT NULL silent swallow). Add capture-and-log per pattern.
+    const { error: checkInActivityError } = await supabase.from("activity_log").insert({
       studio_id: studioId,
       actor_id: user.id,
-      type: "member_checked_in",
+      type: "check_in",
       subject_type: "booking",
       subject_id: booking_id,
+      description: `Member checked in to class`,
       metadata: {
         member_id: booking.member_id,
         class_id: booking.class_id,
       },
     });
+
+    if (checkInActivityError) {
+      console.error(
+        "POST /api/check-in: activity_log insert failed",
+        checkInActivityError.message
+      );
+    }
 
     // Evaluate trainer bonus threshold if a trainer is assigned
     let bonusTriggered = false;
@@ -164,19 +178,28 @@ export async function POST(request: NextRequest) {
             status: "pending",
           });
 
-          // Log bonus activity
-          await supabase.from("activity_log").insert({
+          // BUG-019 L3+L4 fix: 'trainer_bonus_triggered' is now in the
+          // activity_log enum (Tier 4.6.5 M2). Add description + capture.
+          const { error: bonusActivityError } = await supabase.from("activity_log").insert({
             studio_id: studioId,
             actor_id: user.id,
             type: "trainer_bonus_triggered",
             subject_type: "class",
             subject_id: booking.class_id,
+            description: `Trainer bonus triggered: ${checkInCount} check-ins (threshold ${bonusThreshold})`,
             metadata: {
               trainer_id: trainerId,
               check_in_count: checkInCount,
               threshold: bonusThreshold,
             },
           });
+
+          if (bonusActivityError) {
+            console.error(
+              "POST /api/check-in: trainer bonus activity_log insert failed",
+              bonusActivityError.message
+            );
+          }
         }
       }
     }

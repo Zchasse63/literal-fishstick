@@ -132,15 +132,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
-    // Log activity
-    await supabase.from('activity_log').insert({
+    // Log activity (capture-and-log with description)
+    const { error: activityError } = await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
       type: 'pricing_simulation_created',
       subject_type: 'pricing_simulation',
       subject_id: simulation.id,
+      description: `Pricing simulation created: ${name} (${changes.length} change${changes.length === 1 ? '' : 's'})`,
       metadata: { name, change_count: changes.length },
     })
+
+    if (activityError) {
+      console.error(
+        'POST /api/pricing-simulator: activity_log insert failed',
+        activityError.message
+      )
+    }
 
     return NextResponse.json({ data: simulation }, { status: 201 })
   } catch (err) {

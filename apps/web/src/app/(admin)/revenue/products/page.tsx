@@ -12,16 +12,19 @@ export default async function ProductsPage() {
     .eq('studio_id', DEFAULT_STUDIO_ID)
     .order('name')
 
+  // BUG-009 Part B: map DB column names → client-side prop names.
+  // DB: price / compare_at_price / inventory_count / is_active (source of truth).
+  // Client: priceInCents / compareAtPriceInCents / inventory / active (unchanged).
   const products: Product[] = (data ?? []).map((p: any) => ({
     id: p.id,
     name: p.name || 'Unnamed Product',
     category: (p.category || 'all') as Product['category'],
-    priceInCents: p.price_in_cents ?? 0,
-    compareAtPriceInCents: p.compare_at_price_in_cents || undefined,
+    priceInCents: p.price ?? 0,
+    compareAtPriceInCents: p.compare_at_price || undefined,
     sku: p.sku || '',
-    inventory: p.inventory ?? 0,
+    inventory: p.inventory_count ?? 0,
     image: p.image_url || null,
-    active: p.active ?? true,
+    active: p.is_active ?? true,
   }))
 
   return <ProductsClient initialProducts={products} />

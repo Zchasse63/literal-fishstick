@@ -82,7 +82,11 @@ export async function GET(request: NextRequest) {
  *
  * Create a new product.
  * Body: { name, description?, category?, price, compare_at_price?, sku?, barcode?,
- *         quantity?, low_stock_threshold?, images?, weight_oz?, is_active? }
+ *         inventory_count?, low_stock_threshold?, image_url?, weight_oz?, is_active? }
+ *
+ * Field names match the `products` table schema exactly. BUG-009 Part B
+ * aligned the API to the DB after discovering the original handler used
+ * phantom columns (`quantity`, `images[]`) that never existed.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -120,9 +124,9 @@ export async function POST(request: NextRequest) {
       compare_at_price,
       sku,
       barcode,
-      quantity,
+      inventory_count,
       low_stock_threshold,
-      images,
+      image_url,
       weight_oz,
       is_active,
     } = body as {
@@ -130,12 +134,12 @@ export async function POST(request: NextRequest) {
       description?: string
       category?: string
       price: number
-      compare_at_price?: number
+      compare_at_price?: number | null
       sku?: string
       barcode?: string
-      quantity?: number
+      inventory_count?: number
       low_stock_threshold?: number
-      images?: string[]
+      image_url?: string | null
       weight_oz?: number
       is_active?: boolean
     }
@@ -166,9 +170,9 @@ export async function POST(request: NextRequest) {
         compare_at_price: compare_at_price ?? null,
         sku: sku ?? null,
         barcode: barcode ?? null,
-        quantity: quantity ?? 0,
+        inventory_count: inventory_count ?? 0,
         low_stock_threshold: low_stock_threshold ?? 5,
-        images: images ?? [],
+        image_url: image_url ?? null,
         weight_oz: weight_oz ?? null,
         is_active: is_active ?? true,
       })
@@ -179,13 +183,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
-    // Log activity
+    // Log activity — `description` is NOT NULL on activity_log, so it must be
+    // passed on every insert or the write silently fails (the supabase client
+    // does not throw on error).
     await supabase.from('activity_log').insert({
       studio_id: studioId,
       actor_id: user.id,
       type: 'product_created',
       subject_type: 'product',
       subject_id: product.id,
+      description: `Product created: ${name}`,
       metadata: { name, price, category: category ?? null },
     })
 

@@ -90,7 +90,7 @@ export function ReportLibraryClient({ initialReports }: ReportLibraryClientProps
   )
 
   return (
-    <div className="space-y-6">
+    <div data-testid="analytics-reports-page-root" className="space-y-6">
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Header */}
         <motion.div {...fadeInUp} className="mb-8 flex items-center justify-between">
