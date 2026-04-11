@@ -107,7 +107,7 @@ export default function TransactionsTab({ transactions, loading }: { transaction
             <tbody>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i} className="border-b border-gray-50">
+                  <tr key={i} className="border-b border-gray-100 dark:border-gray-800/60">
                     <td className="px-5 py-3.5"><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></td>
                     <td className="px-5 py-3.5"><div className="h-4 w-24 bg-gray-200 rounded animate-pulse" /></td>
                     <td className="px-5 py-3.5"><div className="h-5 w-20 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" /></td>
@@ -122,7 +122,7 @@ export default function TransactionsTab({ transactions, loading }: { transaction
                     <tr
                       key={tx.id}
                       className={cn(
-                        'border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer',
+                        'border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer',
                         i === filtered.length - 1 && 'border-b-0'
                       )}
                     >

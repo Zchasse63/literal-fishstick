@@ -147,7 +147,7 @@ function formatJoinDate(dt: string): string {
 // ─── Loading Skeleton ───────────────────────────────────────
 function MemberRowSkeleton() {
   return (
-    <tr className="border-b border-gray-50">
+    <tr className="border-b border-gray-100 dark:border-gray-800/60">
       {/* Tier 8.5.A2 — placeholder for selection checkbox column */}
       <td className="w-10 px-2 py-3">
         <div className="h-4 w-4 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
@@ -753,7 +753,7 @@ export default function MembersPage() {
                             setProfileTab('Overview')
                           }}
                           className={cn(
-                            'border-b border-gray-50 cursor-pointer transition-colors group',
+                            'border-b border-gray-100 dark:border-gray-800/60 cursor-pointer transition-colors group',
                             selection.isSelected(member.id)
                               ? 'bg-indigo-100/60 dark:bg-indigo-900/20'
                               : selectedMember?.id === member.id

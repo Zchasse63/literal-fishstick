@@ -120,7 +120,7 @@ export default function PayrollTab({
             </thead>
             <tbody>
               {currentPayPeriod.rows.map(row => (
-                <tr key={row.employeeId} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors">
+                <tr key={row.employeeId} className="border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{row.name}</span>

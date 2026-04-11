@@ -459,7 +459,7 @@ export function GrowthDashboardClient({
                     {atRiskMembers.map((member) => {
                       const badge = getRiskBadge(member.riskScore)
                       return (
-                        <tr key={member.name} className="border-b border-gray-50 last:border-0">
+                        <tr key={member.name} className="border-b border-gray-100 dark:border-gray-800/60 last:border-0">
                           <td className="py-2.5">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-400">

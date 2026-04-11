@@ -69,14 +69,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch leads to score — oldest scored_at first, then by created_at
+    // Fetch leads to score — prioritize those least-recently updated (which
+    // serves as our de-facto "last scored" marker since `leads` has no
+    // dedicated scored_at column).
     const { data: leads, error: leadsError } = await supabase
       .from("leads")
       .select("id, source, phone, email, status")
       .eq("studio_id", STUDIO_ID)
       .neq("status", "converted")
       .neq("status", "lost")
-      .order("scored_at", { ascending: true, nullsFirst: true })
+      .order("updated_at", { ascending: true, nullsFirst: true })
       .order("created_at", { ascending: true })
       .limit(MAX_LEADS_PER_RUN);
 
@@ -143,7 +145,6 @@ export async function POST(request: NextRequest) {
         .from("leads")
         .update({
           score,
-          scored_at: now,
           updated_at: now,
         })
         .eq("id", lead.id)

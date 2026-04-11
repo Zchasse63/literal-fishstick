@@ -197,11 +197,12 @@ async function buildChurnInput(
       .lte("expires_at", sevenDaysFromNow),
 
     // Recent email engagement (opened in last 30 days)
+    // email_send_log joins by member_id — no recipient_email column exists.
     supabase
       .from("email_send_log")
       .select("id", { count: "exact", head: true })
       .eq("studio_id", STUDIO_ID)
-      .eq("recipient_email", profile.email ?? "")
+      .eq("member_id", memberId)
       .not("opened_at", "is", null)
       .gte("created_at", thirtyDaysAgo),
 

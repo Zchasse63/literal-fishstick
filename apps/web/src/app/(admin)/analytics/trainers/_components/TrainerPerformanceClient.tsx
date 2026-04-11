@@ -224,7 +224,7 @@ export function TrainerPerformanceClient({ initialTrainers }: TrainerPerformance
                     >
                       <tr
                         className={cn(
-                          'border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group',
+                          'border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group',
                           i === 0 && 'bg-amber-50/50 hover:bg-amber-50/80'
                         )}
                       >

@@ -52,10 +52,10 @@ export async function PUT(
     }
 
     // ─── Parse Body ──────────────────────────────────────────
-    let reason: string | null = null;
+    // Optional `reason` field in body is accepted for API compatibility but
+    // not persisted — the schema only tracks dismissed_by + dismissed_at.
     try {
-      const body = await request.json();
-      reason = body?.reason ?? null;
+      await request.json()
     } catch {
       // Body is optional
     }
@@ -67,7 +67,6 @@ export async function PUT(
         status: "dismissed",
         dismissed_by: user.id,
         dismissed_at: new Date().toISOString(),
-        dismiss_reason: reason,
       })
       .eq("id", id)
       .eq("studio_id", studioId)

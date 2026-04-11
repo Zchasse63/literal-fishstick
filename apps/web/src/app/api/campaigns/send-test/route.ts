@@ -81,18 +81,18 @@ export async function POST(request: NextRequest) {
 
     campaignName = campaign.name ?? 'Test Campaign'
 
+    // B12 FIX: use real schema — ab_variants jsonb + body_html/body_text/sms_body
     if (campaign.ab_test_enabled && variant) {
-      // Send specific A/B variant
-      if (variant === 'A') {
-        subject = campaign.variant_a_subject ?? campaign.subject ?? ''
-        bodyTemplate = campaign.variant_a_body ?? campaign.body_template ?? ''
-      } else {
-        subject = campaign.variant_b_subject ?? campaign.subject ?? ''
-        bodyTemplate = campaign.variant_b_body ?? campaign.body_template ?? ''
-      }
+      const variants = campaign.ab_variants as {
+        a?: { subject?: string; body_html?: string }
+        b?: { subject?: string; body_html?: string }
+      } | null
+      const chosen = variant === 'A' ? variants?.a : variants?.b
+      subject = chosen?.subject ?? campaign.subject ?? ''
+      bodyTemplate = chosen?.body_html ?? campaign.body_html ?? campaign.body_text ?? ''
     } else {
       subject = campaign.subject ?? ''
-      bodyTemplate = campaign.body_template ?? ''
+      bodyTemplate = campaign.body_html ?? campaign.body_text ?? campaign.sms_body ?? ''
     }
 
     if (!subject || !bodyTemplate) {

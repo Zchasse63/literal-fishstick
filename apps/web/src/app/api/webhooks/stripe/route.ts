@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await supabase
     .from('processed_webhook_events')
     .select('event_id')
+    .eq('provider', 'stripe')
     .eq('event_id', event.id)
     .maybeSingle()
 
@@ -75,9 +76,9 @@ export async function POST(request: NextRequest) {
 
   // Record the event as processed (best-effort — race window is tiny)
   await supabase.from('processed_webhook_events').insert({
+    provider: 'stripe',
     event_id: event.id,
     event_type: event.type,
-    processed_at: new Date().toISOString(),
   }).then(() => {}, () => {
     // Ignore insert conflicts (another instance may have inserted first)
   })

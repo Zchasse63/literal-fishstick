@@ -97,10 +97,12 @@ export async function POST(
     }[] = []
 
     for (const change of changes) {
-      // Fetch the plan to get stripe_product_id and stripe_price_id
+      // Fetch the plan. Schema: membership_plans has stripe_price_id; the
+      // stripe_product_id column was added in migration t30b and may be null
+      // for legacy rows — if null, retrieve it via the existing price.
       const { data: plan, error: planError } = await supabase
         .from('membership_plans')
-        .select('id, stripe_product_id, stripe_price_id, billing_interval')
+        .select('id, name, tier, stripe_product_id, stripe_price_id, billing_interval')
         .eq('id', change.plan_id)
         .eq('studio_id', studioId)
         .single()
@@ -110,7 +112,22 @@ export async function POST(
         continue
       }
 
-      if (!plan.stripe_product_id) {
+      // Resolve the Stripe product id — from the column if set, otherwise
+      // retrieve it via the existing price.
+      let productId = plan.stripe_product_id as string | null
+      if (!productId && plan.stripe_price_id) {
+        try {
+          const existingPrice = await stripe.prices.retrieve(plan.stripe_price_id)
+          productId =
+            typeof existingPrice.product === 'string'
+              ? existingPrice.product
+              : existingPrice.product?.id ?? null
+        } catch (err) {
+          console.error(`Failed to resolve stripe product for plan ${change.plan_id}:`, err)
+        }
+      }
+
+      if (!productId) {
         console.error(`Plan ${change.plan_id} has no Stripe product, skipping`)
         continue
       }
@@ -120,7 +137,7 @@ export async function POST(
 
       // 1. Create new Stripe Price (Prices are immutable — cannot update unit_amount)
       const newPrice = await stripe.prices.create({
-        product: plan.stripe_product_id,
+        product: productId,
         unit_amount: Math.round(change.new_price * 100), // Convert to cents
         currency: 'usd',
         recurring: {
@@ -134,7 +151,7 @@ export async function POST(
       })
 
       // 2. Update Product's default_price
-      await stripe.products.update(plan.stripe_product_id, {
+      await stripe.products.update(productId, {
         default_price: newPrice.id,
       })
 
@@ -151,6 +168,7 @@ export async function POST(
         .update({
           price: change.new_price,
           stripe_price_id: newPrice.id,
+          stripe_product_id: productId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', change.plan_id)
@@ -158,13 +176,16 @@ export async function POST(
 
       let subscribersMigrated = 0
 
-      // 5. Optionally migrate existing subscribers to new price
+      // 5. Optionally migrate existing subscribers to new price.
+      // `members` has no membership_plan_id column — the link is via
+      // membership_tier (text). Use plan.tier / plan.name as the match.
       if (migrateSubscribers) {
+        const tierFilter = plan.tier ?? plan.name
         const { data: activeMembers } = await supabase
           .from('members')
           .select('id, stripe_subscription_id')
           .eq('studio_id', studioId)
-          .eq('membership_plan_id', change.plan_id)
+          .eq('membership_tier', tierFilter)
           .eq('membership_status', 'active')
           .not('stripe_subscription_id', 'is', null)
 
@@ -200,15 +221,15 @@ export async function POST(
     }
 
     // ─── Update Simulation Status ────────────────────────────
+    // Schema has previous_price_ids (jsonb). Stash applied_by, applied_changes,
+    // and migrate_subscribers in activity_log metadata below instead of on the
+    // row since those columns don't exist.
     const { data: updated, error: updateError } = await supabase
       .from('pricing_simulations')
       .update({
         status: 'applied',
         applied_at: new Date().toISOString(),
-        applied_by: user.id,
         previous_price_ids: previousPriceIds,
-        applied_changes: appliedChanges,
-        migrate_subscribers: migrateSubscribers,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -231,6 +252,8 @@ export async function POST(
         changes_applied: appliedChanges.length,
         subscribers_migrated: migrateSubscribers,
         previous_price_ids: previousPriceIds,
+        applied_changes: appliedChanges,
+        applied_by: user.id,
       },
     })
 

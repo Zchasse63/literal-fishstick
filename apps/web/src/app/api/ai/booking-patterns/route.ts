@@ -33,19 +33,19 @@ export async function GET() {
 
     const { data: cached } = await supabase
       .from("ai_cache")
-      .select("data, generated_at, expires_at")
+      .select("result, created_at, expires_at")
       .eq("studio_id", STUDIO_ID)
-      .eq("cache_type", "booking_pattern")
+      .eq("cache_key", `booking_pattern:${STUDIO_ID}`)
       .gt("expires_at", new Date().toISOString())
-      .order("generated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (cached?.data) {
+    if (cached?.result) {
       return NextResponse.json({
-        ...(cached.data as BookingPatternResult),
+        ...(cached.result as BookingPatternResult),
         cached: true,
-        generated_at: cached.generated_at,
+        generated_at: cached.created_at,
       });
     }
 
@@ -233,13 +233,13 @@ export async function GET() {
       .upsert(
         {
           studio_id: STUDIO_ID,
+          cache_key: `booking_pattern:${STUDIO_ID}`,
           cache_type: "booking_pattern",
           entity_id: STUDIO_ID, // studio-level analysis
-          data: result as unknown as Record<string, unknown>,
-          generated_at: now,
+          result: result as unknown as Record<string, unknown>,
           expires_at: expiresAt,
         },
-        { onConflict: "studio_id,cache_type,entity_id" }
+        { onConflict: "studio_id,cache_key" }
       )
       .then(
         () => {

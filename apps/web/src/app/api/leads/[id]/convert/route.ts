@@ -88,7 +88,7 @@ export async function POST(
           phone: lead.phone ?? null,
           roles: body.roles ?? ["member"],
           studio_id: studioId,
-          status: "active",
+          is_active: true,
         })
         .select()
         .single();
@@ -115,12 +115,14 @@ export async function POST(
 
       if (plan) {
         // Upsert into members table with the chosen plan
+        // `members` has no membership_plan_id column — we store the tier text
+        // and the plan price on the member row.
         await supabase.from("members").upsert(
           {
             profile_id: memberId,
             studio_id: studioId,
-            membership_plan_id: plan.id,
             membership_tier: plan.tier ?? plan.name,
+            plan_price: plan.price ?? null,
             membership_status: "active",
             join_date: new Date().toISOString().split("T")[0],
           },

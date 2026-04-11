@@ -5,7 +5,11 @@ import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 /**
  * POST /api/content/[id]/comment
  * Add a comment to a content post. Updates comment_count on the post.
- * Body: { body, parent_id? }
+ * Body: { body }
+ *
+ * NOTE: `content_comments` does not support reply-threading — there is no
+ * `parent_id` column in the schema. Any parent_id in the request body is
+ * silently ignored.
  */
 export async function POST(
   request: NextRequest,
@@ -52,7 +56,7 @@ export async function POST(
     }
 
     const requestBody = await request.json();
-    const { body: commentBody, parent_id } = requestBody;
+    const { body: commentBody } = requestBody;
 
     if (!commentBody || !commentBody.trim()) {
       return NextResponse.json(
@@ -61,30 +65,12 @@ export async function POST(
       );
     }
 
-    // If parent_id is provided, verify the parent comment exists
-    if (parent_id) {
-      const { data: parentComment, error: parentError } = await supabase
-        .from("content_comments")
-        .select("id")
-        .eq("id", parent_id)
-        .eq("post_id", id)
-        .single();
-
-      if (parentError || !parentComment) {
-        return NextResponse.json(
-          { error: "Parent comment not found" },
-          { status: 404 }
-        );
-      }
-    }
-
     const { data: comment, error: insertError } = await supabase
       .from("content_comments")
       .insert({
         post_id: id,
         author_id: user.id,
-        body: commentBody.trim(),
-        parent_id: parent_id ?? null,
+        content: commentBody.trim(),
         studio_id: studioId,
       })
       .select("*, commenter:profiles!content_comments_author_id_fkey(id, full_name, email)")

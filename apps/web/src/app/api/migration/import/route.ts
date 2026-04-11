@@ -179,12 +179,14 @@ export async function POST(request: NextRequest) {
     const sourceRowCount = dataRows.length
 
     // ─── Create Migration Job ────────────────────────────────
+    // Schema: migration_jobs uses source_file_url and triggered_by. There is
+    // no updated_at column, so we never bump it below.
     const { data: job, error: jobError } = await supabase
       .from('migration_jobs')
       .insert({
         studio_id: studioId,
         data_type,
-        file_url,
+        source_file_url: file_url,
         wave: wave ?? 1,
         source_row_count: sourceRowCount,
         processed_count: 0,
@@ -193,7 +195,7 @@ export async function POST(request: NextRequest) {
         errors: [],
         status: 'importing',
         started_at: new Date().toISOString(),
-        created_by: user.id,
+        triggered_by: user.id,
       })
       .select()
       .single()
@@ -266,7 +268,7 @@ export async function POST(request: NextRequest) {
 
       processedCount += batchRows.length
 
-      // Update job progress
+      // Update job progress — no `updated_at` column on migration_jobs.
       await supabase
         .from('migration_jobs')
         .update({
@@ -274,7 +276,6 @@ export async function POST(request: NextRequest) {
           success_count: successCount,
           error_count: errors.length,
           errors,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', job.id)
     }
@@ -291,7 +292,6 @@ export async function POST(request: NextRequest) {
         error_count: errors.length,
         errors,
         completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       })
       .eq('id', job.id)
       .select()
@@ -334,6 +334,18 @@ export async function POST(request: NextRequest) {
 
 // ─── Row Mapping ─────────────────────────────────────────────
 
+/**
+ * Combine a date string (YYYY-MM-DD) and a time string (HH:MM or HH:MM:SS)
+ * into an ISO timestamp. Returns null if either is missing.
+ */
+function combineDateTime(dateStr: string | null, timeStr: string | null): string | null {
+  if (!dateStr) return null
+  if (!timeStr) return `${dateStr}T00:00:00.000Z`
+  const trimmedTime = timeStr.trim()
+  const padded = /^\d{2}:\d{2}$/.test(trimmedTime) ? `${trimmedTime}:00` : trimmedTime
+  return `${dateStr}T${padded}.000Z`
+}
+
 function mapRowToTable(
   dataType: DataType,
   row: Record<string, string>,
@@ -342,54 +354,55 @@ function mapRowToTable(
   wave: number,
 ): Record<string, unknown> {
   switch (dataType) {
-    case 'members':
+    case 'members': {
+      // Writes to `profiles`. Membership fields (status, join_date) belong on
+      // the `members` table — they'll be populated by a follow-up pass keyed
+      // by profile_id. Here we only populate identity columns that actually
+      // exist on profiles.
+      const first = (row['first_name'] ?? row['firstname'] ?? '').trim()
+      const last = (row['last_name'] ?? row['lastname'] ?? '').trim()
+      const fullName = [first, last].filter(Boolean).join(' ') || row['full_name'] || ''
       return {
         studio_id: studioId,
         email: (row['email'] ?? '').trim().toLowerCase(),
-        first_name: row['first_name'] ?? row['firstname'] ?? '',
-        last_name: row['last_name'] ?? row['lastname'] ?? '',
+        full_name: fullName,
         phone: normalizePhone(row['phone'] ?? row['phone_number']) ?? null,
-        membership_status: row['status'] ?? 'active',
-        join_date: normalizeDate(row['join_date'] ?? row['created_at'] ?? '') ?? new Date().toISOString().slice(0, 10),
         migration_job_id: migrationJobId,
         migration_wave: wave,
-        source: 'glofox',
+        lead_source: 'glofox',
       }
-    case 'bookings':
+    }
+    case 'bookings': {
+      // `bookings` is FK-heavy (member_id, class_id). Email/class-name CSVs
+      // need a resolution pass before they can be inserted; we can't just
+      // write member_email/class_name strings. Throw so the error surfaces
+      // in the job's errors[] column — not a silent no-op.
+      throw new Error(
+        'bookings import requires member_id and class_id columns. ' +
+        'Email/class-name based imports are not supported — resolve to IDs before upload.'
+      )
+    }
+    case 'transactions': {
+      // `transactions` needs member_id. Throw for now (same reason as bookings).
+      throw new Error(
+        'transactions import requires a member_id column. ' +
+        'Email-based imports are not supported — resolve to IDs before upload.'
+      )
+    }
+    case 'classes': {
+      // Real schema: classes has title/starts_at/ends_at (no name/date/start_time
+      // or instructor_name). Combine date + start_time → starts_at, etc.
+      const dateStr = normalizeDate(row['date'] ?? '')
       return {
         studio_id: studioId,
-        member_email: (row['member_email'] ?? row['email'] ?? '').trim().toLowerCase(),
-        class_name: row['class_name'] ?? row['class'] ?? '',
-        date: normalizeDate(row['date'] ?? row['booking_date'] ?? '') ?? null,
-        // F2 fix: 'confirmed' was a phantom enum value (the bookings_status_check
-        // enum allows 'booked', 'checked_in', etc — never 'confirmed').
-        status: row['status'] ?? 'booked',
-        migration_job_id: migrationJobId,
-        source: 'glofox',
-      }
-    case 'transactions':
-      return {
-        studio_id: studioId,
-        member_email: (row['member_email'] ?? row['email'] ?? '').trim().toLowerCase(),
-        amount: normalizeAmount(row['amount'] ?? '0'),
-        type: row['type'] ?? row['transaction_type'] ?? 'membership',
-        status: 'completed',
-        created_at: normalizeDate(row['date'] ?? row['created_at'] ?? '') ?? new Date().toISOString(),
-        migration_job_id: migrationJobId,
-        source: 'glofox',
-      }
-    case 'classes':
-      return {
-        studio_id: studioId,
-        name: row['name'] ?? row['class_name'] ?? '',
-        date: normalizeDate(row['date'] ?? '') ?? null,
-        start_time: row['start_time'] ?? null,
-        end_time: row['end_time'] ?? null,
+        title: row['title'] ?? row['name'] ?? row['class_name'] ?? '',
+        starts_at: combineDateTime(dateStr, row['start_time'] ?? null),
+        ends_at: combineDateTime(dateStr, row['end_time'] ?? null),
         capacity: parseInt(row['capacity'] ?? '12', 10),
-        instructor_name: row['instructor'] ?? row['trainer'] ?? null,
+        status: 'scheduled',
         migration_job_id: migrationJobId,
-        source: 'glofox',
       }
+    }
     default:
       throw new Error(`Unknown data type: ${dataType}`)
   }

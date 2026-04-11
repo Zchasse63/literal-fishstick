@@ -3,6 +3,10 @@ import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import { normalizePhone } from '@/lib/validation'
 
+// The API surface is historical `staff` but the underlying table is
+// `employees` (joined to `profiles` for identity data). "Role" lives in the
+// profile's `roles` array; "is_active" uses the employee `status` column.
+
 /**
  * GET /api/staff
  * List all staff members for the studio.
@@ -48,20 +52,18 @@ export async function GET(request: NextRequest) {
     }
 
     let query = supabase
-      .from("staff")
-      .select("*, profile:profiles!staff_profile_id_fkey(id, full_name, email, phone)", {
-        count: "exact",
-      })
+      .from("employees")
+      .select(
+        "*, profile:profiles!employees_profile_id_fkey(id, full_name, email, phone, roles, is_active)",
+        { count: "exact" }
+      )
       .eq("studio_id", studioId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (role) {
-      query = query.eq("role", role);
-    }
-
     if (isActive !== null && isActive !== undefined) {
-      query = query.eq("is_active", isActive === "true");
+      const desiredStatus = isActive === "true" ? "active" : "inactive";
+      query = query.eq("status", desiredStatus);
     }
 
     const { data, error, count } = await query;
@@ -73,7 +75,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data, count });
+    // Client-side filter by role since role lives inside profiles.roles jsonb.
+    let rows = data ?? [];
+    if (role) {
+      rows = rows.filter((r: { profile?: { roles?: string[] } | null }) =>
+        r.profile?.roles?.includes(role)
+      );
+    }
+
+    return NextResponse.json({ data: rows, count });
   } catch (err) {
     console.error("GET /api/staff error:", err);
     return NextResponse.json(
@@ -150,7 +160,7 @@ export async function POST(request: NextRequest) {
           phone: normalizePhone(phone) ?? null,
           roles: ["staff", role],
           studio_id: studioId,
-          status: "active",
+          is_active: true,
         })
         .select()
         .single();
@@ -166,36 +176,39 @@ export async function POST(request: NextRequest) {
       profileId = foundProfile.id;
     }
 
-    // Check for duplicate staff record
-    const { data: existingStaff } = await supabase
-      .from("staff")
+    // Check for duplicate employee record
+    const { data: existingEmployee } = await supabase
+      .from("employees")
       .select("id")
       .eq("profile_id", profileId)
       .eq("studio_id", studioId)
       .maybeSingle();
 
-    if (existingStaff) {
+    if (existingEmployee) {
       return NextResponse.json(
         { error: "A staff record already exists for this person" },
         { status: 409 }
       );
     }
 
-    const { data: staffRecord, error: staffError } = await supabase
-      .from("staff")
+    const { data: employeeRecord, error: employeeError } = await supabase
+      .from("employees")
       .insert({
         profile_id: profileId,
         studio_id: studioId,
-        role,
+        employment_type: "full_time",
+        department: role,
         hire_date: hire_date ?? new Date().toISOString().split("T")[0],
-        is_active: true,
+        status: "active",
       })
-      .select("*, profile:profiles!staff_profile_id_fkey(id, full_name, email, phone)")
+      .select(
+        "*, profile:profiles!employees_profile_id_fkey(id, full_name, email, phone, roles)"
+      )
       .single();
 
-    if (staffError) {
+    if (employeeError) {
       return NextResponse.json(
-        { error: staffError.message },
+        { error: employeeError.message },
         { status: 500 }
       );
     }
@@ -205,12 +218,12 @@ export async function POST(request: NextRequest) {
       studio_id: studioId,
       actor_id: user.id,
       type: "staff_created",
-      subject_type: "staff",
-      subject_id: staffRecord.id,
+      subject_type: "employee",
+      subject_id: employeeRecord.id,
       metadata: { email, full_name, role },
     });
 
-    return NextResponse.json({ data: staffRecord }, { status: 201 });
+    return NextResponse.json({ data: employeeRecord }, { status: 201 });
   } catch (err) {
     console.error("POST /api/staff error:", err);
     return NextResponse.json(

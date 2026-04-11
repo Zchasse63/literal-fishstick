@@ -49,10 +49,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
 
-  // Fetch member to check membership status (for member discounts)
+  // Fetch member to check membership status (for member discounts).
+  // `members` has no membership_plan_id column; member_discount_active is
+  // the denormalized flag that drives the 10% discount.
   const { data: member } = await supabase
     .from("members")
-    .select("id, membership_status, membership_plan_id")
+    .select("id, membership_status, member_discount_active")
     .eq("id", memberId)
     .eq("studio_id", studioId)
     .single();
@@ -103,24 +105,33 @@ export async function GET(request: NextRequest) {
       }
     }
   } else if (promoCode) {
-    // Validate promo code against trainers table (trainer promo codes)
-    const { data: trainer } = await supabase
-      .from("trainers")
-      .select("id, promo_code, promo_discount_percent")
-      .eq("promo_code", promoCode.toUpperCase())
+    // Validate promo code against the promo_codes table. This is the
+    // canonical source: it holds discount_type + discount_value and may
+    // optionally be tied to a trainer for attribution.
+    const { data: promo } = await supabase
+      .from("promo_codes")
+      .select("id, code, discount_type, discount_value, active")
+      .eq("code", promoCode.toUpperCase())
       .eq("studio_id", studioId)
+      .eq("active", true)
       .maybeSingle();
 
-    if (trainer) {
-      const discountPercent = trainer.promo_discount_percent ?? 0;
-      discountAmount = Math.round(basePrice * (discountPercent / 100));
-      discountName = `Trainer promo: ${promoCode.toUpperCase()}`;
+    if (promo && promo.discount_value != null) {
+      if (promo.discount_type === "percent") {
+        discountAmount = Math.round(basePrice * (Number(promo.discount_value) / 100));
+      } else if (promo.discount_type === "fixed") {
+        // discount_value for fixed is in dollars — convert to cents
+        discountAmount = Math.round(Number(promo.discount_value) * 100);
+      }
+      discountName = `Promo: ${promoCode.toUpperCase()}`;
     }
   }
 
-  // Apply 10% member discount on top if active recurring member
+  // Apply 10% member discount on top if active recurring member.
+  // member_discount_active is the denormalized flag set by the subscription
+  // manager — no need to check plan id separately.
   let memberDiscountAmount = 0;
-  if (member.membership_status === "active" && member.membership_plan_id) {
+  if (member.membership_status === "active" && member.member_discount_active) {
     memberDiscountAmount = Math.round((basePrice - discountAmount) * 0.10);
   }
 

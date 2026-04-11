@@ -62,7 +62,7 @@ export async function POST(
     // ─── Gather Current Plan Data ────────────────────────────
     const { data: plans, error: plansError } = await supabase
       .from('membership_plans')
-      .select('id, name, price, billing_interval')
+      .select('id, name, tier, price, billing_interval')
       .eq('studio_id', studioId)
       .eq('is_active', true)
 
@@ -70,14 +70,16 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to fetch membership plans' }, { status: 500 })
     }
 
-    // Count active subscribers per plan
+    // Count active subscribers per plan — match on membership_tier since
+    // `members` has no membership_plan_id column.
     const planSnapshots: PlanSnapshot[] = []
     for (const plan of plans ?? []) {
+      const tierFilter = plan.tier ?? plan.name
       const { count } = await supabase
         .from('members')
         .select('id', { count: 'exact', head: true })
         .eq('studio_id', studioId)
-        .eq('membership_plan_id', plan.id)
+        .eq('membership_tier', tierFilter)
         .eq('membership_status', 'active')
 
       const subscriberCount = count ?? 0
@@ -153,6 +155,7 @@ export async function POST(
     })
 
     // ─── Update Simulation ───────────────────────────────────
+    // No analyzed_at column — `updated_at` tracks when analysis was generated.
     const { data: updated, error: updateError } = await supabase
       .from('pricing_simulations')
       .update({
@@ -168,7 +171,6 @@ export async function POST(
         },
         ai_narrative: result.narrative,
         status: 'analyzed',
-        analyzed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

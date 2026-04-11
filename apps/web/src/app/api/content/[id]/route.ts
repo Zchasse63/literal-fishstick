@@ -130,23 +130,28 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const allowedFields = [
-      "title",
-      "body",
-      "type",
-      "is_published",
-      "media_urls",
-      "tags",
-    ];
+    // Client-facing field names → real schema columns.
+    // `body` → content, `type` → post_type, `media_urls`/`tags` have no
+    // dedicated columns (media uses singular image_url, tags are not tracked).
+    const FIELD_MAP: Record<string, string> = {
+      title: "title",
+      body: "content",
+      type: "post_type",
+      is_published: "is_published",
+      image_url: "image_url",
+      is_pinned: "is_pinned",
+    };
+    const allowedFields = Object.keys(FIELD_MAP);
     // Only admins can approve posts
     if (isAdmin) {
       allowedFields.push("is_approved");
+      FIELD_MAP.is_approved = "is_approved";
     }
 
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
-        updates[field] = body[field];
+        updates[FIELD_MAP[field]] = body[field];
       }
     }
 

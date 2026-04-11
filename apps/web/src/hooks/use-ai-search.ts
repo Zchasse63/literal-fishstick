@@ -138,6 +138,7 @@ export function useAISearch() {
 
   return {
     search,
+    executeSearch,
     results,
     sql,
     explanation,

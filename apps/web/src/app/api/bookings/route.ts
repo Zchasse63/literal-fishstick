@@ -55,74 +55,50 @@ export async function POST(request: NextRequest) {
   if (validationError) return validationError;
   const { class_id, member_id } = validated;
 
-  // Fetch the class to check capacity (include glofox_id for write-back)
-  const { data: classData, error: classError } = await supabase
+  // T29 / B17: atomic capacity check + insert via book_class_atomic RPC.
+  // Runs inside a single transaction with FOR UPDATE lock on the class row
+  // so concurrent bookings against the same class can never exceed capacity.
+  // The RPC raises with SQLSTATE P0001 and a HINT string for each failure:
+  //   'not_found' → 404, 'class_full' / 'duplicate' → 409.
+  const { data: atomicResult, error: atomicError } = await supabase.rpc(
+    "book_class_atomic",
+    {
+      p_class_id: class_id,
+      p_member_id: member_id,
+      p_studio_id: studioId,
+    }
+  );
+
+  if (atomicError) {
+    const hint = (atomicError as { hint?: string; message?: string }).hint ?? ""
+    const message = atomicError.message ?? "Booking failed"
+    if (hint === "not_found" || message.includes("not found")) {
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+    if (hint === "class_full" || message.includes("full capacity")) {
+      return NextResponse.json({ error: "Class is at full capacity" }, { status: 409 });
+    }
+    if (hint === "duplicate" || message.includes("already has an active booking")) {
+      return NextResponse.json(
+        { error: "Member already has an active booking for this class" },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
+  const booking = atomicResult as { id: string; class_id: string; member_id: string; studio_id: string; status: string } | null
+  if (!booking) {
+    return NextResponse.json({ error: "Booking failed" }, { status: 500 });
+  }
+
+  // Fetch class info for Glofox write-back + any downstream logic
+  const { data: classData } = await supabase
     .from("classes")
-    .select("id, capacity, studio_id, glofox_id")
+    .select("id, glofox_id")
     .eq("id", class_id)
     .eq("studio_id", studioId)
     .single();
-
-  if (classError || !classData) {
-    return NextResponse.json({ error: "Class not found" }, { status: 404 });
-  }
-
-  // Count existing active bookings for this class (atomic check)
-  const { count: currentBookings, error: countError } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("class_id", class_id)
-    .eq("studio_id", studioId)
-    .in("status", ["booked", "checked_in"]);
-
-  if (countError) {
-    return NextResponse.json({ error: "Failed to check capacity" }, { status: 500 });
-  }
-
-  if ((currentBookings ?? 0) >= classData.capacity) {
-    return NextResponse.json({ error: "Class is at full capacity" }, { status: 409 });
-  }
-
-  // Check for duplicate booking
-  const { data: existingBooking } = await supabase
-    .from("bookings")
-    .select("id")
-    .eq("class_id", class_id)
-    .eq("member_id", member_id)
-    .eq("studio_id", studioId)
-    .in("status", ["booked", "checked_in"])
-    .maybeSingle();
-
-  if (existingBooking) {
-    return NextResponse.json(
-      { error: "Member already has an active booking for this class" },
-      { status: 409 },
-    );
-  }
-
-  // Atomic insert — if a race condition causes over-capacity, the DB constraint
-  // or a subsequent check will catch it. For Phase 1 this count-then-insert
-  // approach is acceptable with the edge-case policy's atomic insert guidance.
-  //
-  // NOTE: `booked_at` is phantom — `bookings` uses `created_at` (default now())
-  // for the booking timestamp. See B17 for the full atomic-booking fix.
-  const { data: booking, error: bookingError } = await supabase
-    .from("bookings")
-    .insert({
-      class_id,
-      member_id,
-      studio_id: studioId,
-      // F2 fix: 'confirmed' was a phantom enum value (the bookings_status_check
-      // enum allows 'booked', 'checked_in', 'no_show', 'cancelled',
-      // 'late_cancelled', 'waitlisted'). Default for new bookings is 'booked'.
-      status: "booked",
-    })
-    .select()
-    .single();
-
-  if (bookingError) {
-    return NextResponse.json({ error: bookingError.message }, { status: 500 });
-  }
 
   // Log activity
   await supabase.from("activity_log").insert({
@@ -136,7 +112,7 @@ export async function POST(request: NextRequest) {
 
   // Fire async Glofox booking write-back (fire-and-forget).
   // Only attempted if this class originated from Glofox AND member has a Glofox profile.
-  if (classData.glofox_id) {
+  if (classData?.glofox_id) {
     const { data: memberProfile } = await supabase
       .from("members")
       .select("glofox_id")

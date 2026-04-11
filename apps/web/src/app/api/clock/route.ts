@@ -150,9 +150,10 @@ export async function POST(request: NextRequest) {
 
       if (!geofences || geofences.length === 0) {
         // No geofences configured — fall back to legacy locations table
+        // Schema uses latitude/longitude, not lat/lng.
         let locationQuery = supabase
           .from("locations")
-          .select("id, name, lat, lng, geofence_radius_meters")
+          .select("id, name, latitude, longitude, geofence_radius_meters")
           .eq("studio_id", studioId);
 
         if (location_id) {
@@ -173,8 +174,8 @@ export async function POST(request: NextRequest) {
         let matchedLocation: (typeof locations)[0] | null = null;
 
         for (const loc of locations) {
-          if (loc.lat == null || loc.lng == null) continue;
-          const distance = haversineDistance(lat, lng, loc.lat, loc.lng);
+          if (loc.latitude == null || loc.longitude == null) continue;
+          const distance = haversineDistance(lat, lng, loc.latitude, loc.longitude);
           const radius = loc.geofence_radius_meters ?? 100;
           if (distance <= radius && distance < closestDistance) {
             matchedLocation = loc;

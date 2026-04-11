@@ -51,12 +51,12 @@ export async function PUT(
     }
 
     // ─── Update Insight ──────────────────────────────────────
+    // Schema has actioned_at only — attribution lives in activity_log below.
     const { data: insight, error: updateError } = await supabase
       .from("ai_insights")
       .update({
         status: "actioned",
         actioned_at: new Date().toISOString(),
-        actioned_by: user.id,
       })
       .eq("id", id)
       .eq("studio_id", studioId)

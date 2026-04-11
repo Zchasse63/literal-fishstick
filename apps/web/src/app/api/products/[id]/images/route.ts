@@ -35,10 +35,12 @@ export async function GET(
 
     const studioId = profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
-    // Read from the products table images array
+    // Real schema: products.image_url is a singular column. We expose a
+    // list-shaped response so the client contract stays stable; if/when a
+    // product_images table is added the client won't need to change.
     const { data: product, error } = await supabase
       .from("products")
-      .select("id, images")
+      .select("id, image_url")
       .eq("id", productId)
       .eq("studio_id", studioId)
       .single();
@@ -47,7 +49,7 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ data: product.images ?? [] });
+    return NextResponse.json({ data: product.image_url ? [product.image_url] : [] });
   } catch (err) {
     console.error("GET /api/products/[id]/images error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -93,7 +95,7 @@ export async function POST(
     // Verify product exists
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("id, images")
+      .select("id, image_url")
       .eq("id", productId)
       .eq("studio_id", studioId)
       .single();
@@ -152,15 +154,14 @@ export async function POST(
 
     const imageUrl = urlData.publicUrl;
 
-    // Update the product's images array
-    const currentImages: string[] = product.images ?? [];
-    const updatedImages = isPrimary
-      ? [imageUrl, ...currentImages]
-      : [...currentImages, imageUrl];
+    // Update the product's singular image_url. With only one slot available,
+    // a non-primary upload only replaces the image if none is set yet.
+    const shouldReplace = isPrimary || !product.image_url;
+    const nextImageUrl = shouldReplace ? imageUrl : product.image_url;
 
     const { error: updateError } = await supabase
       .from("products")
-      .update({ images: updatedImages, updated_at: new Date().toISOString() })
+      .update({ image_url: nextImageUrl, updated_at: new Date().toISOString() })
       .eq("id", productId)
       .eq("studio_id", studioId);
 

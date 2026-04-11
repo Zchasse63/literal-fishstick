@@ -62,7 +62,10 @@ export async function GET(
       .eq("studio_id", studioId)
       .maybeSingle();
 
-    // Create default preferences if none exist
+    // Create default preferences if none exist. Schema only supports the four
+    // channel toggles — booking confirmations/reminders ride along with
+    // transactional_email, and promotions/newsletter/community updates ride
+    // along with marketing_email.
     if (!preferences) {
       const { data: created, error: createError } = await supabase
         .from("email_preferences")
@@ -71,12 +74,8 @@ export async function GET(
           studio_id: studioId,
           marketing_email: true,
           transactional_email: true,
-          booking_confirmations: true,
-          booking_reminders: true,
-          membership_updates: true,
-          promotions: true,
-          newsletter: true,
-          community_updates: true,
+          sms_marketing: false,
+          push_notifications: true,
         })
         .select()
         .single();
@@ -103,9 +102,7 @@ export async function GET(
 /**
  * PUT /api/email-preferences/[memberId]
  * Update email preferences for a member.
- * Body: { marketing_email?, transactional_email?, booking_confirmations?,
- *         booking_reminders?, membership_updates?, promotions?, newsletter?,
- *         community_updates? }
+ * Body: { marketing_email?, transactional_email?, sms_marketing?, push_notifications? }
  */
 export async function PUT(
   request: NextRequest,
@@ -147,12 +144,8 @@ export async function PUT(
     const allowedFields = [
       "marketing_email",
       "transactional_email",
-      "booking_confirmations",
-      "booking_reminders",
-      "membership_updates",
-      "promotions",
-      "newsletter",
-      "community_updates",
+      "sms_marketing",
+      "push_notifications",
     ];
 
     const updates: Record<string, unknown> = {};
@@ -202,12 +195,8 @@ export async function PUT(
           studio_id: studioId,
           marketing_email: true,
           transactional_email: true,
-          booking_confirmations: true,
-          booking_reminders: true,
-          membership_updates: true,
-          promotions: true,
-          newsletter: true,
-          community_updates: true,
+          sms_marketing: false,
+          push_notifications: true,
           ...updates,
         })
         .select()

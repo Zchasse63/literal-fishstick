@@ -182,16 +182,16 @@ export default function RecordPaymentModal({ open, onOpenChange, onSuccess }: Re
             <Label>Member *</Label>
             {selectedMember ? (
               <div
-                className="mt-1 flex items-center justify-between p-2 rounded-lg border border-indigo-200 bg-indigo-50"
+                className="mt-1 flex items-center justify-between p-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40"
                 data-testid="revenue-payment-form-member-selected"
               >
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{selectedMember.full_name}</p>
-                  <p className="text-xs text-gray-500">{selectedMember.email}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedMember.full_name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{selectedMember.email}</p>
                 </div>
                 <button
                   onClick={() => { setSelectedMember(null); setMemberId('') }}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
                   data-testid="revenue-payment-form-member-change-btn"
                 >
                   Change

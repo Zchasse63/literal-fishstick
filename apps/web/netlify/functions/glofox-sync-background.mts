@@ -8,7 +8,14 @@
  *   - CRON_SECRET
  *   - URL (auto-set by Netlify)
  */
-import type { Config } from '@netlify/functions'
+
+// Local Config type since @netlify/functions is not installed as a devDep.
+// The runtime reads the exported `config` object at deploy time via Netlify's
+// AST parser; the type here is only used to get IDE autocomplete.
+type Config = {
+  schedule?: string
+  path?: string | string[]
+}
 
 export default async () => {
   const siteUrl = process.env.URL || process.env.DEPLOY_PRIME_URL

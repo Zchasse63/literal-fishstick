@@ -92,7 +92,7 @@ export async function POST(
         || (item.profiles as { full_name?: string; email?: string } | null)?.email
         || item.employee_id
 
-      const estTaxes = (item.federal_estimate ?? 0) + (item.state_estimate ?? 0) + (item.fica_estimate ?? 0)
+      const estTaxes = (item.federal_tax_estimate ?? 0) + (item.state_tax_estimate ?? 0) + (item.fica_estimate ?? 0)
 
       return [
         escapeCsvField(String(employeeName)),

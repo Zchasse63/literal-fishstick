@@ -132,13 +132,13 @@ export default function AIDetailModal({
   const riskColor = (level: string) => {
     switch (level?.toLowerCase()) {
       case 'high':
-        return 'text-red-600 bg-red-50 border-red-200'
+        return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800'
       case 'medium':
-        return 'text-orange-600 bg-orange-50 border-orange-200'
+        return 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800'
       case 'low':
-        return 'text-emerald-600 bg-emerald-50 border-emerald-200'
+        return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200'
+        return 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800'
     }
   }
 
@@ -167,14 +167,14 @@ export default function AIDetailModal({
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-            <p className="text-sm text-gray-500">Analyzing member data...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Analyzing member data...</p>
           </div>
         )}
 
         {error && !loading && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-2">
+          <div className="rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 p-4 flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
           </div>
         )}
 
@@ -184,8 +184,8 @@ export default function AIDetailModal({
             {churn && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-gray-500" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Churn Prediction</h3>
+                  <TrendingDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Churn Prediction</h3>
                 </div>
                 <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -204,11 +204,11 @@ export default function AIDetailModal({
                   )}
                   {churn.factors?.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Contributing Factors</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Contributing Factors</p>
                       <ul className="space-y-1">
                         {churn.factors.map((f, i) => (
                           <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
-                            <span className="text-gray-300 mt-0.5">-</span>
+                            <span className="text-gray-300 dark:text-gray-600 mt-0.5">-</span>
                             {f}
                           </li>
                         ))}
@@ -223,8 +223,8 @@ export default function AIDetailModal({
             {health && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Heart className="h-4 w-4 text-gray-500" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Health Score</h3>
+                  <Heart className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Health Score</h3>
                 </div>
                 <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
                   <div className="flex items-center gap-3">
@@ -235,7 +235,7 @@ export default function AIDetailModal({
                       <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                         {typeof health.score === 'number' ? `${health.score}/100` : '--'}
                       </p>
-                      <p className="text-[10px] text-gray-400">Overall Health</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500">Overall Health</p>
                     </div>
                   </div>
                   {health.summary && (
@@ -245,7 +245,7 @@ export default function AIDetailModal({
                     <div className="grid grid-cols-2 gap-2">
                       {Object.entries(health.dimensions).map(([key, value]) => (
                         <div key={key} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2">
-                          <span className="text-[11px] text-gray-500 capitalize">{key.replace(/_/g, ' ')}</span>
+                          <span className="text-[11px] text-gray-500 dark:text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
                           <span className="text-xs font-bold text-gray-900 dark:text-gray-100 tabular-nums">{value}</span>
                         </div>
                       ))}
@@ -259,8 +259,8 @@ export default function AIDetailModal({
             {recs?.recommendations?.length ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-gray-500" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">Recommendations</h3>
+                  <Lightbulb className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Recommendations</h3>
                 </div>
                 <div className="rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
                   {recs.recommendations.map((rec, i) => (
@@ -269,9 +269,9 @@ export default function AIDetailModal({
                         <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{rec.title}</p>
                         <span className={cn(
                           'text-[10px] font-bold uppercase px-1.5 py-0.5 rounded',
-                          rec.priority === 'high' ? 'bg-red-50 text-red-600' :
-                          rec.priority === 'medium' ? 'bg-amber-50 text-amber-600' :
-                          'bg-gray-50 text-gray-500'
+                          rec.priority === 'high' ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400' :
+                          rec.priority === 'medium' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400' :
+                          'bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400'
                         )}>
                           {rec.priority}
                         </span>
@@ -286,9 +286,9 @@ export default function AIDetailModal({
             {/* Empty state */}
             {!churn && !health && !recs && (
               <div className="py-8 text-center">
-                <ShieldCheck className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No AI insights available for this member yet.</p>
-                <p className="text-xs text-gray-400 mt-1">Insights are generated as member activity data accumulates.</p>
+                <ShieldCheck className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No AI insights available for this member yet.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Insights are generated as member activity data accumulates.</p>
               </div>
             )}
           </div>

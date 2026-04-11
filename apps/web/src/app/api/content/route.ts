@@ -7,8 +7,9 @@ const ALLOWED_ROLES = ["owner", "admin", "manager"];
 // the content_posts.author_role CHECK constraint only allows
 // ['owner','manager','trainer','member'].
 const STAFF_ROLES = ["owner", "admin", "manager", "trainer", "staff"];
-// Valid author_role values per content_posts CHECK constraint.
-const VALID_AUTHOR_ROLES = ["owner", "manager", "trainer"];
+// Valid author_role values per content_posts CHECK constraint
+// (extended in T27/B14 migration to include admin + staff).
+const VALID_AUTHOR_ROLES = ["owner", "admin", "manager", "trainer", "staff"];
 // Valid post_type values per content_posts CHECK constraint.
 const VALID_POST_TYPES = new Set([
   "update",

@@ -229,16 +229,22 @@ export async function POST(request: NextRequest) {
         )
 
         for (const member of members) {
-          // Determine variant for A/B tests
+          // B12 FIX: real schema uses body_html/body_text/sms_body + ab_variants
           let variant: 'A' | 'B' | null = null
-          let subjectTemplate = campaign.subject
-          let bodyTemplate = campaign.body_template
+          let subjectTemplate: string = campaign.subject ?? ''
+          let bodyTemplate: string = campaign.body_html ?? campaign.body_text ?? campaign.sms_body ?? ''
 
           if (campaign.ab_test_enabled) {
-            const splitPct = campaign.ab_split_percentage ?? 50
+            const variants = campaign.ab_variants as {
+              a?: { subject?: string; body_html?: string }
+              b?: { subject?: string; body_html?: string }
+              split_percentage?: number
+            } | null
+            const splitPct = variants?.split_percentage ?? 50
             variant = randomInt(100) < splitPct ? 'A' : 'B'
-            subjectTemplate = variant === 'A' ? campaign.variant_a_subject : campaign.variant_b_subject
-            bodyTemplate = variant === 'A' ? campaign.variant_a_body : campaign.variant_b_body
+            const chosen = variant === 'A' ? variants?.a : variants?.b
+            subjectTemplate = chosen?.subject ?? subjectTemplate
+            bodyTemplate = chosen?.body_html ?? bodyTemplate
           }
 
           const nameParts = (member.full_name ?? '').split(' ')
@@ -308,13 +314,14 @@ export async function POST(request: NextRequest) {
 
       const finalStatus = currentState?.status === 'paused' ? 'paused' : 'completed'
 
+      // B12 FIX: real schema has `send_completed_at`, no `failed_count` /
+      // `completed_at` / `paused_at`.
       await supabase
         .from('campaigns')
         .update({
           status: finalStatus,
           sent_count: sent,
-          failed_count: failed,
-          completed_at: finalStatus === 'completed' ? new Date().toISOString() : null,
+          send_completed_at: finalStatus === 'completed' ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', campaign.id)

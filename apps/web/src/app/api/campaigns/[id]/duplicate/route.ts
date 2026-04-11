@@ -53,6 +53,10 @@ export async function POST(
     }
 
     // ─── Create Duplicate ──────────────────────────────────────
+    // B12 FIX: real schema uses body_html/body_text/sms_body + ab_variants
+    // jsonb + singular counters (open_count/click_count/bounce_count/
+    // unsubscribe_count). No failed_count / completed_at / paused_at / ab_winner
+    // columns exist.
     const { data: duplicate, error: insertError } = await supabase
       .from('campaigns')
       .insert({
@@ -61,32 +65,29 @@ export async function POST(
         type: source.type,
         status: 'draft',
         subject: source.subject,
-        body_template: source.body_template,
+        body_html: source.body_html,
+        body_text: source.body_text,
+        sms_body: source.sms_body,
+        preview_text: source.preview_text,
         segment_id: source.segment_id,
-        recipient_count: source.recipient_count,
+        recipient_filter: source.recipient_filter,
         created_by: user.id,
         ab_test_enabled: source.ab_test_enabled,
-        variant_a_subject: source.variant_a_subject,
-        variant_a_body: source.variant_a_body,
-        variant_b_subject: source.variant_b_subject,
-        variant_b_body: source.variant_b_body,
-        ab_split_percentage: source.ab_split_percentage,
-        ab_auto_select_winner: source.ab_auto_select_winner,
+        ab_variants: source.ab_variants,
         ab_winner_metric: source.ab_winner_metric,
-        // Reset all metrics
+        // Reset metric counters
         sent_count: 0,
         delivered_count: 0,
-        opened_count: 0,
-        clicked_count: 0,
-        bounced_count: 0,
-        failed_count: 0,
-        unsubscribed_count: 0,
+        open_count: 0,
+        click_count: 0,
+        bounce_count: 0,
+        unsubscribe_count: 0,
+        conversion_count: 0,
         // No schedule
         scheduled_at: null,
         sent_at: null,
-        completed_at: null,
-        paused_at: null,
-        ab_winner: null,
+        send_started_at: null,
+        send_completed_at: null,
       })
       .select()
       .single()

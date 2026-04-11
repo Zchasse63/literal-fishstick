@@ -145,7 +145,9 @@ export async function GET(request: NextRequest) {
   // ── Failed payments ──────────────────────────────────────────────────
   if (failedPaymentsRes.status === 'fulfilled' && failedPaymentsRes.value.data) {
     for (const row of failedPaymentsRes.value.data) {
-      const member = row.members as
+      // Supabase typegen returns joined rows as either array or single;
+      // cast through unknown since we know the runtime shape.
+      const member = row.members as unknown as
         | { id: string; profile_id: string; profiles?: { full_name?: string } }
         | null
       const name = member?.profiles?.full_name ?? 'Unknown'
@@ -166,7 +168,7 @@ export async function GET(request: NextRequest) {
   // ── Expiring credits ─────────────────────────────────────────────────
   if (creditPacksRes.status === 'fulfilled' && creditPacksRes.value.data) {
     for (const row of creditPacksRes.value.data) {
-      const member = row.members as
+      const member = row.members as unknown as
         | { id: string; profile_id: string; profiles?: { full_name?: string } }
         | null
       const name = member?.profiles?.full_name ?? 'Unknown'

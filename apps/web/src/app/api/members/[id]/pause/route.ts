@@ -85,14 +85,14 @@ export async function POST(
       );
     }
 
-    // Update membership to paused
+    // Update membership to paused. Schema has no `paused_at`/`pause_resume_date`
+    // — those details are captured in the activity_log metadata below so that
+    // the `unpause` endpoint can recover them from the latest audit entry.
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("members")
       .update({
         membership_status: "paused",
-        paused_at: now,
-        pause_resume_date: resume_date ?? null,
         updated_at: now,
       })
       .eq("id", member.id)
@@ -114,6 +114,7 @@ export async function POST(
       subject_id: memberId,
       metadata: {
         membership_tier: member.membership_tier,
+        paused_at: now,
         resume_date: resume_date ?? null,
         reason: reason ?? null,
       },

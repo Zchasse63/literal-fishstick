@@ -88,15 +88,24 @@ export async function POST(
     }
 
     // ─── Set Winner ────────────────────────────────────────────
-    const winnerSubject = winner === 'A' ? campaign.variant_a_subject : campaign.variant_b_subject
-    const winnerBody = winner === 'A' ? campaign.variant_a_body : campaign.variant_b_body
+    // B12 FIX: real schema reads variants from ab_variants jsonb, writes the
+    // promoted subject/body_html onto the top-level subject + body_html,
+    // and records the selection timestamp in ab_winner_selected_at. There
+    // is no `ab_winner` or `body_template` column.
+    const variants = campaign.ab_variants as {
+      a?: { subject?: string; body_html?: string }
+      b?: { subject?: string; body_html?: string }
+    } | null
+    const chosen = winner === 'A' ? variants?.a : variants?.b
+    const winnerSubject = chosen?.subject ?? campaign.subject
+    const winnerBodyHtml = chosen?.body_html ?? campaign.body_html
 
     const { data: updated, error: updateError } = await supabase
       .from('campaigns')
       .update({
-        ab_winner: winner,
         subject: winnerSubject,
-        body_template: winnerBody,
+        body_html: winnerBodyHtml,
+        ab_winner_selected_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

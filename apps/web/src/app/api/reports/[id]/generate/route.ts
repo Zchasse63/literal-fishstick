@@ -84,10 +84,11 @@ export async function POST(
     // ─── Generate ──────────────────────────────────────────────
     const result = await generateReport(supabase, studioId, config);
 
-    // Update last_run_at on the saved report
+    // Bump updated_at — schema has no last_run_at column. Last-sent timestamps
+    // are tracked separately on scheduled exports.
     await supabase
       .from("saved_reports")
-      .update({ last_run_at: new Date().toISOString() })
+      .update({ updated_at: new Date().toISOString() })
       .eq("id", id);
 
     return NextResponse.json({

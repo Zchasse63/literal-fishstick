@@ -207,18 +207,15 @@ export async function POST(
         .eq("member_id", memberId)
         .eq("studio_id", studioId);
     } else {
-      // Create preferences with marketing_email=false
+      // Create preferences with marketing_email=false. Transactional email and
+      // push notifications stay on so booking confirmations/reminders still flow.
       await supabase.from("email_preferences").insert({
         member_id: memberId,
         studio_id: studioId,
         marketing_email: false,
         transactional_email: true,
-        booking_confirmations: true,
-        booking_reminders: true,
-        membership_updates: true,
-        promotions: false,
-        newsletter: false,
-        community_updates: true,
+        sms_marketing: false,
+        push_notifications: true,
         unsubscribed_at: now,
       });
     }

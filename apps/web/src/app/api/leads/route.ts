@@ -167,6 +167,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // `leads` has no created_by column — attribution lives in activity_log
     const { data: lead, error: insertError } = await supabase
       .from("leads")
       .insert({
@@ -180,7 +181,6 @@ export async function POST(request: NextRequest) {
         assigned_to: assigned_to ?? null,
         status: "new",
         score: 0,
-        created_by: user.id,
       })
       .select()
       .single();

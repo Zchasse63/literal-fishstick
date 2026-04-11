@@ -174,7 +174,7 @@ export async function GET(_request: NextRequest) {
 
   if (failedPaymentsRes.status === 'fulfilled' && failedPaymentsRes.value.data) {
     for (const row of failedPaymentsRes.value.data) {
-      const member = row.members as { id: string; profiles?: { full_name?: string } } | null
+      const member = row.members as unknown as { id: string; profiles?: { full_name?: string } } | null
       const name = member?.profiles?.full_name ?? 'Unknown'
       const dollars = ((row.amount as number) / 100).toFixed(2)
       alerts.push({
@@ -192,7 +192,7 @@ export async function GET(_request: NextRequest) {
 
   if (expiringCreditsRes.status === 'fulfilled' && expiringCreditsRes.value.data) {
     for (const row of expiringCreditsRes.value.data) {
-      const member = row.members as { id: string; profiles?: { full_name?: string } } | null
+      const member = row.members as unknown as { id: string; profiles?: { full_name?: string } } | null
       const name = member?.profiles?.full_name ?? 'Unknown'
       const expiresAt = row.expires_at as string
       const daysUntil = Math.ceil(

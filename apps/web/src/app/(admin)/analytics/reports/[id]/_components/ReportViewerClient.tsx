@@ -223,7 +223,7 @@ export function ReportViewerClient({ initialRows, reportName, reportId }: Report
               </thead>
               <tbody>
                 {paginatedRows.map((row) => (
-                  <tr key={row.id} className="border-b border-gray-50 transition hover:bg-gray-50 dark:hover:bg-gray-800/50 last:border-0">
+                  <tr key={row.id} className="border-b border-gray-100 dark:border-gray-800/60 transition hover:bg-gray-50 dark:hover:bg-gray-800/50 last:border-0">
                     <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">{row.date}</td>
                     <td className="px-5 py-3"><Link href="/schedule" className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition">{row.className}</Link></td>
                     <td className="px-5 py-3"><Link href={`/analytics/trainers/${row.trainerId}`} className="text-sm text-gray-700 dark:text-gray-300 hover:text-indigo-600 transition">{row.trainer}</Link></td>

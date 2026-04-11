@@ -211,7 +211,6 @@ async function cacheResult(
   trainerId: string,
   result: TrainerSummaryResult
 ): Promise<void> {
-  const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
 
   await supabase
@@ -219,13 +218,13 @@ async function cacheResult(
     .upsert(
       {
         studio_id: STUDIO_ID,
+        cache_key: `trainer_summary:${trainerId}`,
         cache_type: "trainer_summary",
         entity_id: trainerId,
-        data: result as unknown as Record<string, unknown>,
-        generated_at: now,
+        result: result as unknown as Record<string, unknown>,
         expires_at: expiresAt,
       },
-      { onConflict: "studio_id,cache_type,entity_id" }
+      { onConflict: "studio_id,cache_key" }
     )
     .then(
       () => {
@@ -280,21 +279,20 @@ export async function POST(request: NextRequest) {
     // Check for a valid cache entry first
     const { data: cached } = await supabase
       .from("ai_cache")
-      .select("data, generated_at, expires_at")
+      .select("result, created_at, expires_at")
       .eq("studio_id", STUDIO_ID)
-      .eq("cache_type", "trainer_summary")
-      .eq("entity_id", trainer_id)
+      .eq("cache_key", `trainer_summary:${trainer_id}`)
       .gt("expires_at", new Date().toISOString())
-      .order("generated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (cached?.data) {
+    if (cached?.result) {
       return NextResponse.json({
         trainer_id,
-        summary: cached.data as TrainerSummaryResult,
+        summary: cached.result as TrainerSummaryResult,
         cached: true,
-        generated_at: cached.generated_at,
+        generated_at: cached.created_at,
       });
     }
 
@@ -400,20 +398,19 @@ export async function GET() {
       // Check cache first
       const { data: cached } = await supabase
         .from("ai_cache")
-        .select("data, generated_at")
+        .select("result, created_at")
         .eq("studio_id", STUDIO_ID)
-        .eq("cache_type", "trainer_summary")
-        .eq("entity_id", trainer.id)
+        .eq("cache_key", `trainer_summary:${trainer.id}`)
         .gt("expires_at", new Date().toISOString())
-        .order("generated_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (cached?.data) {
+      if (cached?.result) {
         results.push({
           trainer_id: trainer.id,
           trainer_name: trainer.full_name ?? "Unknown Trainer",
-          summary: cached.data as TrainerSummaryResult,
+          summary: cached.result as TrainerSummaryResult,
           cached: true,
         });
         continue;

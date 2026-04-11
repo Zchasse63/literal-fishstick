@@ -83,32 +83,49 @@ export async function POST(
       return NextResponse.json({ error: clockError.message }, { status: 500 })
     }
 
-    // ─── Fetch Staff/Trainers for Hourly Rates ─────────────────
-    const { data: staffMembers } = await supabase
-      .from('staff')
-      .select('id, user_id, hourly_rate, overtime_rate')
+    // ─── Fetch Employees/Trainers for Pay Rates ────────────────
+    // Schema: the `staff` table doesn't exist — use `employees` which has
+    // profile_id (not user_id), pay_rate (not hourly_rate), and pay_type.
+    // Trainers are paid per class (base_pay_per_class) not hourly.
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('id, profile_id, pay_rate, pay_type')
       .eq('studio_id', studioId)
 
     const { data: trainers } = await supabase
       .from('trainers')
-      .select('id, user_id, hourly_rate, bonus_threshold')
+      .select('id, profile_id, base_pay_per_class, bonus_amount, bonus_threshold')
       .eq('studio_id', studioId)
 
-    // Build lookup maps
-    const staffByUserId = new Map<string, { hourly_rate: number; overtime_rate: number }>()
-    for (const s of staffMembers ?? []) {
-      staffByUserId.set(s.user_id, {
-        hourly_rate: s.hourly_rate ?? 15,
-        overtime_rate: s.overtime_rate ?? (s.hourly_rate ?? 15) * 1.5,
+    // Build lookup maps keyed by profile_id (= user/auth id) since clock
+    // entries' employee_id FK points at employees.id but we also need to
+    // resolve by profile_id for dual-role lookups.
+    const employeeById = new Map<string, { hourly_rate: number; overtime_rate: number; profile_id: string }>()
+    const employeeByProfileId = new Map<string, { hourly_rate: number; overtime_rate: number }>()
+    for (const e of employees ?? []) {
+      const hourly = e.pay_rate ?? 15
+      const overtime = hourly * 1.5
+      employeeById.set(e.id, {
+        hourly_rate: hourly,
+        overtime_rate: overtime,
+        profile_id: e.profile_id,
+      })
+      employeeByProfileId.set(e.profile_id, {
+        hourly_rate: hourly,
+        overtime_rate: overtime,
       })
     }
 
-    const trainerByUserId = new Map<string, { hourly_rate: number; bonus_threshold: number }>()
+    const trainerByProfileId = new Map<string, { base_pay_per_class: number; bonus_amount: number; bonus_threshold: number }>()
+    const trainerById = new Map<string, { base_pay_per_class: number; bonus_amount: number; bonus_threshold: number; profile_id: string }>()
     for (const t of trainers ?? []) {
-      trainerByUserId.set(t.user_id, {
-        hourly_rate: t.hourly_rate ?? 20,
+      const info = {
+        base_pay_per_class: t.base_pay_per_class ?? 25,
+        bonus_amount: t.bonus_amount ?? 25,
         bonus_threshold: t.bonus_threshold ?? 7,
-      })
+      }
+      trainerByProfileId.set(t.profile_id, info)
+      trainerById.set(t.id, { ...info, profile_id: t.profile_id })
     }
 
     // ─── Aggregate Hours Per Employee Per Week ─────────────────
@@ -155,14 +172,16 @@ export async function POST(
     }
 
     // ─── Fetch Classes Led by Trainers in Period ───────────────
+    // Schema: classes uses starts_at (not start_time), checked_in_count
+    // (not check_in_count), and trainer_id points at trainers.id (not profile).
     const { data: classesInPeriod } = await supabase
       .from('classes')
-      .select('id, trainer_id, check_in_count')
+      .select('id, trainer_id, checked_in_count')
       .eq('studio_id', studioId)
-      .gte('start_time', period.period_start)
-      .lte('start_time', period.period_end)
+      .gte('starts_at', period.period_start)
+      .lte('starts_at', period.period_end)
 
-    // Count classes per trainer
+    // Count classes per trainer (keyed by trainers.id)
     const trainerClasses = new Map<string, { total: number; bonusEligible: number }>()
     for (const cls of classesInPeriod ?? []) {
       if (!cls.trainer_id) continue
@@ -170,53 +189,94 @@ export async function POST(
       current.total += 1
 
       // Check if this class meets bonus threshold
-      const trainerInfo = trainerByUserId.get(cls.trainer_id)
+      const trainerInfo = trainerById.get(cls.trainer_id)
       const threshold = trainerInfo?.bonus_threshold ?? 7
-      if ((cls.check_in_count ?? 0) >= threshold) {
+      if ((cls.checked_in_count ?? 0) >= threshold) {
         current.bonusEligible += 1
       }
       trainerClasses.set(cls.trainer_id, current)
     }
 
     // ─── Fetch Promo Conversions ───────────────────────────────
-    const { data: promoConversions } = await supabase
-      .from('promo_codes')
-      .select('trainer_id, times_used')
+    // Aggregate from promo_attributions (the canonical source of truth for
+    // actual conversions) rather than the denormalized promo_codes.times_used,
+    // since attributions are what drive the per-trainer commission.
+    const { data: promoAttributions } = await supabase
+      .from('promo_attributions')
+      .select('trainer_id')
       .eq('studio_id', studioId)
+      .gte('created_at', period.period_start)
+      .lte('created_at', period.period_end)
 
     const trainerPromos = new Map<string, number>()
-    for (const promo of promoConversions ?? []) {
-      if (!promo.trainer_id) continue
+    for (const att of promoAttributions ?? []) {
+      if (!att.trainer_id) continue
       trainerPromos.set(
-        promo.trainer_id,
-        (trainerPromos.get(promo.trainer_id) ?? 0) + (promo.times_used ?? 0)
+        att.trainer_id,
+        (trainerPromos.get(att.trainer_id) ?? 0) + 1
       )
     }
 
     // ─── Build Line Items ──────────────────────────────────────
-    const allEmployeeIds = new Set<string>()
-    for (const empId of employeeHours.keys()) allEmployeeIds.add(empId)
-    for (const tId of trainerClasses.keys()) allEmployeeIds.add(tId)
+    // Line items are keyed by employees.id. For trainer-only rows (no
+    // employees record) the clock_entries set is empty and pay comes from
+    // per-class calculations. For dual-role (employee + trainer), both
+    // contribute — hourly from employees, bonus + commission from trainers.
+    const employeeIdSet = new Set<string>()
+    for (const empId of employeeHours.keys()) employeeIdSet.add(empId)
+
+    // For trainers without an employees row, we still want a payroll line
+    // item. Use trainers.id as the employee_id fallback.
+    for (const tId of trainerClasses.keys()) {
+      const trainer = trainerById.get(tId)
+      if (!trainer) continue
+      // Only add if there's no existing employees row for this profile
+      const existingEmployee = employees?.find((e) => e.profile_id === trainer.profile_id)
+      if (!existingEmployee) {
+        employeeIdSet.add(tId) // fall back to trainer id for orphan case
+      }
+    }
+
+    // Helper: find the trainers.id for a given line-item key. Returns null
+    // if neither the key itself nor the associated employee profile match.
+    function resolveTrainerId(key: string): string | null {
+      // Case 1: key IS a trainers.id (orphan trainer-only row)
+      if (trainerById.has(key)) return key
+      // Case 2: key is an employees.id — look up via profile_id
+      const empInfo = employeeById.get(key)
+      if (!empInfo) return null
+      for (const [tId, t] of trainerById.entries()) {
+        if (t.profile_id === empInfo.profile_id) return tId
+      }
+      return null
+    }
 
     const lineItems = []
 
-    for (const empId of allEmployeeIds) {
+    for (const empId of employeeIdSet) {
       const hours = employeeRegularOT.get(empId) ?? { regular: 0, overtime: 0 }
-      const staffInfo = staffByUserId.get(empId)
-      const trainerInfo = trainerByUserId.get(empId)
+      const employeeInfo = employeeById.get(empId)
+      const trainerId = resolveTrainerId(empId)
+      const trainerInfo = trainerId ? trainerById.get(trainerId) : null
 
-      const hourlyRate = staffInfo?.hourly_rate ?? trainerInfo?.hourly_rate ?? 15
-      const overtimeRate = staffInfo?.overtime_rate ?? hourlyRate * 1.5
+      const hourlyRate = employeeInfo?.hourly_rate ?? 0
+      const overtimeRate = employeeInfo?.overtime_rate ?? hourlyRate * 1.5
 
       const basePay = Math.round(hours.regular * hourlyRate * 100) / 100
       const overtimePay = Math.round(hours.overtime * overtimeRate * 100) / 100
 
-      const classInfo = trainerClasses.get(empId) ?? { total: 0, bonusEligible: 0 }
-      const trainerBonuses = classInfo.bonusEligible * 25 // $25 per bonus-eligible class
-      const promoConversionCount = trainerPromos.get(empId) ?? 0
+      // Trainer per-class pay + bonus — only when we found a trainer row.
+      const classInfo = trainerId
+        ? (trainerClasses.get(trainerId) ?? { total: 0, bonusEligible: 0 })
+        : { total: 0, bonusEligible: 0 }
+      const perClassBase = trainerInfo?.base_pay_per_class ?? 0
+      const trainerClassBasePay = Math.round(classInfo.total * perClassBase * 100) / 100
+      const bonusAmount = trainerInfo?.bonus_amount ?? 25
+      const trainerBonuses = Math.round(classInfo.bonusEligible * bonusAmount * 100) / 100
+      const promoConversionCount = trainerId ? (trainerPromos.get(trainerId) ?? 0) : 0
       const promoCommissions = promoConversionCount * 5 // $5 per promo conversion
 
-      const grossPay = basePay + overtimePay + trainerBonuses + promoCommissions
+      const grossPay = basePay + overtimePay + trainerClassBasePay + trainerBonuses + promoCommissions
 
       // Tax estimates (simplified)
       const annualizedGross = grossPay * 26 // Assume biweekly
@@ -240,8 +300,8 @@ export async function POST(
         tips: 0,
         other_earnings: 0,
         gross_pay: grossPay,
-        federal_estimate: federalEstimate,
-        state_estimate: stateEstimate,
+        federal_tax_estimate: federalEstimate,
+        state_tax_estimate: stateEstimate,
         fica_estimate: ficaEstimate,
         net_pay_estimate: netPayEstimate,
         classes_led: classInfo.total,

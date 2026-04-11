@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
+// The API surface is historical `staff` but the underlying table is `employees`
+// joined to `profiles`. See apps/web/src/app/api/staff/route.ts for details.
+
 /**
  * GET /api/staff/[id]
  * Fetch a single staff member with schedule and performance data.
@@ -44,15 +47,17 @@ export async function GET(
       );
     }
 
-    // Fetch staff record with profile
-    const { data: staff, error: staffError } = await supabase
-      .from("staff")
-      .select("*, profile:profiles!staff_profile_id_fkey(id, full_name, email, phone)")
+    // Fetch employee record with profile
+    const { data: employee, error: employeeError } = await supabase
+      .from("employees")
+      .select(
+        "*, profile:profiles!employees_profile_id_fkey(id, full_name, email, phone, roles)"
+      )
       .eq("id", id)
       .eq("studio_id", studioId)
       .single();
 
-    if (staffError || !staff) {
+    if (employeeError || !employee) {
       return NextResponse.json(
         { error: "Staff member not found" },
         { status: 404 }
@@ -62,11 +67,11 @@ export async function GET(
     // Fetch upcoming classes assigned to this staff member (as trainer)
     const { data: upcomingClasses } = await supabase
       .from("classes")
-      .select("id, title, start_time, end_time, capacity, status")
-      .eq("trainer_id", staff.profile_id)
+      .select("id, title, starts_at, ends_at, capacity, status")
+      .eq("trainer_id", employee.profile_id)
       .eq("studio_id", studioId)
-      .gte("start_time", new Date().toISOString())
-      .order("start_time", { ascending: true })
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
       .limit(10);
 
     // Performance: count classes taught in last 30 days
@@ -76,19 +81,19 @@ export async function GET(
     const { count: classesLast30d } = await supabase
       .from("classes")
       .select("id", { count: "exact", head: true })
-      .eq("trainer_id", staff.profile_id)
+      .eq("trainer_id", employee.profile_id)
       .eq("studio_id", studioId)
-      .gte("start_time", thirtyDaysAgo.toISOString())
-      .lte("start_time", new Date().toISOString());
+      .gte("starts_at", thirtyDaysAgo.toISOString())
+      .lte("starts_at", new Date().toISOString());
 
     // Count total check-ins for their classes in last 30 days
     const { data: recentClasses } = await supabase
       .from("classes")
       .select("id")
-      .eq("trainer_id", staff.profile_id)
+      .eq("trainer_id", employee.profile_id)
       .eq("studio_id", studioId)
-      .gte("start_time", thirtyDaysAgo.toISOString())
-      .lte("start_time", new Date().toISOString());
+      .gte("starts_at", thirtyDaysAgo.toISOString())
+      .lte("starts_at", new Date().toISOString());
 
     let totalCheckIns = 0;
     if (recentClasses && recentClasses.length > 0) {
@@ -104,7 +109,7 @@ export async function GET(
 
     return NextResponse.json({
       data: {
-        ...staff,
+        ...employee,
         upcoming_classes: upcomingClasses ?? [],
         performance: {
           classes_last_30d: classesLast30d ?? 0,
@@ -160,13 +165,14 @@ export async function PUT(
       authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     const body = await request.json();
-    const allowedFields = ["role", "is_active", "hire_date"];
-
+    // Map client fields onto real employee columns. `role` updates the
+    // `department` column (best semantic match) and `is_active` flips between
+    // status='active' and status='inactive'.
     const updates: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updates[field] = body[field];
-      }
+    if (body.role !== undefined) updates.department = body.role;
+    if (body.hire_date !== undefined) updates.hire_date = body.hire_date;
+    if (body.is_active !== undefined) {
+      updates.status = body.is_active ? "active" : "inactive";
     }
 
     if (Object.keys(updates).length === 0) {
@@ -179,11 +185,13 @@ export async function PUT(
     updates.updated_at = new Date().toISOString();
 
     const { data: updated, error } = await supabase
-      .from("staff")
+      .from("employees")
       .update(updates)
       .eq("id", id)
       .eq("studio_id", studioId)
-      .select("*, profile:profiles!staff_profile_id_fkey(id, full_name, email, phone)")
+      .select(
+        "*, profile:profiles!employees_profile_id_fkey(id, full_name, email, phone, roles)"
+      )
       .single();
 
     if (error) {
@@ -205,7 +213,7 @@ export async function PUT(
       studio_id: studioId,
       actor_id: user.id,
       type: "staff_updated",
-      subject_type: "staff",
+      subject_type: "employee",
       subject_id: id,
       metadata: updates,
     });
@@ -222,7 +230,7 @@ export async function PUT(
 
 /**
  * DELETE /api/staff/[id]
- * Deactivate a staff member (set is_active = false).
+ * Deactivate a staff member (set status = 'inactive').
  */
 export async function DELETE(
   _request: NextRequest,
@@ -254,14 +262,16 @@ export async function DELETE(
       authProfile?.studio_id ?? DEFAULT_STUDIO_ID;
 
     const { data: updated, error } = await supabase
-      .from("staff")
+      .from("employees")
       .update({
-        is_active: false,
+        status: "inactive",
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
       .eq("studio_id", studioId)
-      .select("*, profile:profiles!staff_profile_id_fkey(id, full_name, email)")
+      .select(
+        "*, profile:profiles!employees_profile_id_fkey(id, full_name, email)"
+      )
       .single();
 
     if (error) {
@@ -283,7 +293,7 @@ export async function DELETE(
       studio_id: studioId,
       actor_id: user.id,
       type: "staff_deactivated",
-      subject_type: "staff",
+      subject_type: "employee",
       subject_id: id,
       metadata: {},
     });

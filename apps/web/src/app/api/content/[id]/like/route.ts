@@ -54,12 +54,12 @@ export async function POST(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Check if user already liked
+    // Check if user already liked — schema column is author_id, not user_id.
     const { data: existingLike } = await supabase
       .from("content_likes")
       .select("id")
       .eq("post_id", id)
-      .eq("user_id", user.id)
+      .eq("author_id", user.id)
       .maybeSingle();
 
     let liked: boolean;
@@ -78,7 +78,7 @@ export async function POST(
       // Like — add the like
       await supabase.from("content_likes").insert({
         post_id: id,
-        user_id: user.id,
+        author_id: user.id,
         studio_id: studioId,
       });
 

@@ -3,9 +3,39 @@ import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 import { normalizePhone } from '@/lib/validation'
 
+// `studios` holds the business-identity fields (name, address, phone, etc.)
+// while `studio_settings` holds operational/policy fields. The API merges
+// them into a single payload for the client.
+const STUDIO_FIELDS = [
+  "name",
+  "address",
+  "city",
+  "state",
+  "zip",
+  "phone",
+  "email",
+  "timezone",
+] as const;
+
+const STUDIO_SETTINGS_FIELDS = [
+  "late_cancel_window_minutes",
+  "strike_window_days",
+  "strike_penalties",
+  "strike_system_enabled",
+  "unlimited_members_warning_only",
+  "credit_grace_period_days",
+  "waitlist_claim_window_minutes",
+  "inventory_hold_minutes",
+  "checkout_lock_minutes",
+  "pilot_discount_rate",
+  "member_discount_rate",
+  "private_event_base_rate",
+  "waiver_text",
+] as const;
+
 /**
  * GET /api/settings
- * Fetch studio settings.
+ * Fetch studio settings — merged view of `studios` + `studio_settings`.
  */
 export async function GET(_request: NextRequest) {
   try {
@@ -41,34 +71,32 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // Try studio_settings table first, fall back to locations table
-    const { data: settings, error: settingsError } = await supabase
-      .from("studio_settings")
-      .select("*")
-      .eq("studio_id", studioId)
-      .single();
-
-    if (settingsError) {
-      // Fallback: try fetching from locations
-      const { data: location, error: locationError } = await supabase
-        .from("locations")
+    const [{ data: studio }, { data: studioSettings }] = await Promise.all([
+      supabase
+        .from("studios")
+        .select("name, address, city, state, zip, phone, email, timezone")
+        .eq("id", studioId)
+        .maybeSingle(),
+      supabase
+        .from("studio_settings")
         .select("*")
         .eq("studio_id", studioId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
+        .maybeSingle(),
+    ]);
 
-      if (locationError) {
-        return NextResponse.json(
-          { error: "Settings not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json({ data: location });
+    if (!studio && !studioSettings) {
+      return NextResponse.json(
+        { error: "Settings not found" },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ data: settings });
+    return NextResponse.json({
+      data: {
+        ...((studio as Record<string, unknown> | null) ?? {}),
+        ...((studioSettings as Record<string, unknown> | null) ?? {}),
+      },
+    });
   } catch (err) {
     console.error("GET /api/settings error:", err);
     return NextResponse.json(
@@ -80,9 +108,8 @@ export async function GET(_request: NextRequest) {
 
 /**
  * PUT /api/settings
- * Update studio settings.
- * Body: { name?, address?, phone?, email?, timezone?, operating_hours?,
- *         booking_rules?, notification_settings? }
+ * Update studio settings. Routes identity fields to `studios` and
+ * operational/policy fields to `studio_settings` based on the real schema.
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -109,75 +136,92 @@ export async function PUT(request: NextRequest) {
     const studioId =
       profile?.studio_id ?? DEFAULT_STUDIO_ID;
 
-    const body = await request.json();
-    const allowedFields = [
-      "name",
-      "address",
-      "phone",
-      "email",
-      "timezone",
-      "operating_hours",
-      "booking_rules",
-      "notification_settings",
-    ];
+    const roles: string[] = profile?.roles ?? [];
+    if (!roles.some((r: string) => ["owner", "manager"].includes(r))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    const updates: Record<string, unknown> = {};
-    for (const field of allowedFields) {
+    const body = await request.json();
+
+    const studioUpdates: Record<string, unknown> = {};
+    for (const field of STUDIO_FIELDS) {
       if (body[field] !== undefined) {
-        updates[field] = body[field];
+        studioUpdates[field] =
+          field === "phone"
+            ? normalizePhone(body[field] as string | null)
+            : body[field];
       }
     }
 
-    if (updates.phone !== undefined) {
-      updates.phone = normalizePhone(updates.phone as string | null)
+    const settingsUpdates: Record<string, unknown> = {};
+    for (const field of STUDIO_SETTINGS_FIELDS) {
+      if (body[field] !== undefined) {
+        settingsUpdates[field] = body[field];
+      }
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (
+      Object.keys(studioUpdates).length === 0 &&
+      Object.keys(settingsUpdates).length === 0
+    ) {
       return NextResponse.json(
         { error: "No valid fields to update" },
         { status: 400 }
       );
     }
 
-    updates.updated_at = new Date().toISOString();
+    const nowIso = new Date().toISOString();
 
-    // Try to upsert into studio_settings
-    const { data: existing } = await supabase
-      .from("studio_settings")
-      .select("id")
-      .eq("studio_id", studioId)
-      .maybeSingle();
+    // Update studios (identity) if applicable
+    if (Object.keys(studioUpdates).length > 0) {
+      studioUpdates.updated_at = nowIso;
+      const { error: studioError } = await supabase
+        .from("studios")
+        .update(studioUpdates)
+        .eq("id", studioId);
 
-    let result;
-    if (existing) {
-      const { data, error } = await supabase
+      if (studioError) {
+        return NextResponse.json(
+          { error: "Internal server error" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Upsert studio_settings (policy) if applicable
+    if (Object.keys(settingsUpdates).length > 0) {
+      settingsUpdates.updated_at = nowIso;
+
+      const { data: existing } = await supabase
         .from("studio_settings")
-        .update(updates)
+        .select("id")
         .eq("studio_id", studioId)
-        .select()
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 }
-        );
-      }
-      result = data;
-    } else {
-      const { data, error } = await supabase
-        .from("studio_settings")
-        .insert({ studio_id: studioId, ...updates })
-        .select()
-        .single();
+      if (existing) {
+        const { error } = await supabase
+          .from("studio_settings")
+          .update(settingsUpdates)
+          .eq("studio_id", studioId);
 
-      if (error) {
-        return NextResponse.json(
-          { error: "Internal server error" },
-          { status: 500 }
-        );
+        if (error) {
+          return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+          );
+        }
+      } else {
+        const { error } = await supabase
+          .from("studio_settings")
+          .insert({ studio_id: studioId, ...settingsUpdates });
+
+        if (error) {
+          return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+          );
+        }
       }
-      result = data;
     }
 
     // Log activity
@@ -187,10 +231,29 @@ export async function PUT(request: NextRequest) {
       type: "settings_updated",
       subject_type: "studio_settings",
       subject_id: studioId,
-      metadata: updates,
+      metadata: { studio: studioUpdates, settings: settingsUpdates },
     });
 
-    return NextResponse.json({ data: result });
+    // Return the merged view so the client can refresh without a second fetch
+    const [{ data: studio }, { data: studioSettings }] = await Promise.all([
+      supabase
+        .from("studios")
+        .select("name, address, city, state, zip, phone, email, timezone")
+        .eq("id", studioId)
+        .maybeSingle(),
+      supabase
+        .from("studio_settings")
+        .select("*")
+        .eq("studio_id", studioId)
+        .maybeSingle(),
+    ]);
+
+    return NextResponse.json({
+      data: {
+        ...((studio as Record<string, unknown> | null) ?? {}),
+        ...((studioSettings as Record<string, unknown> | null) ?? {}),
+      },
+    });
   } catch (err) {
     console.error("PUT /api/settings error:", err);
     return NextResponse.json(

@@ -67,8 +67,8 @@ export async function GET(
       .select("*, member:profiles!automation_enrollments_member_id_fkey(id, full_name, email)", {
         count: "exact",
       })
-      .eq("flow_id", id)
-      .order("created_at", { ascending: false })
+      .eq("automation_id", id)
+      .order("enrolled_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (status) {

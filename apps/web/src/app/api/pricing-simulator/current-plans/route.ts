@@ -38,7 +38,7 @@ export async function GET() {
     // ─── Fetch Plans ─────────────────────────────────────────
     const { data: plans, error: plansError } = await supabase
       .from('membership_plans')
-      .select('id, name, price, billing_interval, is_active')
+      .select('id, name, tier, price, billing_interval, is_active')
       .eq('studio_id', studioId)
       .eq('is_active', true)
       .order('price', { ascending: true })
@@ -48,13 +48,16 @@ export async function GET() {
     }
 
     // ─── Count Subscribers Per Plan ──────────────────────────
+    // `members` has no membership_plan_id column — match on membership_tier
+    // (falling back to plan.name when tier is not set).
     const result = []
     for (const plan of plans ?? []) {
+      const tierFilter = plan.tier ?? plan.name
       const { count } = await supabase
         .from('members')
         .select('id', { count: 'exact', head: true })
         .eq('studio_id', studioId)
-        .eq('membership_plan_id', plan.id)
+        .eq('membership_tier', tierFilter)
         .eq('membership_status', 'active')
 
       const subscriberCount = count ?? 0

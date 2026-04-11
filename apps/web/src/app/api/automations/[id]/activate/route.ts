@@ -88,9 +88,8 @@ export async function POST(
       .update({
         status: "active",
         exit_reason: null,
-        updated_at: new Date().toISOString(),
       })
-      .eq("flow_id", id)
+      .eq("automation_id", id)
       .eq("status", "paused");
 
     // Log activity

@@ -173,30 +173,20 @@ export async function POST(
       }
     }
 
-    // Promo conversions + revenue
-    const [promoResult, revenueResult] = await Promise.all([
-      supabase
-        .from("transactions")
-        .select("id", { count: "exact", head: true })
-        .eq("studio_id", studioId)
-        .eq("promo_trainer_id", trainer.id)
-        .eq("status", "completed")
-        .gte("created_at", periodStart)
-        .lte("created_at", periodEnd + "T23:59:59"),
-      supabase
-        .from("transactions")
-        .select("amount")
-        .eq("studio_id", studioId)
-        .eq("promo_trainer_id", trainer.id)
-        .eq("status", "completed")
-        .gte("created_at", periodStart)
-        .lte("created_at", periodEnd + "T23:59:59"),
-    ]);
+    // Promo conversions + revenue via promo_attributions (canonical table)
+    const { data: attributions } = await supabase
+      .from("promo_attributions")
+      .select("attributed_sale_amount")
+      .eq("studio_id", studioId)
+      .eq("trainer_id", trainer.id)
+      .gte("created_at", periodStart)
+      .lte("created_at", periodEnd + "T23:59:59");
 
-    const promoCodeConversions = promoResult.count ?? 0;
+    const promoCodeConversions = attributions?.length ?? 0;
     const revenueAttributed =
-      revenueResult.data?.reduce(
-        (sum: number, t: { amount: number }) => sum + (t.amount ?? 0),
+      attributions?.reduce(
+        (sum: number, a: { attributed_sale_amount: number | null }) =>
+          sum + (a.attributed_sale_amount ?? 0),
         0
       ) ?? 0;
 
@@ -259,13 +249,19 @@ export async function POST(
     const summary = await generateTrainerSummary(metrics);
 
     // ─── Update trainer_metric_snapshots ─────────────────────
-    const snapshotDate = periodEnd;
+    // Real schema: period_start/period_end compound key, avg_attendance (not _rate),
+    // no ai_bonus_summary column — fold bonus summary into ai_highlights instead.
+    const aiHighlights = summary.bonus_summary
+      ? [summary.bonus_summary, ...(summary.highlights ?? [])]
+      : (summary.highlights ?? []);
+
     const { data: existingSnapshot } = await supabase
       .from("trainer_metric_snapshots")
       .select("id")
       .eq("trainer_id", trainer.id)
       .eq("studio_id", studioId)
-      .eq("snapshot_date", snapshotDate)
+      .eq("period_start", periodStart)
+      .eq("period_end", periodEnd)
       .maybeSingle();
 
     if (existingSnapshot) {
@@ -273,14 +269,13 @@ export async function POST(
         .from("trainer_metric_snapshots")
         .update({
           ai_narrative: summary.narrative,
-          ai_highlights: summary.highlights,
+          ai_highlights: aiHighlights,
           ai_growth_areas: summary.areas_for_growth,
           ai_overall_rating: summary.overall_rating,
-          ai_bonus_summary: summary.bonus_summary,
           ai_generated_at: new Date().toISOString(),
           total_classes: totalClasses,
           total_check_ins: totalCheckIns,
-          avg_attendance_rate: metrics.avg_attendance_rate,
+          avg_attendance: metrics.avg_attendance_rate,
           avg_capacity_utilization: metrics.avg_capacity_utilization,
           classes_above_bonus_threshold: classesAboveBonusThreshold,
           unique_members_served: uniqueMembersServed,
@@ -293,10 +288,11 @@ export async function POST(
       await supabase.from("trainer_metric_snapshots").insert({
         trainer_id: trainer.id,
         studio_id: studioId,
-        snapshot_date: snapshotDate,
+        period_start: periodStart,
+        period_end: periodEnd,
         total_classes: totalClasses,
         total_check_ins: totalCheckIns,
-        avg_attendance_rate: metrics.avg_attendance_rate,
+        avg_attendance: metrics.avg_attendance_rate,
         avg_capacity_utilization: metrics.avg_capacity_utilization,
         classes_above_bonus_threshold: classesAboveBonusThreshold,
         unique_members_served: uniqueMembersServed,
@@ -304,10 +300,9 @@ export async function POST(
         promo_code_conversions: promoCodeConversions,
         revenue_attributed: revenueAttributed,
         ai_narrative: summary.narrative,
-        ai_highlights: summary.highlights,
+        ai_highlights: aiHighlights,
         ai_growth_areas: summary.areas_for_growth,
         ai_overall_rating: summary.overall_rating,
-        ai_bonus_summary: summary.bonus_summary,
         ai_generated_at: new Date().toISOString(),
       });
     }
@@ -321,13 +316,13 @@ export async function POST(
       .upsert(
         {
           studio_id: studioId,
+          cache_key: `trainer_summary:${trainer.id}`,
           cache_type: "trainer_summary",
           entity_id: trainer.id,
-          data: summary as unknown as Record<string, unknown>,
-          generated_at: new Date().toISOString(),
+          result: summary as unknown as Record<string, unknown>,
           expires_at: cacheExpiry,
         },
-        { onConflict: "studio_id,cache_type,entity_id" }
+        { onConflict: "studio_id,cache_key" }
       )
       .then(
         () => {},

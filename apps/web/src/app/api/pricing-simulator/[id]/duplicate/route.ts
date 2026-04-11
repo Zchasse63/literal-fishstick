@@ -53,6 +53,7 @@ export async function POST(
     }
 
     // ─── Create Duplicate ─────────────────────────────────────
+    // Schema has no `analyzed_at` — use updated_at / status='draft' instead.
     const { data: duplicate, error: insertError } = await supabase
       .from('pricing_simulations')
       .insert({
@@ -65,7 +66,6 @@ export async function POST(
         // Reset analysis fields
         projections: null,
         ai_narrative: null,
-        analyzed_at: null,
         applied_at: null,
       })
       .select()

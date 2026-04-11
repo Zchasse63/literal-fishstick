@@ -89,13 +89,12 @@ export async function POST(
     const totalDeleted = Object.values(deletionResults).reduce((sum, n) => sum + n, 0)
 
     // ─── Update Job Status ───────────────────────────────────
+    // Schema has rolled_back_at only — actor attribution lives in activity_log.
     const { data: updated, error: updateError } = await supabase
       .from('migration_jobs')
       .update({
         status: 'rolled_back',
         rolled_back_at: new Date().toISOString(),
-        rolled_back_by: user.id,
-        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
       .eq('studio_id', studioId)

@@ -72,12 +72,13 @@ export async function POST(
     const eventStart = new Date(new Date(event.start_time).getTime() - setupMinutes * 60000).toISOString()
     const eventEnd = new Date(new Date(event.end_time).getTime() + cleanupMinutes * 60000).toISOString()
 
+    // Schema: classes has title/starts_at/ends_at, not name/start_time/end_time.
     const { data: conflicts, error: conflictError } = await supabase
       .from('classes')
-      .select('id, name, start_time, end_time')
+      .select('id, title, starts_at, ends_at')
       .eq('studio_id', studioId)
-      .lt('start_time', eventEnd)
-      .gt('end_time', eventStart)
+      .lt('starts_at', eventEnd)
+      .gt('ends_at', eventStart)
       .neq('status', 'cancelled')
 
     if (conflictError) {
@@ -89,9 +90,9 @@ export async function POST(
         error: 'Event conflicts with existing classes. Set acknowledge_conflicts to true to confirm anyway.',
         conflicts: conflicts.map((c) => ({
           class_id: c.id,
-          name: c.name,
-          start_time: c.start_time,
-          end_time: c.end_time,
+          name: c.title,
+          start_time: c.starts_at,
+          end_time: c.ends_at,
         })),
       }, { status: 409 })
     }

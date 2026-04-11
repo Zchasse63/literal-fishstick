@@ -146,10 +146,10 @@ function membershipBadgeColor(type: MemberProfile['membershipType']) {
 function acquisitionBadge(channel: AcquisitionChannel | null) {
   if (!channel) return null
   const config: Record<AcquisitionChannel, { label: string; classes: string }> = {
-    classpass: { label: 'ClassPass', classes: 'bg-blue-50 text-blue-700 border-blue-200' },
-    website: { label: 'Website', classes: 'bg-gray-50 text-gray-600 border-gray-200' },
-    direct: { label: 'Direct', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    mobile_app: { label: 'Mobile App', classes: 'bg-purple-50 text-purple-700 border-purple-200' },
+    classpass: { label: 'ClassPass', classes: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
+    website: { label: 'Website', classes: 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800' },
+    direct: { label: 'Direct', classes: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
+    mobile_app: { label: 'Mobile App', classes: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' },
   }
   return config[channel] || null
 }
@@ -765,7 +765,7 @@ export default function MemberProfileClient({
                     ) : (
                       <div className="space-y-2">
                         {bookings.slice(0, 5).map((b, i) => (
-                          <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                          <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800/60last:border-0">
                             <div className="flex items-center gap-3">
                               <CalendarDays className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                               <div>
@@ -801,7 +801,7 @@ export default function MemberProfileClient({
                   ) : (
                     <div className="space-y-2">
                       {bookings.map((b, i) => (
-                        <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                        <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-gray-800/60last:border-0">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
                               <CalendarDays className="h-4 w-4 text-indigo-600" />
@@ -839,7 +839,7 @@ export default function MemberProfileClient({
                   ) : (
                     <div className="space-y-2">
                       {transactions.map((tx, i) => (
-                        <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                        <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-gray-800/60last:border-0">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
                               <CreditCard className="h-4 w-4 text-emerald-600" />

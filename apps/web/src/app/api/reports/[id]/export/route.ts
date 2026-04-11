@@ -138,18 +138,20 @@ export async function POST(
         .from(STORAGE_BUCKET)
         .createSignedUrl(storagePath, 3600);
 
-      // Create report_exports row
+      // Create report_exports row — schema uses file_url / file_size_bytes /
+      // generated_by and requires report_type + config_snapshot. No status col.
       const { data: exportRecord } = await supabase
         .from("report_exports")
         .insert({
           report_id: id,
           studio_id: studioId,
+          report_type: report.report_type,
           format: "csv",
-          status: "completed",
-          file_path: storagePath,
-          file_size: new TextEncoder().encode(csvContent).length,
+          file_url: signedUrl?.signedUrl ?? storagePath,
+          file_size_bytes: new TextEncoder().encode(csvContent).length,
           row_count: result.rows.length,
-          created_by: user.id,
+          config_snapshot: config as unknown as Record<string, unknown>,
+          generated_by: user.id,
         })
         .select()
         .single();
@@ -167,18 +169,21 @@ export async function POST(
 
     // ─── PDF Export ────────────────────────────────────────────
     if (format === "pdf") {
-      // For large datasets, defer to async processing (Inngest job in future)
+      // For large datasets, defer to async processing (Inngest job in future).
+      // We still create a row immediately so the client can poll by export id;
+      // the file_url stays null until the async job completes.
       if (result.total_count > PDF_ASYNC_THRESHOLD) {
-        // Create a pending export record
         const { data: exportRecord } = await supabase
           .from("report_exports")
           .insert({
             report_id: id,
             studio_id: studioId,
+            report_type: report.report_type,
             format: "pdf",
-            status: "processing",
+            file_url: null,
             row_count: result.total_count,
-            created_by: user.id,
+            config_snapshot: config as unknown as Record<string, unknown>,
+            generated_by: user.id,
           })
           .select()
           .single();
@@ -230,18 +235,19 @@ export async function POST(
           .from(STORAGE_BUCKET)
           .createSignedUrl(storagePath, 3600);
 
-        // Create report_exports row
+        // Create report_exports row — real schema column names.
         const { data: exportRecord } = await supabase
           .from("report_exports")
           .insert({
             report_id: id,
             studio_id: studioId,
+            report_type: report.report_type,
             format: "pdf",
-            status: "completed",
-            file_path: storagePath,
-            file_size: pdfBuffer.length,
+            file_url: signedUrl?.signedUrl ?? storagePath,
+            file_size_bytes: pdfBuffer.length,
             row_count: result.rows.length,
-            created_by: user.id,
+            config_snapshot: config as unknown as Record<string, unknown>,
+            generated_by: user.id,
           })
           .select()
           .single();

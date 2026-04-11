@@ -231,7 +231,7 @@ function LeaderboardTab({ leaderboard }: { leaderboard: LeaderboardMember[] }) {
               ease: [0.25, 1, 0.5, 1],
             }}
             className={cn(
-              'grid grid-cols-[56px_1fr_100px_100px_90px_100px_90px] items-center gap-4 border-b border-gray-50 px-5 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
+              'grid grid-cols-[56px_1fr_100px_100px_90px_100px_90px] items-center gap-4 border-b border-gray-100 dark:border-gray-800/60 px-5 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
               member.rank <= 3 && 'bg-gradient-to-r from-amber-50/50 to-transparent'
             )}
           >

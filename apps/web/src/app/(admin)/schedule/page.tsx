@@ -182,7 +182,7 @@ function ScheduleSkeleton() {
           </thead>
           <tbody>
             {Array.from({ length: 4 }).map((_, rowIdx) => (
-              <tr key={rowIdx} className="border-b border-gray-50 last:border-0">
+              <tr key={rowIdx} className="border-b border-gray-100 dark:border-gray-800/60 last:border-0">
                 <td className="p-3 align-top">
                   <Skeleton className="h-4 w-14" />
                 </td>
@@ -839,7 +839,7 @@ export default function SchedulePage() {
                   </thead>
                   <tbody>
                     {allTimeSlots.map((time) => (
-                      <tr key={time} className="border-b border-gray-50 last:border-0">
+                      <tr key={time} className="border-b border-gray-100 dark:border-gray-800/60 last:border-0">
                         <td className="p-3 align-top">
                           <span className="text-sm font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap">{time}</span>
                         </td>

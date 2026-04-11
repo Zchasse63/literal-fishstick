@@ -147,35 +147,39 @@ export async function POST(request: NextRequest) {
 
       checkInCount = classCheckIns ?? 0;
 
-      // Get the studio's bonus threshold setting
-      const { data: settings } = await supabase
-        .from("studio_settings")
-        .select("trainer_bonus_threshold")
+      // Per-trainer bonus threshold lives on `trainers.bonus_threshold`.
+      const { data: trainerRow } = await supabase
+        .from("trainers")
+        .select("bonus_threshold, bonus_amount")
+        .eq("id", trainerId)
         .eq("studio_id", studioId)
-        .single();
+        .maybeSingle();
 
-      const bonusThreshold = settings?.trainer_bonus_threshold ?? 7;
+      const bonusThreshold = trainerRow?.bonus_threshold ?? 7;
+      const bonusAmount = trainerRow?.bonus_amount ?? 0;
 
       if (checkInCount >= bonusThreshold) {
         bonusTriggered = true;
 
-        // Check if a bonus record already exists for this class
+        // Check if a trainer_class_log row already exists for this class.
         const { data: existingBonus } = await supabase
-          .from("trainer_bonuses")
+          .from("trainer_class_log")
           .select("id")
           .eq("class_id", booking.class_id)
           .eq("trainer_id", trainerId)
           .maybeSingle();
 
         if (!existingBonus) {
-          // Create the bonus record
-          await supabase.from("trainer_bonuses").insert({
+          // Record the bonus event on the canonical trainer_class_log table.
+          // Payroll aggregates these rows into payroll_line_items.trainer_bonuses.
+          await supabase.from("trainer_class_log").insert({
             trainer_id: trainerId,
             class_id: booking.class_id,
             studio_id: studioId,
             check_in_count: checkInCount,
-            threshold: bonusThreshold,
-            status: "pending",
+            bonus_earned: true,
+            bonus_amount: bonusAmount,
+            base_pay: 0,
           });
 
           // BUG-019 L3+L4 fix: 'trainer_bonus_triggered' is now in the
@@ -212,12 +216,12 @@ export async function POST(request: NextRequest) {
       try {
         const { data: currentMember } = await supabase
           .from("members")
-          .select("total_visits, credit_balance")
+          .select("total_visits, credits_remaining")
           .eq("id", booking.member_id)
           .single();
 
         const currentVisits = (currentMember?.total_visits as number) ?? 0;
-        const memberCredits = (currentMember?.credit_balance as number) ?? 0;
+        const memberCredits = (currentMember?.credits_remaining as number) ?? 0;
         const now = new Date().toISOString();
         const newStatus = memberCredits > 0 ? 'active' : 'engaged';
 

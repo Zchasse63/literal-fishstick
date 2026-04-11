@@ -53,7 +53,7 @@ export const TEMPLATES: Template[] = [
     id: 'general',
     name: 'General',
     icon: Mail,
-    color: 'bg-gray-50 text-gray-600 border-gray-200',
+    color: 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800',
     subject: 'A Quick Update from {{studio_name}}',
     body: 'Hi {{first_name}},\n\n[Your message here]\n\nBest,\n{{studio_name}} Team',
   },
@@ -96,8 +96,8 @@ export const TONES: { value: ToneType; label: string }[] = [
 ]
 
 export const statusConfig: Record<CampaignStatus, { label: string; className: string }> = {
-  draft: { label: 'Draft', className: 'border border-gray-300 text-gray-500 bg-white' },
-  scheduled: { label: 'Scheduled', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  sent: { label: 'Sent', className: 'bg-gray-100 text-gray-600' },
-  active: { label: 'Active', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  draft: { label: 'Draft', className: 'border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-950' },
+  scheduled: { label: 'Scheduled', className: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' },
+  sent: { label: 'Sent', className: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' },
+  active: { label: 'Active', className: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' },
 }

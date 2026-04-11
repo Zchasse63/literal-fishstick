@@ -159,12 +159,13 @@ export async function POST(request: NextRequest) {
         }
 
         // Bookings and capacity for fill rate
+        // Schema: classes uses starts_at (not start_time).
         const { data: classes } = await supabase
           .from("classes")
           .select("id, capacity")
           .eq("studio_id", studioId)
-          .gte("start_time", dayStart)
-          .lte("start_time", dayEnd);
+          .gte("starts_at", dayStart)
+          .lte("starts_at", dayEnd);
 
         let totalBookings = 0;
         let totalCapacity = 0;

@@ -29,6 +29,8 @@ import {
   transformEvent,
   transformBooking,
   transformTransaction,
+  transformMembershipPlan,
+  transformCreditPack,
 } from '@/lib/glofox/transformers'
 import { createProgramResolver } from '@/lib/glofox/program-resolver'
 import { GLOFOX_NAMESPACE } from '@/lib/constants'
@@ -36,6 +38,8 @@ import type {
   GlofoxMember,
   GlofoxEvent,
   GlofoxBooking,
+  GlofoxMembership,
+  GlofoxCreditPack,
 } from '@/lib/glofox/types'
 
 // ─── Constants ────────────────────────────────────────────────────
@@ -227,6 +231,8 @@ export async function POST(request: NextRequest) {
     events: null,
     bookings: null,
     transactions: null,
+    memberships: null,
+    credit_packs: null,
   }
 
   try {
@@ -606,12 +612,128 @@ export async function POST(request: NextRequest) {
   logLine(`Step 4 complete: ${txResult.fetched} fetched, ${txResult.errors} errors (${txResult.durationMs}ms)`)
 
   // ═══════════════════════════════════════════════════════════════
+  // STEP 4b: Sync Membership Plans
+  // ═══════════════════════════════════════════════════════════════
+  const membershipResult = emptyResult('memberships')
+  const membershipStepStart = Date.now()
+  try {
+    logLine('Step 4b: Fetching membership plans from Glofox...')
+
+    const memberships = await glofox.getMemberships()
+    membershipResult.fetched = memberships.length
+    logLine(`Step 4b: Fetched ${memberships.length} membership plans`)
+
+    if (memberships.length > 0) {
+      const planRows = memberships.map((m: GlofoxMembership) =>
+        transformMembershipPlan(m, STUDIO_ID)
+      )
+
+      const BATCH_SIZE = 200
+      for (let i = 0; i < planRows.length; i += BATCH_SIZE) {
+        const batch = planRows.slice(i, i + BATCH_SIZE)
+        const { error } = await db
+          .from('membership_plans')
+          .upsert(batch as any[], { onConflict: 'glofox_id,studio_id' })
+
+        if (error) {
+          addError(membershipResult, `membership_plans upsert batch ${i}: ${error.message}`)
+        }
+      }
+
+      membershipResult.created = syncState.memberships ? 0 : memberships.length
+      membershipResult.updated = syncState.memberships ? memberships.length : 0
+    }
+  } catch (err) {
+    addError(membershipResult, `fetch: ${err instanceof Error ? err.message : String(err)}`)
+    logLine(`Step 4b ERROR: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  membershipResult.durationMs = Date.now() - membershipStepStart
+  results.push(membershipResult)
+  logLine(`Step 4b complete: ${membershipResult.fetched} fetched, ${membershipResult.errors} errors (${membershipResult.durationMs}ms)`)
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 4c: Sync Credit Packs (per active member — bounded)
+  // ═══════════════════════════════════════════════════════════════
+  const creditResult = emptyResult('credit_packs')
+  const creditStepStart = Date.now()
+  try {
+    logLine('Step 4c: Fetching credit packs for active members...')
+
+    // Bounded: fetch up to 500 active members. This prevents the Glofox rate
+    // limit from stalling the whole sync on a studio with thousands of members.
+    const { data: activeMembers } = await db
+      .from('members')
+      .select('id, glofox_id, profile_id')
+      .eq('studio_id', STUDIO_ID)
+      .eq('membership_status', 'active')
+      .not('glofox_id', 'is', null)
+      .limit(500)
+
+    const memberIds = (activeMembers ?? []).filter((m) => m.glofox_id)
+    logLine(`Step 4c: Processing ${memberIds.length} active members`)
+
+    const allCreditPacks: {
+      row: ReturnType<typeof transformCreditPack>['creditPack']
+      meridianMemberId: string
+    }[] = []
+
+    for (const member of memberIds) {
+      try {
+        const packs = await glofox.getCredits(member.glofox_id as string)
+        creditResult.fetched += packs.length
+
+        for (const pack of packs) {
+          const { creditPack } = transformCreditPack(pack as GlofoxCreditPack, STUDIO_ID)
+          allCreditPacks.push({ row: creditPack, meridianMemberId: member.id })
+        }
+      } catch (err) {
+        // Don't stop on individual member failures — just log
+        addError(
+          creditResult,
+          `member ${member.glofox_id}: ${err instanceof Error ? err.message : String(err)}`
+        )
+      }
+    }
+
+    if (allCreditPacks.length > 0) {
+      const rows = allCreditPacks.map((cp) => ({ ...cp.row, member_id: cp.meridianMemberId }))
+      const BATCH_SIZE = 200
+      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        const batch = rows.slice(i, i + BATCH_SIZE)
+        const { error } = await db
+          .from('credit_packs')
+          .upsert(batch as any[], { onConflict: 'glofox_id' })
+
+        if (error) {
+          addError(creditResult, `credit_packs upsert batch ${i}: ${error.message}`)
+        }
+      }
+
+      creditResult.created = syncState.credit_packs ? 0 : allCreditPacks.length
+      creditResult.updated = syncState.credit_packs ? allCreditPacks.length : 0
+    }
+  } catch (err) {
+    addError(creditResult, `fetch: ${err instanceof Error ? err.message : String(err)}`)
+    logLine(`Step 4c ERROR: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  creditResult.durationMs = Date.now() - creditStepStart
+  results.push(creditResult)
+  logLine(`Step 4c complete: ${creditResult.fetched} fetched, ${creditResult.errors} errors (${creditResult.durationMs}ms)`)
+
+  // ═══════════════════════════════════════════════════════════════
   // STEP 5: Update Sync State
   // ═══════════════════════════════════════════════════════════════
   try {
     logLine('Step 5: Updating sync state...')
     const now = new Date().toISOString()
-    const entityTypes = ['members', 'events', 'bookings', 'transactions'] as const
+    const entityTypes = [
+      'members',
+      'events',
+      'bookings',
+      'transactions',
+      'memberships',
+      'credit_packs',
+    ] as const
 
     for (const entityType of entityTypes) {
       const entityResult = results.find((r) => r.entity === entityType)

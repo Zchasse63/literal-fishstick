@@ -252,11 +252,12 @@ export async function POST(request: NextRequest) {
               .eq('id', originalLog.id)
 
             if (originalLog.campaign_id) {
+              // campaign_recipients has no `replied_at` — just flip status.
+              // The reply timestamp lives on email_send_log.replied_at above.
               await supabase
-                .from('campaign_members')
+                .from('campaign_recipients')
                 .update({
                   status: 'responded',
-                  replied_at: payload.created_at,
                 })
                 .eq('campaign_id', originalLog.campaign_id)
                 .eq('member_id', originalLog.member_id)

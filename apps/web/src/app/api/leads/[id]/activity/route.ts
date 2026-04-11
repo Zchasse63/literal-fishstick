@@ -106,11 +106,10 @@ export async function POST(
       );
     }
 
-    // Update lead's last_activity_at
+    // Bump updated_at — `leads` has no last_activity_at column
     await supabase
       .from("leads")
       .update({
-        last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

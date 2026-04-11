@@ -338,7 +338,7 @@ export function TrainerDetailClient({
                 </thead>
                 <tbody>
                   {CLASS_BREAKDOWN.map((cls) => (
-                    <tr key={`${cls.name}-${cls.dayTime}`} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <tr key={`${cls.name}-${cls.dayTime}`} className="border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <td className="px-5 py-3.5"><span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{cls.name}</span></td>
                       <td className="px-5 py-3.5"><span className="text-sm text-gray-600 dark:text-gray-400">{cls.dayTime}</span></td>
                       <td className="px-5 py-3.5 text-right"><span className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{cls.avgAttendance}</span></td>

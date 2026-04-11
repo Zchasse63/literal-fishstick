@@ -80,8 +80,8 @@ export default function MemberUpgradeModal({
 
         <div className="space-y-3">
           {currentTier && (
-            <p className="text-xs text-gray-500">
-              Current plan: <span className="font-semibold text-gray-700">{currentTier}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Current plan: <span className="font-semibold text-gray-700 dark:text-gray-300">{currentTier}</span>
             </p>
           )}
 
@@ -95,21 +95,21 @@ export default function MemberUpgradeModal({
                 className={cn(
                   'w-full text-left p-3 rounded-xl border transition-all',
                   isCurrent
-                    ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                    ? 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-50 cursor-not-allowed'
                     : selectedPlan === plan.value
-                      ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200'
-                      : 'border-gray-200 hover:border-indigo-200 hover:bg-gray-50'
+                      ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 ring-2 ring-indigo-200 dark:ring-indigo-800'
+                      : 'border-gray-200 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-700 hover:bg-gray-50 dark:hover:bg-gray-900/50'
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{plan.label}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{plan.label}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{plan.description}</p>
                   </div>
-                  <span className="text-sm font-bold text-gray-900">{plan.price}</span>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{plan.price}</span>
                 </div>
                 {isCurrent && (
-                  <span className="text-[10px] font-bold text-gray-400 uppercase mt-1 block">Current Plan</span>
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mt-1 block">Current Plan</span>
                 )}
               </button>
             )

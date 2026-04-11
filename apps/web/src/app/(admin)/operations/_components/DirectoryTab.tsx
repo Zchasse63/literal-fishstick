@@ -110,7 +110,7 @@ export default function DirectoryTab({
                     key={emp.id}
                     onClick={() => setSelectedEmployee(selectedEmployee?.id === emp.id ? null : emp)}
                     className={cn(
-                      'cursor-pointer border-b border-gray-50 transition-colors duration-150',
+                      'cursor-pointer border-b border-gray-100 dark:border-gray-800/60 transition-colors duration-150',
                       selectedEmployee?.id === emp.id
                         ? 'bg-indigo-50/50'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-800/80'

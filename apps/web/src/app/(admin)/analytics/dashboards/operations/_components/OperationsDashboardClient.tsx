@@ -326,7 +326,7 @@ export function OperationsDashboardClient({
                 {activityFeed.map((item) => {
                   const Icon = ICON_MAP[item.iconName] ?? CalendarCheck
                   return (
-                    <div key={item.id} className="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
+                    <div key={item.id} className="flex items-start gap-2.5 py-2 border-b border-gray-100 dark:border-gray-800/60 last:border-0">
                       <div className={cn('w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5', item.bg)}>
                         <Icon className={cn('w-3 h-3', item.color)} />
                       </div>
@@ -382,7 +382,7 @@ export function OperationsDashboardClient({
                       const isPast = cls.checkedIn > 0
                       const isFull = cls.booked >= cls.capacity
                       return (
-                        <tr key={i} className="border-b border-gray-50 last:border-0">
+                        <tr key={i} className="border-b border-gray-100 dark:border-gray-800/60 last:border-0">
                           <td className="py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{cls.time}</td>
                           <td className="py-3">
                             <div className="flex items-center gap-2">

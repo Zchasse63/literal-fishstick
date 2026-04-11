@@ -61,7 +61,7 @@ export async function POST(
       .from("automation_enrollments")
       .select("id, status, member_id")
       .eq("id", eid)
-      .eq("flow_id", id)
+      .eq("automation_id", id)
       .single();
 
     if (enrollError || !enrollment) {
@@ -85,7 +85,6 @@ export async function POST(
         status: "exited",
         exit_reason: "manual",
         exited_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       })
       .eq("id", eid)
       .select()

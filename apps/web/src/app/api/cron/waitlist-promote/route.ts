@@ -90,12 +90,13 @@ export async function POST(request: Request) {
     const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     // 1. Get all classes in the next 24 hours
+    // Schema: classes uses starts_at (not start_time).
     const { data: upcomingClasses, error: classError } = await supabase
       .from("classes")
-      .select("id, capacity, studio_id, start_time, title")
-      .gte("start_time", now.toISOString())
-      .lte("start_time", in24Hours.toISOString())
-      .order("start_time", { ascending: true });
+      .select("id, capacity, studio_id, starts_at, title")
+      .gte("starts_at", now.toISOString())
+      .lte("starts_at", in24Hours.toISOString())
+      .order("starts_at", { ascending: true });
 
     if (classError) {
       console.error("Failed to fetch upcoming classes:", classError);
@@ -192,6 +193,8 @@ export async function POST(request: Request) {
         }
 
         // 5. Create the booking
+        // Schema: bookings has booking_source (not `source`) and tracks creation
+        // time via the default created_at column.
         const { data: booking, error: bookingError } = await supabase
           .from("bookings")
           .insert({
@@ -200,8 +203,8 @@ export async function POST(request: Request) {
             studio_id: cls.studio_id,
             // F2 fix: 'confirmed' was a phantom enum value
             status: "booked",
-            booked_at: new Date().toISOString(),
-            source: "waitlist_promotion",
+            is_from_waitlist: true,
+            booking_source: "waitlist_promotion",
           })
           .select("id")
           .single();
@@ -219,12 +222,14 @@ export async function POST(request: Request) {
         }
 
         // 6. Update waitlist entry status to 'promoted'
+        // waitlist_entries has no booking_id column — the derived link is
+        // waitlist_entries.member_id + class_id → bookings row.
+        void booking
         const { error: updateError } = await supabase
           .from("waitlist_entries")
           .update({
             status: "promoted",
             promoted_at: new Date().toISOString(),
-            booking_id: booking.id,
           })
           .eq("id", entry.id);
 

@@ -59,7 +59,7 @@ export async function GET(
     const { data: enrollments } = await supabase
       .from("automation_enrollments")
       .select("status")
-      .eq("flow_id", id);
+      .eq("automation_id", id);
 
     const stats = {
       total: 0,
@@ -176,9 +176,8 @@ export async function PUT(
         .update({
           status: "paused",
           exit_reason: "flow_updated",
-          updated_at: new Date().toISOString(),
         })
-        .eq("flow_id", id)
+        .eq("automation_id", id)
         .eq("status", "active");
     }
 
@@ -276,9 +275,8 @@ export async function DELETE(
         status: "exited",
         exit_reason: "flow_deleted",
         exited_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       })
-      .eq("flow_id", id)
+      .eq("automation_id", id)
       .in("status", ["active", "paused"]);
 
     // Delete the flow

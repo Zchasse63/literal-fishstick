@@ -97,10 +97,11 @@ async function buildIntakeData(
     merchResult,
   ] = await Promise.all([
     // All checked-in bookings in the intake window
+    // Schema: classes uses starts_at (not start_time).
     supabase
       .from("bookings")
       .select(
-        "id, checked_in_at, class_id, booking_type, classes(title, start_time)"
+        "id, checked_in_at, class_id, booking_source, classes(title, starts_at)"
       )
       .eq("studio_id", STUDIO_ID)
       .eq("member_id", memberId)
@@ -179,7 +180,7 @@ async function buildIntakeData(
     }
 
     // Track class attendance
-    const classData = booking.classes as { title?: string; start_time?: string } | null;
+    const classData = booking.classes as { title?: string; starts_at?: string } | null;
     const classTitle = classData?.title ?? "Open Sauna";
     classCountMap.set(classTitle, (classCountMap.get(classTitle) ?? 0) + 1);
 
@@ -188,8 +189,8 @@ async function buildIntakeData(
       usedColdPlunge = true;
     }
 
-    // Check for walk-in bookings
-    if (booking.booking_type === "walk_in") {
+    // Check for walk-in bookings — schema uses booking_source, not booking_type.
+    if (booking.booking_source === "walk_in") {
       wasWalkIn = true;
     }
   }
@@ -240,7 +241,6 @@ async function cacheResult(
   memberId: string,
   result: IntakeEnrichmentResult
 ): Promise<void> {
-  const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
 
   await supabase
@@ -248,13 +248,13 @@ async function cacheResult(
     .upsert(
       {
         studio_id: STUDIO_ID,
+        cache_key: `intake_enrichment:${memberId}`,
         cache_type: "intake_enrichment",
         entity_id: memberId,
-        data: result as unknown as Record<string, unknown>,
-        generated_at: now,
+        result: result as unknown as Record<string, unknown>,
         expires_at: expiresAt,
       },
-      { onConflict: "studio_id,cache_type,entity_id" }
+      { onConflict: "studio_id,cache_key" }
     )
     .then(
       () => {
@@ -278,8 +278,9 @@ async function applyPersonalizationTags(
 
   const tagRows = tags.map((tag) => ({
     member_id: memberId,
+    studio_id: STUDIO_ID,
     tag,
-    source: "ai_intake_enrichment",
+    metadata: { source: "ai_intake_enrichment" },
   }));
 
   // Upsert to avoid duplicates
@@ -325,20 +326,19 @@ export async function POST(request: NextRequest) {
     // Check for a valid cache entry first
     const { data: cached } = await supabase
       .from("ai_cache")
-      .select("data, generated_at, expires_at")
+      .select("result, created_at, expires_at")
       .eq("studio_id", STUDIO_ID)
-      .eq("cache_type", "intake_enrichment")
-      .eq("entity_id", member_id)
+      .eq("cache_key", `intake_enrichment:${member_id}`)
       .gt("expires_at", new Date().toISOString())
-      .order("generated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (cached?.data) {
+    if (cached?.result) {
       return NextResponse.json({
-        ...(cached.data as IntakeEnrichmentResult),
+        ...(cached.result as IntakeEnrichmentResult),
         cached: true,
-        generated_at: cached.generated_at,
+        generated_at: cached.created_at,
       });
     }
 

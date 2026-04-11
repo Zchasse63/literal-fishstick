@@ -51,10 +51,11 @@ export async function POST(
       );
     }
 
-    // Fetch the booking with its class start time (include glofox_id for write-back)
+    // Fetch the booking with its class start time. Schema: classes.starts_at
+    // (not start_time). Include glofox_id for write-back.
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
-      .select("*, classes(start_time)")
+      .select("*, classes(starts_at)")
       .eq("id", bookingId)
       .eq("studio_id", studioId)
       .single();
@@ -91,7 +92,7 @@ export async function POST(
     const strikeSystemEnabled = settings?.strike_system_enabled ?? true;
 
     // Determine if this is a late cancellation
-    const classStartTime = new Date(booking.classes.start_time);
+    const classStartTime = new Date(booking.classes.starts_at);
     const now = new Date();
     const hoursUntilClass =
       (classStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -104,7 +105,7 @@ export async function POST(
         status: "cancelled",
         cancelled_at: now.toISOString(),
         cancellation_reason: reason,
-        is_late_cancel: isLateCancellation,
+        is_late_cancellation: isLateCancellation,
       })
       .eq("id", bookingId)
       .select()
@@ -143,14 +144,14 @@ export async function POST(
         penaltyAmount = 10;
       }
 
-      // Record the strike
+      // Record the strike — schema has `type` (not strike_type); strike ordinal
+      // number is computed at read-time from the rolling count.
       await supabase.from("member_strikes").insert({
         member_id: booking.member_id,
         studio_id: studioId,
         booking_id: bookingId,
-        strike_type: "late_cancel",
+        type: "late_cancel",
         penalty_amount: penaltyAmount,
-        strike_number: strikeCount,
       });
 
       strikeApplied = true;
