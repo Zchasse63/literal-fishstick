@@ -210,6 +210,20 @@ export interface GlofoxBooking {
 
 // ─── Transactions ──────────────────────────────────────────────
 
+/**
+ * Glofox Analytics/report TransactionsList row.
+ *
+ * Note: Glofox wraps each row in a payment-provider key (e.g. `StripeCharge`,
+ * `PAYG`, `Cash`). The GlofoxClient unwraps that wrapper before returning so
+ * consumers see a flat `GlofoxTransaction` with these fields populated.
+ *
+ * Important fields that live inside `metadata`:
+ *   - metadata.user_id      — buyer's Glofox user_id (used for member linkage)
+ *   - metadata.user_name    — buyer's display name
+ *   - metadata.payment_method — 'card' | 'cash' | etc
+ *   - invoice_id            — Glofox invoice id (helpful for correlating
+ *                             recurring charges back to a subscription)
+ */
 export interface GlofoxTransaction {
   _id: string
   id?: string
@@ -220,9 +234,27 @@ export interface GlofoxTransaction {
   paid?: boolean
   description?: string
   sold_by_user_id?: string
-  created?: number
-  modified?: number
-  metadata?: Record<string, unknown>
+  created?: number | string
+  modified?: number | string
+  invoice_id?: string
+  event_id?: string
+  transaction_group_id?: string
+  refunded?: boolean
+  amount_refunded?: number
+  status?: string
+  taxes?: unknown
+  metadata?: {
+    user_id?: string
+    user_name?: string
+    payment_method?: string
+    namespace?: string
+    branch_id?: string
+    glofox_event?: string
+    is_forgiven?: boolean
+    already_paid?: boolean
+    balance?: number
+    [key: string]: unknown
+  }
 }
 
 // ─── Membership Plans ──────────────────────────────────────────

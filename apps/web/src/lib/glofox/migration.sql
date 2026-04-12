@@ -82,6 +82,9 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS glofox_event_name TEXT;
 
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS sold_by_profile_id UUID REFERENCES profiles(id);
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS glofox_provider_id TEXT;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS glofox_invoice_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_transactions_glofox_invoice_id
+  ON transactions(glofox_invoice_id) WHERE glofox_invoice_id IS NOT NULL;
 
 -- ─── Sync state tracking table ────────────────────────────────────────────
 

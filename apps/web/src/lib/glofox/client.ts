@@ -88,6 +88,35 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * Glofox Analytics/report TransactionsList wraps each row in a single-key
+ * object keyed by the payment provider (e.g. `{ StripeCharge: {...} }`,
+ * `{ PAYG: {...} }`, `{ Cash: {...} }`). Unwrap the payload so callers get
+ * a flat transaction object with `_id`, `metadata.user_id`, etc.
+ *
+ * Unwrap requires:
+ *   1. Row has NO top-level `_id`/`id` (so a flat fixture passes through), AND
+ *   2. Row has exactly ONE key, AND
+ *   3. That key's value is an object (not array) containing `_id` or `id`.
+ *
+ * The "exactly one key" guard is defensive against Glofox ever decorating
+ * the envelope with sibling fields — if that happens, unwrap silently
+ * refuses rather than randomly picking a wrapper.
+ */
+function unwrapTransactionRow(row: unknown): Record<string, unknown> {
+  if (!row || typeof row !== 'object') return {}
+  const flat = row as Record<string, unknown>
+  // Already unwrapped
+  if (flat._id || flat.id) return flat
+  const keys = Object.keys(flat)
+  if (keys.length !== 1) return flat
+  const v = flat[keys[0]]
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return flat
+  const inner = v as Record<string, unknown>
+  if (!inner._id && !inner.id) return flat
+  return inner
+}
+
 // ─── Client ────────────────────────────────────────────────────
 
 export class GlofoxClient {
@@ -542,12 +571,15 @@ export class GlofoxClient {
     // - secondStart/secondEnd: integer UNIX timestamps (for comparison range)
     // - Response wraps in TransactionsList.details[] (not data[])
     // - amount is in DOLLARS not cents
+    // - EACH ROW is itself wrapped in a payment-provider key like
+    //   `{ StripeCharge: { ... } }` or `{ PAYG: { ... } }`. We unwrap
+    //   here so downstream code gets a flat GlofoxTransaction.
     const startUnix = String(isoToUnix(startDate))
     const endUnix = String(isoToUnix(endDate))
 
     const response = await this.request<{
-      TransactionsList?: { details?: GlofoxTransaction[] }
-      data?: GlofoxTransaction[]
+      TransactionsList?: { details?: unknown[] }
+      data?: unknown[]
     }>('POST', 'Analytics/report', {
       body: {
         model: 'TransactionsList',
@@ -563,8 +595,9 @@ export class GlofoxClient {
         },
       },
     })
-    // Response is TransactionsList.details[], with fallback to data[] for safety
-    return response.TransactionsList?.details ?? response.data ?? []
+
+    const rawRows = response.TransactionsList?.details ?? response.data ?? []
+    return rawRows.map((row) => unwrapTransactionRow(row) as unknown as GlofoxTransaction)
   }
 
   // ─── Memberships ───────────────────────────────────────────

@@ -378,6 +378,236 @@ export async function POST(request: NextRequest) {
   logLine(`Step 1 complete: ${memberResult.fetched} fetched, ${memberResult.errors} errors (${memberResult.durationMs}ms)`)
 
   // ═══════════════════════════════════════════════════════════════
+  // STEP 1b: Hydrate Memberships (per-member detail fetch)
+  // ───────────────────────────────────────────────────────────────
+  // The paginated /2.0/members list endpoint returns SPARSE membership
+  // objects for active users — specifically plan_code / plan_price /
+  // user_membership_id are NULL. To answer questions like "who is on
+  // plan X?" we must fetch each member individually via /2.0/members/{id}.
+  //
+  // This step runs after Step 1 so any newly-added members from the sync
+  // get hydrated in the same cron tick. To keep runs bounded, we only
+  // touch members whose member_subscriptions row is missing or stale
+  // (>24h), and cap the batch size at MAX_HYDRATE_PER_RUN.
+  // ═══════════════════════════════════════════════════════════════
+  const hydrateResult = emptyResult('member_subscriptions')
+  const hydrateStepStart = Date.now()
+  const MAX_HYDRATE_PER_RUN = 200
+  const HYDRATE_RATE_LIMIT_MS = 120
+  try {
+    logLine('Step 1b: Identifying stale member subscriptions to hydrate...')
+
+    // A member is "fresh" if they have an ACTIVE subscription row that was
+    // hydrated within the last 24h. Filtering on status='active' guarantees
+    // that a member who just rolled from plan A → plan B doesn't skip the
+    // hydrate just because their old cancelled A-row is still recent.
+    const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    const { data: freshRows } = await db
+      .from('member_subscriptions')
+      .select('member_id')
+      .eq('studio_id', STUDIO_ID)
+      .eq('status', 'active')
+      .gte('glofox_synced_at', cutoffIso)
+    const freshIds = new Set((freshRows ?? []).map((r) => r.member_id as string))
+
+    const allMembers: Array<{ id: string; profile_id: string; glofox_id: string }> = []
+    const PAGE_SIZE = 1000
+    let offset = 0
+    while (true) {
+      const { data, error } = await db
+        .from('members')
+        .select('id, profile_id, glofox_id')
+        .eq('studio_id', STUDIO_ID)
+        .not('glofox_id', 'is', null)
+        .order('id', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1)
+      if (error) throw new Error(`member candidate fetch: ${error.message}`)
+      if (!data || data.length === 0) break
+      allMembers.push(...(data as typeof allMembers))
+      if (data.length < PAGE_SIZE) break
+      offset += PAGE_SIZE
+    }
+
+    const stale = allMembers
+      .filter((m) => !freshIds.has(m.id))
+      .slice(0, MAX_HYDRATE_PER_RUN)
+
+    hydrateResult.fetched = stale.length
+    logLine(`Step 1b: ${stale.length} stale candidates (cap ${MAX_HYDRATE_PER_RUN}), ${freshIds.size} already fresh`)
+
+    if (stale.length > 0) {
+      // Fetch plan name map for enrichment
+      const { data: planMapRows } = await db
+        .from('glofox_plan_map')
+        .select('glofox_plan_code, plan_name, billing_interval')
+        .eq('studio_id', STUDIO_ID)
+      const planMap = new Map<string, { plan_name: string | null; billing_interval: string | null }>()
+      for (const row of planMapRows ?? []) {
+        planMap.set(row.glofox_plan_code as string, {
+          plan_name: (row.plan_name as string) ?? null,
+          billing_interval: (row.billing_interval as string) ?? null,
+        })
+      }
+
+      // Glofox status → Meridian members.membership_status
+      const statusMap: Record<string, string> = {
+        ACTIVE: 'active',
+        INACTIVE: 'none',
+        CANCELED: 'cancelled',
+        CANCELLED: 'cancelled',
+        FROZEN: 'paused',
+        EXPIRED: 'cancelled',
+        PENDING: 'active',
+        PAST_DUE: 'past_due',
+      }
+      const mapStatus = (raw: string | undefined | null): string =>
+        raw ? (statusMap[raw] ?? statusMap[raw.toUpperCase()] ?? 'none') : 'none'
+      const unixIso = (u: number | undefined | null): string | null =>
+        u == null || u === 0 ? null : new Date(u * 1000).toISOString()
+
+      for (const member of stale) {
+        try {
+          const full = await glofox.getMember(member.glofox_id)
+          const membership = (full as { membership?: Record<string, unknown> }).membership as
+            | {
+                type?: string
+                status?: string
+                start_date?: number
+                expiry_date?: number
+                plan_code?: string
+                plan_name?: string
+                plan_price?: number
+                plan_upfront_fee?: number
+                user_membership_id?: string
+                membership_name?: string
+                subscription?: { stripe_id?: string; price?: number; interval?: string }
+              }
+            | undefined
+
+          const type = membership?.type
+          if (!membership || type === 'payg' || !membership.plan_code) {
+            hydrateResult.skipped++
+            await new Promise((r) => setTimeout(r, HYDRATE_RATE_LIMIT_MS))
+            continue
+          }
+
+          const rawPrice = membership.plan_price ?? membership.subscription?.price ?? null
+          const planPriceCents = rawPrice != null ? Math.round(Number(rawPrice) * 100) : null
+          const upfrontCents =
+            membership.plan_upfront_fee != null
+              ? Math.round(Number(membership.plan_upfront_fee) * 100)
+              : null
+          const status = mapStatus(membership.status)
+          const stripeSubId = membership.subscription?.stripe_id ?? null
+          const planMapEntry = planMap.get(String(membership.plan_code))
+          const planName = membership.plan_name ?? planMapEntry?.plan_name ?? null
+
+          // ── Backfill members row ──
+          const { error: memberUpdateError } = await db
+            .from('members')
+            .update({
+              plan_code: String(membership.plan_code),
+              plan_price: planPriceCents,
+              plan_upfront_fee: upfrontCents,
+              membership_status: status,
+              glofox_subscription_id: stripeSubId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', member.id)
+            .eq('studio_id', STUDIO_ID)
+          if (memberUpdateError) {
+            addError(hydrateResult, `member ${member.glofox_id}: ${memberUpdateError.message}`)
+            await new Promise((r) => setTimeout(r, HYDRATE_RATE_LIMIT_MS))
+            continue
+          }
+
+          // ── Upsert member_subscriptions row ──
+          const subRow = {
+            studio_id: STUDIO_ID,
+            member_id: member.id,
+            profile_id: member.profile_id,
+            plan_code: String(membership.plan_code),
+            plan_name: planName,
+            membership_name: membership.membership_name ?? null,
+            plan_price_cents: planPriceCents,
+            plan_upfront_fee_cents: upfrontCents,
+            billing_interval:
+              membership.subscription?.interval ?? planMapEntry?.billing_interval ?? null,
+            status,
+            started_at: unixIso(membership.start_date),
+            ended_at: unixIso(membership.expiry_date),
+            glofox_user_membership_id: membership.user_membership_id ?? null,
+            stripe_subscription_id: stripeSubId,
+            glofox_synced_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+
+          if (membership.user_membership_id) {
+            const { error: subError } = await db
+              .from('member_subscriptions')
+              .upsert(subRow, { onConflict: 'glofox_user_membership_id' })
+            if (subError) {
+              addError(hydrateResult, `sub ${member.glofox_id}: ${subError.message}`)
+            } else {
+              hydrateResult.updated++
+            }
+          } else {
+            // No user_membership_id from Glofox — use (member_id, plan_code)
+            // as the natural key. A partial unique index on this combination
+            // (migration t34) provides a backstop against concurrent inserts.
+            // Select → update-or-insert rather than delete-then-insert to
+            // avoid a transient missing-row window.
+            const { data: existing } = await db
+              .from('member_subscriptions')
+              .select('id')
+              .eq('member_id', member.id)
+              .eq('plan_code', String(membership.plan_code))
+              .is('glofox_user_membership_id', null)
+              .maybeSingle()
+
+            if (existing) {
+              const { error: subError } = await db
+                .from('member_subscriptions')
+                .update(subRow)
+                .eq('id', existing.id)
+              if (subError) {
+                addError(hydrateResult, `sub ${member.glofox_id}: ${subError.message}`)
+              } else {
+                hydrateResult.updated++
+              }
+            } else {
+              const { error: subError } = await db
+                .from('member_subscriptions')
+                .insert(subRow)
+              if (subError) {
+                addError(hydrateResult, `sub ${member.glofox_id}: ${subError.message}`)
+              } else {
+                hydrateResult.created++
+              }
+            }
+          }
+        } catch (err) {
+          addError(
+            hydrateResult,
+            `${member.glofox_id}: ${err instanceof Error ? err.message : String(err)}`,
+          )
+        }
+        // Rate limit between per-member calls
+        await new Promise((r) => setTimeout(r, HYDRATE_RATE_LIMIT_MS))
+      }
+    }
+  } catch (err) {
+    addError(hydrateResult, `fatal: ${err instanceof Error ? err.message : String(err)}`)
+    logLine(`Step 1b ERROR: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  hydrateResult.durationMs = Date.now() - hydrateStepStart
+  results.push(hydrateResult)
+  logLine(
+    `Step 1b complete: ${hydrateResult.fetched} processed, ${hydrateResult.created + hydrateResult.updated} hydrated, ${hydrateResult.skipped} skipped, ${hydrateResult.errors} errors (${hydrateResult.durationMs}ms)`,
+  )
+
+  // ═══════════════════════════════════════════════════════════════
   // STEP 2: Sync Events (Classes)
   // ═══════════════════════════════════════════════════════════════
   const eventResult = emptyResult('events')

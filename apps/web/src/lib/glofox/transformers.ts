@@ -268,6 +268,7 @@ export interface TransactionRow {
   glofox_id: string
   glofox_synced_at: string
   glofox_provider_id: string | null
+  glofox_invoice_id: string | null
   created_at: string | null
 }
 
@@ -532,6 +533,16 @@ export function transformBooking(
 
 /**
  * Transform a Glofox transaction into a Meridian transactions row.
+ *
+ * Buyer linkage: Glofox's TransactionsList wraps each row in a payment-
+ * provider key (StripeCharge / PAYG / Cash). GlofoxClient.getTransactions
+ * unwraps that wrapper, so the `metadata.user_id` field here is the buyer's
+ * Glofox user_id — which the sync engine resolves to members.id via a
+ * lookup map.
+ *
+ * `created` can arrive as either a unix number OR an ISO-ish date string
+ * ("2026-04-10 22:08:03"); handle both.
+ *
  * FK resolution needed: member_id, sold_by_profile_id (resolved by sync engine)
  */
 export function transformTransaction(
@@ -545,6 +556,9 @@ export function transformTransaction(
   // Convert amount from dollars (float) to cents (integer)
   const amountCents = t.amount != null ? Math.round(t.amount * 100) : 0
 
+  // `created` may be a Unix number or an ISO-ish string ("2026-04-10 22:08:03")
+  const createdAt = coerceCreatedAt(t.created)
+
   const transaction: TransactionRow = {
     studio_id: studioId,
     type: inferTransactionType(t.description, t.amount),
@@ -555,16 +569,52 @@ export function transformTransaction(
     glofox_id: t._id,
     glofox_synced_at: now,
     glofox_provider_id: t.transaction_provider_id ?? null,
-    created_at: unixToISO(t.created),
+    glofox_invoice_id: t.invoice_id ?? null,
+    created_at: createdAt,
   }
+
+  // Buyer linkage — the client unwrapper ensures metadata is at top level
+  const metadata = (t.metadata ?? {}) as { user_id?: string; user_name?: string }
+  const memberGlofoxId =
+    metadata.user_id ??
+    (t as unknown as { user_id?: string }).user_id ??
+    null
 
   return {
     transaction,
-    // GlofoxTransaction doesn't include buyer user_id — member linkage
-    // happens via metadata or is resolved externally if needed
-    memberGlofoxId: (t as any).user_id ?? (t.metadata as any)?.user_id ?? null,
+    memberGlofoxId,
     soldByGlofoxId: t.sold_by_user_id ?? null,
   }
+}
+
+/**
+ * Coerce a Glofox `created` field to ISO 8601.
+ *
+ * Accepts:
+ *   - unix seconds (number)
+ *   - ISO 8601 string with explicit zone ("2026-04-10T22:08:03Z" or "...+00:00")
+ *   - ISO 8601 string WITHOUT zone ("2026-04-10T22:08:03") — treated as UTC
+ *   - "YYYY-MM-DD HH:MM:SS" space-separated — treated as UTC
+ *
+ * Confirmed UTC for Analytics/report TransactionsList by comparing the
+ * `created` string against the MongoDB ObjectId `_id` timestamp prefix,
+ * which is always UTC seconds-since-epoch. The two agree within ~90s.
+ */
+function coerceCreatedAt(created: number | string | null | undefined): string | null {
+  if (created == null) return null
+  if (typeof created === 'number') return unixToISO(created)
+  const trimmed = String(created).trim()
+  if (!trimmed) return null
+  // Replace "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DDTHH:MM:SS"
+  const withT = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
+  // Append Z unless the string already has a zone designator (Z or ±HH:MM).
+  // Without this, V8 parses bare ISO strings as LOCAL time, producing a
+  // timestamp that is offset from the intended UTC value by the server's TZ.
+  const hasZone = /Z$/.test(withT) || /[+-]\d{2}:?\d{2}$/.test(withT)
+  const normalized = hasZone ? withT : withT + 'Z'
+  const d = new Date(normalized)
+  if (isNaN(d.getTime())) return null
+  return d.toISOString()
 }
 
 /**

@@ -17,6 +17,7 @@ const PUBLIC_API_ROUTES = [
   "/api/health",               // Health check (uptime monitoring)
   "/api/glofox/sync",          // Glofox sync (secured by CRON_SECRET header, not user auth)
   "/api/glofox/backfill",      // Glofox backfill (secured by CRON_SECRET header)
+  "/api/glofox/hydrate-memberships", // Glofox per-member hydrate (CRON_SECRET)
 ];
 
 // Cron endpoints are secured by x-cron-secret header, not user auth
