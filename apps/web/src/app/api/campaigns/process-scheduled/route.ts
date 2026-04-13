@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
         .update({
           status: 'sending',
           sent_at: now.toISOString(),
+          send_started_at: now.toISOString(),
           updated_at: now.toISOString(),
         })
         .eq('id', campaign.id)
@@ -145,12 +146,12 @@ export async function POST(request: NextRequest) {
       }
 
       if (memberIds.length === 0) {
-        // No recipients — mark completed
+        // No recipients — mark sent
         await supabase
           .from('campaigns')
           .update({
-            status: 'completed',
-            completed_at: now.toISOString(),
+            status: 'sent',
+            send_completed_at: now.toISOString(),
             updated_at: now.toISOString(),
           })
           .eq('id', campaign.id)
@@ -275,12 +276,10 @@ export async function POST(request: NextRequest) {
             campaign_id: campaign.id,
             member_id: member.id,
             studio_id: STUDIO_ID,
-            variant,
+            ab_variant: variant,
             status: result.error ? 'failed' : 'sent',
             resend_message_id: result.id ?? null,
-            message_id: result.messageId ?? null,
             sent_at: result.error ? null : new Date().toISOString(),
-            error_message: result.error ?? null,
           })
 
           // Also log to email_send_log for backward compatibility
@@ -312,7 +311,7 @@ export async function POST(request: NextRequest) {
         .eq('id', campaign.id)
         .single()
 
-      const finalStatus = currentState?.status === 'paused' ? 'paused' : 'completed'
+      const finalStatus = currentState?.status === 'paused' ? 'paused' : 'sent'
 
       // B12 FIX: real schema has `send_completed_at`, no `failed_count` /
       // `completed_at` / `paused_at`.
@@ -321,7 +320,7 @@ export async function POST(request: NextRequest) {
         .update({
           status: finalStatus,
           sent_count: sent,
-          send_completed_at: finalStatus === 'completed' ? new Date().toISOString() : null,
+          send_completed_at: finalStatus === 'sent' ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', campaign.id)

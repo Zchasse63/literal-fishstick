@@ -64,7 +64,6 @@ export async function POST(
       .from('campaigns')
       .update({
         status: 'paused',
-        paused_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

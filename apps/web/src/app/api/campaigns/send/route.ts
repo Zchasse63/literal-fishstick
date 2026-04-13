@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
     .update({
       status: 'sending',
       sent_at: new Date().toISOString(),
+      send_started_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq('id', campaignId)
@@ -285,9 +286,8 @@ export async function POST(request: NextRequest) {
               campaign_id: campaignId,
               member_id: member.id,
               studio_id: STUDIO_ID,
-              variant,
+              ab_variant: variant,
               status: 'failed',
-              error_message: result.error,
               sent_at: null,
             })
 
@@ -310,10 +310,9 @@ export async function POST(request: NextRequest) {
               campaign_id: campaignId,
               member_id: member.id,
               studio_id: STUDIO_ID,
-              variant,
+              ab_variant: variant,
               status: 'sent',
               resend_message_id: result.id,
-              message_id: result.messageId,
               sent_at: new Date().toISOString(),
             })
 
@@ -343,7 +342,7 @@ export async function POST(request: NextRequest) {
         .eq('id', campaignId)
         .single()
 
-      const finalStatus = currentState?.status === 'paused' ? 'paused' : 'completed'
+      const finalStatus = currentState?.status === 'paused' ? 'paused' : 'sent'
 
       // B12 FIX: real schema uses `send_completed_at`, not `completed_at`.
       // There is no `failed_count` column — failures are tracked via
@@ -355,7 +354,7 @@ export async function POST(request: NextRequest) {
         .update({
           status: finalStatus,
           sent_count: sent,
-          send_completed_at: finalStatus === 'completed' ? new Date().toISOString() : null,
+          send_completed_at: finalStatus === 'sent' ? new Date().toISOString() : null,
           recipient_count: total,
           updated_at: new Date().toISOString(),
         })

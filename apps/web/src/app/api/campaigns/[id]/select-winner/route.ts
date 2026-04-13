@@ -73,14 +73,15 @@ export async function POST(
       )
     }
 
-    if (campaign.ab_winner) {
+    if (campaign.ab_winner_selected_at) {
+      const existingWinner = (campaign.ab_variants as { winner?: string } | null)?.winner
       return NextResponse.json(
-        { error: `A winner has already been selected: variant ${campaign.ab_winner}` },
+        { error: `A winner has already been selected${existingWinner ? `: variant ${existingWinner}` : ''}` },
         { status: 409 }
       )
     }
 
-    if (!['sent', 'completed', 'sending'].includes(campaign.status)) {
+    if (!['sent', 'sending'].includes(campaign.status)) {
       return NextResponse.json(
         { error: `Cannot select a winner for a campaign with status "${campaign.status}". Campaign must have been sent.` },
         { status: 409 }
@@ -106,6 +107,7 @@ export async function POST(
         subject: winnerSubject,
         body_html: winnerBodyHtml,
         ab_winner_selected_at: new Date().toISOString(),
+        ab_variants: { ...(campaign.ab_variants as object ?? {}), winner },
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

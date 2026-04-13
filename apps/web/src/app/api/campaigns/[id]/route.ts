@@ -137,7 +137,7 @@ export async function GET(
           open_rate: bTotal > 0 ? Math.round((bOpened / bTotal) * 10000) / 100 : 0,
           click_rate: bTotal > 0 ? Math.round((bClicked / bTotal) * 10000) / 100 : 0,
         },
-        winner: campaign.ab_winner ?? null,
+        winner: (campaign.ab_variants as { winner?: string } | null)?.winner ?? null,
       }
     }
 

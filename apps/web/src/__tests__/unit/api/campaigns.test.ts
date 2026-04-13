@@ -124,7 +124,7 @@ describe("GET /api/campaigns", () => {
 describe("POST /api/campaigns", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  const validBody = { name: "Spring Promo", type: "email", subject: "Hello!", body_template: "<p>Hi</p>" };
+  const validBody = { name: "Spring Promo", type: "email", subject: "Hello!", body_html: "<p>Hi</p>" };
 
   it("returns 401 when unauthenticated", async () => {
     buildRequireRoleMock({ authenticated: false });
@@ -155,7 +155,7 @@ describe("POST /api/campaigns", () => {
     const res = await POST(
       makeRequest("http://localhost:3000/api/campaigns", {
         method: "POST",
-        body: JSON.stringify({ ...validBody, ab_test_enabled: true, variant_a_subject: "A" }),
+        body: JSON.stringify({ ...validBody, ab_test_enabled: true, ab_variants: { a: { subject: "A" } } }),
       })
     );
     expect(res.status).toBe(400);
