@@ -18,6 +18,17 @@ export async function GET(request: NextRequest) {
   const membershipType = searchParams.get("membership_type");
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 100);
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
+  const sortField = searchParams.get("sort") ?? "created_at";
+  const sortDir = searchParams.get("sort_dir") === "asc" ? true : false;
+
+  // Allowlist sortable columns to prevent injection.
+  // Default sort is created_at desc (newest members first).
+  // U12 FIX: UI previously sorted by UUID; now supports name/last_visit/lifetime_value.
+  const SORTABLE_COLUMNS = [
+    "created_at", "join_date", "last_visit", "lifetime_value",
+    "total_visits", "membership_status", "credits_remaining",
+  ];
+  const resolvedSort = SORTABLE_COLUMNS.includes(sortField) ? sortField : "created_at";
 
   // Search path: two-step query. PostgREST can't reliably .or() across
   // fields of a joined relation — when search is present we first resolve
@@ -55,7 +66,7 @@ export async function GET(request: NextRequest) {
         count: "exact",
       })
       .eq("studio_id", studioId)
-      .order("created_at", { ascending: false })
+      .order(resolvedSort, { ascending: sortDir, nullsFirst: false })
       .range(offset, offset + limit - 1);
 
   if (profileIdsMatchingSearch) {

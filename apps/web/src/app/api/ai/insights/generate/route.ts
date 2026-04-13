@@ -8,6 +8,8 @@ import {
 } from "@/lib/ai/insights-generator";
 import { DEFAULT_STUDIO_ID } from '@/lib/constants'
 
+export const maxDuration = 30; // Netlify: allow up to 30s for DB queries + Claude API call
+
 const ALLOWED_ROLES = ["owner", "manager"];
 const DEDUP_WINDOW_DAYS = 7;
 

@@ -19,6 +19,12 @@ export async function GET(request: NextRequest) {
     const memberId = searchParams.get("member_id");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const sortField = searchParams.get("sort") ?? "created_at";
+    const sortDir = searchParams.get("sort_dir") === "asc" ? true : false;
+
+    // Allowlist sortable columns to prevent injection
+    const SORTABLE_COLUMNS = ["created_at", "amount", "type", "status", "description"];
+    const resolvedSort = SORTABLE_COLUMNS.includes(sortField) ? sortField : "created_at";
 
     const offset = (page - 1) * limit;
 
@@ -59,7 +65,7 @@ export async function GET(request: NextRequest) {
         { count: "exact" }
       )
       .eq("studio_id", studioId)
-      .order("created_at", { ascending: false })
+      .order(resolvedSort, { ascending: sortDir })
       .range(offset, offset + limit - 1);
 
     if (type) {
