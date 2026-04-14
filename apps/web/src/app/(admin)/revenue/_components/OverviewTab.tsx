@@ -86,29 +86,13 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
   const gridColor = isDark ? '#374151' : '#F3F4F6'
   const tickColor = isDark ? '#D1D5DB' : '#9CA3AF'
 
-  const AREA_COLORS = ['#4F46E5', '#8B5CF6', '#14B8A6', '#F59E0B', '#10B981']
-  const AREA_KEYS = ['Subscriptions', 'Credit Packs', 'Drop-ins', 'Merch', 'Corporate']
-
-  const totalByType = revenueByType.reduce((s, r) => s + r.value, 0) || 1
-  const proportions = {
-    Subscriptions: (revenueByType.find(r => r.name === 'Membership')?.value || 50) / totalByType,
-    'Credit Packs': (revenueByType.find(r => r.name === 'Credit Pack')?.value || 20) / totalByType,
-    'Drop-ins': (revenueByType.find(r => r.name === 'Drop-in')?.value || 10) / totalByType,
-    Merch: (revenueByType.find(r => r.name === 'Merch' || r.name === 'Merchandise')?.value || 8) / totalByType,
-    Corporate: (revenueByType.find(r => r.name === 'Event')?.value || 5) / totalByType,
-  }
-
-  const revenueTrend = mrrGrowth.map((dp) => {
-    const base = dp.mrr
-    return {
-      month: dp.month,
-      Subscriptions: Math.round(base * (proportions.Subscriptions || 0.5)),
-      'Credit Packs': Math.round(base * (proportions['Credit Packs'] || 0.2)),
-      'Drop-ins': Math.round(base * (proportions['Drop-ins'] || 0.1)),
-      Merch: Math.round(base * (proportions.Merch || 0.08)),
-      Corporate: Math.round(base * (proportions.Corporate || 0.05)),
-    }
-  })
+  // Revenue trend: single total line from real per-month MRR data.
+  // Previously projected current-month category proportions backward
+  // onto all historical months (synthetic). Now shows honest totals only.
+  const revenueTrend = mrrGrowth.map((dp) => ({
+    month: dp.month,
+    Revenue: dp.mrr,
+  }))
 
   const mrrGrowthPct = mrrGrowth.length >= 2
     ? Math.round(((mrrGrowth[mrrGrowth.length - 1].mrr - mrrGrowth[0].mrr) / (mrrGrowth[0].mrr || 1)) * 100)
@@ -125,33 +109,26 @@ export default function OverviewTab({ dailyRevenue, revenueByType, revenueBySour
               {mrrGrowth.length > 0 ? `${mrrGrowth.length}-Month Overview` : 'Monthly Overview'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {AREA_KEYS.map((key, i) => (
-              <div key={key} className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: AREA_COLORS[i] }} />
-                <span className="text-[11px] text-gray-500 dark:text-gray-400">{key}</span>
-              </div>
-            ))}
-          </div>
+          {mrrGrowthPct !== 0 && (
+            <span className={cn('text-xs font-semibold', mrrGrowthPct > 0 ? 'text-emerald-600' : 'text-red-500')}>
+              {mrrGrowthPct > 0 ? '+' : ''}{mrrGrowthPct}%
+            </span>
+          )}
         </div>
         {loading ? <ChartSkeleton /> : (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={revenueTrend} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
-                {AREA_KEYS.map((key, i) => (
-                  <linearGradient key={key} id={`gradient-${i}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={AREA_COLORS[i]} stopOpacity={0.15} />
-                    <stop offset="100%" stopColor={AREA_COLORS[i]} stopOpacity={0.01} />
-                  </linearGradient>
-                ))}
+                <linearGradient id="gradient-revenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4F46E5" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="#4F46E5" stopOpacity={0.01} />
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 12, fill: tickColor }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<CustomTooltip />} />
-              {AREA_KEYS.map((key, i) => (
-                <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={AREA_COLORS[i]} strokeWidth={2} fill={`url(#gradient-${i})`} />
-              ))}
+              <Area type="monotone" dataKey="Revenue" stroke="#4F46E5" strokeWidth={2} fill="url(#gradient-revenue)" />
             </AreaChart>
           </ResponsiveContainer>
         )}

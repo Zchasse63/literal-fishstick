@@ -320,16 +320,7 @@ function ClassStatusBoard({ classes }: { classes: ClassData[] }) {
         ))}
       </div>
 
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-          Cold Plunges: 4/6 available
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 bg-indigo-500 rounded-full" />
-          All saunas active
-        </span>
-      </div>
+      {/* Facility availability removed — no hardware integration for live equipment status */}
     </div>
   )
 }

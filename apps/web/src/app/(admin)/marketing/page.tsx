@@ -212,7 +212,7 @@ export default function MarketingPage() {
       const [campaignsRes, leadsRes, automationsRes, scheduledRes, contentRes] = await Promise.all([
         supabase
           .from('campaigns')
-          .select('id, name, status, created_at')
+          .select('id, name, status, created_at, sent_count, open_count, click_count, revenue_attributed')
           .eq('studio_id', STUDIO_ID)
           .order('created_at', { ascending: false })
           .limit(5),
@@ -240,18 +240,21 @@ export default function MarketingPage() {
 
       if (cancelled) return
 
-      // Map campaigns
+      // Map campaigns with real engagement stats from DB
       if (campaignsRes.data) {
         setCampaigns(
-          campaignsRes.data.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            status: c.status || 'draft',
-            openRate: 0,
-            clickRate: 0,
-            revenueAttributed: 0,
-            openHistory: [],
-          }))
+          campaignsRes.data.map((c: any) => {
+            const sentCount = c.sent_count ?? 0
+            return {
+              id: c.id,
+              name: c.name,
+              status: c.status || 'draft',
+              openRate: sentCount > 0 ? Math.round(((c.open_count ?? 0) / sentCount) * 100) : 0,
+              clickRate: sentCount > 0 ? Math.round(((c.click_count ?? 0) / sentCount) * 100) : 0,
+              revenueAttributed: c.revenue_attributed ?? 0,
+              openHistory: [],
+            }
+          })
         )
       }
 

@@ -45,7 +45,7 @@ export interface MemberProfile {
   avgVisitsPerWeek: number
   nextBilling: string
   notes: string | null
-  guidedSessions: number
+  guidedSessions?: number
 }
 
 export type EngagementStatus = 'subscriber' | 'active' | 'engaged' | 'cooling' | 'at_risk' | 'lapsed_with_credits' | 'lapsed' | 'churned' | 'new_unused' | 'lead_only'
@@ -109,14 +109,8 @@ function getInitials(fullName: string) {
   return (fullName[0] || '?').toUpperCase()
 }
 
-function mapTier(tier: string | null) {
-  switch (tier) {
-    case 'unlimited': return { membership: 'Unlimited', membershipType: 'unlimited' as const, membershipPrice: 225 }
-    case '10_class': return { membership: '10-Class Pack', membershipType: '10-class' as const, membershipPrice: 180 }
-    case '6_class': return { membership: '6-Class Pack', membershipType: '6-class' as const, membershipPrice: 120 }
-    default: return { membership: tier || 'Unknown', membershipType: 'credit-pack' as const, membershipPrice: 0 }
-  }
-}
+// mapTier removed — server component (page.tsx) now reads real plan_price
+// from Glofox hydration and passes membershipPrice through props.
 
 function statusDot(status: MemberProfile['status']) {
   const colors: Record<MemberProfile['status'], string> = {
@@ -569,7 +563,7 @@ export default function MemberProfileClient({
                 <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
                   <Sparkles className="h-3.5 w-3.5 text-white" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">AI Predictive Insights</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Engagement Summary</h3>
               </div>
               <div className="space-y-3">
                 <div className="flex items-start gap-2.5">

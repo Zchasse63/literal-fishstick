@@ -17,6 +17,7 @@ import {
   EyeOff,
   ToggleLeft,
   ToggleRight,
+  MessageSquare,
 } from 'lucide-react'
 import { fadeInUp } from '@/lib/motion'
 
@@ -41,9 +42,8 @@ export default function SmsConfigPage() {
   const [dailySendLimit, setDailySendLimit] = useState('1000')
   const [optInRequired, setOptInRequired] = useState(true)
 
-  // Mock usage stats
-  const messagesSentThisMonth = 847
-  const deliveryRate = 97.3
+  // SMS provider is stubbed — no real usage stats available
+  const smsProviderConnected = Boolean(accountSid && authToken && phoneNumber && connectionStatus === 'success')
 
   const handleTestConnection = () => {
     setConnectionStatus('testing')
@@ -345,32 +345,23 @@ export default function SmsConfigPage() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Usage This Month</p>
             </div>
 
-            <div className="space-y-5">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Messages Sent</p>
-                <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">{messagesSentThisMonth.toLocaleString()}</p>
-                <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-indigo-500 transition-all"
-                    style={{ width: `${(messagesSentThisMonth / parseInt(dailySendLimit || '1000') / 30) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
-                  {messagesSentThisMonth} of ~{(parseInt(dailySendLimit || '1000') * 30).toLocaleString()} monthly capacity
+            {smsProviderConnected ? (
+              <div className="space-y-5">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  SMS provider connected. Usage statistics will appear here once messages are sent.
                 </p>
               </div>
-
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Delivery Rate</p>
-                <p className="text-[28px] font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">{deliveryRate}%</p>
-                <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-emerald-500 transition-all"
-                    style={{ width: `${deliveryRate}%` }}
-                  />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                  <MessageSquare className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 </div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No SMS provider connected</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[220px]">
+                  Configure your Twilio credentials above to enable SMS messaging and see usage stats.
+                </p>
               </div>
-            </div>
+            )}
           </motion.div>
 
           {/* Provider Status */}

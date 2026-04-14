@@ -227,13 +227,20 @@ export default function RevenuePage() {
     try {
       const now = new Date()
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+      const prevMonthEnd = monthStart // start of current month = end of prev month
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString()
 
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString()
 
       // Run ALL queries in parallel (no waterfall)
       const [
         mrrRes,
+        prevMrrRes,
+        thisWeekRevRes,
+        prevWeekRevRes,
         activeCountRes,
         failedRes,
         dailyRes,
@@ -253,6 +260,30 @@ export default function RevenuePage() {
           .eq('type', 'membership')
           .eq('status', 'completed')
           .gte('created_at', monthStart),
+        // Prior month MRR for month-over-month delta
+        supabase
+          .from('transactions')
+          .select('amount')
+          .eq('studio_id', STUDIO_ID)
+          .eq('type', 'membership')
+          .eq('status', 'completed')
+          .gte('created_at', prevMonthStart)
+          .lt('created_at', prevMonthEnd),
+        // This week total revenue for WoW delta
+        supabase
+          .from('transactions')
+          .select('amount')
+          .eq('studio_id', STUDIO_ID)
+          .eq('status', 'completed')
+          .gte('created_at', oneWeekAgo),
+        // Prior week total revenue for WoW delta
+        supabase
+          .from('transactions')
+          .select('amount')
+          .eq('studio_id', STUDIO_ID)
+          .eq('status', 'completed')
+          .gte('created_at', twoWeeksAgo)
+          .lt('created_at', oneWeekAgo),
         // Active member count for ARPM
         supabase
           .from('members')
@@ -324,9 +355,25 @@ export default function RevenuePage() {
         fetch('/api/analytics/churn-rate').then(r => r.ok ? r.json() : null).catch(() => null),
       ])
 
-      // Calculate MRR
+      // Calculate MRR + deltas
       const mrrCents = (mrrRes.data || []).reduce((sum: number, row: any) => sum + (row.amount || 0), 0)
       const mrr = mrrCents / 100
+      const prevMrrCents = (prevMrrRes.data || []).reduce((sum: number, row: any) => sum + (row.amount || 0), 0)
+      const prevMrr = prevMrrCents / 100
+
+      // WoW revenue delta
+      const thisWeekRev = (thisWeekRevRes.data || []).reduce((sum: number, row: any) => sum + (row.amount || 0), 0) / 100
+      const prevWeekRev = (prevWeekRevRes.data || []).reduce((sum: number, row: any) => sum + (row.amount || 0), 0) / 100
+
+      // Helpers for delta display
+      function pctDelta(current: number, previous: number): { label: string; direction: 'up' | 'down' | 'neutral' } {
+        if (previous === 0) return { label: current > 0 ? 'New' : '\u2014', direction: current > 0 ? 'up' : 'neutral' }
+        const pct = Math.round(((current - previous) / previous) * 100)
+        if (pct === 0) return { label: '0%', direction: 'neutral' }
+        return { label: `${pct > 0 ? '+' : ''}${pct}%`, direction: pct > 0 ? 'up' : 'down' }
+      }
+      const mrrDelta = pctDelta(mrr, prevMrr)
+      const weekDelta = pctDelta(thisWeekRev, prevWeekRev)
 
       // Revenue today from daily data
       const todayFromDaily = (dailyRes.data || [])
@@ -344,8 +391,8 @@ export default function RevenuePage() {
         {
           label: 'MRR',
           value: `$${mrr.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-          trend: '\u2014',
-          trendDirection: 'neutral',
+          trend: `${mrrDelta.label} MoM`,
+          trendDirection: mrrDelta.direction,
           icon: DollarSign,
           color: 'text-indigo-600',
           bgColor: 'bg-indigo-50',
@@ -353,15 +400,15 @@ export default function RevenuePage() {
         {
           label: 'ARPM',
           value: `$${arpm}`,
-          trend: '\u2014',
-          trendDirection: 'neutral',
+          trend: prevMrr > 0 ? `${pctDelta(arpm, Math.round(prevMrr / activeMemberCount)).label} MoM` : '\u2014',
+          trendDirection: prevMrr > 0 ? pctDelta(arpm, Math.round(prevMrr / activeMemberCount)).direction : 'neutral',
           icon: Users,
           color: 'text-violet-600',
           bgColor: 'bg-violet-50',
         },
         {
           label: 'Churn Rate',
-          value: churnRes?.data?.current_rate != null ? `${churnRes.data.current_rate}%` : '\u2014',
+          value: churnRes?.data?.rate != null ? `${(churnRes.data.rate * 100).toFixed(1)}%` : '\u2014',
           trend: '\u2014',
           trendDirection: 'neutral',
           trendGood: true,
@@ -370,10 +417,10 @@ export default function RevenuePage() {
           bgColor: 'bg-emerald-50',
         },
         {
-          label: 'Revenue Today',
-          value: `$${(todayFromDaily / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-          trend: '\u2014',
-          trendDirection: 'neutral',
+          label: 'Revenue This Week',
+          value: `$${thisWeekRev.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+          trend: `${weekDelta.label} WoW`,
+          trendDirection: weekDelta.direction,
           icon: BarChart3,
           color: 'text-indigo-600',
           bgColor: 'bg-indigo-50',
@@ -382,7 +429,7 @@ export default function RevenuePage() {
           label: 'Failed Payments',
           value: failedCount.toString(),
           trend: failedCount > 0 ? 'action needed' : 'none',
-          trendDirection: 'neutral',
+          trendDirection: failedCount > 0 ? 'down' : 'neutral',
           icon: AlertTriangle,
           color: 'text-orange-600',
           bgColor: 'bg-orange-50',

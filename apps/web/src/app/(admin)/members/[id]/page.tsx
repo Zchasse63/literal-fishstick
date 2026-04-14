@@ -33,12 +33,15 @@ function getInitials(fullName: string) {
   return (fullName[0] || '?').toUpperCase()
 }
 
-function mapTier(tier: string | null) {
+function mapTier(tier: string | null, planPriceCents?: number | null) {
+  const price = planPriceCents != null ? Math.round(planPriceCents / 100) : 0
   switch (tier) {
-    case 'unlimited': return { membership: 'Unlimited', membershipType: 'unlimited' as const, membershipPrice: 225 }
-    case '10_class': return { membership: '10-Class Pack', membershipType: '10-class' as const, membershipPrice: 180 }
-    case '6_class': return { membership: '6-Class Pack', membershipType: '6-class' as const, membershipPrice: 120 }
-    default: return { membership: tier || 'Unknown', membershipType: 'credit-pack' as const, membershipPrice: 0 }
+    case 'unlimited': return { membership: 'Unlimited', membershipType: 'unlimited' as const, membershipPrice: price }
+    case '10_class': return { membership: '10-Class Pack', membershipType: '10-class' as const, membershipPrice: price }
+    case '6_class': return { membership: '6-Class Pack', membershipType: '6-class' as const, membershipPrice: price }
+    case 'credit_pack':
+    case 'credit-pack': return { membership: 'Credit Pack', membershipType: 'credit-pack' as const, membershipPrice: price }
+    default: return { membership: tier || 'Unknown', membershipType: 'credit-pack' as const, membershipPrice: price }
   }
 }
 
@@ -77,7 +80,7 @@ export default async function MemberProfilePage({
     .from('members')
     .select(`
       id, profile_id, membership_tier, membership_status, credits_remaining, total_visits,
-      join_date, notes, last_visit, lifetime_value,
+      join_date, notes, last_visit, lifetime_value, plan_price,
       profiles!inner ( full_name, email, phone, avatar_url )
     `)
     .eq('id', id)
@@ -90,7 +93,7 @@ export default async function MemberProfilePage({
     const profile = (data as any).profiles
     const fullName = profile.full_name || 'Unknown'
     const parts = fullName.trim().split(/\s+/)
-    const tierInfo = mapTier(data.membership_tier)
+    const tierInfo = mapTier(data.membership_tier, data.plan_price)
 
     member = {
       id: data.id,
@@ -111,9 +114,8 @@ export default async function MemberProfilePage({
       avgVisitsPerWeek: data.total_visits
         ? Math.round((data.total_visits / Math.max(1, Math.ceil((Date.now() - new Date(data.join_date).getTime()) / (7 * 24 * 60 * 60 * 1000)))) * 10) / 10
         : 0,
-      nextBilling: data.membership_status === 'paused' ? 'Paused' : 'N/A',
+      nextBilling: data.membership_status === 'paused' ? 'Paused' : 'Managed in Glofox',
       notes: data.notes,
-      guidedSessions: 0,
     }
   }
 

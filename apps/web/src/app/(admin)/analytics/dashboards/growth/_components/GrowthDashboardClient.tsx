@@ -452,7 +452,7 @@ export function GrowthDashboardClient({
                       <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Member</th>
                       <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Membership</th>
                       <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-left">Last Visit</th>
-                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-center">Risk</th>
+                      <th className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 pb-3 text-center">Inactivity</th>
                     </tr>
                   </thead>
                   <tbody>

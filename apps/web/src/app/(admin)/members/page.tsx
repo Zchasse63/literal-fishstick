@@ -71,19 +71,22 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
   return { firstName: fullName, lastName: '' }
 }
 
-function mapTier(tier: string | null): { membership: string; membershipType: Member['membershipType']; membershipPrice: number } {
+function mapTier(tier: string | null, planPriceCents?: number | null): { membership: string; membershipType: Member['membershipType']; membershipPrice: number } {
+  // Use real plan_price from Glofox hydration (in cents → dollars).
+  // Falls back to 0 if no price data available.
+  const price = planPriceCents != null ? Math.round(planPriceCents / 100) : 0
   switch (tier) {
     case 'unlimited':
-      return { membership: 'Unlimited', membershipType: 'unlimited', membershipPrice: 225 }
+      return { membership: 'Unlimited', membershipType: 'unlimited', membershipPrice: price }
     case '10_class':
-      return { membership: '10-Class Pack', membershipType: '10-class', membershipPrice: 180 }
+      return { membership: '10-Class Pack', membershipType: '10-class', membershipPrice: price }
     case '6_class':
-      return { membership: '6-Class Pack', membershipType: '6-class', membershipPrice: 120 }
+      return { membership: '6-Class Pack', membershipType: '6-class', membershipPrice: price }
     case 'credit_pack':
     case 'credit-pack':
-      return { membership: 'Credit Pack', membershipType: 'credit-pack', membershipPrice: 120 }
+      return { membership: 'Credit Pack', membershipType: 'credit-pack', membershipPrice: price }
     default:
-      return { membership: tier || 'Unknown', membershipType: 'credit-pack', membershipPrice: 0 }
+      return { membership: tier || 'Unknown', membershipType: 'credit-pack', membershipPrice: price }
   }
 }
 
@@ -244,7 +247,7 @@ export default function MembersPage() {
         .from('members')
         .select(`
           id, profile_id, membership_tier, membership_status, credits_remaining, total_visits,
-          join_date, notes, last_visit, lifetime_value,
+          join_date, notes, last_visit, lifetime_value, plan_price,
           profiles!inner ( full_name, email, phone, avatar_url, exclude_from_analytics )
         `)
         .eq('studio_id', STUDIO_ID)
@@ -320,7 +323,7 @@ export default function MembersPage() {
         const profile = row.profiles
         const fullName = profile.full_name || 'Unknown'
         const { firstName, lastName } = splitName(fullName)
-        const tierInfo = mapTier(row.membership_tier)
+        const tierInfo = mapTier(row.membership_tier, row.plan_price)
         const computedStatus = mapStatus(row.membership_status, row.join_date, row.last_visit, row.credits_remaining ?? 0)
         const m360 = m360Map[row.profile_id] || null
 

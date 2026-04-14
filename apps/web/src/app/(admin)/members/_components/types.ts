@@ -144,23 +144,50 @@ export function acquisitionBadgeConfig(channel: AcquisitionChannel | null | unde
   return config[channel] || null
 }
 
-// ─── Heatmap Data (simplified GitHub-style) ─────────────────
-const HEATMAP_WEEKS = 12
+// ─── Heatmap Data (GitHub-style, from real visit dates) ─────
+export const HEATMAP_WEEKS = 12
 const HEATMAP_DAYS = 7
-function generateHeatmap() {
-  const data: number[][] = []
-  for (let w = 0; w < HEATMAP_WEEKS; w++) {
-    const week: number[] = []
-    for (let d = 0; d < HEATMAP_DAYS; d++) {
-      const base = d < 5 ? 0.6 : 0.3
-      week.push(Math.random() < base ? Math.floor(Math.random() * 4) + 1 : 0)
+
+/**
+ * Build a 12-week × 7-day heatmap grid from an array of visit dates.
+ * Each cell is the number of visits that occurred on that day.
+ * Weeks are ordered oldest → newest (week 0 = 12 weeks ago).
+ */
+export function buildHeatmapFromVisits(visitDates: string[]): number[][] {
+  const now = new Date()
+  // Snap to the current Sunday, then go back 11 full weeks so the
+  // current partial week occupies week index 11 (the rightmost column).
+  const currentSunday = new Date(now)
+  currentSunday.setDate(now.getDate() - now.getDay())
+  currentSunday.setHours(0, 0, 0, 0)
+
+  const startOfWindow = new Date(currentSunday)
+  startOfWindow.setDate(currentSunday.getDate() - (HEATMAP_WEEKS - 1) * 7)
+
+  // Initialize empty grid
+  const data: number[][] = Array.from({ length: HEATMAP_WEEKS }, () =>
+    Array.from({ length: HEATMAP_DAYS }, () => 0)
+  )
+
+  for (const dateStr of visitDates) {
+    const d = new Date(dateStr)
+    const diffMs = d.getTime() - startOfWindow.getTime()
+    if (diffMs < 0) continue // before the window
+    const dayIndex = Math.floor(diffMs / (24 * 60 * 60 * 1000))
+    const week = Math.floor(dayIndex / 7)
+    const day = dayIndex % 7
+    if (week >= 0 && week < HEATMAP_WEEKS && day >= 0 && day < HEATMAP_DAYS) {
+      data[week][day]++
     }
-    data.push(week)
   }
+
   return data
 }
 
-export const heatmapData = generateHeatmap()
+/** Empty heatmap for members with no visit data */
+export const emptyHeatmap: number[][] = Array.from({ length: HEATMAP_WEEKS }, () =>
+  Array.from({ length: HEATMAP_DAYS }, () => 0)
+)
 
 export function heatmapColor(val: number) {
   if (val === 0) return 'bg-gray-100'

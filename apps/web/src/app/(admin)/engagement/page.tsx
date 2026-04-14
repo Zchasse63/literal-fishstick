@@ -39,7 +39,7 @@ export default async function EngagementPage() {
       rank: i + 1,
       name: m.profiles?.full_name ?? 'Unknown',
       totalVisits: visits,
-      ltv: m.lifetime_value ?? 0,
+      ltv: Math.round((m.lifetime_value ?? 0) / 100),
       badge,
     }
   })

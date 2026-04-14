@@ -27,7 +27,7 @@ import EditMemberModal from './EditMemberModal'
 import { ActivityTimeline } from './ActivityTimeline'
 import { HealthScoreCard } from './HealthScoreCard'
 import type { Member, MemberBooking, MemberTransaction, ProfileTab } from './types'
-import { statusDot, statusLabel, membershipBadgeColor, heatmapData, heatmapColor } from './types'
+import { statusDot, statusLabel, membershipBadgeColor, buildHeatmapFromVisits, emptyHeatmap, heatmapColor } from './types'
 
 export default function MemberProfilePanel({
   member,
@@ -298,7 +298,14 @@ export default function MemberProfilePanel({
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Visit Activity</h4>
                   <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3.5">
                     <div className="flex gap-0.5">
-                      {heatmapData.map((week, wi) => (
+                      {(memberBookings.length > 0
+                        ? buildHeatmapFromVisits(
+                            memberBookings
+                              .filter((b) => b.status === 'checked_in')
+                              .map((b) => b.startsAt)
+                          )
+                        : emptyHeatmap
+                      ).map((week, wi) => (
                         <div key={wi} className="flex flex-col gap-0.5 flex-1">
                           {week.map((val, di) => (
                             <div
